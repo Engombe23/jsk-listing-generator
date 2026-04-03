@@ -5,7 +5,20 @@ import { Parser } from "json2csv";
 import { buildHtml } from "./html-builder.js";
 
 const app = express();
-app.use(cors());
+
+app.use(cors({
+  origin: [
+    "http://localhost:5173",
+    "http://localhost:5174",
+    "https://jsk-listing-generator-frontend.vercel.app"
+  ],
+  methods: ["GET", "POST", "OPTIONS"],
+  allowedHeaders: ["Content-Type"],
+  credentials: true
+}));
+
+app.options("*", cors());
+
 app.use(express.json({ limit: "2mb" }));
 
 const RAPIDAPI_KEY = process.env.RAPIDAPI_KEY;
