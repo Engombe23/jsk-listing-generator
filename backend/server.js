@@ -13,8 +13,7 @@ app.use(cors({
     "https://jsk-listing-generator-frontend.vercel.app"
   ],
   methods: ["GET", "POST", "OPTIONS"],
-  allowedHeaders: ["Content-Type"],
-  credentials: true
+  allowedHeaders: ["Content-Type"]
 }));
 
 app.use(express.json({ limit: "2mb" }));
