@@ -4,6 +4,10 @@ import cors from "cors";
 import { Parser } from "json2csv";
 import { buildHtml } from "./html-builder.js";
 
+const cors = require("cors");
+
+app.use(cors());
+
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: "2mb" }));
