@@ -17,8 +17,6 @@ app.use(cors({
   credentials: true
 }));
 
-app.options("*", cors());
-
 app.use(express.json({ limit: "2mb" }));
 
 const RAPIDAPI_KEY = process.env.RAPIDAPI_KEY;
