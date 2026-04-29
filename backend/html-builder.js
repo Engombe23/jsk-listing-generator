@@ -11,157 +11,141 @@ function uniq(arr) {
 }
 
 function getManufacturerName(vehicle) {
-  const text = String(vehicle || "").trim();
+  const text = String(vehicle || "").trim().toUpperCase();
 
-  if (text.toUpperCase().startsWith("LAND ROVER")) return "Land Rover";
-  if (text.toUpperCase().startsWith("ALFA ROMEO")) return "Alfa Romeo";
-  if (text.toUpperCase().startsWith("VAUXHALL")) return "Vauxhall";
-  if (text.toUpperCase().startsWith("MERCEDES-BENZ")) return "Mercedes-Benz";
-  if (text.toUpperCase().startsWith("ROLLS-ROYCE")) return "Rolls-Royce";
+  if (text.startsWith("LAND ROVER"))   return "Land Rover";
+  if (text.startsWith("ALFA ROMEO"))   return "Alfa Romeo";
+  if (text.startsWith("MERCEDES-BENZ")) return "Mercedes-Benz";
+  if (text.startsWith("ROLLS-ROYCE"))  return "Rolls-Royce";
+  if (text.startsWith("VAUXHALL"))     return "Vauxhall";
 
-  const firstWord = text.split(" ")[0] || "Other";
-  const lower = firstWord.toLowerCase();
+  const first = text.split(" ")[0] || "Other";
 
-  if (lower === "vw") return "VW";
-  if (lower === "seat") return "Seat";
-  if (lower === "skoda") return "Skoda";
-  if (lower === "audi") return "Audi";
-  if (lower === "bmw") return "BMW";
-  if (lower === "jaguar") return "Jaguar";
-  if (lower === "ford") return "Ford";
-  if (lower === "fiat") return "Fiat";
-  if (lower === "peugeot") return "Peugeot";
-  if (lower === "citroen") return "Citroen";
-  if (lower === "renault") return "Renault";
-  if (lower === "opel") return "Opel";
-  if (lower === "mini") return "Mini";
-  if (lower === "porsche") return "Porsche";
-  if (lower === "volvo") return "Volvo";
-  if (lower === "toyota") return "Toyota";
-  if (lower === "nissan") return "Nissan";
-  if (lower === "mazda") return "Mazda";
-  if (lower === "kia") return "Kia";
-  if (lower === "hyundai") return "Hyundai";
-  if (lower === "honda") return "Honda";
+  const MAP = {
+    vw: "VW", audi: "Audi", bmw: "BMW", ford: "Ford", seat: "Seat",
+    skoda: "Skoda", mini: "Mini", fiat: "Fiat", opel: "Opel",
+    peugeot: "Peugeot", citroen: "Citroen", renault: "Renault",
+    jaguar: "Jaguar", porsche: "Porsche", volvo: "Volvo",
+    toyota: "Toyota", nissan: "Nissan", mazda: "Mazda",
+    kia: "Kia", hyundai: "Hyundai", honda: "Honda",
+    suzuki: "Suzuki", mitsubishi: "Mitsubishi", subaru: "Subaru",
+    lexus: "Lexus", infiniti: "Infiniti", chrysler: "Chrysler",
+    jeep: "Jeep", dodge: "Dodge", tesla: "Tesla"
+  };
 
-  return firstWord.charAt(0).toUpperCase() + firstWord.slice(1).toLowerCase();
+  return MAP[first.toLowerCase()] || (first.charAt(0) + first.slice(1).toLowerCase());
 }
 
-function buildManufacturerTable(title, rows) {
+function buildManufacturerTable(title, rows, colors) {
   if (!rows.length) return "";
 
+  const { primary, tableHeaderBg, tableHeaderText } = colors;
+
   const bodyRows = rows
-    .map((v, index) => {
+    .map((v, i) => {
       const engineCodes = uniq(v.engine_codes || []).join(", ");
-      const rowBg = index % 2 === 0 ? "#ffffff" : "#f5f5f5";
+      const bg = i % 2 === 0 ? "#ffffff" : "#f5f5f5";
 
-      return `
-        <tr style="background:${rowBg};">
-          <td style="border:1px solid #000;padding:6px 8px;text-align:left;">${escapeHtml(v.vehicle)}</td>
-          <td style="border:1px solid #000;padding:6px;text-align:center;">${escapeHtml(v.production_years)}</td>
-          <td style="border:1px solid #000;padding:6px;text-align:center;">${escapeHtml(v.kw || "")}</td>
-          <td style="border:1px solid #000;padding:6px;text-align:center;">${escapeHtml(v.hp || "")}</td>
-          <td style="border:1px solid #000;padding:6px;text-align:center;">${escapeHtml(v.cc || "")}</td>
-          <td style="border:1px solid #000;padding:6px;text-align:center;">${escapeHtml(engineCodes)}</td>
-        </tr>
-      `;
+      return `<tr style="background:${bg};">
+  <td style="border:1px solid #000000;padding:7px 10px;text-align:left;font-size:14px;">${escapeHtml(v.vehicle)}</td>
+  <td style="border:1px solid #000000;padding:7px 8px;text-align:center;font-size:14px;">${escapeHtml(v.production_years)}</td>
+  <td style="border:1px solid #000000;padding:7px 8px;text-align:center;font-size:14px;">${escapeHtml(v.kw || "")}</td>
+  <td style="border:1px solid #000000;padding:7px 8px;text-align:center;font-size:14px;">${escapeHtml(v.hp || "")}</td>
+  <td style="border:1px solid #000000;padding:7px 8px;text-align:center;font-size:14px;">${escapeHtml(v.cc || "")}</td>
+  <td style="border:1px solid #000000;padding:7px 8px;text-align:center;font-size:14px;">${escapeHtml(engineCodes)}</td>
+</tr>`;
     })
-    .join("");
+    .join("\n");
 
-  return `
-    <table style="width:100%;border-collapse:collapse;font-family:Arial,sans-serif;font-size:14px;margin-top:10px;">
-      <thead>
-        <tr>
-          <th colspan="6" style="border:1px solid #000;background:#000;color:#cc0000;font-weight:bold;text-align:center;padding:8px;font-size:16px;">
-            ${escapeHtml(title)}
-          </th>
-        </tr>
-        <tr style="background:#c2c2c2;color:#000;font-weight:bold;">
-          <th style="border:1px solid #000;padding:6px;text-align:center;">Vehicle</th>
-          <th style="border:1px solid #000;padding:6px;text-align:center;">Production Years</th>
-          <th style="border:1px solid #000;padding:6px;text-align:center;">kW</th>
-          <th style="border:1px solid #000;padding:6px;text-align:center;">HP</th>
-          <th style="border:1px solid #000;padding:6px;text-align:center;">CC</th>
-          <th style="border:1px solid #000;padding:6px;text-align:center;">Engine Codes</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${bodyRows}
-      </tbody>
-    </table>
-  `;
+  return `<table style="width:100%;border-collapse:collapse;font-family:Arial,sans-serif;margin-bottom:0;">
+  <thead>
+    <tr>
+      <th colspan="6" style="border:1px solid #000000;background:#000000;color:${primary};font-weight:bold;text-align:center;padding:9px 10px;font-size:16px;">${escapeHtml(title)}</th>
+    </tr>
+    <tr style="background:${tableHeaderBg};">
+      <th style="border:1px solid #000000;padding:7px 10px;text-align:center;font-size:14px;color:${tableHeaderText};font-weight:bold;">Vehicle</th>
+      <th style="border:1px solid #000000;padding:7px 8px;text-align:center;font-size:14px;color:${tableHeaderText};font-weight:bold;">Production Years</th>
+      <th style="border:1px solid #000000;padding:7px 8px;text-align:center;font-size:14px;color:${tableHeaderText};font-weight:bold;">kW</th>
+      <th style="border:1px solid #000000;padding:7px 8px;text-align:center;font-size:14px;color:${tableHeaderText};font-weight:bold;">HP</th>
+      <th style="border:1px solid #000000;padding:7px 8px;text-align:center;font-size:14px;color:${tableHeaderText};font-weight:bold;">CC</th>
+      <th style="border:1px solid #000000;padding:7px 8px;text-align:center;font-size:14px;color:${tableHeaderText};font-weight:bold;">Engine Codes</th>
+    </tr>
+  </thead>
+  <tbody>
+${bodyRows}
+  </tbody>
+</table>`;
 }
 
-export function buildHtml(data) {
-  const oems = uniq(data.oem_numbers || []);
+export function buildHtml(data, template = {}) {
+  const primary          = template.primaryColor          || "#cc0000";
+  const tableHeaderBg    = template.tableHeaderBackground || "#c2c2c2";
+  const tableHeaderText  = template.tableHeaderTextColor  || "#000000";
+
+  const colors = { primary, tableHeaderBg, tableHeaderText };
+
+  const oems  = uniq(data.oem_numbers || []);
   const specs = uniq(data.specifications || []);
-  const rows = data.compatibility_rows || [];
+  const rows  = data.compatibility_rows || [];
 
-  const groupedByManufacturer = {};
-
+  // Group by manufacturer, sort A→Z
+  const grouped = {};
   for (const row of rows) {
-    const manufacturer = getManufacturerName(row.vehicle);
-    if (!groupedByManufacturer[manufacturer]) {
-      groupedByManufacturer[manufacturer] = [];
-    }
-    groupedByManufacturer[manufacturer].push(row);
+    const mfr = getManufacturerName(row.vehicle);
+    (grouped[mfr] = grouped[mfr] || []).push(row);
   }
-
-  const manufacturerOrder = Object.keys(groupedByManufacturer).sort((a, b) =>
-    a.localeCompare(b)
-  );
-
-  const manufacturerTables = manufacturerOrder
-    .map((manufacturer) =>
-      buildManufacturerTable(`${manufacturer} Models:`, groupedByManufacturer[manufacturer])
-    )
-    .join("");
+  const manufacturerTables = Object.keys(grouped)
+    .sort((a, b) => a.localeCompare(b))
+    .map((mfr) => buildManufacturerTable(`${mfr} Models:`, grouped[mfr], colors))
+    .join("\n");
 
   const oemHtml = oems.length
-    ? oems.map((oem) => `<div>${escapeHtml(oem)}</div>`).join("")
-    : `<div>Not specified</div>`;
+    ? oems.map(escapeHtml).join(", ")
+    : "Not specified";
 
   const specsHtml = specs.length
-    ? specs.map((spec) => `<div>${escapeHtml(spec)}</div>`).join("")
-    : `<div>Not specified</div>`;
+    ? specs.map((s) => `<div style="padding:2px 0;">${escapeHtml(s)}</div>`).join("")
+    : `<div style="padding:2px 0;">Not specified</div>`;
 
-  return `
-<div style="max-width:1120px;margin:0 auto;padding:10px;border:1px solid #bfbfbf;background:#efefef;font-family:Arial,sans-serif;color:#000;">
+  return `<div style="max-width:1100px;margin:0 auto;padding:12px;border:1px solid #cccccc;background:#efefef;font-family:Arial,sans-serif;color:#000000;">
 
-  <div style="font-size:20px;font-weight:bold;color:#000;text-align:center;margin:8px 0 16px 0;line-height:1.35;">
+  <!-- Title -->
+  <div style="font-size:20px;font-weight:bold;color:#000000;text-align:center;margin:6px 0 16px;line-height:1.4;">
     ${escapeHtml(data.product_name || "")}
   </div>
 
-  <div style="max-width:850px;margin:0 auto 18px auto;background:#fff3f3;color:#cc0000;font-weight:bold;text-align:center;padding:12px 18px;border:2px solid #cc0000;font-size:16px;line-height:1.45;">
-    ⚠ Please review the images / compatibility to ensure you are ordering the correct part!
+  <!-- Warning -->
+  <div style="max-width:860px;margin:0 auto 16px;background:#ffffff;color:${primary};font-weight:bold;text-align:center;padding:12px 18px;border:2px solid ${primary};font-size:15px;line-height:1.5;">
+    &#9888; Please review the images / compatibility to ensure you are ordering the correct part!
   </div>
 
-  <div style="border:1px solid #cc0000;background:#fff;margin:0 0 14px 0;">
-    <div style="background:#cc0000;color:#fff;font-weight:bold;text-align:center;padding:7px 10px;font-size:17px;">
+  <!-- OEM Numbers -->
+  <div style="margin:0 0 12px;">
+    <div style="background:${primary};color:#ffffff;font-weight:bold;text-align:center;padding:8px 12px;font-size:17px;">
       Replaces OEM Part Numbers:
     </div>
-    <div style="padding:10px 14px;text-align:center;font-size:15px;line-height:1.55;">
+    <div style="background:#ffffff;padding:12px 16px;text-align:center;font-size:15px;line-height:1.7;border:1px solid ${primary};border-top:none;">
       ${oemHtml}
     </div>
   </div>
 
-  <div style="border:1px solid #cc0000;background:#fff;margin:0 0 14px 0;">
-    <div style="background:#cc0000;color:#fff;font-weight:bold;text-align:center;padding:7px 10px;font-size:17px;">
+  <!-- Item Specifics -->
+  <div style="margin:0 0 12px;">
+    <div style="background:${primary};color:#ffffff;font-weight:bold;text-align:center;padding:8px 12px;font-size:17px;">
       Item Specifics:
     </div>
-    <div style="padding:10px 14px;text-align:center;font-size:15px;line-height:1.55;">
+    <div style="background:#ffffff;padding:12px 16px;text-align:center;font-size:15px;line-height:1.7;border:1px solid ${primary};border-top:none;">
       ${specsHtml}
     </div>
   </div>
 
-  <div style="border:1px solid #cc0000;background:#fff;margin:0 0 12px 0;">
-    <div style="background:#cc0000;color:#fff;font-weight:bold;text-align:center;padding:7px 10px;font-size:17px;">
-      Compatible Vehicles:
-    </div>
+  <!-- Compatible Vehicles header -->
+  <div style="background:${primary};color:#ffffff;font-weight:bold;text-align:center;padding:8px 12px;font-size:17px;margin:0 0 0;">
+    Compatible Vehicles:
   </div>
 
+  <!-- Manufacturer tables -->
   ${manufacturerTables}
 
-</div>
-  `.trim();
+</div>`.trim();
 }

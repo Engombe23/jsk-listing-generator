@@ -5,7 +5,8 @@
   "main": "server.js",
   "type": "module",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "dev": "kill-port 3001 && nodemon server.js"
   },
   "keywords": [],
   "author": "",
@@ -16,5 +17,9 @@
     "express": "^5.1.0",
     "json2csv": "^6.0.0-alpha.2",
     "openai": "^5.20.0"
+  },
+  "devDependencies": {
+    "kill-port": "^2.0.1",
+    "nodemon": "^3.1.14"
   }
 }
