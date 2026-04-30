@@ -1,15 +1,22 @@
 import {
-  lookupVehicleByVin,
-  listManufacturers,
-  listModelsByManufacturer,
-  listVehicleTypesByModel,
+  tecdocVinCheck,
   getVehicleTypeDetails,
   searchArticleByOem,
+  artlookupByArticleNo,
   getArticleDetails,
+  getOemsByArticleIds,
+  getVehiclesByOem,
   searchPartsByVehicle,
+  getEquivalentOems,
   getArticleMedia
 } from "./api.js";
-import { normaliseVehicle, enrichVehicleWithTypeDetails, normaliseMake, normaliseYear, normaliseModel } from "./normalise.js";
+import {
+  normaliseVehicle,
+  enrichVehicleWithTypeDetails,
+  normaliseMake,
+  normaliseYear,
+  normaliseModel
+} from "./normalise.js";
 import {
   rankArticleResults,
   compareVehicleToCompatibility,
@@ -18,28 +25,14 @@ import {
   extractFirstImageUrl
 } from "./logic.js";
 
-// ─── Response extractors ──────────────────────────────────────────────────────
+// ─── In-memory caches ─────────────────────────────────────────────────────────
 
-// Parse the Autodoc VIN decoder-v5 response:
-// { "vin-data-1": { "encodingOptions": 15, "content": "{JSON string}" }, ... }
-function extractVehicleFromVinResponse(vinData) {
-  if (!vinData || typeof vinData !== "object") return null;
+const _vinCache        = new Map(); // vin → { vehicleId, vehicle }
+const _oemArticleCache = new Map(); // oemNumber → { articleInfo, productType }
+const _oemVehiclesCache = new Map(); // oemNumber → vehicles[]
+const _oemsByArticleCache = new Map(); // articleId → string[]
 
-  const merged = {};
-  const keys = Object.keys(vinData).filter((k) => k.startsWith("vin-data-")).sort();
-
-  for (const key of keys) {
-    const entry = vinData[key];
-    if (!entry) continue;
-    if (typeof entry.content === "string") {
-      try { Object.assign(merged, JSON.parse(entry.content)); } catch {}
-    } else if (typeof entry === "object") {
-      Object.assign(merged, entry);
-    }
-  }
-
-  return Object.keys(merged).length > 0 ? merged : null;
-}
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function extractArticlesArray(data) {
   if (Array.isArray(data)) return data;
@@ -56,122 +49,95 @@ function extractPartsArray(data) {
   return [];
 }
 
-// ─── K number resolution ──────────────────────────────────────────────────────
+// Extract vehicleId from a TecDoc VIN check response — format is uncertain so
+// try multiple known field paths before giving up.
+function extractVehicleIdFromVinResponse(data) {
+  if (!data || typeof data !== "object") return null;
 
-// Step A: Try to resolve the K number + base vehicle info from the article's
-// compatibleCars list by filtering on make + year. Returns { kNum, car } or null.
-function resolveKFromCompatibleCars(vehicle, compatibleCars) {
-  if (!vehicle.make || !Array.isArray(compatibleCars) || compatibleCars.length === 0) return null;
+  // Direct fields on the top-level object
+  const direct =
+    data.vehicleId  ||
+    data.typeId      ||
+    data.kType       ||
+    data.kTypeId     ||
+    data.carId       ||
+    data.id          ||
+    null;
+  if (direct) return String(direct).trim();
 
-  const candidates = compatibleCars.filter((car) => {
-    const carMake = normaliseMake(car.manufacturerName || car.make || car.brand || "");
-    if (carMake !== vehicle.make) return false;
-
-    if (vehicle.year) {
-      const from = normaliseYear(car.constructionIntervalStart || car.yearFrom) || 0;
-      const to   = normaliseYear(car.constructionIntervalEnd   || car.yearTo)   || 2100;
-      if (vehicle.year < from || vehicle.year > to) return false;
-    }
-
-    return true;
-  });
-
-  if (candidates.length === 0) return null;
-
-  if (vehicle.model) {
-    candidates.sort((a, b) => {
-      const am = normaliseModel(a.modelName || a.model || "");
-      const bm = normaliseModel(b.modelName || b.model || "");
-      const aMatch = am.includes(vehicle.model) || vehicle.model.includes(am) ? 1 : 0;
-      const bMatch = bm.includes(vehicle.model) || vehicle.model.includes(bm) ? 1 : 0;
-      return bMatch - aMatch;
-    });
+  // First element of an array response
+  if (Array.isArray(data) && data.length > 0) {
+    const first = data[0];
+    const fromArr =
+      first?.vehicleId ||
+      first?.typeId    ||
+      first?.kType     ||
+      first?.kTypeId   ||
+      first?.carId     ||
+      first?.id        ||
+      null;
+    if (fromArr) return String(fromArr).trim();
   }
 
-  const car = candidates[0];
-  const kNum = String(car.vehicleId || car.id || car.typeId || "").trim();
-  return kNum ? { kNum, car } : null;
+  // Nested under common wrapper keys
+  for (const key of ["data", "result", "vehicle", "car"]) {
+    if (data[key] && typeof data[key] === "object") {
+      const nested = data[key];
+      const fromNested =
+        nested.vehicleId ||
+        nested.typeId    ||
+        nested.kType     ||
+        nested.kTypeId   ||
+        nested.carId     ||
+        nested.id        ||
+        null;
+      if (fromNested) return String(fromNested).trim();
+    }
+  }
+
+  return null;
 }
 
-// Step B (fallback): Resolve K number via API chain —
-// manufacturer list → model list → vehicle types list → filter by year.
-// Used when the OEM article has no compatibleCars match (e.g. for alternative search).
-async function resolveKNumberViaApi(vehicle) {
-  if (!vehicle.make) return null;
+// Pull OEM number strings out of a getOemsByArticleIds response.
+// Response may be: [{ articleId, oemNumbers: [] }] or a flat array of strings.
+function extractOemStringsFromResponse(raw) {
+  if (!Array.isArray(raw) || raw.length === 0) return [];
 
-  try {
-    // 1. Find manufacturer
-    const manufacturers = await listManufacturers();
-    console.log(`[resolveK] Got ${manufacturers.length} manufacturers`);
+  // Flat array of strings
+  if (typeof raw[0] === "string") return raw.filter(Boolean);
 
-    const mfrMatch = manufacturers.find((m) => {
-      const name = normaliseMake(m.name || m.manufacturerName || m.mfrName || "");
-      return name === vehicle.make;
-    });
-    if (!mfrMatch) {
-      console.log(`[resolveK] No manufacturer match for "${vehicle.make}"`);
-      return null;
-    }
+  // Array of objects — look for oemNumbers or similar fields
+  const strings = [];
+  for (const entry of raw) {
+    if (!entry || typeof entry !== "object") continue;
 
-    const mfrId = mfrMatch.id || mfrMatch.manufacturerId || mfrMatch.mfrId;
-    console.log(`[resolveK] Manufacturer "${vehicle.make}" → ID ${mfrId}`);
+    const nums =
+      entry.oemNumbers     ||
+      entry.oems           ||
+      entry.oemNos         ||
+      entry.articleOemNos  ||
+      null;
 
-    // 2. Find model
-    const models = await listModelsByManufacturer(mfrId);
-    console.log(`[resolveK] Got ${models.length} models for manufacturer ${mfrId}`);
-
-    let modelId = null;
-    if (vehicle.model && models.length > 0) {
-      const modelMatch = models.find((m) => {
-        const name = normaliseModel(m.name || m.modelName || m.series || "");
-        return name.includes(vehicle.model) || vehicle.model.includes(name);
-      });
-      if (modelMatch) {
-        modelId = modelMatch.id || modelMatch.modelId;
-        console.log(`[resolveK] Model "${vehicle.model}" → ID ${modelId}`);
+    if (Array.isArray(nums)) {
+      for (const n of nums) {
+        if (typeof n === "string" && n.trim()) strings.push(n.trim());
+        else if (n && typeof n === "object") {
+          const s = n.oemNumber || n.oem || n.articleOemNo || n.value || "";
+          if (s) strings.push(String(s).trim());
+        }
       }
+    } else {
+      // The entry itself might have a single OEM field
+      const s =
+        entry.oemNumber     ||
+        entry.oem           ||
+        entry.articleOemNo  ||
+        "";
+      if (s) strings.push(String(s).trim());
     }
-
-    if (!modelId) {
-      console.log(`[resolveK] No model match for "${vehicle.model}" — cannot narrow to K number`);
-      return null;
-    }
-
-    // 3. Get vehicle types for the model
-    const typesRaw = await listVehicleTypesByModel(modelId);
-    console.log(`[resolveK] Vehicle types raw:`, JSON.stringify(typesRaw).slice(0, 500));
-
-    const types = Array.isArray(typesRaw)
-      ? typesRaw
-      : (typesRaw?.vehicleTypes || typesRaw?.types || typesRaw?.data || []);
-
-    if (types.length === 0) {
-      console.log(`[resolveK] No vehicle types found for model ${modelId}`);
-      return null;
-    }
-
-    // 4. Filter by year
-    const yearFiltered = vehicle.year
-      ? types.filter((t) => {
-          const from = normaliseYear(t.constructionIntervalStart || t.yearFrom) || 0;
-          const to   = normaliseYear(t.constructionIntervalEnd   || t.yearTo)   || 2100;
-          return vehicle.year >= from && vehicle.year <= to;
-        })
-      : types;
-
-    if (yearFiltered.length === 0) {
-      console.log(`[resolveK] No vehicle types matched year ${vehicle.year}`);
-      return null;
-    }
-
-    const kNum = String(yearFiltered[0].vehicleId || yearFiltered[0].id || yearFiltered[0].typeId || "").trim();
-    console.log(`[resolveK] Resolved K number: ${kNum}`);
-    return kNum || null;
-
-  } catch (err) {
-    console.log(`[resolveK] API chain failed: ${err.message}`);
-    return null;
   }
+
+  return strings.filter(Boolean);
 }
 
 // ─── Main checker ─────────────────────────────────────────────────────────────
@@ -198,24 +164,44 @@ export async function checkCompatibility({
     errors: []
   };
 
-  // ── Step 1: Vehicle identity from VIN (or manual fields) ──────────────────
-  let normalisedVehicle;
+  // ── STEP 1 — VIN → vehicleId + vehicle spec ────────────────────────────────
+
+  let normalisedVehicle = null;
+  let vehicleId = null;
 
   if (vin) {
-    try {
-      const vinData = await lookupVehicleByVin(vin);
-      const vinVehicle = extractVehicleFromVinResponse(vinData);
-      if (vinVehicle) {
-        normalisedVehicle = normaliseVehicle({ ...vinVehicle, vin });
+    // Check cache first
+    const cached = _vinCache.get(vin);
+    if (cached) {
+      vehicleId = cached.vehicleId;
+      normalisedVehicle = cached.vehicle;
+      console.log(`[VIN] cache hit → vehicleId=${vehicleId}`);
+    } else {
+      try {
+        const vinData = await tecdocVinCheck(vin);
+        console.log(`[VIN] raw response (first 500): ${JSON.stringify(vinData).slice(0, 500)}`);
+
+        vehicleId = extractVehicleIdFromVinResponse(vinData);
+
+        if (vehicleId) {
+          const detail = await getVehicleTypeDetails(vehicleId);
+          const rawVehicle =
+            detail?.vehicleType        ||
+            detail?.vehicleTypeDetails ||
+            detail?.data               ||
+            detail                     ||
+            {};
+
+          normalisedVehicle = normaliseVehicle({ ...rawVehicle, vehicleId, vin });
+          console.log(`[VIN] K=${vehicleId} make=${normalisedVehicle.make} model=${normalisedVehicle.model} year=${normalisedVehicle.year}`);
+
+          _vinCache.set(vin, { vehicleId, vehicle: normalisedVehicle });
+        } else {
+          console.log("[VIN] tecdocVinCheck returned no usable vehicleId. Raw keys:", Object.keys(vinData || {}).join(", "));
+        }
+      } catch (err) {
+        result.errors.push({ step: "vehicleLookup", message: `VIN lookup failed: ${err.message}` });
       }
-      if (!normalisedVehicle || (!normalisedVehicle.make && !normalisedVehicle.model)) {
-        console.log("[VIN] decoded but no usable fields. Raw keys:", Object.keys(vinData || {}).join(", "));
-        normalisedVehicle = null;
-      } else {
-        console.log("[VIN] resolved →", normalisedVehicle.make, normalisedVehicle.model, normalisedVehicle.year);
-      }
-    } catch (err) {
-      result.errors.push({ step: "vehicleLookup", message: `VIN lookup failed: ${err.message}` });
     }
   }
 
@@ -228,178 +214,279 @@ export async function checkCompatibility({
       });
       return result;
     }
-    normalisedVehicle = normaliseVehicle({
-      make, model, year, fuelType,
-      engineSize, engineCode
-    });
+
+    normalisedVehicle = normaliseVehicle({ make, model, year, fuelType, engineSize, engineCode });
+
     if (vin) {
-      result.errors.push({ step: "vehicleLookup", message: "VIN decoded but returned no make/model — using manually entered vehicle details." });
+      result.errors.push({
+        step: "vehicleLookup",
+        message: "VIN lookup returned no vehicle ID — using manually entered vehicle details."
+      });
     }
   }
 
-  // Overlay any manual overrides on top of VIN data
-  if (make)        normalisedVehicle.make            = normaliseMake(make);
-  if (model)       normalisedVehicle.model           = normaliseModel(model);
-  if (year)        normalisedVehicle.year            = normaliseYear(year);
+  // Overlay any explicit manual overrides on top of VIN / cache data
+  if (make)  normalisedVehicle.make  = normaliseMake(make);
+  if (model) normalisedVehicle.model = normaliseModel(model);
+  if (year)  normalisedVehicle.year  = normaliseYear(year);
+
+  // Keep vehicleId in sync with whatever ended up in normalisedVehicle
+  if (!vehicleId && normalisedVehicle.vehicleId) {
+    vehicleId = normalisedVehicle.vehicleId;
+  }
 
   result.vehicle = normalisedVehicle;
 
-  // ── Step 2: OEM article search ────────────────────────────────────────────
-  let bestArticle;
-  try {
-    const oemData = await searchArticleByOem(oemNumber);
-    const articles = extractArticlesArray(oemData);
-    if (articles.length === 0) throw new Error("No articles found for OEM number");
-    bestArticle = rankArticleResults(articles)[0];
-  } catch (err) {
-    result.errors.push({ step: "oemSearch", message: err.message });
-    return result;
-  }
+  // ── STEP 2 — OEM → article + productType ─────────────────────────────────
 
-  // ── Step 3: Article details ───────────────────────────────────────────────
-  let articleDetails;
-  try {
-    const articleNo = bestArticle.articleNo || bestArticle.articleNumber || bestArticle.artNr;
-    const detailsData = await getArticleDetails(articleNo);
-    const detailArticles = extractArticlesArray(detailsData);
-    if (detailArticles.length === 0) throw new Error("No article details returned");
-    articleDetails = detailArticles[0];
-  } catch (err) {
-    result.errors.push({ step: "articleDetails", message: err.message });
-    return result;
-  }
+  let articleInfo;
+  let productType;
 
-  // ── Step 4: Media ─────────────────────────────────────────────────────────
-  let imageUrl = null;
-  try {
-    const mediaData = await getArticleMedia(articleDetails.articleId || articleDetails.id);
-    imageUrl = extractFirstImageUrl(mediaData);
-  } catch {}
-
-  const articleInfo = extractArticleInfo(articleDetails);
-  if (imageUrl) articleInfo.imageUrl = imageUrl;
-  result.checkedPart = { ...articleInfo, compatible: false };
-
-  // ── Step 3.5: Resolve K number + enrich vehicle from compatibleCars ─────────
-  if (!normalisedVehicle.vehicleId) {
-    const resolved = resolveKFromCompatibleCars(normalisedVehicle, articleInfo.compatibleCars);
-    if (resolved) {
-      const { kNum, car } = resolved;
-      // Pull model + variant directly from the matched compatible car — no extra API call
-      normalisedVehicle = {
-        ...normalisedVehicle,
-        vehicleId: kNum,
-        model:   normalisedVehicle.model   || normaliseModel(car.modelName  || car.model  || ""),
-        variant: normalisedVehicle.variant || car.typeEngineName || car.typeName || car.variant || null,
-        yearTo:  normalisedVehicle.yearTo  || normaliseYear(car.constructionIntervalEnd || car.yearTo)
-      };
-      console.log(`[K] Resolved K=${kNum} model="${normalisedVehicle.model}" variant="${normalisedVehicle.variant}"`);
-    } else {
-      console.log(`[K] No match in compatibleCars for make=${normalisedVehicle.make} year=${normalisedVehicle.year}`);
-    }
-  }
-
-  // ── Step 3.6: Fetch full spec via vehicle type details ────────────────────
-  console.log(`[V] vehicleId for spec fetch: ${normalisedVehicle.vehicleId}`);
-  if (normalisedVehicle.vehicleId) {
+  const oemCached = _oemArticleCache.get(oemNumber);
+  if (oemCached) {
+    articleInfo = oemCached.articleInfo;
+    productType = oemCached.productType;
+    console.log(`[OEM] cache hit for ${oemNumber}`);
+  } else {
+    // Primary: searchArticleByOem
+    let articles = [];
     try {
-      const typeDetail = await getVehicleTypeDetails(normalisedVehicle.vehicleId);
-      console.log(`[V] typeDetail keys:`, typeDetail ? Object.keys(typeDetail).join(", ") : "null");
-      if (typeDetail) {
-        normalisedVehicle = enrichVehicleWithTypeDetails(normalisedVehicle, typeDetail);
-        console.log(`[V] enriched → kw=${normalisedVehicle.powerKw} hp=${normalisedVehicle.powerPs} fuel=${normalisedVehicle.fuelType} codes=${normalisedVehicle.engineCodes} cyl=${normalisedVehicle.cylinders}`);
+      const oemData = await searchArticleByOem(oemNumber);
+      articles = extractArticlesArray(oemData);
+    } catch (err) {
+      result.errors.push({ step: "oemSearch", message: `Primary OEM search failed: ${err.message}` });
+    }
+
+    // Fallback: artlookupByArticleNo
+    if (articles.length === 0) {
+      try {
+        const fallbackData = await artlookupByArticleNo(oemNumber);
+        articles = extractArticlesArray(fallbackData);
+      } catch (err) {
+        result.errors.push({ step: "oemSearch", message: `Fallback artlookup failed: ${err.message}` });
+      }
+    }
+
+    if (articles.length === 0) {
+      result.errors.push({ step: "oemSearch", message: `No articles found for OEM number "${oemNumber}"` });
+      return result;
+    }
+
+    // Rank and pick best article
+    const ranked = rankArticleResults(articles);
+    const best = ranked[0];
+
+    // Get full details
+    let fullArticle = best;
+    try {
+      const articleNo =
+        best.articleNo     ||
+        best.articleNumber ||
+        best.artNr         ||
+        "";
+      if (articleNo) {
+        const detailsData = await getArticleDetails(articleNo);
+        const detailArticles = extractArticlesArray(detailsData);
+        if (detailArticles.length > 0) {
+          fullArticle = detailArticles[0];
+        }
       }
     } catch (err) {
-      console.log(`[V] enrichment error: ${err.message}`);
+      result.errors.push({ step: "articleDetails", message: err.message });
+      // Continue with partial info from best
+    }
+
+    articleInfo = extractArticleInfo(fullArticle);
+    productType = articleInfo.productType || partType || "";
+
+    // Fetch image (silent)
+    try {
+      const mediaData = await getArticleMedia(articleInfo.articleId || fullArticle.articleId || fullArticle.id);
+      const imgUrl = extractFirstImageUrl(mediaData);
+      if (imgUrl) articleInfo.imageUrl = imgUrl;
+    } catch {}
+
+    _oemArticleCache.set(oemNumber, { articleInfo, productType });
+  }
+
+  result.checkedPart = { ...articleInfo, compatible: false };
+
+  // ── STEP 3 — Get ALL vehicles compatible with this OEM ────────────────────
+
+  let compatibleVehicles = [];
+
+  const vehiclesCached = _oemVehiclesCache.get(oemNumber);
+  if (vehiclesCached) {
+    compatibleVehicles = vehiclesCached;
+    console.log(`[OEM vehicles] cache hit → ${compatibleVehicles.length} vehicles`);
+  } else {
+    try {
+      const rawVehicles = await getVehiclesByOem(oemNumber);
+      compatibleVehicles = Array.isArray(rawVehicles) ? rawVehicles : [];
+      console.log(`[OEM vehicles] ${compatibleVehicles.length} vehicles compatible with OEM ${oemNumber}`);
+      _oemVehiclesCache.set(oemNumber, compatibleVehicles);
+    } catch (err) {
+      console.log(`[OEM vehicles] getVehiclesByOem failed: ${err.message}`);
+      compatibleVehicles = [];
     }
   }
 
-  result.vehicle = normalisedVehicle;
+  // ── STEP 4 — Compatibility check ─────────────────────────────────────────
 
-  // ── Step 5: Compatibility check ───────────────────────────────────────────
-  const comparison = compareVehicleToCompatibility(normalisedVehicle, articleInfo.compatibleCars);
-  result.matchReasoning = comparison;
-  result.confidenceScore = comparison.score;
-  result.confidenceLabel = getConfidenceLabel(comparison.score);
+  let matchReasoning;
 
-  if (comparison.score >= 70) {
+  if (vehicleId && compatibleVehicles.length > 0) {
+    // Exact TecDoc vehicle ID match
+    const exactMatch = compatibleVehicles.find((v) => {
+      const vId = String(v.vehicleId || v.typeId || v.kType || v.kTypeId || v.id || "").trim();
+      return vId && vId === String(vehicleId).trim();
+    });
+
+    if (exactMatch) {
+      matchReasoning = {
+        matched: true,
+        score: 95,
+        matchedBy: "tecDocTypeId",
+        matchedFields: ["vehicleId"],
+        conflictingFields: [],
+        notes: ["Exact TecDoc vehicle ID match"]
+      };
+    } else {
+      matchReasoning = {
+        matched: false,
+        score: 0,
+        matchedBy: null,
+        matchedFields: [],
+        conflictingFields: [],
+        notes: [
+          `Vehicle ID ${vehicleId} not found in ${compatibleVehicles.length} compatible vehicles`
+        ]
+      };
+    }
+  } else {
+    // No vehicleId available — fall back to fuzzy matching against compatibleCars
+    matchReasoning = compareVehicleToCompatibility(
+      normalisedVehicle,
+      articleInfo.compatibleCars || []
+    );
+    matchReasoning.notes = matchReasoning.notes || [];
+    matchReasoning.notes.push("No vehicle ID available — used fuzzy matching");
+  }
+
+  result.matchReasoning  = matchReasoning;
+  result.confidenceScore = matchReasoning.score;
+  result.confidenceLabel = getConfidenceLabel(matchReasoning.score);
+
+  const isExactMatch = matchReasoning.matchedBy === "tecDocTypeId";
+
+  if (matchReasoning.score >= 70 || isExactMatch) {
     result.status = "compatible";
     result.checkedPart.compatible = true;
     return result;
   }
 
-  if (comparison.score >= 50) {
+  if (matchReasoning.score >= 50 && !isExactMatch) {
     result.status = "manual_check_required";
     return result;
   }
 
-  // ── Step 6: Not compatible — search for alternative ───────────────────────
-  // Need a vehicleId (K number) for the vehicle-based parts search.
-  // If we still don't have one, try the API chain: manufacturer → model → types.
-  let vehicleId = normalisedVehicle.vehicleId;
+  // ── STEP 5 — Alternative search (score < 50 or no match) ─────────────────
 
-  if (!vehicleId) {
-    vehicleId = await resolveKNumberViaApi(normalisedVehicle);
-    if (vehicleId) {
-      normalisedVehicle = { ...normalisedVehicle, vehicleId };
-      result.vehicle = normalisedVehicle;
-    }
+  const useVehicleId = vehicleId || normalisedVehicle.vehicleId;
+
+  if (!useVehicleId) {
+    result.status = "not_compatible";
+    return result;
   }
 
-  if (vehicleId) {
-    try {
-      const partsData = await searchPartsByVehicle(vehicleId);
-      const parts = extractPartsArray(partsData);
+  try {
+    const partsData = await searchPartsByVehicle(useVehicleId);
+    const parts = extractPartsArray(partsData);
 
-      // Filter by product type
-      let filtered = parts;
-      if (articleInfo.productType) {
-        const firstWord = articleInfo.productType.split(/\s+/)[0].toLowerCase();
-        if (firstWord.length > 2) {
-          const typed = parts.filter((p) => {
-            const pType = (p.articleProductName || p.productName || p.description || "").toLowerCase();
-            return pType.includes(firstWord);
-          });
-          if (typed.length > 0) filtered = typed;
+    // Filter by product type (first word, length > 2)
+    let filtered = parts;
+    if (productType) {
+      const firstWord = productType.split(/\s+/)[0].toLowerCase();
+      if (firstWord.length > 2) {
+        const typed = parts.filter((p) => {
+          const pType = (
+            p.articleProductName ||
+            p.productName        ||
+            p.description        ||
+            ""
+          ).toLowerCase();
+          return pType.includes(firstWord);
+        });
+        if (typed.length > 0) filtered = typed;
+      }
+    }
+
+    const rankedAlts = rankArticleResults(filtered);
+
+    if (rankedAlts.length === 0) {
+      result.status = "not_compatible";
+      return result;
+    }
+
+    const altArticle = rankedAlts[0];
+    const altInfo = extractArticleInfo(altArticle);
+
+    // Get full article details
+    try {
+      const altNo =
+        altInfo.articleNumber ||
+        altArticle.articleNo  ||
+        altArticle.artNr      ||
+        "";
+      if (altNo) {
+        const altDetails = await getArticleDetails(altNo);
+        const altDetailArticles = extractArticlesArray(altDetails);
+        if (altDetailArticles.length > 0) {
+          const fullAlt = extractArticleInfo(altDetailArticles[0]);
+          altInfo.productType = fullAlt.productType || altInfo.productType;
+          altInfo.articleId   = fullAlt.articleId   || altInfo.articleId;
+          // Merge OEM numbers — we'll try getOemsByArticleIds first below
+          if (!altInfo.oemNumbers || altInfo.oemNumbers.length === 0) {
+            altInfo.oemNumbers = fullAlt.oemNumbers || [];
+          }
         }
       }
+    } catch {}
 
-      const rankedAlts = rankArticleResults(filtered);
-      if (rankedAlts.length > 0) {
-        const altArticle = rankedAlts[0];
-        const altInfo = extractArticleInfo(altArticle);
-
-        // Get alt article full details (for complete OEM numbers)
+    // Fetch OEM numbers via getOemsByArticleIds
+    if (altInfo.articleId) {
+      const cachedOems = _oemsByArticleCache.get(String(altInfo.articleId));
+      if (cachedOems) {
+        altInfo.oemNumbers = cachedOems;
+      } else {
         try {
-          const altNo = altInfo.articleNumber || altArticle.articleNo || altArticle.artNr;
-          if (altNo) {
-            const altDetails = await getArticleDetails(altNo);
-            const altDetailArticles = extractArticlesArray(altDetails);
-            if (altDetailArticles.length > 0) {
-              const fullAlt = extractArticleInfo(altDetailArticles[0]);
-              Object.assign(altInfo, {
-                oemNumbers: fullAlt.oemNumbers,
-                productType: fullAlt.productType || altInfo.productType,
-                articleId: fullAlt.articleId || altInfo.articleId
-              });
-            }
+          const oemsRaw = await getOemsByArticleIds([altInfo.articleId]);
+          console.log(`[altOEMs] raw response (first 300): ${JSON.stringify(oemsRaw).slice(0, 300)}`);
+          const oems = extractOemStringsFromResponse(oemsRaw);
+          if (oems.length > 0) {
+            altInfo.oemNumbers = oems;
+            _oemsByArticleCache.set(String(altInfo.articleId), oems);
           }
-        } catch {}
-
-        // Get alt image
-        try {
-          const altMedia = await getArticleMedia(altInfo.articleId);
-          const altImg = extractFirstImageUrl(altMedia);
-          if (altImg) altInfo.imageUrl = altImg;
-        } catch {}
-
-        result.alternativePart = { ...altInfo, compatible: true };
-        result.status = "alternative_found";
-        return result;
+          // If empty, keep whatever extractArticleInfo already found
+        } catch (err) {
+          console.log(`[altOEMs] getOemsByArticleIds failed: ${err.message}`);
+        }
       }
-    } catch (err) {
-      result.errors.push({ step: "alternativeSearch", message: err.message });
     }
+
+    // Get alt image (silent)
+    try {
+      const altMedia = await getArticleMedia(altInfo.articleId);
+      const altImg = extractFirstImageUrl(altMedia);
+      if (altImg) altInfo.imageUrl = altImg;
+    } catch {}
+
+    result.alternativePart = { ...altInfo, compatible: true };
+    result.status = "alternative_found";
+    return result;
+
+  } catch (err) {
+    result.errors.push({ step: "alternativeSearch", message: err.message });
   }
 
   result.status = "not_compatible";

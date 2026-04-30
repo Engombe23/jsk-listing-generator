@@ -14,52 +14,25 @@ function apiHeaders(includeContentType = false) {
   return headers;
 }
 
-// ─── VIN ──────────────────────────────────────────────────────────────────────
+// ─── 1. TecDoc VIN Check ──────────────────────────────────────────────────────
+// GET /api/vin/tecdoc-vin-check/{vin}
 
-export async function lookupVehicleByVin(vin) {
+export async function tecdocVinCheck(vin) {
   const cleaned = String(vin).trim().replace(/\s+/g, "").toUpperCase();
-  const url = `https://${RAPIDAPI_HOST}/api/vin/decoder-v5/${cleaned}`;
+  const url = `https://${RAPIDAPI_HOST}/api/vin/tecdoc-vin-check/${cleaned}`;
 
   const res = await fetch(url, {
     method: "GET",
     headers: apiHeaders()
   });
 
-  if (!res.ok) throw new Error(`VIN lookup failed for "${vin}": HTTP ${res.status}`);
+  if (!res.ok) throw new Error(`TecDoc VIN check failed for "${vin}": HTTP ${res.status}`);
   return res.json();
 }
 
-// ─── Manufacturer / Model / Vehicle Type browse ───────────────────────────────
+// ─── 2. Vehicle Type Details ──────────────────────────────────────────────────
+// GET /api/types/type-id/1/vehicle-type-details/{vehicleId}/lang-id/4/country-filter-id/63
 
-// Cache manufacturers list — it's large and rarely changes
-let _manufacturersCache = null;
-
-export async function listManufacturers() {
-  if (_manufacturersCache) return _manufacturersCache;
-  const url = `https://${RAPIDAPI_HOST}/api/manufacturers/list/type-id/${TYPE_ID}`;
-  const res = await fetch(url, { method: "GET", headers: apiHeaders() });
-  if (!res.ok) throw new Error(`Failed to list manufacturers: HTTP ${res.status}`);
-  const data = await res.json();
-  _manufacturersCache = Array.isArray(data) ? data : (data?.data || data?.manufacturers || []);
-  return _manufacturersCache;
-}
-
-export async function listModelsByManufacturer(manufacturerId) {
-  const url = `https://${RAPIDAPI_HOST}/api/models/list/type-id/${TYPE_ID}/manufacturer-id/${manufacturerId}/lang-id/${LANG_ID}/country-filter-id/${COUNTRY_FILTER_ID}`;
-  const res = await fetch(url, { method: "GET", headers: apiHeaders() });
-  if (!res.ok) throw new Error(`Failed to list models for manufacturer ${manufacturerId}: HTTP ${res.status}`);
-  const data = await res.json();
-  return Array.isArray(data) ? data : (data?.data || data?.models || []);
-}
-
-export async function listVehicleTypesByModel(modelId) {
-  const url = `https://${RAPIDAPI_HOST}/api/models/type-id/${TYPE_ID}/model-id/${modelId}/lang-id/${LANG_ID}/country-filter-id/${COUNTRY_FILTER_ID}`;
-  const res = await fetch(url, { method: "GET", headers: apiHeaders() });
-  if (!res.ok) throw new Error(`Failed to get vehicle types for model ${modelId}: HTTP ${res.status}`);
-  return res.json();
-}
-
-// Full spec for a single vehicle type (KW, HP, fuel, engine code, cylinders, etc.)
 export async function getVehicleTypeDetails(vehicleId) {
   const url = `https://${RAPIDAPI_HOST}/api/types/type-id/${TYPE_ID}/vehicle-type-details/${vehicleId}/lang-id/${LANG_ID}/country-filter-id/${COUNTRY_FILTER_ID}`;
   const res = await fetch(url, { method: "GET", headers: apiHeaders() });
@@ -67,7 +40,8 @@ export async function getVehicleTypeDetails(vehicleId) {
   return res.json();
 }
 
-// ─── OEM / Article ───────────────────────────────────────────────────────────
+// ─── 3. Search Articles by OEM — primary ─────────────────────────────────────
+// POST /api/articles-oem/article-oem-search-no  body: langId=4&articleOemNo={oem}
 
 export async function searchArticleByOem(oemNumber) {
   const url = `https://${RAPIDAPI_HOST}/api/articles-oem/article-oem-search-no`;
@@ -85,6 +59,29 @@ export async function searchArticleByOem(oemNumber) {
   if (!res.ok) throw new Error(`OEM search failed for "${oemNumber}": HTTP ${res.status}`);
   return res.json();
 }
+
+// ─── 4. Search Articles by Article No — fallback ──────────────────────────────
+// GET /api/artlookup/search-articles-by-article-no?langId=4&articleNo={oem}&articleType=OENumber
+
+export async function artlookupByArticleNo(articleNo) {
+  const params = new URLSearchParams();
+  params.append("langId", LANG_ID);
+  params.append("articleNo", articleNo);
+  params.append("articleType", "OENumber");
+
+  const url = `https://${RAPIDAPI_HOST}/api/artlookup/search-articles-by-article-no?${params.toString()}`;
+
+  const res = await fetch(url, {
+    method: "GET",
+    headers: apiHeaders()
+  });
+
+  if (!res.ok) throw new Error(`Artlookup search failed for "${articleNo}": HTTP ${res.status}`);
+  return res.json();
+}
+
+// ─── 5. Article details by article number ─────────────────────────────────────
+// POST /api/articles/article-number-details
 
 export async function getArticleDetails(articleNumber) {
   const url = `https://${RAPIDAPI_HOST}/api/articles/article-number-details`;
@@ -105,6 +102,59 @@ export async function getArticleDetails(articleNumber) {
   return res.json();
 }
 
+// ─── 6. Get OEM numbers by list of article IDs ────────────────────────────────
+// POST /api/articles/get-oems-by-list-of-articles-ids  body: articleId={id}
+
+export async function getOemsByArticleIds(articleIds) {
+  const url = `https://${RAPIDAPI_HOST}/api/articles/get-oems-by-list-of-articles-ids`;
+
+  const params = new URLSearchParams();
+  for (const id of articleIds) {
+    params.append("articleId", String(id));
+  }
+
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: apiHeaders(true),
+      body: params.toString()
+    });
+    if (!res.ok) return [];
+    return res.json();
+  } catch {
+    return [];
+  }
+}
+
+// ─── 7. List ALL vehicles compatible with an OEM number (KEY endpoint) ─────────
+// POST /api/articles-oem/selecting-a-list-of-cars-for-oem-part-number
+//   body: langId=4&articleOemNo={oem}
+// Returns array of vehicles with vehicleId fields.
+
+export async function getVehiclesByOem(oemNumber) {
+  const url = `https://${RAPIDAPI_HOST}/api/articles-oem/selecting-a-list-of-cars-for-oem-part-number`;
+
+  const params = new URLSearchParams();
+  params.append("langId", LANG_ID);
+  params.append("articleOemNo", oemNumber);
+
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: apiHeaders(true),
+      body: params.toString()
+    });
+    if (!res.ok) return [];
+    return res.json();
+  } catch {
+    return [];
+  }
+}
+
+// ─── 8. OEM parts by vehicle ID ───────────────────────────────────────────────
+// GET /api/articles-oem/selecting-oem-parts-vehicle-modification-description-product-group/
+//   type-id/1/vehicle-id/{vehicleId}/lang-id/4/search-param/filter
+
 export async function searchPartsByVehicle(vehicleId) {
   const url = `https://${RAPIDAPI_HOST}/api/articles-oem/selecting-oem-parts-vehicle-modification-description-product-group/type-id/${TYPE_ID}/vehicle-id/${vehicleId}/lang-id/${LANG_ID}/search-param/filter`;
 
@@ -116,6 +166,29 @@ export async function searchPartsByVehicle(vehicleId) {
     return [];
   }
 }
+
+// ─── 9. Equivalent OEM numbers ────────────────────────────────────────────────
+// POST /api/articles-oem/all-equal-oem-no  body: langId=4&articleOemNo={oem}
+
+export async function getEquivalentOems(oemNumber) {
+  const url = `https://${RAPIDAPI_HOST}/api/articles-oem/all-equal-oem-no`;
+
+  const params = new URLSearchParams();
+  params.append("langId", LANG_ID);
+  params.append("articleOemNo", oemNumber);
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: apiHeaders(true),
+    body: params.toString()
+  });
+
+  if (!res.ok) throw new Error(`Equivalent OEMs fetch failed for "${oemNumber}": HTTP ${res.status}`);
+  return res.json();
+}
+
+// ─── Article media ────────────────────────────────────────────────────────────
+// POST /api/articles/article-all-media-info
 
 export async function getArticleMedia(articleId) {
   const url = `https://${RAPIDAPI_HOST}/api/articles/article-all-media-info`;
@@ -135,4 +208,26 @@ export async function getArticleMedia(articleId) {
   } catch {
     return null;
   }
+}
+
+// ─── Manufacturer list with in-memory cache ───────────────────────────────────
+
+let _manufacturersCache = null;
+
+export async function listManufacturers() {
+  if (_manufacturersCache) return _manufacturersCache;
+  const url = `https://${RAPIDAPI_HOST}/api/manufacturers/list/type-id/${TYPE_ID}`;
+  const res = await fetch(url, { method: "GET", headers: apiHeaders() });
+  if (!res.ok) throw new Error(`Failed to list manufacturers: HTTP ${res.status}`);
+  const data = await res.json();
+  _manufacturersCache = Array.isArray(data) ? data : (data?.data || data?.manufacturers || []);
+  return _manufacturersCache;
+}
+
+export async function listModelsByManufacturer(manufacturerId) {
+  const url = `https://${RAPIDAPI_HOST}/api/models/list/type-id/${TYPE_ID}/manufacturer-id/${manufacturerId}/lang-id/${LANG_ID}/country-filter-id/${COUNTRY_FILTER_ID}`;
+  const res = await fetch(url, { method: "GET", headers: apiHeaders() });
+  if (!res.ok) throw new Error(`Failed to list models for manufacturer ${manufacturerId}: HTTP ${res.status}`);
+  const data = await res.json();
+  return Array.isArray(data) ? data : (data?.data || data?.models || []);
 }
