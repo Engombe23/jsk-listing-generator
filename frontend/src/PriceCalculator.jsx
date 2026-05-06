@@ -1,4 +1,5 @@
 import React, { memo, useState, useEffect } from "react";
+import { useSessionState } from "./useSessionState.js";
 import {
   Card,
   FieldLabel,
@@ -7,6 +8,7 @@ import {
   SMALL_BUTTON_STYLE,
   INPUT_STYLE
 } from "./shared.jsx";
+import SavedProducts from "./SavedProducts.jsx";
 
 const fmt = (n) => {
   if (n === null || isNaN(n)) return "—";
@@ -32,7 +34,7 @@ const StatCard = memo(function StatCard({ label, value, sub, positive }) {
   return (
     <div
       style={{
-        background: "#0f1115",
+        background: "#081322",
         border: `1px solid ${borderColor}`,
         borderRadius: 20,
         padding: "16px 12px",
@@ -89,17 +91,19 @@ const INLINE_INPUT = {
   borderRadius: 12
 };
 
-export default function PriceCalculator({ onSave, onLoadHandled }) {
-  const [productName, setProductName] = useState("");
-  const [itemCost, setItemCost] = useState("");
-  const [shippingCost, setShippingCost] = useState("");
-  const [sellingPrice, setSellingPrice] = useState("");
-  const [fvfPct, setFvfPct] = useState("12.8");
-  const [fixedFee, setFixedFee] = useState("0.30");
-  const [promoPct, setPromoPct] = useState("0");
-  const [vatRegistered, setVatRegistered] = useState(true);
-  const [targetMarkup, setTargetMarkup] = useState("");
-  const [targetMargin, setTargetMargin] = useState("");
+export default function PriceCalculator({ onSave, onLoadHandled, products, onDeleteProduct, onLoadProduct }) {
+  const [innerPage, setInnerPage] = useState("calculator");
+  const savedCount = products?.length ?? 0;
+  const [productName, setProductName] = useSessionState("jsk_calc_product_name", "");
+  const [itemCost, setItemCost] = useSessionState("jsk_calc_item_cost", "");
+  const [shippingCost, setShippingCost] = useSessionState("jsk_calc_shipping", "");
+  const [sellingPrice, setSellingPrice] = useSessionState("jsk_calc_selling", "");
+  const [fvfPct, setFvfPct] = useSessionState("jsk_calc_fvf", "12.8");
+  const [fixedFee, setFixedFee] = useSessionState("jsk_calc_fixed_fee", "0.30");
+  const [promoPct, setPromoPct] = useSessionState("jsk_calc_promo", "0");
+  const [vatRegistered, setVatRegistered] = useSessionState("jsk_calc_vat", true);
+  const [targetMarkup, setTargetMarkup] = useSessionState("jsk_calc_markup", "");
+  const [targetMargin, setTargetMargin] = useSessionState("jsk_calc_margin", "");
   const [editingMarkup, setEditingMarkup] = useState(false);
   const [editingMargin, setEditingMargin] = useState(false);
   const [savedFlash, setSavedFlash] = useState(false);
@@ -194,14 +198,55 @@ export default function PriceCalculator({ onSave, onLoadHandled }) {
   }
 
   return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "420px 1fr",
-        gap: 24,
-        alignItems: "start"
-      }}
-    >
+    <>
+      {/* ── Inner tab bar ── */}
+      <div style={{
+        display: "flex", gap: 6, marginBottom: 20,
+        background: "#0F1E35", borderRadius: 16, padding: 5,
+        border: "1px solid rgba(255,255,255,0.08)"
+      }}>
+        {[
+          { key: "calculator", label: "Calculator" },
+          { key: "saved",      label: `Saved Products${savedCount ? ` (${savedCount})` : ""}` },
+        ].map(({ key, label }) => (
+          <button
+            key={key}
+            onClick={() => setInnerPage(key)}
+            style={{
+              flex: 1, padding: "10px 16px", borderRadius: 12,
+              border: "none", cursor: "pointer", fontWeight: 700, fontSize: 13,
+              background: innerPage === key ? "#135DFF" : "transparent",
+              color:      innerPage === key ? "#ffffff" : "#9ca3af",
+              boxShadow:  innerPage === key ? "0 0 14px rgba(19,93,255,0.28)" : "none",
+              transition: "all 0.18s ease"
+            }}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* ── Saved Products tab ── */}
+      {innerPage === "saved" && (
+        <SavedProducts
+          products={products ?? []}
+          onDelete={onDeleteProduct}
+          onLoad={(product) => {
+            setInnerPage("calculator");
+            if (onLoadProduct) onLoadProduct(product);
+          }}
+        />
+      )}
+
+      {/* ── Calculator tab ── */}
+      {innerPage === "calculator" && <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "420px 1fr",
+          gap: 24,
+          alignItems: "start"
+        }}
+      >
       {/* Left column */}
       <div style={{ display: "grid", gap: 24 }}>
         <Card title="Your Costs" centeredTitle>
@@ -287,12 +332,12 @@ export default function PriceCalculator({ onSave, onLoadHandled }) {
               onClick={() => setVatRegistered((v) => !v)}
               style={{
                 ...BUTTON_BASE,
-                background: vatRegistered ? "#b70017" : "#1a1d22",
+                background: vatRegistered ? "#135DFF" : "#0D2040",
                 color: "#fff",
                 padding: "8px 22px",
                 fontSize: 13,
                 boxShadow: vatRegistered
-                  ? "0 0 14px rgba(183,0,23,0.28)"
+                  ? "0 0 14px rgba(19,93,255,0.28)"
                   : "none"
               }}
             >
@@ -341,7 +386,7 @@ export default function PriceCalculator({ onSave, onLoadHandled }) {
 
             <div
               style={{
-                background: "#0f1115",
+                background: "#081322",
                 borderRadius: 16,
                 padding: 16,
                 border: "1px solid rgba(255,255,255,0.08)"
@@ -370,7 +415,15 @@ export default function PriceCalculator({ onSave, onLoadHandled }) {
                     <input
                       type="number"
                       value={targetMarkup}
-                      onChange={(e) => setTargetMarkup(e.target.value)}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setTargetMarkup(val);
+                        const mk = parseFloat(val);
+                        if (!isNaN(mk) && cost > 0) {
+                          const R = 1 - fvf / 100 - promo / 100 - vatRate;
+                          if (R > 0) setSellingPrice(((cost * (1 + mk / 100) + shipping + fixed) / R).toFixed(2));
+                        }
+                      }}
                       onFocus={() => setEditingMarkup(true)}
                       onBlur={() => setEditingMarkup(false)}
                       onKeyDown={(e) => e.key === "Enter" && calcPriceFromMarkup()}
@@ -395,7 +448,16 @@ export default function PriceCalculator({ onSave, onLoadHandled }) {
                     <input
                       type="number"
                       value={targetMargin}
-                      onChange={(e) => setTargetMargin(e.target.value)}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setTargetMargin(val);
+                        const mg = parseFloat(val);
+                        if (!isNaN(mg) && mg < 100) {
+                          const R = 1 - fvf / 100 - promo / 100 - vatRate;
+                          const denom = R - mg / 100;
+                          if (denom > 0) setSellingPrice(((fixed + cost + shipping) / denom).toFixed(2));
+                        }
+                      }}
                       onFocus={() => setEditingMargin(true)}
                       onBlur={() => setEditingMargin(false)}
                       onKeyDown={(e) => e.key === "Enter" && calcPriceFromMargin()}
@@ -416,8 +478,8 @@ export default function PriceCalculator({ onSave, onLoadHandled }) {
                 </div>
               </div>
               <div style={{ fontSize: 12, color: "#4b5563", marginTop: 10 }}>
-                Markup = profit ÷ item cost. Margin = profit ÷ selling price.
-                Press Set or Enter to calculate the required selling price.
+                Markup = profit ÷ item cost · Margin = profit ÷ selling price.
+                Selling price updates live as you type.
               </div>
             </div>
           </div>
@@ -430,7 +492,7 @@ export default function PriceCalculator({ onSave, onLoadHandled }) {
                 minHeight: 320,
                 display: "grid",
                 placeItems: "center",
-                background: "#0f1115",
+                background: "#081322",
                 border: "1px dashed rgba(255,255,255,0.12)",
                 borderRadius: 20,
                 color: "#9ca3af",
@@ -445,13 +507,13 @@ export default function PriceCalculator({ onSave, onLoadHandled }) {
                 onClick={handleSave}
                 style={{
                   ...BUTTON_BASE,
-                  background: savedFlash ? "#166534" : "#b70017",
+                  background: savedFlash ? "#166534" : "#135DFF",
                   color: "#fff",
                   width: "100%",
                   textAlign: "center",
                   boxShadow: savedFlash
                     ? "0 0 16px rgba(22,101,52,0.40)"
-                    : "0 0 18px rgba(183,0,23,0.28)"
+                    : "0 0 18px rgba(19,93,255,0.28)"
                 }}
               >
                 {savedFlash ? "✓ Saved!" : "Save Product"}
@@ -479,7 +541,7 @@ export default function PriceCalculator({ onSave, onLoadHandled }) {
 
               <div
                 style={{
-                  background: "#0f1115",
+                  background: "#081322",
                   borderRadius: 20,
                   padding: "4px 16px 16px",
                   border: "1px solid rgba(255,255,255,0.08)"
@@ -537,7 +599,7 @@ export default function PriceCalculator({ onSave, onLoadHandled }) {
               {vatRegistered && (
                 <div
                   style={{
-                    background: "#0f1115",
+                    background: "#081322",
                     borderRadius: 16,
                     padding: "12px 16px",
                     border: "1px solid rgba(255,255,255,0.06)",
@@ -561,6 +623,7 @@ export default function PriceCalculator({ onSave, onLoadHandled }) {
           )}
         </Card>
       </div>
-    </div>
+    </div>}
+    </>
   );
 }

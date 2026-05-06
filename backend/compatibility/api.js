@@ -14,7 +14,7 @@ function apiHeaders(includeContentType = false) {
   return headers;
 }
 
-// ─── 1. TecDoc VIN Check ──────────────────────────────────────────────────────
+// ─── 1. TecDoc VIN Check (legacy — kept for reference) ───────────────────────
 // GET /api/vin/tecdoc-vin-check/{vin}
 
 export async function tecdocVinCheck(vin) {
@@ -27,6 +27,18 @@ export async function tecdocVinCheck(vin) {
   });
 
   if (!res.ok) throw new Error(`TecDoc VIN check failed for "${vin}": HTTP ${res.status}`);
+  return res.json();
+}
+
+// ─── 1b. VIN Decoder v3 ───────────────────────────────────────────────────────
+// GET /api/vin/decoder-v3/{vin}
+// Returns an array of matching vehicles (may be 0, 1, or many).
+
+export async function decodeVin(vin) {
+  const cleaned = String(vin).trim().replace(/\s+/g, "").toUpperCase();
+  const url = `https://${RAPIDAPI_HOST}/api/vin/decoder-v3/${cleaned}`;
+  const res = await fetch(url, { method: "GET", headers: apiHeaders() });
+  if (!res.ok) throw new Error(`VIN decode failed for "${vin}": HTTP ${res.status}`);
   return res.json();
 }
 
@@ -155,8 +167,8 @@ export async function getVehiclesByOem(oemNumber) {
 // GET /api/articles-oem/selecting-oem-parts-vehicle-modification-description-product-group/
 //   type-id/1/vehicle-id/{vehicleId}/lang-id/4/search-param/filter
 
-export async function searchPartsByVehicle(vehicleId) {
-  const url = `https://${RAPIDAPI_HOST}/api/articles-oem/selecting-oem-parts-vehicle-modification-description-product-group/type-id/${TYPE_ID}/vehicle-id/${vehicleId}/lang-id/${LANG_ID}/search-param/filter`;
+export async function searchPartsByVehicle(vehicleId, searchParam = "filter") {
+  const url = `https://${RAPIDAPI_HOST}/api/articles-oem/selecting-oem-parts-vehicle-modification-description-product-group/type-id/${TYPE_ID}/vehicle-id/${vehicleId}/lang-id/${LANG_ID}/search-param/${encodeURIComponent(searchParam)}`;
 
   try {
     const res = await fetch(url, { method: "GET", headers: apiHeaders() });
@@ -185,6 +197,57 @@ export async function getEquivalentOems(oemNumber) {
 
   if (!res.ok) throw new Error(`Equivalent OEMs fetch failed for "${oemNumber}": HTTP ${res.status}`);
   return res.json();
+}
+
+// ─── 10. Complete article details by article ID ───────────────────────────────
+// POST /api/articles/article-id-complete-details
+// More complete than article-number-details — includes OEM numbers, attributes, etc.
+
+export async function getArticleDetailsById(articleId) {
+  const url = `https://${RAPIDAPI_HOST}/api/articles/article-id-complete-details`;
+
+  const params = new URLSearchParams();
+  params.append("typeId", TYPE_ID);
+  params.append("langId", LANG_ID);
+  params.append("articleId", String(articleId));
+  params.append("countryFilterId", COUNTRY_FILTER_ID);
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: apiHeaders(true),
+    body: params.toString()
+  });
+
+  if (!res.ok) throw new Error(`Article complete details fetch failed for ID "${articleId}": HTTP ${res.status}`);
+  return res.json();
+}
+
+// ─── 11. Compatible vehicles by article number + supplier ID ──────────────────
+// GET /api/articles/get-compatible-cars-by-article-number/type-id/{typeId}
+//   ?langId=4&supplierId={supplierId}&articleNo={articleNo}&countryFilterId=63
+
+export async function getCompatibleCarsByArticleNo(articleNo, supplierId) {
+  const params = new URLSearchParams();
+  params.append("langId", LANG_ID);
+  params.append("supplierId", String(supplierId));
+  params.append("articleNo", articleNo);
+  params.append("countryFilterId", COUNTRY_FILTER_ID);
+
+  const url = `https://${RAPIDAPI_HOST}/api/articles/get-compatible-cars-by-article-number/type-id/${TYPE_ID}?${params.toString()}`;
+
+  console.log(`[getCompatibleCars] URL: ${url}`);
+
+  try {
+    const res = await fetch(url, { method: "GET", headers: apiHeaders() });
+    console.log(`[getCompatibleCars] HTTP ${res.status}`);
+    if (!res.ok) return [];
+    const data = await res.json();
+    console.log(`[getCompatibleCars] raw response (first 400): ${JSON.stringify(data).slice(0, 400)}`);
+    return data;
+  } catch (err) {
+    console.log(`[getCompatibleCars] threw: ${err.message}`);
+    return [];
+  }
 }
 
 // ─── Article media ────────────────────────────────────────────────────────────
@@ -230,4 +293,64 @@ export async function listModelsByManufacturer(manufacturerId) {
   if (!res.ok) throw new Error(`Failed to list models for manufacturer ${manufacturerId}: HTTP ${res.status}`);
   const data = await res.json();
   return Array.isArray(data) ? data : (data?.data || data?.models || []);
+}
+
+// ─── List all product/part names ──────────────────────────────────────────────
+// GET /api/category/list-products-names/lang-id/4
+// Returns every known part category name — useful for normalising product types.
+
+let _productNamesCache = null;
+
+export async function listProductNames() {
+  if (_productNamesCache) return _productNamesCache;
+  const url = `https://${RAPIDAPI_HOST}/api/category/list-products-names/lang-id/${LANG_ID}`;
+  const res = await fetch(url, { method: "GET", headers: apiHeaders() });
+  if (!res.ok) throw new Error(`Failed to list product names: HTTP ${res.status}`);
+  const data = await res.json();
+  _productNamesCache = Array.isArray(data) ? data : (data?.data || data?.categories || []);
+  return _productNamesCache;
+}
+
+// ─── Vehicle spare part criteria (all categories for a vehicle) ───────────────
+// GET /api/types/selecting-all-criteria-for-spare-parts-of-a-passenger-car-using-an-olap-query
+//   /type-id/{typeId}/lang-id/{langId}/country-filter-id/{countryFilterId}/vehicle-id/{vehicleId}
+// Returns all spare-part categories (with categoryId) available for a given vehicle.
+
+export async function getVehicleSparePartCriteria(vehicleId) {
+  const url = `https://${RAPIDAPI_HOST}/api/types/selecting-all-criteria-for-spare-parts-of-a-passenger-car-using-an-olap-query/type-id/${TYPE_ID}/lang-id/${LANG_ID}/country-filter-id/${COUNTRY_FILTER_ID}/vehicle-id/${vehicleId}`;
+  try {
+    const res = await fetch(url, { method: "GET", headers: apiHeaders() });
+    if (!res.ok) return [];
+    return res.json();
+  } catch {
+    return [];
+  }
+}
+
+// ─── Article list by vehicle ID and category ID ───────────────────────────────
+// POST /api/articles/list-articles
+// body: langId, typeId, categoryId, vehicleId
+// Returns all articles (parts) for a specific vehicle + part category combination.
+
+export async function listArticlesByVehicleAndCategory(vehicleId, categoryId) {
+  const url = `https://${RAPIDAPI_HOST}/api/articles/list-articles`;
+
+  const params = new URLSearchParams();
+  params.append("langId", LANG_ID);
+  params.append("typeId", TYPE_ID);
+  params.append("countryFilterId", COUNTRY_FILTER_ID);
+  params.append("categoryId", String(categoryId));
+  if (vehicleId != null) params.append("vehicleId", String(vehicleId));
+
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: apiHeaders(true),
+      body: params.toString()
+    });
+    if (!res.ok) return [];
+    return res.json();
+  } catch {
+    return [];
+  }
 }

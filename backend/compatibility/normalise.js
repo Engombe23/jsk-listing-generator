@@ -32,6 +32,15 @@ export function normaliseEngineSize(value) {
   return Math.round(litres * 10) / 10;
 }
 
+export function normaliseEngineSizeCc(value) {
+  if (value === null || value === undefined || value === "") return null;
+  const num = parseFloat(value);
+  if (isNaN(num)) return null;
+  // If < 20 assume already in litres, convert to cc
+  const cc = num < 20 ? Math.round(num * 1000) : Math.round(num);
+  return cc > 0 ? cc : null;
+}
+
 export function normaliseFuelType(fuel) {
   if (!fuel) return null;
   const lower = String(fuel).toLowerCase().trim();
@@ -67,6 +76,17 @@ function yearFromVin(vin) {
   return VIN_YEAR_MAP[vin[9].toUpperCase()] || null;
 }
 
+// Extract engine displacement in litres from a variant/engine-name string.
+// e.g. "3.0 D 4x4" → 3.0,  "2.0 TDI" → 2.0,  "306D1(M57D30)" → null
+function engineSizeFromVariant(str) {
+  if (!str) return null;
+  const m = String(str).match(/(\d+[.,]\d+)/);
+  if (!m) return null;
+  const val = parseFloat(m[1].replace(",", "."));
+  // Only treat as litres if in a sensible engine-size range
+  return val > 0.5 && val < 10 ? val : null;
+}
+
 export function normaliseVehicle(raw) {
   if (!raw) return null;
 
@@ -86,15 +106,26 @@ export function normaliseVehicle(raw) {
   const powerKwRaw = raw.powerKw ?? raw.kW ?? raw.kw ?? null;
   const powerPsRaw = raw.powerPs ?? raw.powerHp ?? raw.hp ?? raw.HP ?? null;
 
+  // Prefer displacement from the variant/engine-name string (marketing value,
+  // e.g. "3.0 D 4x4") because TecDoc's capacityTech is sometimes stored with
+  // reduced precision (e.g. 2900cc → 2.9L instead of 2993cc → 3.0L).
+  const variantStr = raw.typeEngineName || raw.typeName || raw.variant || raw.Variant || "";
+  const engineSizeLitres =
+    engineSizeFromVariant(variantStr) ??
+    normaliseEngineSize(raw.capacityTech || raw.engineSize || raw.displacement || raw.EngineSize || raw.engineDisplacement);
+
+  const rawCc = raw.capacityTech || raw.engineSize || raw.displacement || raw.EngineSize || raw.engineDisplacement;
+
   return {
     vehicleId: raw.vehicleId || raw.typeId || raw.kType || raw.id || null,
     make,
     model: normaliseModel(raw.modelName || raw.model || raw.series || raw.Model),
-    variant: raw.typeEngineName || raw.typeName || raw.variant || raw.Variant || null,
+    variant: variantStr || null,
     year,
     yearTo: normaliseYear(raw.constructionIntervalEnd || raw.yearTo),
     fuelType: normaliseFuelType(raw.fuelType || raw.fuel || raw.fuelTypeDescription || raw.FuelType || raw.fuelTypeName),
-    engineSizeLitres: normaliseEngineSize(raw.capacityTech || raw.engineSize || raw.displacement || raw.EngineSize || raw.engineDisplacement),
+    engineSizeLitres,
+    engineSizeCc: normaliseEngineSizeCc(rawCc),
     engineCodes: normaliseEngineCode(raw.engCodes || raw.engineCodes || raw.engineCode || raw.EngineCode),
     powerKw: powerKwRaw != null ? parseFloat(powerKwRaw) || null : null,
     powerPs: powerPsRaw != null ? Math.round(parseFloat(powerPsRaw)) || null : null,

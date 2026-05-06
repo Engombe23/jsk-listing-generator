@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { useSessionState } from "./useSessionState.js";
 import {
   BUTTON_BASE,
   SMALL_BUTTON_STYLE,
@@ -55,7 +56,7 @@ function ProgressList({ currentStep }) {
   return (
     <div
       style={{
-        background: "#111317",
+        background: "#0F1E35",
         borderRadius: 20,
         border: "1px solid rgba(255,255,255,0.08)",
         padding: "20px 24px",
@@ -85,9 +86,9 @@ function ProgressList({ currentStep }) {
                 width: 22,
                 height: 22,
                 borderRadius: "50%",
-                background: done ? GREEN : active ? "#b70017" : "#1a1d22",
+                background: done ? GREEN : active ? "#135DFF" : "#0D2040",
                 border: active
-                  ? "2px solid #b70017"
+                  ? "2px solid #135DFF"
                   : done
                   ? "2px solid " + GREEN
                   : "2px solid rgba(255,255,255,0.12)",
@@ -187,7 +188,7 @@ function VehicleCard({ vehicle }) {
   return (
     <div
       style={{
-        background: "#0f1115",
+        background: "#081322",
         border: "1px solid rgba(255,255,255,0.10)",
         borderRadius: 18,
         padding: 18,
@@ -204,7 +205,7 @@ function VehicleCard({ vehicle }) {
             fontWeight: 700,
             letterSpacing: 1,
             marginBottom: 12,
-            background: "#1a1d22",
+            background: "#0D2040",
             color: "#9ca3af",
             display: "inline-block",
             padding: "4px 14px",
@@ -223,7 +224,7 @@ function VehicleCard({ vehicle }) {
             ["Variant", vehicle.variant],
             ["Year", vehicle.year ? `${vehicle.year}${vehicle.yearTo ? ` – ${vehicle.yearTo}` : ""}` : null],
             ["Fuel", vehicle.fuelType],
-            ["Engine Size", vehicle.engineSizeLitres ? `${vehicle.engineSizeLitres}L` : null],
+            ["Engine Size", vehicle.engineSizeCc ? `${vehicle.engineSizeCc}cc` : vehicle.engineSizeLitres ? `${vehicle.engineSizeLitres}L` : null],
             ["Engine Code", vehicle.engineCodes?.length ? vehicle.engineCodes.join(", ") : null],
             ["Power", vehicle.powerKw || vehicle.powerPs
               ? [vehicle.powerKw ? `${vehicle.powerKw} kW` : null, vehicle.powerPs ? `${vehicle.powerPs} HP` : null].filter(Boolean).join(" / ")
@@ -260,7 +261,7 @@ function PartCard({ part, strikethrough = false, recommended = false, onCopyArti
   return (
     <div
       style={{
-        background: "#0f1115",
+        background: "#081322",
         border: recommended
           ? "1px solid " + GREEN_BORDER
           : strikethrough
@@ -292,7 +293,7 @@ function PartCard({ part, strikethrough = false, recommended = false, onCopyArti
         </div>
       )}
       <div style={{ fontSize: 12, color: "#9ca3af", marginBottom: 10, fontWeight: 700 }}>
-        {strikethrough ? "CHECKED PART (NOT COMPATIBLE)" : recommended ? "ALTERNATIVE PART" : "PART"}
+        {strikethrough ? "CHECKED PART (NOT COMPATIBLE)" : recommended ? "COMPATIBLE PART" : "PART"}
       </div>
       {part.imageUrl ? (
         <div
@@ -416,8 +417,8 @@ function ResultSection({ result, onSendToListing }) {
     },
     alternative_found: {
       icon: "⚡",
-      label: "Compatible Alternative Found",
-      message: "The checked part does not appear compatible, but a compatible alternative was found."
+      label: "Compatible Part Found",
+      message: "The checked part does not appear compatible, but a compatible part was found."
     },
     manual_check_required: {
       icon: "⚠",
@@ -436,7 +437,7 @@ function ResultSection({ result, onSendToListing }) {
   return (
     <div
       style={{
-        background: "#111317",
+        background: "#0F1E35",
         borderRadius: 24,
         border: "1px solid " + border,
         padding: 24,
@@ -458,7 +459,7 @@ function ResultSection({ result, onSendToListing }) {
                 height: 8,
                 flex: 1,
                 borderRadius: 999,
-                background: "#1a1d22",
+                background: "#0D2040",
                 overflow: "hidden"
               }}
             >
@@ -513,32 +514,29 @@ function ResultSection({ result, onSendToListing }) {
       )}
 
       {/* Vehicle + Part cards */}
-      {displayStatus !== "alternative_found" && (
+      {displayStatus === "compatible" && (
         <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginTop: 16 }}>
           <VehicleCard vehicle={result.vehicle} />
           <PartCard part={result.checkedPart} />
         </div>
       )}
 
+      {displayStatus === "not_compatible" && (
+        <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginTop: 16 }}>
+          <VehicleCard vehicle={result.vehicle} />
+        </div>
+      )}
+
       {displayStatus === "alternative_found" && (
-        <>
-          <div style={{ fontSize: 13, color: "#9ca3af", marginBottom: 10, marginTop: 16 }}>
-            Vehicles
-          </div>
-          <div style={{ marginBottom: 16 }}>
-            <VehicleCard vehicle={result.vehicle} />
-          </div>
-          <div style={{ fontSize: 13, color: "#9ca3af", marginBottom: 10 }}>Parts</div>
-          <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
-            <PartCard part={result.checkedPart} strikethrough />
-            <PartCard
-              part={result.alternativePart}
-              recommended
-              onCopyArticle={copyText}
-              onSendToListing={onSendToListing}
-            />
-          </div>
-        </>
+        <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginTop: 16 }}>
+          <VehicleCard vehicle={result.vehicle} />
+          <PartCard
+            part={result.alternativePart}
+            recommended
+            onCopyArticle={copyText}
+            onSendToListing={onSendToListing}
+          />
+        </div>
       )}
 
       {/* Error list */}
@@ -549,7 +547,7 @@ function ResultSection({ result, onSendToListing }) {
             <div
               key={i}
               style={{
-                background: "#1a1214",
+                background: "#0D1428",
                 border: "1px solid rgba(183,0,23,0.30)",
                 borderRadius: 12,
                 padding: "10px 14px",
@@ -624,7 +622,7 @@ function ResultSection({ result, onSendToListing }) {
           <div
             style={{
               marginTop: 12,
-              background: "#0f1115",
+              background: "#081322",
               borderRadius: 14,
               border: "1px solid rgba(255,255,255,0.08)",
               padding: 16,
@@ -650,10 +648,119 @@ function ResultSection({ result, onSendToListing }) {
   );
 }
 
+// ─── Vehicle Selection Step ───────────────────────────────────────────────────
+function VehicleSelectionStep({ options, onSelect, onBack }) {
+  const [hoveredId, setHoveredId] = useState(null);
+
+  return (
+    <div style={{ marginTop: 20 }}>
+      <div style={{
+        background: "#0F1E35", borderRadius: 24,
+        border: "1px solid rgba(251,191,36,0.25)",
+        boxShadow: "0 0 28px rgba(251,191,36,0.10), 0 16px 36px rgba(0,0,0,0.28)",
+        padding: "22px 24px"
+      }}>
+        {/* Header */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ fontSize: 20 }}>🚗</span>
+            <div style={{ fontSize: 18, fontWeight: 800, color: "#fff" }}>Select Your Vehicle</div>
+          </div>
+          <button
+            onClick={onBack}
+            style={{
+              ...BUTTON_BASE, background: "transparent",
+              color: "#9ca3af", border: "1px solid rgba(255,255,255,0.12)",
+              fontSize: 12, padding: "7px 14px"
+            }}
+          >
+            ← Start Over
+          </button>
+        </div>
+        <div style={{ fontSize: 14, color: "#9ca3af", marginBottom: 20 }}>
+          Multiple vehicles match this VIN. Select the correct one to continue the compatibility check.
+        </div>
+
+        {/* Vehicle option grid */}
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
+          gap: 12
+        }}>
+          {options.map((v, i) => {
+            const id = v.vehicleId || String(i);
+            const isHovered = hoveredId === id;
+            const yearStr = v.year
+              ? `${v.year}${v.yearTo ? ` – ${v.yearTo}` : " onwards"}`
+              : null;
+            const powerStr = v.powerKw || v.powerPs
+              ? [v.powerKw ? `${v.powerKw} kW` : null, v.powerPs ? `${v.powerPs} HP` : null].filter(Boolean).join(" / ")
+              : null;
+            const rows = [
+              ["Year",    yearStr],
+              ["Fuel",    v.fuelType],
+              ["Engine",  v.engineSizeCc ? `${v.engineSizeCc}cc` : v.engineSizeLitres ? `${v.engineSizeLitres}L` : null],
+              ["Power",   powerStr],
+              ["Engine Code", v.engineCodes?.length ? v.engineCodes.join(", ") : null],
+              ["TecDoc ID",   v.vehicleId]
+            ].filter(([, val]) => val);
+
+            return (
+              <button
+                key={id}
+                onClick={() => onSelect(v.vehicleId)}
+                onMouseEnter={() => setHoveredId(id)}
+                onMouseLeave={() => setHoveredId(null)}
+                style={{
+                  background: isHovered ? "#0D2040" : "#081322",
+                  border: isHovered
+                    ? "1px solid rgba(19,93,255,0.50)"
+                    : "1px solid rgba(255,255,255,0.10)",
+                  boxShadow: isHovered ? "0 0 18px rgba(19,93,255,0.20)" : "none",
+                  borderRadius: 18, padding: 18,
+                  cursor: "pointer", textAlign: "left",
+                  transition: "all 0.15s ease",
+                  transform: isHovered ? "translateY(-2px)" : "none"
+                }}
+              >
+                <div style={{ fontSize: 15, fontWeight: 700, color: "#fff", marginBottom: 10, lineHeight: 1.3 }}>
+                  {[v.make, v.model, v.variant].filter(Boolean).join(" ")}
+                </div>
+                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <tbody>
+                    {rows.map(([label, value]) => (
+                      <tr key={label}>
+                        <td style={{ fontSize: 11, color: "#9ca3af", paddingBottom: 5, paddingRight: 10, whiteSpace: "nowrap", verticalAlign: "top" }}>
+                          {label}
+                        </td>
+                        <td style={{ fontSize: 12, color: "#d1d5db", paddingBottom: 5, wordBreak: "break-word" }}>
+                          {value}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {isHovered && (
+                  <div style={{
+                    marginTop: 10, fontSize: 12, fontWeight: 700,
+                    color: "#135DFF", display: "flex", alignItems: "center", gap: 5
+                  }}>
+                    Select this vehicle →
+                  </div>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function CompatibilityChecker({ onSendToListing }) {
-  const [vin, setVin] = useState("");
-  const [oemNumber, setOemNumber] = useState("");
+  const [vin, setVin] = useSessionState("jsk_compat_vin", "");
+  const [oemNumber, setOemNumber] = useSessionState("jsk_compat_oem", "");
   const [partType, setPartType] = useState("");
   const [engineCode, setEngineCode] = useState("");
   const [make, setMake] = useState("");
@@ -665,12 +772,13 @@ export default function CompatibilityChecker({ onSendToListing }) {
   const [showOptional, setShowOptional] = useState(true); // expanded by default — reg plate lookup not available for UK plates
   const [loading, setLoading] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
-  const [result, setResult] = useState(null);
+  const [result, setResult] = useSessionState("jsk_compat_result", null);
   const [error, setError] = useState("");
+  const [vehicleOptions, setVehicleOptions] = useState(null); // set when manual_vehicle_selection_required
 
   const stepTimerRef = useRef(null);
 
-  const canCheck = oemNumber.trim().length > 0 && (vin.trim().length > 0 || (make.trim().length > 0 && model.trim().length > 0));
+  const canCheck = oemNumber.trim().length > 0 && vin.trim().length > 0;
 
   const startProgressSimulation = () => {
     setCurrentStep(0);
@@ -690,12 +798,14 @@ export default function CompatibilityChecker({ onSendToListing }) {
     }
   };
 
-  const handleCheck = async () => {
+  // handleCheck: pass selectedVehicleId after user picks from vehicle selection
+  const handleCheck = async (selectedVehicleId = null) => {
     if (!canCheck || loading) return;
 
     setLoading(true);
     setError("");
     setResult(null);
+    setVehicleOptions(null);
     startProgressSimulation();
 
     try {
@@ -711,11 +821,17 @@ export default function CompatibilityChecker({ onSendToListing }) {
           model: model.trim() || undefined,
           year: year.trim() || undefined,
           fuelType: fuelType.trim() || undefined,
-          engineSize: engineSize.trim() || undefined
+          engineSize: engineSize.trim() || undefined,
+          selectedVehicleId: selectedVehicleId || undefined
         })
       });
 
       const data = await res.json();
+
+      if (data.status === "manual_vehicle_selection_required") {
+        setVehicleOptions(data.vehicleOptions || []);
+        return;
+      }
 
       if (!res.ok) {
         throw new Error(data.error || "Compatibility check failed");
@@ -729,6 +845,16 @@ export default function CompatibilityChecker({ onSendToListing }) {
       setCurrentStep(STEPS.length);
       setLoading(false);
     }
+  };
+
+  const handleVehicleSelect = (vehicleId) => {
+    handleCheck(vehicleId);
+  };
+
+  const handleReset = () => {
+    setVehicleOptions(null);
+    setResult(null);
+    setError("");
   };
 
   // Cleanup on unmount
@@ -748,28 +874,26 @@ export default function CompatibilityChecker({ onSendToListing }) {
       {error && (
         <div
           style={{
-            background: "#1a1214",
+            background: "#0D1428",
             color: "#fecdd3",
-            border: "1px solid rgba(183,0,23,0.45)",
+            border: "1px solid rgba(19,93,255,0.35)",
             borderRadius: 20,
             padding: 16,
             marginBottom: 20,
-            boxShadow: "0 0 20px rgba(183,0,23,0.14)"
+            boxShadow: "0 0 20px rgba(19,93,255,0.14)"
           }}
         >
           <strong>Error:</strong> {error}
         </div>
       )}
 
-      <Card title="Compatibility Checker" subtitle="Enter a VIN + OEM number to check compatibility. No VIN? Fill in Make, Model & Year in the fields below instead." centeredTitle>
-        {/* Primary row */}
+      <Card title="Compatibility Checker" subtitle="Enter a VIN and OEM / part number to check compatibility." centeredTitle>
         <div
           style={{
             display: "grid",
             gridTemplateColumns: "1fr 1fr auto",
             gap: 12,
-            alignItems: "end",
-            marginBottom: 12
+            alignItems: "end"
           }}
         >
           <div>
@@ -789,7 +913,7 @@ export default function CompatibilityChecker({ onSendToListing }) {
             />
           </div>
           <button
-            onClick={handleCheck}
+            onClick={() => handleCheck()}
             disabled={!canCheck || loading}
             style={{ ...primaryButtonStyle(!canCheck || loading), whiteSpace: "nowrap" }}
           >
@@ -797,23 +921,7 @@ export default function CompatibilityChecker({ onSendToListing }) {
           </button>
         </div>
 
-        {/* Optional fields toggle */}
-        <button
-          onClick={() => setShowOptional((o) => !o)}
-          style={{
-            ...BUTTON_BASE,
-            background: "transparent",
-            color: showOptional ? "#b70017" : "#9ca3af",
-            border: "1px solid rgba(255,255,255,0.10)",
-            fontSize: 12,
-            padding: "8px 14px",
-            marginBottom: showOptional ? 14 : 0
-          }}
-        >
-          {showOptional ? "▲ Hide" : "▼ Show"} Optional Fields
-        </button>
-
-        {showOptional && (
+        {false && (
           <div
             style={{
               display: "grid",
@@ -846,6 +954,15 @@ export default function CompatibilityChecker({ onSendToListing }) {
 
       {/* Progress */}
       {loading && <ProgressList currentStep={currentStep} />}
+
+      {/* Vehicle selection — shown when VIN returns multiple matches */}
+      {vehicleOptions && !loading && (
+        <VehicleSelectionStep
+          options={vehicleOptions}
+          onSelect={handleVehicleSelect}
+          onBack={handleReset}
+        />
+      )}
 
       {/* Result */}
       {result && !loading && (
