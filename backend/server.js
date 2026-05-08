@@ -875,4 +875,8 @@ Respond with valid JSON only, no markdown, matching this schema exactly:
 });
 
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+  console.log(`OpenAI configured: ${openaiClient ? "YES" : "NO — OPENAI_API_KEY is missing"}`);
+  console.log(`RapidAPI configured: ${RAPIDAPI_KEY ? "YES" : "NO"}`);
+});
