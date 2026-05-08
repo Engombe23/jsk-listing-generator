@@ -896,9 +896,126 @@ Respond with valid JSON only, no markdown:
   }
 });
 
+// ─── eBay OAuth token cache ───────────────────────────────────────────────────
+
+let _ebayToken    = null;
+let _ebayTokenExp = 0;
+
+async function getEbayAccessToken() {
+  const now = Date.now();
+  if (_ebayToken && now < _ebayTokenExp - 60_000) return _ebayToken;
+
+  const clientId     = process.env.EBAY_CLIENT_ID;
+  const clientSecret = process.env.EBAY_CLIENT_SECRET;
+  if (!clientId || !clientSecret) {
+    throw new Error("eBay credentials not configured (EBAY_CLIENT_ID / EBAY_CLIENT_SECRET).");
+  }
+
+  const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
+
+  const res = await fetch("https://api.ebay.com/identity/v1/oauth2/token", {
+    method: "POST",
+    headers: {
+      Authorization:  `Basic ${credentials}`,
+      "Content-Type": "application/x-www-form-urlencoded"
+    },
+    body: "grant_type=client_credentials&scope=https%3A%2F%2Fapi.ebay.com%2Foauth%2Fapi_scope"
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`eBay OAuth failed (${res.status}): ${text.slice(0, 200)}`);
+  }
+
+  const data   = await res.json();
+  _ebayToken    = data.access_token;
+  _ebayTokenExp = now + (data.expires_in || 7200) * 1000;
+  console.log(`[eBay] New access token cached, expires in ${data.expires_in}s`);
+  return _ebayToken;
+}
+
+// ─── eBay Smart Pricing ───────────────────────────────────────────────────────
+// POST /api/ebay/search-prices
+// Fetches first page of active eBay UK listings and returns price statistics.
+//
+// Future extension points (not implemented yet):
+//   - sold listings mode    (completedItems=true filter)
+//   - condition filtering   (conditionIds param)
+//   - category filtering    (category_ids param)
+//   - exclude auctions      (buyingOptions=FIXED_PRICE filter)
+//   - exclude sponsored     (not directly available via Browse API)
+//   - AI pricing suggestion (pass stats + costs to OpenAI)
+
+app.post("/api/ebay/search-prices", async (req, res) => {
+  try {
+    const { query } = req.body;
+    if (!query?.trim()) {
+      return res.status(400).json({ error: "query is required" });
+    }
+
+    const token = await getEbayAccessToken();
+
+    const params = new URLSearchParams({ q: query.trim(), limit: "50", offset: "0" });
+    const ebayRes = await fetch(
+      `https://api.ebay.com/buy/browse/v1/item_summary/search?${params}`,
+      {
+        headers: {
+          Authorization:                `Bearer ${token}`,
+          "X-EBAY-C-MARKETPLACE-ID":    "EBAY_GB",
+          "Content-Type":               "application/json"
+        }
+      }
+    );
+
+    if (!ebayRes.ok) {
+      const text = await ebayRes.text();
+      throw new Error(`eBay search failed (${ebayRes.status}): ${text.slice(0, 300)}`);
+    }
+
+    const data  = await ebayRes.json();
+    const items = data.itemSummaries || [];
+
+    // Extract valid, positive prices — sort ascending for statistics
+    const prices = items
+      .map((item) => parseFloat(item.price?.value))
+      .filter((v) => Number.isFinite(v) && v > 0)
+      .sort((a, b) => a - b);
+
+    const currency = items.find((i) => i.price?.currency)?.price?.currency || "GBP";
+
+    if (prices.length === 0) {
+      return res.json({
+        low: null, high: null, average: null, median: null,
+        currency, resultCount: items.length, priceCount: 0
+      });
+    }
+
+    const n       = prices.length;
+    const low     = prices[0];
+    const high    = prices[n - 1];
+    const average = prices.reduce((s, v) => s + v, 0) / n;
+    const mid     = Math.floor(n / 2);
+    const median  = n % 2 === 0 ? (prices[mid - 1] + prices[mid]) / 2 : prices[mid];
+
+    res.json({
+      low:         +low.toFixed(2),
+      high:        +high.toFixed(2),
+      average:     +average.toFixed(2),
+      median:      +median.toFixed(2),
+      currency,
+      resultCount: items.length,
+      priceCount:  n
+    });
+  } catch (err) {
+    console.error("[/api/ebay/search-prices]", err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`OpenAI configured: ${openaiClient ? "YES" : "NO — OPENAI_API_KEY is missing"}`);
   console.log(`RapidAPI configured: ${RAPIDAPI_KEY ? "YES" : "NO"}`);
+  console.log(`eBay configured: ${process.env.EBAY_CLIENT_ID ? "YES" : "NO — EBAY_CLIENT_ID/SECRET missing"}`);
 });
