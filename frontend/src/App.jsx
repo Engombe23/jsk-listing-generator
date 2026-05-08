@@ -302,6 +302,9 @@ function ListingGenerator({
   const [batchRows,    setBatchRows]    = useSessionState("jsk_gen_batch_rows", [{ id: makeRowId(), articleNo: "", sku: "", binPrice: "" }]);
   const [batchLoading, setBatchLoading] = useState(false);
 
+  // ── Live HTML ref (lifted from ListingOutput for Copy HTML in right panel) ──
+  const liveHtmlRef = useRef("");
+
   const isLoading  = phase === "searching" || phase === "generating";
   const canSearch  = query.trim().length > 0;
   const canBatch   = batchRows.some((r) => r.articleNo.trim() && r.sku.trim() && r.binPrice.trim());
@@ -490,9 +493,9 @@ function ListingGenerator({
           </div>
         )}
 
-        <div style={{ display: "grid", gridTemplateColumns: "360px 1fr", gap: 20, alignItems: "start" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "360px 1fr 290px", gap: 20, alignItems: "start" }}>
 
-          {/* ── Left column ── */}
+          {/* ── Left column: form + AI titles + final title ── */}
           <div style={{ display: "grid", gap: 20 }}>
 
             {/* Single Listing */}
@@ -608,10 +611,53 @@ function ListingGenerator({
               </div>
             </Card>
 
+            {/* AI Title Suggestions (shown after a listing is generated) */}
+            {phase === "done" && result && (
+              <AiTitleSuggestions
+                result={result}
+                apiUrl={API_URL}
+                onUseTitle={(title) => setResult((prev) => ({ ...prev, generated_title: title }))}
+              />
+            )}
+
+            {/* Final Title (editable, shown after a listing is generated) */}
+            {phase === "done" && result && (
+              <div style={{
+                background: "#0F1E35",
+                border: "1px solid rgba(255,255,255,0.08)",
+                borderRadius: 20,
+                padding: 20
+              }}>
+                <div style={{ fontSize: 11, color: "#6b7280", fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 8 }}>
+                  Final Title
+                </div>
+                <textarea
+                  value={result.generated_title || ""}
+                  onChange={(e) => setResult((prev) => ({ ...prev, generated_title: e.target.value }))}
+                  rows={3}
+                  style={{
+                    width: "100%", boxSizing: "border-box",
+                    background: "#081322", color: "#ffffff",
+                    border: "1px solid rgba(255,255,255,0.12)",
+                    borderRadius: 10, padding: "10px 12px",
+                    fontSize: 13, fontWeight: 600, lineHeight: 1.5,
+                    resize: "vertical", outline: "none", fontFamily: "inherit"
+                  }}
+                />
+                <div style={{
+                  fontSize: 11, marginTop: 4, textAlign: "right",
+                  color: (result.generated_title || "").length > 80 ? "#f87171" :
+                         (result.generated_title || "").length >= 70 ? "#4ade80" : "#6b7280"
+                }}>
+                  {(result.generated_title || "").length} / 80 chars
+                </div>
+              </div>
+            )}
+
           </div>
 
-          {/* ── Right column ── */}
-          <div>
+          {/* ── Middle column: listing output ── */}
+          <div style={phase === "done" && result ? {} : { gridColumn: "2 / 4" }}>
             {(phase === "idle" || phase === "searching" || phase === "generating") && (
               <Card title="Output" subtitle="Generated listing content and live preview." centeredTitle>
                 <EmptyOutputPanel
@@ -643,17 +689,100 @@ function ListingGenerator({
                 copyText={copyText}
                 customTemplateHtml={customTemplateHtml}
                 onSaveTemplate={handleSaveTemplate}
-              />
-            )}
-
-            {phase === "done" && result && (
-              <AiTitleSuggestions
-                result={result}
-                apiUrl={API_URL}
-                onUseTitle={(title) => setResult((prev) => ({ ...prev, generated_title: title }))}
+                noRightPanel
+                onHtmlChange={(html) => { liveHtmlRef.current = html; }}
               />
             )}
           </div>
+
+          {/* ── Right column: article info & actions ── */}
+          {phase === "done" && result && (
+            <div style={{ display: "grid", gap: 12, position: "sticky", top: 16 }}>
+
+              {/* Article chip */}
+              <div style={{
+                background: "#0F1E35", border: "1px solid rgba(255,255,255,0.08)",
+                borderRadius: 14, padding: "12px 16px",
+                display: "flex", flexDirection: "column", gap: 4
+              }}>
+                <div style={{ fontSize: 10, color: "#6b7280", fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase" }}>Article</div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: "#ffffff" }}>{result.article_number || "—"}</div>
+                {result.product_type && (
+                  <div style={{ fontSize: 12, color: "#9ca3af" }}>{result.product_type}</div>
+                )}
+                {result.compatibility_count > 0 && (
+                  <div style={{ fontSize: 11, color: "#4ade80", marginTop: 2 }}>
+                    ✓ {result.compatibility_count} compatible vehicles
+                  </div>
+                )}
+              </div>
+
+              {/* Quick Actions */}
+              <div style={{ display: "grid", gap: 8 }}>
+                <CopyButton
+                  value={result.generated_title}
+                  style={{ width: "100%", textAlign: "center", fontSize: 13 }}
+                >
+                  📋 Copy Title
+                </CopyButton>
+                <CopyButton
+                  onCopy={() => navigator.clipboard.writeText(liveHtmlRef.current || "")}
+                  style={{ width: "100%", textAlign: "center", fontSize: 13 }}
+                >
+                  📋 Copy HTML
+                </CopyButton>
+              </div>
+
+              {/* K Numbers */}
+              {(result.k_number_list || []).length > 0 && (
+                <div style={{
+                  background: "#0F1E35", border: "1px solid rgba(255,255,255,0.08)",
+                  borderRadius: 14, padding: "12px 16px"
+                }}>
+                  <div style={{ fontSize: 10, color: "#6b7280", fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 6 }}>K Numbers</div>
+                  <div style={{ fontSize: 12, color: "#d1d5db", lineHeight: 1.6, wordBreak: "break-word" }}>
+                    {(result.k_number_list || []).join(", ")}
+                  </div>
+                  <CopyButton
+                    value={(result.k_number_list || []).join(", ")}
+                    style={{ marginTop: 8, fontSize: 11, padding: "5px 10px" }}
+                  >
+                    Copy K Numbers
+                  </CopyButton>
+                </div>
+              )}
+
+              {/* OEM Numbers */}
+              {(result.oem_numbers || []).length > 0 && (
+                <div style={{
+                  background: "#0F1E35", border: "1px solid rgba(255,255,255,0.08)",
+                  borderRadius: 14, padding: "12px 16px"
+                }}>
+                  <div style={{ fontSize: 10, color: "#6b7280", fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 6 }}>OEM Numbers</div>
+                  <div style={{ fontSize: 12, color: "#d1d5db", lineHeight: 1.6, wordBreak: "break-word" }}>
+                    {(result.oem_numbers || []).slice(0, 8).join(", ")}
+                    {(result.oem_numbers || []).length > 8 ? ` +${(result.oem_numbers || []).length - 8} more` : ""}
+                  </div>
+                </div>
+              )}
+
+              {/* Product Image */}
+              {result.article_image && (
+                <div style={{
+                  background: "#0D1B30", border: "1px solid rgba(255,255,255,0.08)",
+                  borderRadius: 14, padding: 12,
+                  display: "flex", justifyContent: "center", alignItems: "center"
+                }}>
+                  <img src={result.article_image} alt={result.generated_title || "Product"}
+                    style={{ maxWidth: "100%", maxHeight: 160, objectFit: "contain", borderRadius: 8 }} />
+                </div>
+              )}
+
+              {/* Description HTML (collapsible) — uses a local toggle */}
+              <RightPanelHtmlToggle htmlRef={liveHtmlRef} />
+
+            </div>
+          )}
         </div>
       </>)}
 
@@ -890,6 +1019,39 @@ function InsertZone({ onInsert }) {
   );
 }
 
+// ─── RightPanelHtmlToggle ─────────────────────────────────────────────────────
+// Small collapsible HTML viewer that reads from a ref (updated live by ListingOutput)
+
+function RightPanelHtmlToggle({ htmlRef }) {
+  const [open, setOpen] = useState(false);
+  const [html, setHtml] = useState("");
+
+  const toggle = () => {
+    if (!open) setHtml(htmlRef.current || "");
+    setOpen((v) => !v);
+  };
+
+  return (
+    <div>
+      <button
+        onClick={toggle}
+        style={{
+          ...SMALL_BUTTON_STYLE, width: "100%", textAlign: "center",
+          fontSize: 12, background: "rgba(255,255,255,0.05)", boxShadow: "none",
+          color: "#9ca3af", border: "1px solid rgba(255,255,255,0.10)"
+        }}
+      >
+        {open ? "▲ Hide HTML" : "▼ Show Description HTML"}
+      </button>
+      {open && (
+        <div style={{ marginTop: 8 }}>
+          <ReadOnlyTextarea value={html} minHeight={140} />
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── AI Title Suggestions ────────────────────────────────────────────────────
 
 const STYLE_LABELS = {
@@ -958,16 +1120,28 @@ function AiTitleSuggestions({ result, apiUrl, onUseTitle }) {
 
   return (
     <div style={{
-      background: "#0F1E35",
-      border: "1px solid rgba(255,255,255,0.08)",
+      background: "linear-gradient(135deg, #135DFF 0%, #7C3AED 100%)",
+      borderRadius: 22,
+      padding: 2,
+      boxShadow: "0 0 24px rgba(19,93,255,0.18), 0 0 48px rgba(124,58,237,0.10)"
+    }}>
+    <div style={{
+      background: "#0B1929",
       borderRadius: 20,
       padding: 20,
-      marginTop: 20
     }}>
       {/* Header row */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: titles || error ? 16 : 0 }}>
         <div>
-          <div style={{ fontSize: 14, fontWeight: 700, color: "#fff" }}>AI Title Suggestions</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+            <span style={{
+              fontSize: 11, fontWeight: 800, letterSpacing: 1,
+              background: "linear-gradient(90deg, #60a5fa, #a78bfa)",
+              WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
+              textTransform: "uppercase"
+            }}>✦ AI</span>
+            <div style={{ fontSize: 14, fontWeight: 700, color: "#fff" }}>Title Suggestions</div>
+          </div>
           <div style={{ fontSize: 12, color: "#6b7280", marginTop: 2 }}>
             Generate 3 optimised eBay title styles from the listing data.
           </div>
@@ -1062,6 +1236,7 @@ function AiTitleSuggestions({ result, apiUrl, onUseTitle }) {
         </div>
       )}
     </div>
+    </div>
   );
 }
 
@@ -1073,7 +1248,7 @@ function resolveHtml(customTemplateHtml, generatedHtml) {
     : (generatedHtml ?? "");
 }
 
-function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate }) {
+function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate, noRightPanel = false, onHtmlChange }) {
   const [innerTab,     setInnerTab]     = useState("overview"); // "overview" | "specifics"
   const [editMode,     setEditMode]     = useState(false);
   const [editedHtml,   setEditedHtml]   = useState(
@@ -1101,6 +1276,11 @@ function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate })
   useEffect(() => {
     setEditedHtml(resolveHtml(customTemplateHtml, result.generated_html));
   }, [result.generated_html, customTemplateHtml]);
+
+  // Notify parent of latest editedHtml (for Copy HTML in detached right panel)
+  useEffect(() => {
+    onHtmlChange?.(editedHtml);
+  }, [editedHtml]);
 
   // ── Edit mode enter / exit ──────────────────────────────────────────────
   const enterEdit = () => {
@@ -1319,7 +1499,7 @@ function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate })
   };
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "1fr 290px", gap: 20, alignItems: "start" }}>
+    <div style={{ display: "grid", gridTemplateColumns: noRightPanel ? "1fr" : "1fr 290px", gap: 20, alignItems: "start" }}>
 
       {/* ── Left: Preview / Item Specifics ── */}
       <div style={{ display: "grid", gap: 14 }}>
@@ -1437,45 +1617,168 @@ function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate })
 
       </div>
 
-      {/* ── Right: Info & Actions Panel ── */}
-      <div style={{ display: "grid", gap: 12, position: "sticky", top: 16 }}>
+      {/* ── Right: Info & Actions Panel (only when not in noRightPanel mode) ── */}
+      {!noRightPanel && (
+        <div style={{ display: "grid", gap: 12, position: "sticky", top: 16 }}>
 
-        {/* Article chip */}
-        <div style={{
-          background: "#0F1E35", border: "1px solid rgba(255,255,255,0.08)",
-          borderRadius: 14, padding: "12px 16px",
-          display: "flex", flexDirection: "column", gap: 4
-        }}>
-          <div style={{ fontSize: 10, color: "#6b7280", fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase" }}>Article</div>
-          <div style={{ fontSize: 15, fontWeight: 700, color: "#ffffff" }}>{result.article_number || "—"}</div>
-          {result.product_type && (
-            <div style={{ fontSize: 12, color: "#9ca3af" }}>{result.product_type}</div>
-          )}
-          {result.compatibility_count > 0 && (
-            <div style={{ fontSize: 11, color: "#4ade80", marginTop: 2 }}>
-              ✓ {result.compatibility_count} compatible vehicles
+          {/* Article chip */}
+          <div style={{
+            background: "#0F1E35", border: "1px solid rgba(255,255,255,0.08)",
+            borderRadius: 14, padding: "12px 16px",
+            display: "flex", flexDirection: "column", gap: 4
+          }}>
+            <div style={{ fontSize: 10, color: "#6b7280", fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase" }}>Article</div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: "#ffffff" }}>{result.article_number || "—"}</div>
+            {result.product_type && (
+              <div style={{ fontSize: 12, color: "#9ca3af" }}>{result.product_type}</div>
+            )}
+            {result.compatibility_count > 0 && (
+              <div style={{ fontSize: 11, color: "#4ade80", marginTop: 2 }}>
+                ✓ {result.compatibility_count} compatible vehicles
+              </div>
+            )}
+          </div>
+
+          {/* Quick Actions */}
+          <div style={{ display: "grid", gap: 8 }}>
+            <CopyButton
+              value={result.generated_title}
+              style={{ width: "100%", textAlign: "center", fontSize: 13 }}
+            >
+              📋 Copy Title
+            </CopyButton>
+            <CopyButton
+              value={editedHtml}
+              style={{ width: "100%", textAlign: "center", fontSize: 13 }}
+            >
+              📋 Copy HTML
+            </CopyButton>
+            {!editMode ? (
+              <button
+                onClick={enterEdit}
+                style={{ ...SMALL_BUTTON_STYLE, width: "100%", textAlign: "center", fontSize: 13 }}
+              >
+                ✎ Edit Preview
+              </button>
+            ) : (
+              <>
+                <button
+                  onClick={exitEdit}
+                  style={{ ...SMALL_BUTTON_STYLE, width: "100%", textAlign: "center", fontSize: 13, background: "#16a34a", boxShadow: "0 0 16px rgba(22,163,74,0.3)" }}
+                >
+                  ✓ Done Editing
+                </button>
+                {saveMode ? (
+                  <div style={{ display: "grid", gap: 6 }}>
+                    <input
+                      value={saveName}
+                      onChange={(e) => setSaveName(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && doSaveTemplate()}
+                      placeholder="Template name…"
+                      autoFocus
+                      style={{
+                        padding: "6px 10px", borderRadius: 10, fontSize: 12,
+                        background: "#0D2040", color: "#ffffff",
+                        border: "1px solid rgba(255,255,255,0.20)", outline: "none"
+                      }}
+                    />
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <button onClick={doSaveTemplate}
+                        style={{ ...SMALL_BUTTON_STYLE, flex: 1, textAlign: "center", fontSize: 12, background: "#b45309", boxShadow: "0 0 12px rgba(180,83,9,0.3)" }}>
+                        💾 Save
+                      </button>
+                      <button onClick={() => { setSaveMode(false); setSaveName(""); }}
+                        style={{ ...SMALL_BUTTON_STYLE, flex: 1, textAlign: "center", fontSize: 12, background: "#374151", boxShadow: "none" }}>
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setSaveMode(true)}
+                    style={{ ...SMALL_BUTTON_STYLE, width: "100%", textAlign: "center", fontSize: 12, background: "#92400e", boxShadow: "0 0 12px rgba(146,64,14,0.3)" }}
+                  >
+                    📐 Save as Template
+                  </button>
+                )}
+              </>
+            )}
+          </div>
+
+          {/* K Numbers */}
+          {(result.k_number_list || []).length > 0 && (
+            <div style={{
+              background: "#0F1E35", border: "1px solid rgba(255,255,255,0.08)",
+              borderRadius: 14, padding: "12px 16px"
+            }}>
+              <div style={{ fontSize: 10, color: "#6b7280", fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 6 }}>K Numbers</div>
+              <div style={{ fontSize: 12, color: "#d1d5db", lineHeight: 1.6, wordBreak: "break-word" }}>
+                {(result.k_number_list || []).join(", ")}
+              </div>
+              <CopyButton
+                value={(result.k_number_list || []).join(", ")}
+                style={{ marginTop: 8, fontSize: 11, padding: "5px 10px" }}
+              >
+                Copy K Numbers
+              </CopyButton>
             </div>
           )}
-        </div>
 
-        {/* Quick Actions */}
-        <div style={{ display: "grid", gap: 8 }}>
-          <CopyButton
-            value={result.generated_title}
-            style={{ width: "100%", textAlign: "center", fontSize: 13 }}
-          >
-            📋 Copy Title
-          </CopyButton>
-          <CopyButton
-            value={editedHtml}
-            style={{ width: "100%", textAlign: "center", fontSize: 13 }}
-          >
-            📋 Copy HTML
-          </CopyButton>
+          {/* OEM Numbers */}
+          {(result.oem_numbers || []).length > 0 && (
+            <div style={{
+              background: "#0F1E35", border: "1px solid rgba(255,255,255,0.08)",
+              borderRadius: 14, padding: "12px 16px"
+            }}>
+              <div style={{ fontSize: 10, color: "#6b7280", fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 6 }}>OEM Numbers</div>
+              <div style={{ fontSize: 12, color: "#d1d5db", lineHeight: 1.6, wordBreak: "break-word" }}>
+                {(result.oem_numbers || []).slice(0, 8).join(", ")}
+                {(result.oem_numbers || []).length > 8 ? ` +${(result.oem_numbers || []).length - 8} more` : ""}
+              </div>
+            </div>
+          )}
+
+          {/* Product Image */}
+          {result.article_image && (
+            <div style={{
+              background: "#0D1B30", border: "1px solid rgba(255,255,255,0.08)",
+              borderRadius: 14, padding: 12,
+              display: "flex", justifyContent: "center", alignItems: "center"
+            }}>
+              <img src={result.article_image} alt={result.generated_title || "Product"}
+                style={{ maxWidth: "100%", maxHeight: 160, objectFit: "contain", borderRadius: 8 }} />
+            </div>
+          )}
+
+          {/* Description HTML (collapsible) */}
+          <div>
+            <button
+              onClick={() => setShowDescHtml((v) => !v)}
+              style={{
+                ...SMALL_BUTTON_STYLE, width: "100%", textAlign: "center",
+                fontSize: 12, background: "rgba(255,255,255,0.05)", boxShadow: "none",
+                color: "#9ca3af", border: "1px solid rgba(255,255,255,0.10)"
+              }}
+            >
+              {showDescHtml ? "▲ Hide HTML" : "▼ Show Description HTML"}
+            </button>
+            {showDescHtml && (
+              <div style={{ marginTop: 8 }}>
+                <ReadOnlyTextarea value={editedHtml} minHeight={140} />
+              </div>
+            )}
+          </div>
+
+        </div>
+      )}
+
+      {/* Edit / Save Template controls shown inline when noRightPanel */}
+      {noRightPanel && (
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: -6 }}>
           {!editMode ? (
             <button
               onClick={enterEdit}
-              style={{ ...SMALL_BUTTON_STYLE, width: "100%", textAlign: "center", fontSize: 13 }}
+              style={{ ...SMALL_BUTTON_STYLE, fontSize: 13 }}
             >
               ✎ Edit Preview
             </button>
@@ -1483,12 +1786,12 @@ function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate })
             <>
               <button
                 onClick={exitEdit}
-                style={{ ...SMALL_BUTTON_STYLE, width: "100%", textAlign: "center", fontSize: 13, background: "#16a34a", boxShadow: "0 0 16px rgba(22,163,74,0.3)" }}
+                style={{ ...SMALL_BUTTON_STYLE, fontSize: 13, background: "#16a34a", boxShadow: "0 0 16px rgba(22,163,74,0.3)" }}
               >
                 ✓ Done Editing
               </button>
               {saveMode ? (
-                <div style={{ display: "grid", gap: 6 }}>
+                <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                   <input
                     value={saveName}
                     onChange={(e) => setSaveName(e.target.value)}
@@ -1501,21 +1804,19 @@ function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate })
                       border: "1px solid rgba(255,255,255,0.20)", outline: "none"
                     }}
                   />
-                  <div style={{ display: "flex", gap: 6 }}>
-                    <button onClick={doSaveTemplate}
-                      style={{ ...SMALL_BUTTON_STYLE, flex: 1, textAlign: "center", fontSize: 12, background: "#b45309", boxShadow: "0 0 12px rgba(180,83,9,0.3)" }}>
-                      💾 Save
-                    </button>
-                    <button onClick={() => { setSaveMode(false); setSaveName(""); }}
-                      style={{ ...SMALL_BUTTON_STYLE, flex: 1, textAlign: "center", fontSize: 12, background: "#374151", boxShadow: "none" }}>
-                      Cancel
-                    </button>
-                  </div>
+                  <button onClick={doSaveTemplate}
+                    style={{ ...SMALL_BUTTON_STYLE, fontSize: 12, background: "#b45309", boxShadow: "0 0 12px rgba(180,83,9,0.3)" }}>
+                    💾 Save
+                  </button>
+                  <button onClick={() => { setSaveMode(false); setSaveName(""); }}
+                    style={{ ...SMALL_BUTTON_STYLE, fontSize: 12, background: "#374151", boxShadow: "none" }}>
+                    Cancel
+                  </button>
                 </div>
               ) : (
                 <button
                   onClick={() => setSaveMode(true)}
-                  style={{ ...SMALL_BUTTON_STYLE, width: "100%", textAlign: "center", fontSize: 12, background: "#92400e", boxShadow: "0 0 12px rgba(146,64,14,0.3)" }}
+                  style={{ ...SMALL_BUTTON_STYLE, fontSize: 12, background: "#92400e", boxShadow: "0 0 12px rgba(146,64,14,0.3)" }}
                 >
                   📐 Save as Template
                 </button>
@@ -1523,83 +1824,7 @@ function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate })
             </>
           )}
         </div>
-
-        {/* Generated Title */}
-        <div style={{
-          background: "#0F1E35", border: "1px solid rgba(255,255,255,0.08)",
-          borderRadius: 14, padding: "12px 16px"
-        }}>
-          <div style={{ fontSize: 10, color: "#6b7280", fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 6 }}>Generated Title</div>
-          <div style={{ fontSize: 13, fontWeight: 600, color: "#ffffff", lineHeight: 1.5 }}>
-            {result.generated_title || "—"}
-          </div>
-        </div>
-
-        {/* K Numbers */}
-        {(result.k_number_list || []).length > 0 && (
-          <div style={{
-            background: "#0F1E35", border: "1px solid rgba(255,255,255,0.08)",
-            borderRadius: 14, padding: "12px 16px"
-          }}>
-            <div style={{ fontSize: 10, color: "#6b7280", fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 6 }}>K Numbers</div>
-            <div style={{ fontSize: 12, color: "#d1d5db", lineHeight: 1.6, wordBreak: "break-word" }}>
-              {(result.k_number_list || []).join(", ")}
-            </div>
-            <CopyButton
-              value={(result.k_number_list || []).join(", ")}
-              style={{ marginTop: 8, fontSize: 11, padding: "5px 10px" }}
-            >
-              Copy K Numbers
-            </CopyButton>
-          </div>
-        )}
-
-        {/* OEM Numbers */}
-        {(result.oem_numbers || []).length > 0 && (
-          <div style={{
-            background: "#0F1E35", border: "1px solid rgba(255,255,255,0.08)",
-            borderRadius: 14, padding: "12px 16px"
-          }}>
-            <div style={{ fontSize: 10, color: "#6b7280", fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 6 }}>OEM Numbers</div>
-            <div style={{ fontSize: 12, color: "#d1d5db", lineHeight: 1.6, wordBreak: "break-word" }}>
-              {(result.oem_numbers || []).slice(0, 8).join(", ")}
-              {(result.oem_numbers || []).length > 8 ? ` +${(result.oem_numbers || []).length - 8} more` : ""}
-            </div>
-          </div>
-        )}
-
-        {/* Product Image */}
-        {result.article_image && (
-          <div style={{
-            background: "#0D1B30", border: "1px solid rgba(255,255,255,0.08)",
-            borderRadius: 14, padding: 12,
-            display: "flex", justifyContent: "center", alignItems: "center"
-          }}>
-            <img src={result.article_image} alt={result.generated_title || "Product"}
-              style={{ maxWidth: "100%", maxHeight: 160, objectFit: "contain", borderRadius: 8 }} />
-          </div>
-        )}
-
-        {/* Description HTML (collapsible) */}
-        <div>
-          <button
-            onClick={() => setShowDescHtml((v) => !v)}
-            style={{
-              ...SMALL_BUTTON_STYLE, width: "100%", textAlign: "center",
-              fontSize: 12, background: "rgba(255,255,255,0.05)", boxShadow: "none",
-              color: "#9ca3af", border: "1px solid rgba(255,255,255,0.10)"
-            }}
-          >
-            {showDescHtml ? "▲ Hide HTML" : "▼ Show Description HTML"}
-          </button>
-          {showDescHtml && (
-            <div style={{ marginTop: 8 }}>
-              <ReadOnlyTextarea value={editedHtml} minHeight={140} />
-            </div>
-          )}
-        </div>
-
-      </div>
+      )}
 
     </div>
   );
