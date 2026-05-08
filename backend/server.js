@@ -832,17 +832,17 @@ Part data:
 - Engine sizes: ${cleanEngSizes.join(", ") || ""}
 - Year range: ${yearRange || ""}
 
-Generate one title per style, following these rules exactly:
-1. oem_focused — structure: [product type] [make + engine size + model] [year range] [OEM number]. The OEM number must be the LAST element.
-2. vehicle_model_focused — structure: [product type] for [make + engine size + model] [year range]. Product type must come first.
-3. engine_code_model_hybrid — structure: [engine codes] [make + engine size + model] [product type]. Engine codes must come first.
+Generate one title per style, following these structures exactly:
+1. oem_focused — [product type] [make + engine size + model] [year range] [OEM number]. OEM number must be last.
+2. vehicle_model_focused — MUST start with the product type followed by "for", e.g. "Oil Pump for Ford 2.2 Transit 2006-2014". Product type is always the very first word(s).
+3. engine_code_model_hybrid — [engine codes] [make + engine size + model] [product type]. Engine codes must be first.
 
 Respond with valid JSON only, no markdown, matching this schema exactly:
 {
   "titles": [
-    { "style": "oem_focused", "title": "...", "characterCount": 0, "reasoning": "..." },
-    { "style": "vehicle_model_focused", "title": "...", "characterCount": 0, "reasoning": "..." },
-    { "style": "engine_code_model_hybrid", "title": "...", "characterCount": 0, "reasoning": "..." }
+    { "style": "oem_focused", "title": "...", "characterCount": 0 },
+    { "style": "vehicle_model_focused", "title": "...", "characterCount": 0 },
+    { "style": "engine_code_model_hybrid", "title": "...", "characterCount": 0 }
   ],
   "warnings": []
 }`;

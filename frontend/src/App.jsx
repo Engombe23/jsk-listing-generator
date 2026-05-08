@@ -1027,13 +1027,6 @@ function AiTitleSuggestions({ result, apiUrl, onUseTitle }) {
                 {t.title}
               </div>
 
-              {/* Reasoning */}
-              {t.reasoning && (
-                <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 12, lineHeight: 1.5 }}>
-                  {t.reasoning}
-                </div>
-              )}
-
               {/* Actions */}
               <div style={{ display: "flex", gap: 8 }}>
                 <button
