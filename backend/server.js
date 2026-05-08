@@ -809,40 +809,49 @@ app.post("/api/ai/generate-titles", async (req, res) => {
   // Strip "L" suffix from engine sizes — display as "2.5", "3.0" not "2.5L"
   const cleanEngSizes = engineSizes.map((s) => s.replace(/L$/i, "")).slice(0, 4);
 
-  const prompt = `You are an expert eBay automotive parts listing writer using UK automotive wording.
+  const prompt = `You are an expert eBay automotive parts listing writer specialising in UK automotive parts.
 
-Generate exactly 3 listing titles for the following part. Each title must:
-- Be a maximum of ${maxTitleLength} characters (try to use as many characters as possible up to the limit)
-- Include the product type
-- Use only the data provided below — do not invent OEM numbers, models, engine codes, years or fitment
-- Be written in UK automotive wording
-- Avoid keyword stuffing
-- Use commonly accepted abbreviations only (e.g. Conrod for Connecting Rod is fine; do NOT shorten Crankshaft to Crank)
-- Prioritise the most popular/common models and engine codes if many are available
-- Do NOT include fuel type in any title
-- Engine size must always appear immediately after the make, e.g. "Ford 2.2 Transit" not "Ford Transit 2.2"
-- Engine sizes should be written as numbers only, no unit — e.g. "2.5" not "2.5L"
+Generate exactly 3 listing titles using the templates and rules below.
 
-Part data:
+═══ GLOBAL RULES ═══
+- Target 70–80 characters. Never exceed 80. Never cut off mid-word.
+- Use only the data provided — never invent OEM numbers, models, engine codes, years or fitment.
+- Engine sizes are numbers only, no unit: "2.5" not "2.5L"
+- Engine size always immediately follows the make: "ISUZU 2.5 3.0 D-Max" not "ISUZU D-Max 2.5 3.0"
+- Multiple engine sizes listed together: "2.5 3.0"
+- Do NOT include fuel type
+- Prioritise the most popular and commonly searched models; favour the most common engine codes when many exist
+- Product name abbreviations are allowed only when widely recognised: "Conrod" for "Connecting Rod" is fine; do NOT shorten "Crankshaft" to "Crank"
+- Prioritise high-value keywords first; trim lowest-value words if approaching the limit
+
+═══ TEMPLATES ═══
+
+Style 1 — engine_code_model_hybrid
+Template: [engine codes] [part name] For [MAKE] [engine sizes] [model(s)] [years]
+Example:  4JK1 4JJ1 Connecting Rod For ISUZU 2.5 3.0 D-Max Rodeo 2006-2018
+
+Style 2 — vehicle_model_focused
+Template: [part name] For [MAKE] [engine sizes] [model(s)] [OEM number(s)]
+Example:  Conrod For ISUZU 2.5 3.0 D-Max Rodeo 8973577163 89738892151
+
+Style 3 — oem_focused
+Template: [engine codes] [part name] For [MAKE] [engine sizes] [model(s)] [years] [OEM]
+Example:  4JK1 4JJ1 Conrod For ISUZU 2.5 3.0 D-Max Rodeo 2006-2018 89738892151
+
+═══ PART DATA ═══
 - Product type: ${productType}
-- Brand: ${brand || "unbranded"}
-- OEM numbers: ${oemNumbers.slice(0, 4).join(", ") || "none"}
-- Compatible models (most common first): ${topModels.slice(0, 5).join(", ") || "various"}
-- Engine codes: ${engineCodes.slice(0, 6).join(", ") || "various"}
-- Engine sizes: ${cleanEngSizes.join(", ") || ""}
+- OEM numbers: ${oemNumbers.slice(0, 4).join(" ") || "none"}
+- Compatible models (most common first): ${topModels.slice(0, 6).join(", ") || "various"}
+- Engine codes: ${engineCodes.slice(0, 6).join(" ") || ""}
+- Engine sizes: ${cleanEngSizes.join(" ") || ""}
 - Year range: ${yearRange || ""}
 
-Generate one title per style, following these structures exactly:
-1. oem_focused — [product type] [make + engine size + model] [year range] [OEM number]. OEM number must be last.
-2. vehicle_model_focused — MUST start with the product type followed by "for", e.g. "Oil Pump for Ford 2.2 Transit 2006-2014". Product type is always the very first word(s).
-3. engine_code_model_hybrid — [engine codes] [make + engine size + model] [product type]. Engine codes must be first.
-
-Respond with valid JSON only, no markdown, matching this schema exactly:
+Respond with valid JSON only, no markdown:
 {
   "titles": [
-    { "style": "oem_focused", "title": "...", "characterCount": 0 },
-    { "style": "vehicle_model_focused", "title": "...", "characterCount": 0 },
-    { "style": "engine_code_model_hybrid", "title": "...", "characterCount": 0 }
+    { "style": "engine_code_model_hybrid", "title": "...", "characterCount": 0 },
+    { "style": "vehicle_model_focused",    "title": "...", "characterCount": 0 },
+    { "style": "oem_focused",              "title": "...", "characterCount": 0 }
   ],
   "warnings": []
 }`;

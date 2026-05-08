@@ -893,9 +893,9 @@ function InsertZone({ onInsert }) {
 // ─── AI Title Suggestions ────────────────────────────────────────────────────
 
 const STYLE_LABELS = {
-  oem_focused:              "OEM-Focused",
-  vehicle_model_focused:    "Vehicle / Model-Focused",
-  engine_code_model_hybrid: "Engine Code + Model Hybrid"
+  engine_code_model_hybrid: "Engine Code + Model",
+  vehicle_model_focused:    "Model + OEM",
+  oem_focused:              "Engine Code + Model + OEM"
 };
 
 function AiTitleSuggestions({ result, apiUrl, onUseTitle }) {
