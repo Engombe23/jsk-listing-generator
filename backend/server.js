@@ -876,12 +876,16 @@ Respond with valid JSON only, no markdown:
       return res.status(500).json({ error: "AI returned invalid JSON." });
     }
 
-    // Recalculate character counts server-side to ensure accuracy
+    // Hard-enforce 80-char limit and recalculate character counts server-side
     if (Array.isArray(parsed.titles)) {
-      parsed.titles = parsed.titles.map((t) => ({
-        ...t,
-        characterCount: (t.title || "").length
-      }));
+      parsed.titles = parsed.titles.map((t) => {
+        let title = (t.title || "").trim();
+        if (title.length > 80) {
+          // Trim to last complete word at or under 80 chars
+          title = title.slice(0, 80).replace(/\s+\S*$/, "").trim();
+        }
+        return { ...t, title, characterCount: title.length };
+      });
     }
 
     res.json(parsed);
