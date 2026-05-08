@@ -814,7 +814,10 @@ app.post("/api/ai/generate-titles", async (req, res) => {
 Generate exactly 3 listing titles using the templates and rules below.
 
 ═══ GLOBAL RULES ═══
-- Target 70–80 characters. Never exceed 80. Never cut off mid-word.
+- MINIMUM 70 characters, MAXIMUM 80 characters. Titles under 70 characters are not acceptable.
+- To reach 70–80 characters: add more models, additional engine codes, extra engine sizes, or extend the year range until you hit the target. If still short, add the next most relevant model or engine code from the data.
+- Never exceed 80 characters. Never cut off mid-word.
+- Count characters carefully before finalising each title.
 - Use only the data provided — never invent OEM numbers, models, engine codes, years or fitment.
 - Engine sizes are numbers only, no unit: "2.5" not "2.5L"
 - Engine size always immediately follows the make: "ISUZU 2.5 3.0 D-Max" not "ISUZU D-Max 2.5 3.0"
@@ -822,7 +825,7 @@ Generate exactly 3 listing titles using the templates and rules below.
 - Do NOT include fuel type
 - Prioritise the most popular and commonly searched models; favour the most common engine codes when many exist
 - Product name abbreviations are allowed only when widely recognised: "Conrod" for "Connecting Rod" is fine; do NOT shorten "Crankshaft" to "Crank"
-- Prioritise high-value keywords first; trim lowest-value words if approaching the limit
+- Prioritise high-value keywords first; trim lowest-value words only if exceeding 80
 
 ═══ TEMPLATES ═══
 
