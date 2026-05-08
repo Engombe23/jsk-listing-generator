@@ -806,6 +806,9 @@ app.post("/api/ai/generate-titles", async (req, res) => {
     return res.status(400).json({ error: "productType is required" });
   }
 
+  // Strip "L" suffix from engine sizes — display as "2.5", "3.0" not "2.5L"
+  const cleanEngSizes = engineSizes.map((s) => s.replace(/L$/i, "")).slice(0, 4);
+
   const prompt = `You are an expert eBay automotive parts listing writer using UK automotive wording.
 
 Generate exactly 3 listing titles for the following part. Each title must:
@@ -816,6 +819,9 @@ Generate exactly 3 listing titles for the following part. Each title must:
 - Avoid keyword stuffing
 - Use commonly accepted abbreviations only (e.g. Conrod for Connecting Rod is fine; do NOT shorten Crankshaft to Crank)
 - Prioritise the most popular/common models and engine codes if many are available
+- Do NOT include fuel type in any title
+- Engine size must always appear immediately after the make, e.g. "Ford 2.2 Transit" not "Ford Transit 2.2"
+- Engine sizes should be written as numbers only, no unit — e.g. "2.5" not "2.5L"
 
 Part data:
 - Product type: ${productType}
@@ -823,14 +829,13 @@ Part data:
 - OEM numbers: ${oemNumbers.slice(0, 4).join(", ") || "none"}
 - Compatible models (most common first): ${topModels.slice(0, 5).join(", ") || "various"}
 - Engine codes: ${engineCodes.slice(0, 6).join(", ") || "various"}
-- Engine sizes: ${engineSizes.slice(0, 4).join(", ") || ""}
-- Fuel type: ${fuelType || ""}
+- Engine sizes: ${cleanEngSizes.join(", ") || ""}
 - Year range: ${yearRange || ""}
 
-Generate one title per style:
-1. oem_focused — lead with the OEM number, include product type and key fitment
-2. vehicle_model_focused — lead with the vehicle model(s), include product type and year range
-3. engine_code_model_hybrid — combine engine codes and model, include product type
+Generate one title per style, following these rules exactly:
+1. oem_focused — structure: [product type] [make + engine size + model] [year range] [OEM number]. The OEM number must be the LAST element.
+2. vehicle_model_focused — structure: [product type] for [make + engine size + model] [year range]. Product type must come first.
+3. engine_code_model_hybrid — structure: [engine codes] [make + engine size + model] [product type]. Engine codes must come first.
 
 Respond with valid JSON only, no markdown, matching this schema exactly:
 {
