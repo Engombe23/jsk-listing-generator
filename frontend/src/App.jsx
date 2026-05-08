@@ -636,40 +636,6 @@ function ListingGenerator({
               />
             )}
 
-            {/* Final Title (editable, shown after a listing is generated) */}
-            {phase === "done" && result && (
-              <div style={{
-                background: "#0F1E35",
-                border: "1px solid rgba(255,255,255,0.08)",
-                borderRadius: 20,
-                padding: 20
-              }}>
-                <div style={{ fontSize: 11, color: "#6b7280", fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 8 }}>
-                  Final Title
-                </div>
-                <textarea
-                  value={result.generated_title || ""}
-                  onChange={(e) => setResult((prev) => ({ ...prev, generated_title: e.target.value }))}
-                  rows={3}
-                  style={{
-                    width: "100%", boxSizing: "border-box",
-                    background: "#081322", color: "#ffffff",
-                    border: "1px solid rgba(255,255,255,0.12)",
-                    borderRadius: 10, padding: "10px 12px",
-                    fontSize: 13, fontWeight: 600, lineHeight: 1.5,
-                    resize: "vertical", outline: "none", fontFamily: "inherit"
-                  }}
-                />
-                <div style={{
-                  fontSize: 11, marginTop: 4, textAlign: "right",
-                  color: (result.generated_title || "").length > 80 ? "#f87171" :
-                         (result.generated_title || "").length >= 70 ? "#4ade80" : "#6b7280"
-                }}>
-                  {(result.generated_title || "").length} / 80 chars
-                </div>
-              </div>
-            )}
-
           </div>
 
           {/* ── Middle column: listing output ── */}
@@ -744,14 +710,20 @@ function ListingGenerator({
                 )}
               </div>
 
+              {/* Product Image — directly below article chip */}
+              {result.article_image && (
+                <div style={{
+                  background: "#0D1B30", border: "1px solid rgba(255,255,255,0.08)",
+                  borderRadius: 14, padding: 12,
+                  display: "flex", justifyContent: "center", alignItems: "center"
+                }}>
+                  <img src={result.article_image} alt={result.generated_title || "Product"}
+                    style={{ maxWidth: "100%", maxHeight: 160, objectFit: "contain", borderRadius: 8 }} />
+                </div>
+              )}
+
               {/* Quick Actions */}
               <div style={{ display: "grid", gap: 8 }}>
-                <CopyButton
-                  value={result.generated_title}
-                  style={{ width: "100%", textAlign: "center", fontSize: 13 }}
-                >
-                  📋 Copy Title
-                </CopyButton>
                 <CopyButton
                   onCopy={() => navigator.clipboard.writeText(liveHtmlRef.current || "")}
                   style={{ width: "100%", textAlign: "center", fontSize: 13 }}
@@ -790,18 +762,6 @@ function ListingGenerator({
                     {(result.oem_numbers || []).slice(0, 8).join(", ")}
                     {(result.oem_numbers || []).length > 8 ? ` +${(result.oem_numbers || []).length - 8} more` : ""}
                   </div>
-                </div>
-              )}
-
-              {/* Product Image */}
-              {result.article_image && (
-                <div style={{
-                  background: "#0D1B30", border: "1px solid rgba(255,255,255,0.08)",
-                  borderRadius: 14, padding: 12,
-                  display: "flex", justifyContent: "center", alignItems: "center"
-                }}>
-                  <img src={result.article_image} alt={result.generated_title || "Product"}
-                    style={{ maxWidth: "100%", maxHeight: 160, objectFit: "contain", borderRadius: 8 }} />
                 </div>
               )}
 
