@@ -4,7 +4,7 @@ import { CopyButton, ReadOnlyTextarea } from "./shared.jsx";
 // ─── Feature flag ─────────────────────────────────────────────────────────────
 // Set to `true` to use the new tabbed workspace.
 // Set to `false` to instantly fall back to the original ListingOutput.
-export const USE_TABBED_PREVIEW = true;
+export const USE_TABBED_PREVIEW = false;
 
 // ─── HTML splitter helpers ────────────────────────────────────────────────────
 
