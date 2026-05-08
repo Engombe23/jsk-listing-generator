@@ -515,6 +515,7 @@ async function buildListingFromArticle(articleNumber, themeId = "clean-default")
     specifications:      normalized.specifications,
     item_specifics:      normalized.item_specifics,
     compatibility_count: normalized.compatibility_rows.length,
+    compatibility_rows:  normalized.compatibility_rows,
     product_type:        normalized.product_name,
     top_models:          topModels,
     year_range:          yearRange,

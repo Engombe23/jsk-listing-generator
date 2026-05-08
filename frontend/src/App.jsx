@@ -1,4 +1,4 @@
-import React, { memo, useState, useRef, useEffect } from "react";
+import React, { memo, useState, useRef, useEffect, useMemo } from "react";
 import {
   BUTTON_BASE,
   SMALL_BUTTON_STYLE,
@@ -13,6 +13,7 @@ import {
   InfoBox,
   CopyButton
 } from "./shared.jsx";
+import TabbedListingPreview, { USE_TABBED_PREVIEW } from "./TabbedListingPreview.jsx";
 import PriceCalculator from "./PriceCalculator.jsx";
 import SavedProducts from "./SavedProducts.jsx";
 import CompatibilityChecker from "./CompatibilityChecker.jsx";
@@ -304,6 +305,21 @@ function ListingGenerator({
 
   // ── Live HTML ref (lifted from ListingOutput for Copy HTML in right panel) ──
   const liveHtmlRef = useRef("");
+
+  // ── Resolved HTML for TabbedListingPreview (no editing, so computed here) ──
+  const displayHtml = useMemo(
+    () => customTemplateHtml && result
+      ? mergeTemplateWithContent(customTemplateHtml, result.generated_html ?? "")
+      : (result?.generated_html ?? ""),
+    [customTemplateHtml, result?.generated_html]
+  );
+
+  // Keep liveHtmlRef in sync when using the tabbed preview
+  useEffect(() => {
+    if (USE_TABBED_PREVIEW && result) {
+      liveHtmlRef.current = displayHtml;
+    }
+  }, [displayHtml, result]);
 
   const isLoading  = phase === "searching" || phase === "generating";
   const canSearch  = query.trim().length > 0;
@@ -684,14 +700,25 @@ function ListingGenerator({
             )}
 
             {phase === "done" && result && (
-              <ListingOutput
-                result={result}
-                copyText={copyText}
-                customTemplateHtml={customTemplateHtml}
-                onSaveTemplate={handleSaveTemplate}
-                noRightPanel
-                onHtmlChange={(html) => { liveHtmlRef.current = html; }}
-              />
+              USE_TABBED_PREVIEW ? (
+                <TabbedListingPreview
+                  result={result}
+                  html={displayHtml}
+                  copyText={copyText}
+                  renderSpecifics={() => (
+                    <ItemSpecificsTab result={result} copyText={copyText} />
+                  )}
+                />
+              ) : (
+                <ListingOutput
+                  result={result}
+                  copyText={copyText}
+                  customTemplateHtml={customTemplateHtml}
+                  onSaveTemplate={handleSaveTemplate}
+                  noRightPanel
+                  onHtmlChange={(html) => { liveHtmlRef.current = html; }}
+                />
+              )
             )}
           </div>
 
