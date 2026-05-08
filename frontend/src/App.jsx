@@ -925,6 +925,10 @@ function AiTitleSuggestions({ result, apiUrl, onUseTitle }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
       });
+      const contentType = res.headers.get("content-type") || "";
+      if (!contentType.includes("application/json")) {
+        throw new Error(`AI title generation failed (HTTP ${res.status}). Please try again.`);
+      }
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "AI title generation failed.");
       if (!Array.isArray(data.titles) || data.titles.length === 0) {
