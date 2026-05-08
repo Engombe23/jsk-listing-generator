@@ -93,7 +93,7 @@ const INLINE_INPUT = {
   borderRadius: 12
 };
 
-export default function PriceCalculator({ onSave, onLoadHandled, products, onDeleteProduct, onLoadProduct }) {
+export default function PriceCalculator({ onSave, onLoadHandled, products, onDeleteProduct, onLoadProduct, isPro = true }) {
   const [innerPage, setInnerPage] = useState("calculator");
   const savedCount = products?.length ?? 0;
   const [productName, setProductName] = useSessionState("jsk_calc_product_name", "");
@@ -241,7 +241,21 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
       )}
 
       {/* ── Calculator tab ── */}
-      {innerPage === "calculator" && <div style={{ display: "grid", gap: 24 }}>
+      {innerPage === "calculator" && <div style={{ display: "grid", gap: 28 }}>
+
+      {/* ── Smart Pricing — HERO at top ── */}
+      <SmartPricing sellingPrice={sellingPrice} isPro={isPro} />
+
+      {/* ── Section divider ── */}
+      <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+        <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.06)" }} />
+        <span style={{ fontSize: 11, color: "#374151", fontWeight: 700, letterSpacing: 0.8, textTransform: "uppercase" }}>
+          Profit Calculator
+        </span>
+        <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.06)" }} />
+      </div>
+
+      {/* ── Calculator grid ── */}
       <div
         style={{
           display: "grid",
@@ -628,9 +642,6 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
       </div>
     </div>
 
-      {/* ── Smart Pricing — full-width below grid ── */}
-      <SmartPricing sellingPrice={sellingPrice} />
-
     </div>}
     </>
   );
@@ -638,9 +649,131 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
 
 // ─── Smart Pricing ────────────────────────────────────────────────────────────
 
+// Inject CSS keyframes once into <head>
+(function injectSmartPricingStyles() {
+  if (typeof document === "undefined") return;
+  if (document.getElementById("__sm-pricing-kf")) return;
+  const s = document.createElement("style");
+  s.id = "__sm-pricing-kf";
+  s.textContent = `
+    @keyframes smPulseDot {
+      0%,100% { opacity:1; box-shadow:0 0 6px #4ade80; }
+      50%      { opacity:0.3; box-shadow:0 0 14px #4ade80; }
+    }
+    @keyframes smFadeUp {
+      from { opacity:0; transform:translateY(8px); }
+      to   { opacity:1; transform:translateY(0); }
+    }
+  `;
+  document.head.appendChild(s);
+})();
+
 const fmtGBP = (v) => v != null && !isNaN(v) ? `£${Number(v).toFixed(2)}` : "—";
 
-function SmartPricing({ sellingPrice }) {
+// ── Locked (non-Pro) state ────────────────────────────────────────────────────
+
+function SmartPricingLocked() {
+  return (
+    <div style={{
+      background: "linear-gradient(135deg, #070D18 0%, #0A1628 50%, #070D18 100%)",
+      border: "1px solid rgba(19,93,255,0.18)",
+      borderRadius: 24, position: "relative", overflow: "hidden"
+    }}>
+
+      {/* Blurred preview */}
+      <div style={{
+        padding: "28px 28px 24px",
+        filter: "blur(5px)", pointerEvents: "none", userSelect: "none", opacity: 0.4
+      }}>
+        <div style={{ display: "flex", gap: 10, marginBottom: 28 }}>
+          <div style={{ flex: 1, height: 46, background: "#0D2040", borderRadius: 12 }} />
+          <div style={{ width: 140, height: 46, background: "#135DFF", borderRadius: 12 }} />
+        </div>
+        <div style={{ height: 22, borderRadius: 11, background: "linear-gradient(to right, #4ade80, #fbbf24, #f87171)", marginBottom: 10 }} />
+        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 28 }}>
+          <span style={{ fontSize: 12, color: "#4ade80" }}>£12.49</span>
+          <span style={{ fontSize: 12, color: "#fbbf24" }}>£26.80</span>
+          <span style={{ fontSize: 12, color: "#f87171" }}>£54.99</span>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 10 }}>
+          {["£12.49", "£22.40", "£26.80", "£54.99", "47"].map((v, i) => (
+            <div key={i} style={{ background: "#081322", borderRadius: 14, padding: "14px 10px", textAlign: "center" }}>
+              <div style={{ height: 8, background: "#1a2a42", borderRadius: 4, margin: "0 auto 8px", width: "60%" }} />
+              <div style={{ fontSize: 18, fontWeight: 800, color: "#fff" }}>{v}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Lock overlay */}
+      <div style={{
+        position: "absolute", inset: 0,
+        background: "linear-gradient(to bottom, rgba(7,13,24,0.55) 0%, rgba(7,13,24,0.88) 100%)",
+        backdropFilter: "blur(2px)", borderRadius: 24,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        padding: "40px 24px"
+      }}>
+        <div style={{ textAlign: "center", maxWidth: 480 }}>
+
+          <div style={{ fontSize: 36, marginBottom: 14, filter: "drop-shadow(0 0 14px rgba(19,93,255,0.5))" }}>
+            🔒
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, marginBottom: 8 }}>
+            <span style={{ fontSize: 22, fontWeight: 800, color: "#ffffff" }}>Smart eBay Pricing</span>
+            <span style={{
+              fontSize: 10, fontWeight: 800, color: "#135DFF",
+              background: "rgba(19,93,255,0.2)", border: "1px solid rgba(19,93,255,0.4)",
+              borderRadius: 6, padding: "3px 9px", letterSpacing: 0.8
+            }}>PRO</span>
+          </div>
+
+          <div style={{ fontSize: 14, color: "#6b7280", marginBottom: 24, lineHeight: 1.65 }}>
+            Get live eBay UK market data to price your listings<br />competitively and maximise profit.
+          </div>
+
+          <div style={{
+            display: "inline-grid", gap: 8, textAlign: "left",
+            marginBottom: 28, padding: "18px 24px",
+            background: "rgba(19,93,255,0.06)", border: "1px solid rgba(19,93,255,0.12)",
+            borderRadius: 16
+          }}>
+            {[
+              "Active market analysis",
+              "Competitive price positioning",
+              "Market averages & median pricing",
+              "Smart visual pricing meter",
+              "eBay active listing intelligence"
+            ].map((item) => (
+              <div key={item} style={{ display: "flex", alignItems: "center", gap: 9, fontSize: 13, color: "#9ca3af" }}>
+                <span style={{ color: "#4ade80", fontWeight: 800, fontSize: 12, flexShrink: 0 }}>✔</span>
+                {item}
+              </div>
+            ))}
+          </div>
+
+          <div>
+            <button style={{
+              ...BUTTON_BASE,
+              background: "linear-gradient(135deg, #135DFF 0%, #0ea5e9 100%)",
+              color: "#fff", fontSize: 15, fontWeight: 800,
+              padding: "13px 36px",
+              boxShadow: "0 0 28px rgba(19,93,255,0.45)",
+              display: "inline-block"
+            }}>
+              Upgrade to Pro →
+            </button>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Active Smart Pricing ──────────────────────────────────────────────────────
+
+function SmartPricing({ sellingPrice, isPro }) {
   const [smQuery,   setSmQuery]   = useSessionState("jsk_calc_sm_query", "");
   const [smData,    setSmData]    = useSessionState("jsk_calc_sm_data",  null);
   const [smLoading, setSmLoading] = useState(false);
@@ -670,280 +803,371 @@ function SmartPricing({ sellingPrice }) {
     }
   };
 
-  // Position of user's price on the LOW→HIGH track (0-100)
+  // Position of user's price on the LOW→HIGH track (0–100)
   const meterPct = smData && smData.low != null && smData.high > smData.low && price > 0
     ? Math.min(100, Math.max(0, ((price - smData.low) / (smData.high - smData.low)) * 100))
     : null;
 
   const posColor =
-    meterPct === null ? "#9ca3af" :
+    meterPct === null       ? "#9ca3af" :
     price <= smData.median  ? "#4ade80" :
     price <= smData.average ? "#fbbf24" :
     "#f87171";
 
   const posLabel =
-    meterPct === null ? null :
+    meterPct === null       ? null :
     price < smData.low      ? "Below market low" :
     price > smData.high     ? "Above market high" :
-    price <= smData.median  ? "Competitive — at or below median" :
-    price <= smData.average ? "Above median — still reasonable" :
-    "Above average — consider lowering";
+    price <= smData.median  ? "✓ Competitive — at or below median" :
+    price <= smData.average ? "↑ Above median — still reasonable" :
+    "⚠ Above average — consider lowering";
 
-  return (
-    <Card title="Smart eBay Pricing" centeredTitle subtitle="Compare your price against active eBay UK listings.">
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, alignItems: "start" }}>
-
-        {/* ── Left: search + stats ── */}
-        <div style={{ display: "grid", gap: 16 }}>
-
-          {/* Search row */}
-          <div>
-            <FieldLabel>Search Term / OEM Number</FieldLabel>
-            <div style={{ display: "flex", gap: 8 }}>
-              <TextInput
-                value={smQuery}
-                onChange={(e) => setSmQuery(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && !smLoading && handleFetch()}
-                placeholder="e.g. LR013487 oil pump"
-              />
-              <button
-                onClick={handleFetch}
-                disabled={smLoading || !smQuery.trim()}
-                style={{
-                  ...BUTTON_BASE,
-                  padding: "10px 18px",
-                  background: smLoading || !smQuery.trim() ? "#0D2040" : "#135DFF",
-                  color: "#fff",
-                  opacity: smLoading || !smQuery.trim() ? 0.55 : 1,
-                  whiteSpace: "nowrap",
-                  flexShrink: 0
-                }}
-              >
-                {smLoading ? "Fetching…" : "Fetch Prices"}
-              </button>
-            </div>
-          </div>
-
-          {/* Error */}
-          {smError && (
-            <div style={{
-              background: "#0D1428", color: "#fca5a5",
-              border: "1px solid rgba(220,38,38,0.35)", borderRadius: 12,
-              padding: "10px 14px", fontSize: 13
-            }}>
-              {smError}
-            </div>
-          )}
-
-          {/* Stats grid */}
-          {smData && smData.priceCount > 0 && (
-            <div style={{ display: "grid", gap: 12 }}>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                {[
-                  { label: "Low",     value: smData.low,     color: "#4ade80" },
-                  { label: "Median",  value: smData.median,  color: "#ffffff" },
-                  { label: "Average", value: smData.average, color: "#ffffff" },
-                  { label: "High",    value: smData.high,    color: "#f87171" },
-                ].map(({ label, value, color }) => (
-                  <div key={label} style={{
-                    background: "#081322",
-                    border: "1px solid rgba(255,255,255,0.08)",
-                    borderRadius: 14, padding: "12px 14px"
-                  }}>
-                    <div style={{
-                      fontSize: 10, fontWeight: 700, color: "#6b7280",
-                      textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 5
-                    }}>
-                      {label}
-                    </div>
-                    <div style={{ fontSize: 22, fontWeight: 800, color }}>
-                      {fmtGBP(value)}
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div style={{ fontSize: 11, color: "#4b5563" }}>
-                Based on{" "}
-                <span style={{ color: "#6b7280", fontWeight: 600 }}>{smData.priceCount}</span>
-                {" "}priced listings from the first page of active eBay UK results.
-                {smData.resultCount > smData.priceCount &&
-                  ` (${smData.resultCount - smData.priceCount} listings had no price data.)`
-                }
-              </div>
-            </div>
-          )}
-
-          {/* Empty state */}
-          {!smData && !smError && !smLoading && (
-            <div style={{
-              background: "#081322",
-              border: "1px dashed rgba(255,255,255,0.10)",
-              borderRadius: 16, padding: "28px 20px",
-              textAlign: "center", color: "#4b5563", fontSize: 13
-            }}>
-              Enter a search term to pull live eBay pricing data.
-            </div>
-          )}
-        </div>
-
-        {/* ── Right: price meter ── */}
-        <div>
-          {smData && smData.priceCount > 0 ? (
-            <PriceMeter
-              data={smData}
-              price={price}
-              meterPct={meterPct}
-              posColor={posColor}
-              posLabel={posLabel}
-            />
-          ) : (
-            <div style={{
-              background: "#081322",
-              border: "1px dashed rgba(255,255,255,0.10)",
-              borderRadius: 16, padding: "28px 20px",
-              minHeight: 220,
-              display: "grid", placeItems: "center",
-              color: "#4b5563", fontSize: 13, textAlign: "center"
-            }}>
-              Price meter will appear<br />after fetching market data.
-            </div>
-          )}
-        </div>
-
-      </div>
-    </Card>
-  );
-}
-
-// ─── Price Meter ──────────────────────────────────────────────────────────────
-
-function PriceMeter({ data, price, meterPct, posColor, posLabel }) {
-  const hasPrice = price > 0;
-
-  // Clamp indicator so the triangle stays inside the track edges
-  const clampedPct = meterPct != null ? Math.min(95, Math.max(5, meterPct)) : null;
-
-  // Positions of the median and average lines on the track
-  const range = data.high - data.low;
-  const medianPct  = range > 0 ? ((data.median  - data.low) / range) * 100 : 50;
-  const averagePct = range > 0 ? ((data.average - data.low) / range) * 100 : 50;
+  if (!isPro) return <SmartPricingLocked />;
 
   return (
     <div style={{
-      background: "#081322",
-      border: "1px solid rgba(255,255,255,0.08)",
-      borderRadius: 16, padding: "20px 20px 18px"
+      background: "linear-gradient(135deg, #080F1E 0%, #0D1B36 45%, #080F1E 100%)",
+      border: "1px solid rgba(19,93,255,0.22)",
+      borderRadius: 24, padding: "28px 28px 26px",
+      position: "relative", overflow: "hidden",
+      boxShadow: "0 0 0 1px rgba(19,93,255,0.08), 0 8px 40px rgba(0,0,0,0.45)"
     }}>
 
-      {/* Header */}
-      <div style={{ fontSize: 11, fontWeight: 700, color: "#6b7280", textTransform: "uppercase", letterSpacing: 0.7, marginBottom: 18 }}>
-        Price Meter
-      </div>
+      {/* Ambient glow accents */}
+      <div style={{
+        position: "absolute", top: -80, right: -80, width: 320, height: 320,
+        background: "radial-gradient(circle, rgba(19,93,255,0.07) 0%, transparent 65%)",
+        pointerEvents: "none"
+      }} />
+      <div style={{
+        position: "absolute", bottom: -60, left: -60, width: 220, height: 220,
+        background: "radial-gradient(circle, rgba(14,165,233,0.05) 0%, transparent 65%)",
+        pointerEvents: "none"
+      }} />
 
-      {/* Low / High labels */}
-      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-        <span style={{ fontSize: 11, fontWeight: 600, color: "#4ade80" }}>{fmtGBP(data.low)}</span>
-        <span style={{ fontSize: 11, fontWeight: 600, color: "#f87171" }}>{fmtGBP(data.high)}</span>
-      </div>
+      {/* ── Header ── */}
+      <div style={{
+        display: "flex", alignItems: "flex-start",
+        justifyContent: "space-between", gap: 16, marginBottom: 22
+      }}>
+        <div>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 5 }}>
+            <span style={{ fontSize: 20, fontWeight: 800, color: "#ffffff", letterSpacing: -0.4 }}>
+              Smart eBay Pricing
+            </span>
+            <span style={{
+              fontSize: 10, fontWeight: 800, color: "#135DFF",
+              background: "rgba(19,93,255,0.15)", border: "1px solid rgba(19,93,255,0.35)",
+              borderRadius: 6, padding: "2px 8px", letterSpacing: 0.8
+            }}>PRO</span>
+            {smData && (
+              <span style={{
+                display: "inline-flex", alignItems: "center", gap: 5,
+                fontSize: 10, fontWeight: 700, color: "#4ade80",
+                background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.2)",
+                borderRadius: 20, padding: "2px 9px"
+              }}>
+                <span style={{
+                  width: 6, height: 6, borderRadius: "50%", background: "#4ade80",
+                  display: "inline-block",
+                  animation: "smPulseDot 2s ease-in-out infinite"
+                }} />
+                LIVE
+              </span>
+            )}
+          </div>
+          <div style={{ fontSize: 13, color: "#4b5563", lineHeight: 1.55 }}>
+            Compare your price against active eBay UK listings in real time.
+          </div>
+        </div>
 
-      {/* Track + indicator */}
-      <div style={{ position: "relative", height: 12, marginBottom: hasPrice ? 40 : 16 }}>
-
-        {/* Gradient track */}
-        <div style={{
-          position: "absolute", inset: 0, borderRadius: 6,
-          background: "linear-gradient(to right, #4ade80 0%, #fbbf24 55%, #f87171 100%)"
-        }} />
-
-        {/* Median reference line */}
-        <div
-          title={`Median: ${fmtGBP(data.median)}`}
-          style={{
-            position: "absolute",
-            left: `${Math.min(97, Math.max(3, medianPct))}%`,
-            top: -5, bottom: -5, width: 2,
-            background: "rgba(255,255,255,0.55)", borderRadius: 1
-          }}
-        />
-
-        {/* Average reference line */}
-        <div
-          title={`Average: ${fmtGBP(data.average)}`}
-          style={{
-            position: "absolute",
-            left: `${Math.min(97, Math.max(3, averagePct))}%`,
-            top: -5, bottom: -5, width: 2,
-            background: "rgba(255,255,255,0.25)", borderRadius: 1,
-            borderLeft: "2px dashed rgba(255,255,255,0.3)"
-          }}
-        />
-
-        {/* Your price indicator */}
-        {hasPrice && clampedPct !== null && (
+        {smData && (
           <div style={{
-            position: "absolute",
-            left: `${clampedPct}%`,
-            transform: "translateX(-50%)",
-            top: -2, pointerEvents: "none"
+            flexShrink: 0, textAlign: "right",
+            background: "rgba(19,93,255,0.06)", border: "1px solid rgba(19,93,255,0.12)",
+            borderRadius: 12, padding: "8px 14px"
           }}>
-            {/* Downward triangle */}
-            <div style={{
-              width: 0, height: 0,
-              borderLeft: "8px solid transparent",
-              borderRight: "8px solid transparent",
-              borderTop: `12px solid ${posColor}`,
-              filter: `drop-shadow(0 0 5px ${posColor}88)`
-            }} />
-            {/* Price label */}
-            <div style={{
-              position: "absolute", top: 16,
-              left: "50%", transform: "translateX(-50%)",
-              fontSize: 12, fontWeight: 800, color: posColor,
-              whiteSpace: "nowrap",
-              textShadow: "0 1px 6px rgba(0,0,0,0.9)"
-            }}>
-              {fmtGBP(price)}
+            <div style={{ fontSize: 18, fontWeight: 800, color: "#93c5fd", lineHeight: 1 }}>
+              {smData.priceCount}
+            </div>
+            <div style={{ fontSize: 10, color: "#4b5563", marginTop: 3, fontWeight: 600 }}>
+              listings · eBay UK
             </div>
           </div>
         )}
       </div>
 
-      {/* Position verdict */}
+      {/* ── Search row ── */}
+      <div style={{ display: "flex", gap: 10, marginBottom: smData || smError || smLoading ? 28 : 0 }}>
+        <TextInput
+          value={smQuery}
+          onChange={(e) => setSmQuery(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && !smLoading && handleFetch()}
+          placeholder="e.g. LR013487 oil pump, timing belt kit BMW E90"
+          style={{ flex: 1 }}
+        />
+        <button
+          onClick={handleFetch}
+          disabled={smLoading || !smQuery.trim()}
+          style={{
+            ...BUTTON_BASE,
+            padding: "10px 26px",
+            background: smLoading || !smQuery.trim() ? "#0D2040" : "#135DFF",
+            color: "#fff",
+            opacity: smLoading || !smQuery.trim() ? 0.5 : 1,
+            whiteSpace: "nowrap", flexShrink: 0,
+            boxShadow: smLoading || !smQuery.trim() ? "none" : "0 0 20px rgba(19,93,255,0.4)"
+          }}
+        >
+          {smLoading ? "Fetching…" : "🔍 Fetch Prices"}
+        </button>
+      </div>
+
+      {/* ── Error ── */}
+      {smError && (
+        <div style={{
+          background: "#0D1428", color: "#fca5a5",
+          border: "1px solid rgba(220,38,38,0.3)", borderRadius: 12,
+          padding: "10px 16px", fontSize: 13, marginBottom: 24
+        }}>
+          ⚠ {smError}
+        </div>
+      )}
+
+      {/* ── Loading ── */}
+      {smLoading && (
+        <div style={{ textAlign: "center", padding: "44px 0", color: "#374151", fontSize: 13 }}>
+          <div style={{ fontSize: 28, marginBottom: 10 }}>⏳</div>
+          Fetching live eBay UK market data…
+        </div>
+      )}
+
+      {/* ── Results: meter + stat cards ── */}
+      {!smLoading && smData && smData.priceCount > 0 && (
+        <div style={{ display: "grid", gap: 24, animation: "smFadeUp 0.4s ease" }}>
+          <HeroPriceMeter
+            data={smData}
+            price={price}
+            meterPct={meterPct}
+            posColor={posColor}
+            posLabel={posLabel}
+          />
+          <MarketStatCards data={smData} />
+          <div style={{ fontSize: 11, color: "#374151", textAlign: "center" }}>
+            Based on first-page active eBay UK listings only.
+            {smData.resultCount > smData.priceCount && (
+              <span> ({smData.resultCount - smData.priceCount} listings had no price data.)</span>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Empty state ── */}
+      {!smLoading && !smData && !smError && (
+        <div style={{
+          background: "rgba(8,19,34,0.6)",
+          border: "1px dashed rgba(255,255,255,0.08)",
+          borderRadius: 16, padding: "40px 24px", marginTop: 20,
+          textAlign: "center"
+        }}>
+          <div style={{ fontSize: 28, marginBottom: 10 }}>📊</div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: "#374151", marginBottom: 6 }}>
+            No market data yet
+          </div>
+          <div style={{ fontSize: 13, color: "#374151", lineHeight: 1.6 }}>
+            Enter a part number or product name above to pull<br />
+            live pricing from active eBay UK listings.
+          </div>
+        </div>
+      )}
+
+    </div>
+  );
+}
+
+// ─── Hero Price Meter ─────────────────────────────────────────────────────────
+
+function HeroPriceMeter({ data, price, meterPct, posColor, posLabel }) {
+  const hasPrice = price > 0;
+  const clampedPct = meterPct != null ? Math.min(92, Math.max(8, meterPct)) : null;
+
+  const range      = data.high - data.low;
+  const medianPct  = range > 0 ? Math.min(96, Math.max(4, ((data.median  - data.low) / range) * 100)) : 50;
+  const averagePct = range > 0 ? Math.min(96, Math.max(4, ((data.average - data.low) / range) * 100)) : 50;
+
+  return (
+    <div>
+
+      {/* ── Your price pill (above track) ── */}
+      <div style={{ position: "relative", height: 50, marginBottom: 4 }}>
+        {hasPrice && clampedPct !== null ? (
+          <div style={{
+            position: "absolute",
+            left: `${clampedPct}%`,
+            transform: "translateX(-50%)",
+            bottom: 0,
+            display: "flex", flexDirection: "column", alignItems: "center", gap: 3,
+            animation: "smFadeUp 0.35s ease",
+            transition: "left 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)"
+          }}>
+            <div style={{
+              background: posColor,
+              color: posColor === "#4ade80" ? "#052e16" : posColor === "#fbbf24" ? "#451a03" : "#fff",
+              fontSize: 13, fontWeight: 800,
+              borderRadius: 20, padding: "5px 13px",
+              boxShadow: `0 0 16px ${posColor}55`,
+              whiteSpace: "nowrap", lineHeight: 1
+            }}>
+              Your price: {fmtGBP(price)}
+            </div>
+            <div style={{ width: 2, height: 12, background: posColor, opacity: 0.6 }} />
+          </div>
+        ) : (
+          <div style={{
+            height: "100%", display: "flex", alignItems: "flex-end",
+            justifyContent: "center", paddingBottom: 6
+          }}>
+            <span style={{ fontSize: 12, color: "#374151" }}>
+              Enter a selling price in the calculator below to see your position
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* ── Gradient track ── */}
+      <div style={{ position: "relative", height: 22 }}>
+        <div style={{
+          position: "absolute", inset: 0, borderRadius: 11,
+          background: "linear-gradient(to right, #22c55e 0%, #86efac 18%, #fbbf24 52%, #fb923c 72%, #ef4444 100%)",
+          boxShadow: "0 2px 16px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.1)"
+        }} />
+
+        {/* Median line (solid white) */}
+        <div title={`Median: ${fmtGBP(data.median)}`} style={{
+          position: "absolute",
+          left: `${medianPct}%`,
+          top: -6, bottom: -6, width: 2,
+          background: "rgba(255,255,255,0.75)", borderRadius: 1
+        }} />
+
+        {/* Average line (dashed) */}
+        <div title={`Average: ${fmtGBP(data.average)}`} style={{
+          position: "absolute",
+          left: `${averagePct}%`,
+          top: -6, bottom: -6, width: 2,
+          background: "repeating-linear-gradient(to bottom, rgba(255,255,255,0.55) 0px, rgba(255,255,255,0.55) 4px, transparent 4px, transparent 8px)",
+          borderRadius: 1
+        }} />
+
+        {/* User price bar on track */}
+        {hasPrice && clampedPct !== null && (
+          <div style={{
+            position: "absolute",
+            left: `${clampedPct}%`,
+            top: -4, bottom: -4, width: 4,
+            background: posColor,
+            borderRadius: 2,
+            boxShadow: `0 0 12px ${posColor}bb`,
+            transform: "translateX(-50%)",
+            transition: "left 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)"
+          }} />
+        )}
+      </div>
+
+      {/* ── Labels below track ── */}
+      <div style={{ position: "relative", height: 42, marginTop: 8 }}>
+
+        <div style={{ position: "absolute", left: 0 }}>
+          <div style={{ fontSize: 9, fontWeight: 700, color: "#22c55e", letterSpacing: 0.6, textTransform: "uppercase" }}>Low</div>
+          <div style={{ fontSize: 13, fontWeight: 800, color: "#22c55e" }}>{fmtGBP(data.low)}</div>
+        </div>
+
+        <div style={{ position: "absolute", left: `${medianPct}%`, transform: "translateX(-50%)", textAlign: "center" }}>
+          <div style={{ fontSize: 9, fontWeight: 700, color: "#9ca3af", letterSpacing: 0.6, textTransform: "uppercase" }}>Median</div>
+          <div style={{ fontSize: 13, fontWeight: 800, color: "#d1d5db" }}>{fmtGBP(data.median)}</div>
+        </div>
+
+        {Math.abs(averagePct - medianPct) > 9 && (
+          <div style={{ position: "absolute", left: `${averagePct}%`, transform: "translateX(-50%)", textAlign: "center" }}>
+            <div style={{ fontSize: 9, fontWeight: 700, color: "#9ca3af", letterSpacing: 0.6, textTransform: "uppercase" }}>Avg</div>
+            <div style={{ fontSize: 13, fontWeight: 800, color: "#d1d5db" }}>{fmtGBP(data.average)}</div>
+          </div>
+        )}
+
+        <div style={{ position: "absolute", right: 0, textAlign: "right" }}>
+          <div style={{ fontSize: 9, fontWeight: 700, color: "#ef4444", letterSpacing: 0.6, textTransform: "uppercase" }}>High</div>
+          <div style={{ fontSize: 13, fontWeight: 800, color: "#ef4444" }}>{fmtGBP(data.high)}</div>
+        </div>
+      </div>
+
+      {/* ── Verdict banner ── */}
       {hasPrice && posLabel && (
         <div style={{
-          textAlign: "center", fontSize: 13, fontWeight: 700,
-          color: posColor, marginBottom: 14
+          marginTop: 12, textAlign: "center",
+          padding: "11px 18px",
+          background: `${posColor}12`,
+          border: `1px solid ${posColor}28`,
+          borderRadius: 12,
+          fontSize: 14, fontWeight: 700, color: posColor
         }}>
           {posLabel}
         </div>
       )}
-      {!hasPrice && (
-        <div style={{ textAlign: "center", fontSize: 12, color: "#4b5563", marginBottom: 14 }}>
-          Enter a selling price in the calculator to see your position.
-        </div>
-      )}
 
-      {/* Legend */}
+      {/* ── Reference legend ── */}
       <div style={{
-        display: "flex", gap: 16, justifyContent: "center", flexWrap: "wrap",
-        borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: 12
+        display: "flex", gap: 20, justifyContent: "center", flexWrap: "wrap",
+        marginTop: 14, paddingTop: 12, borderTop: "1px solid rgba(255,255,255,0.05)"
       }}>
         {[
-          { color: "rgba(255,255,255,0.55)", label: `Median ${fmtGBP(data.median)}`,  solid: true  },
-          { color: "rgba(255,255,255,0.25)", label: `Average ${fmtGBP(data.average)}`, solid: false },
+          { color: "rgba(255,255,255,0.75)", label: `Median ${fmtGBP(data.median)}`,  solid: true  },
+          { color: "rgba(255,255,255,0.55)", label: `Average ${fmtGBP(data.average)}`, solid: false },
         ].map(({ color, label, solid }) => (
-          <div key={label} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <div key={label} style={{ display: "flex", alignItems: "center", gap: 7 }}>
             <div style={{
-              width: 2, height: 14, background: solid ? color : "transparent",
-              borderLeft: solid ? "none" : `2px dashed ${color}`,
-              borderRadius: 1
+              width: 2, height: 14, borderRadius: 1,
+              background: solid ? color : "transparent",
+              borderLeft: solid ? "none" : `2px dashed ${color}`
             }} />
-            <span style={{ fontSize: 11, color: "#6b7280" }}>{label}</span>
+            <span style={{ fontSize: 11, color: "#4b5563" }}>{label}</span>
           </div>
         ))}
       </div>
 
+    </div>
+  );
+}
+
+// ─── Market Stat Cards ────────────────────────────────────────────────────────
+
+function MarketStatCards({ data }) {
+  const cards = [
+    { label: "Lowest Price",      value: fmtGBP(data.low),        color: "#22c55e", border: "rgba(34,197,94,0.2)"   },
+    { label: "Median Price",      value: fmtGBP(data.median),     color: "#ffffff", border: "rgba(255,255,255,0.08)" },
+    { label: "Average Price",     value: fmtGBP(data.average),    color: "#e2e8f0", border: "rgba(255,255,255,0.08)" },
+    { label: "Highest Price",     value: fmtGBP(data.high),       color: "#f87171", border: "rgba(248,113,113,0.2)"  },
+    { label: "Listings Analysed", value: String(data.priceCount), color: "#93c5fd", border: "rgba(147,197,253,0.15)" },
+  ];
+
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 10 }}>
+      {cards.map(({ label, value, color, border }) => (
+        <div key={label} style={{
+          background: "#081322", border: `1px solid ${border}`,
+          borderRadius: 16, padding: "14px 10px",
+          textAlign: "center", animation: "smFadeUp 0.35s ease"
+        }}>
+          <div style={{
+            fontSize: 9, fontWeight: 700, color: "#4b5563",
+            textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 7
+          }}>
+            {label}
+          </div>
+          <div style={{ fontSize: 20, fontWeight: 800, color, lineHeight: 1 }}>
+            {value}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
