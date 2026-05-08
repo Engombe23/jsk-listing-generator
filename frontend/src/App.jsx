@@ -632,7 +632,13 @@ function ListingGenerator({
               <AiTitleSuggestions
                 result={result}
                 apiUrl={API_URL}
-                onUseTitle={(title) => setResult((prev) => ({ ...prev, generated_title: title }))}
+                onUseTitle={(title) => {
+                  setResult((prev) => {
+                    const updated = { ...prev, generated_title: title };
+                    onAutoSave?.({ ...updated, sku: inputSku.trim() });
+                    return updated;
+                  });
+                }}
               />
             )}
 
@@ -730,6 +736,26 @@ function ListingGenerator({
                 >
                   📋 Copy HTML
                 </CopyButton>
+              </div>
+
+              {/* Active Title */}
+              <div style={{
+                background: "#0F1E35", border: "1px solid rgba(255,255,255,0.08)",
+                borderRadius: 14, padding: "12px 16px"
+              }}>
+                <div style={{ fontSize: 10, color: "#6b7280", fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 6 }}>
+                  Title
+                </div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "#ffffff", lineHeight: 1.5, wordBreak: "break-word" }}>
+                  {result.generated_title || "—"}
+                </div>
+                <div style={{
+                  fontSize: 10, marginTop: 5, textAlign: "right",
+                  color: (result.generated_title || "").length > 80 ? "#f87171" :
+                         (result.generated_title || "").length >= 70 ? "#4ade80" : "#6b7280"
+                }}>
+                  {(result.generated_title || "").length} / 80
+                </div>
               </div>
 
               {/* K Numbers */}
@@ -1052,6 +1078,7 @@ function AiTitleSuggestions({ result, apiUrl, onUseTitle }) {
   const [loading,  setLoading]  = useState(false);
   const [error,    setError]    = useState("");
   const [copied,   setCopied]   = useState(null); // style key of last copied
+  const [applied,  setApplied]  = useState(null); // style key of last applied
 
   const handleGenerate = async () => {
     setLoading(true);
@@ -1207,15 +1234,21 @@ function AiTitleSuggestions({ result, apiUrl, onUseTitle }) {
                   {copied === t.style ? "Copied ✓" : "Copy"}
                 </button>
                 <button
-                  onClick={() => onUseTitle(t.title)}
+                  onClick={() => {
+                    onUseTitle(t.title);
+                    setApplied(t.style);
+                    setTimeout(() => setApplied(null), 2000);
+                  }}
                   style={{
                     padding: "7px 14px", borderRadius: 9, fontSize: 12, fontWeight: 700,
-                    cursor: "pointer", border: "1px solid rgba(19,93,255,0.4)",
-                    background: "rgba(19,93,255,0.15)", color: "#93c5fd",
+                    cursor: "pointer",
+                    border: applied === t.style ? "1px solid rgba(74,222,128,0.4)" : "1px solid rgba(19,93,255,0.4)",
+                    background: applied === t.style ? "rgba(74,222,128,0.15)" : "rgba(19,93,255,0.15)",
+                    color: applied === t.style ? "#4ade80" : "#93c5fd",
                     transition: "all 0.15s ease"
                   }}
                 >
-                  Use this title
+                  {applied === t.style ? "✓ Applied!" : "Use this title"}
                 </button>
               </div>
             </div>
