@@ -645,6 +645,14 @@ function ListingGenerator({
                 onSaveTemplate={handleSaveTemplate}
               />
             )}
+
+            {phase === "done" && result && (
+              <AiTitleSuggestions
+                result={result}
+                apiUrl={API_URL}
+                onUseTitle={(title) => setResult((prev) => ({ ...prev, generated_title: title }))}
+              />
+            )}
           </div>
         </div>
       </>)}
@@ -876,6 +884,184 @@ function InsertZone({ onInsert }) {
             + Insert
           </span>
           <div style={{ flex: 1, height: 1, background: "#135DFF", opacity: 0.5 }} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── AI Title Suggestions ────────────────────────────────────────────────────
+
+const STYLE_LABELS = {
+  oem_focused:              "OEM-Focused",
+  vehicle_model_focused:    "Vehicle / Model-Focused",
+  engine_code_model_hybrid: "Engine Code + Model Hybrid"
+};
+
+function AiTitleSuggestions({ result, apiUrl, onUseTitle }) {
+  const [titles,   setTitles]   = useState(null);
+  const [loading,  setLoading]  = useState(false);
+  const [error,    setError]    = useState("");
+  const [copied,   setCopied]   = useState(null); // style key of last copied
+
+  const handleGenerate = async () => {
+    setLoading(true);
+    setError("");
+    setTitles(null);
+    try {
+      const payload = {
+        productType:    result.product_type    || "",
+        brand:          result.brand           || "",
+        oemNumbers:     result.oem_numbers     || [],
+        topModels:      result.top_models      || [],
+        engineCodes:    result.engine_codes    || [],
+        engineSizes:    result.engine_sizes    || [],
+        fuelType:       result.fuel_type       || "",
+        yearRange:      result.year_range      || "",
+        maxTitleLength: 80
+      };
+      const res = await fetch(`${apiUrl}/api/ai/generate-titles`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "AI title generation failed.");
+      if (!Array.isArray(data.titles) || data.titles.length === 0) {
+        throw new Error("No titles returned.");
+      }
+      setTitles(data.titles);
+    } catch (err) {
+      setError(String(err.message || "AI title generation failed. Please try again."));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCopy = async (title, style) => {
+    try {
+      await navigator.clipboard.writeText(title);
+      setCopied(style);
+      setTimeout(() => setCopied(null), 1500);
+    } catch {}
+  };
+
+  const charColor = (count) => {
+    if (count >= 75) return "#4ade80";
+    if (count >= 60) return "#fbbf24";
+    return "#9ca3af";
+  };
+
+  return (
+    <div style={{
+      background: "#0F1E35",
+      border: "1px solid rgba(255,255,255,0.08)",
+      borderRadius: 20,
+      padding: 20,
+      marginTop: 20
+    }}>
+      {/* Header row */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: titles || error ? 16 : 0 }}>
+        <div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: "#fff" }}>AI Title Suggestions</div>
+          <div style={{ fontSize: 12, color: "#6b7280", marginTop: 2 }}>
+            Generate 3 optimised eBay title styles from the listing data.
+          </div>
+        </div>
+        <button
+          onClick={handleGenerate}
+          disabled={loading}
+          style={{
+            padding: "10px 20px", borderRadius: 12, border: "none",
+            background: loading ? "rgba(19,93,255,0.3)" : "#135DFF",
+            color: "#fff", fontWeight: 700, fontSize: 13,
+            cursor: loading ? "not-allowed" : "pointer",
+            opacity: loading ? 0.7 : 1,
+            transition: "all 0.15s ease",
+            whiteSpace: "nowrap", flexShrink: 0
+          }}
+        >
+          {loading ? "Generating…" : titles ? "Regenerate" : "Generate AI Titles"}
+        </button>
+      </div>
+
+      {/* Error */}
+      {error && (
+        <div style={{
+          background: "#0D1428", color: "#fca5a5",
+          border: "1px solid rgba(220,38,38,0.4)", borderRadius: 12,
+          padding: "12px 14px", fontSize: 13
+        }}>
+          {error}
+        </div>
+      )}
+
+      {/* Title cards */}
+      {titles && (
+        <div style={{ display: "grid", gap: 12 }}>
+          {titles.map((t) => (
+            <div key={t.style} style={{
+              background: "#081322",
+              border: "1px solid rgba(255,255,255,0.08)",
+              borderRadius: 14, padding: 16
+            }}>
+              {/* Style label + char count */}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                <span style={{
+                  fontSize: 11, fontWeight: 700, color: "#6b7280",
+                  textTransform: "uppercase", letterSpacing: 0.6
+                }}>
+                  {STYLE_LABELS[t.style] || t.style}
+                </span>
+                <span style={{ fontSize: 12, fontWeight: 700, color: charColor(t.characterCount) }}>
+                  {t.characterCount} / 80
+                </span>
+              </div>
+
+              {/* Title text */}
+              <div style={{
+                fontSize: 15, fontWeight: 600, color: "#ffffff",
+                lineHeight: 1.4, marginBottom: 8,
+                wordBreak: "break-word"
+              }}>
+                {t.title}
+              </div>
+
+              {/* Reasoning */}
+              {t.reasoning && (
+                <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 12, lineHeight: 1.5 }}>
+                  {t.reasoning}
+                </div>
+              )}
+
+              {/* Actions */}
+              <div style={{ display: "flex", gap: 8 }}>
+                <button
+                  onClick={() => handleCopy(t.title, t.style)}
+                  style={{
+                    padding: "7px 14px", borderRadius: 9, fontSize: 12, fontWeight: 600,
+                    cursor: "pointer", border: "1px solid rgba(255,255,255,0.12)",
+                    background: copied === t.style ? "rgba(74,222,128,0.15)" : "rgba(255,255,255,0.05)",
+                    color: copied === t.style ? "#4ade80" : "#9ca3af",
+                    transition: "all 0.15s ease"
+                  }}
+                >
+                  {copied === t.style ? "Copied ✓" : "Copy"}
+                </button>
+                <button
+                  onClick={() => onUseTitle(t.title)}
+                  style={{
+                    padding: "7px 14px", borderRadius: 9, fontSize: 12, fontWeight: 700,
+                    cursor: "pointer", border: "1px solid rgba(19,93,255,0.4)",
+                    background: "rgba(19,93,255,0.15)", color: "#93c5fd",
+                    transition: "all 0.15s ease"
+                  }}
+                >
+                  Use this title
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>

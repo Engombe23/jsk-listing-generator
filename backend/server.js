@@ -5,6 +5,12 @@ import { Parser } from "json2csv";
 import { buildHtml } from "./html-builder.js";
 import { getTemplateById, THEME_LIST } from "./templates/index.js";
 import { checkCompatibility } from "./compatibility/checker.js";
+import OpenAI from "openai";
+
+const openaiClient = process.env.OPENAI_API_KEY
+  ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+  : null;
+const OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-4o-mini";
 
 const app = express();
 
@@ -461,6 +467,43 @@ async function buildListingFromArticle(articleNumber, themeId = "clean-default")
   // ── Build HTML ────────────────────────────────────────────────────────────
   const html = buildHtml({ ...normalized, engine_codes: engineCodes, k_numbers: kNumbers }, template);
 
+  // ── Derive summary fields for AI title generation ─────────────────────────
+  const modelCounts = {};
+  normalized.compatibility_rows.forEach((r) => {
+    const key = `${r.make} ${r.model}`.trim();
+    if (key) modelCounts[key] = (modelCounts[key] || 0) + 1;
+  });
+  const topModels = Object.entries(modelCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 6)
+    .map(([name]) => name);
+
+  const allYears = normalized.compatibility_rows.flatMap((r) => {
+    const matches = [...(r.production_years || "").matchAll(/\d{4}/g)];
+    return matches.map((m) => parseInt(m[0]));
+  }).filter((y) => y > 1900 && y < 2100);
+  const yearRange = allYears.length > 0
+    ? `${Math.min(...allYears)}-${Math.max(...allYears)}`
+    : "";
+
+  const engineSizes = uniq(
+    normalized.compatibility_rows
+      .filter((r) => r.cc && parseFloat(r.cc) > 0)
+      .map((r) => `${(parseFloat(r.cc) / 1000).toFixed(1)}L`)
+  );
+
+  const fuelCounts = {};
+  normalized.compatibility_rows.forEach((r) => {
+    const e = (r.engine || "").toLowerCase();
+    let fuel = null;
+    if (/diesel|tdi|hdi|cdi|dci|tdci|crdi|\bd\b/.test(e)) fuel = "Diesel";
+    else if (/petrol|tsi|tfsi|gdi|gsi|\bt\b/.test(e))      fuel = "Petrol";
+    else if (/hybrid|phev/.test(e))                         fuel = "Hybrid";
+    else if (/electric|ev/.test(e))                         fuel = "Electric";
+    if (fuel) fuelCounts[fuel] = (fuelCounts[fuel] || 0) + 1;
+  });
+  const fuelType = Object.entries(fuelCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || "";
+
   const baseResult = {
     article_number:      articleNumber,
     article_id:          articleId,
@@ -472,7 +515,11 @@ async function buildListingFromArticle(articleNumber, themeId = "clean-default")
     specifications:      normalized.specifications,
     item_specifics:      normalized.item_specifics,
     compatibility_count: normalized.compatibility_rows.length,
-    product_type:        normalized.product_name
+    product_type:        normalized.product_name,
+    top_models:          topModels,
+    year_range:          yearRange,
+    engine_sizes:        engineSizes,
+    fuel_type:           fuelType
   };
 
   // Cache by both the input key and the resolved article number (OEM searches benefit from this)
@@ -731,6 +778,99 @@ app.post("/compatibility/check", async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── AI Title Generation ──────────────────────────────────────────────────────
+// POST /api/ai/generate-titles
+// Calls OpenAI to produce 3 eBay-style listing titles from structured part data.
+
+app.post("/api/ai/generate-titles", async (req, res) => {
+  if (!openaiClient) {
+    return res.status(503).json({ error: "OpenAI API key is not configured." });
+  }
+
+  const {
+    productType  = "",
+    brand        = "",
+    oemNumbers   = [],
+    topModels    = [],
+    engineCodes  = [],
+    engineSizes  = [],
+    fuelType     = "",
+    yearRange    = "",
+    maxTitleLength = 80
+  } = req.body;
+
+  if (!productType) {
+    return res.status(400).json({ error: "productType is required" });
+  }
+
+  const prompt = `You are an expert eBay automotive parts listing writer using UK automotive wording.
+
+Generate exactly 3 listing titles for the following part. Each title must:
+- Be a maximum of ${maxTitleLength} characters (try to use as many characters as possible up to the limit)
+- Include the product type
+- Use only the data provided below — do not invent OEM numbers, models, engine codes, years or fitment
+- Be written in UK automotive wording
+- Avoid keyword stuffing
+- Use commonly accepted abbreviations only (e.g. Conrod for Connecting Rod is fine; do NOT shorten Crankshaft to Crank)
+- Prioritise the most popular/common models and engine codes if many are available
+
+Part data:
+- Product type: ${productType}
+- Brand: ${brand || "unbranded"}
+- OEM numbers: ${oemNumbers.slice(0, 4).join(", ") || "none"}
+- Compatible models (most common first): ${topModels.slice(0, 5).join(", ") || "various"}
+- Engine codes: ${engineCodes.slice(0, 6).join(", ") || "various"}
+- Engine sizes: ${engineSizes.slice(0, 4).join(", ") || ""}
+- Fuel type: ${fuelType || ""}
+- Year range: ${yearRange || ""}
+
+Generate one title per style:
+1. oem_focused — lead with the OEM number, include product type and key fitment
+2. vehicle_model_focused — lead with the vehicle model(s), include product type and year range
+3. engine_code_model_hybrid — combine engine codes and model, include product type
+
+Respond with valid JSON only, no markdown, matching this schema exactly:
+{
+  "titles": [
+    { "style": "oem_focused", "title": "...", "characterCount": 0, "reasoning": "..." },
+    { "style": "vehicle_model_focused", "title": "...", "characterCount": 0, "reasoning": "..." },
+    { "style": "engine_code_model_hybrid", "title": "...", "characterCount": 0, "reasoning": "..." }
+  ],
+  "warnings": []
+}`;
+
+  try {
+    const completion = await openaiClient.chat.completions.create({
+      model: OPENAI_MODEL,
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.4,
+      max_tokens: 800,
+      response_format: { type: "json_object" }
+    });
+
+    const raw = completion.choices[0]?.message?.content || "{}";
+    let parsed;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      return res.status(500).json({ error: "AI returned invalid JSON." });
+    }
+
+    // Recalculate character counts server-side to ensure accuracy
+    if (Array.isArray(parsed.titles)) {
+      parsed.titles = parsed.titles.map((t) => ({
+        ...t,
+        characterCount: (t.title || "").length
+      }));
+    }
+
+    res.json(parsed);
+  } catch (err) {
+    console.error("[/api/ai/generate-titles]", err.message);
+    res.status(500).json({ error: "AI title generation failed. Please try again." });
   }
 });
 
