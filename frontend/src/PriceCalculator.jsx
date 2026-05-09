@@ -652,10 +652,16 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
                     {smLoading && <div style={{ textAlign: "center", padding: "24px 0", color: C.muted, fontSize: 13 }}>⏳ Fetching live market data…</div>}
 
                     {!smLoading && !smData && (
-                      <div style={{ textAlign: "center", padding: "22px 0" }}>
-                        <div style={{ fontSize: 24, opacity: 0.3, marginBottom: 6 }}>📊</div>
-                        <div style={{ fontSize: 13, fontWeight: 600, color: "#4b5563" }}>No market data</div>
-                        <div style={{ fontSize: 12, color: C.dim, marginTop: 3 }}>Search a part number above to load live eBay UK pricing.</div>
+                      <div style={{
+                        display: "flex", flexDirection: "column",
+                        alignItems: "center", justifyContent: "center",
+                        minHeight: 280, textAlign: "center",
+                      }}>
+                        <div style={{ fontSize: 42, opacity: 0.35, marginBottom: 12 }}>📊</div>
+                        <div style={{ fontSize: 16, fontWeight: 700, color: "#4b5563", marginBottom: 6 }}>No market data</div>
+                        <div style={{ fontSize: 13, color: C.dim, lineHeight: 1.6 }}>
+                          Search a part number above to<br />load live eBay UK pricing.
+                        </div>
                       </div>
                     )}
 
