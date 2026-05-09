@@ -961,10 +961,10 @@ app.post("/api/ebay/search-prices", async (req, res) => {
     const ebayQuery = buildEbayQuery(query.trim(), rule);
 
     // Build URL manually so curly-brace filter syntax is not percent-encoded.
-    // Fetch 100 listings so the title filter has more to work with.
+    // Fetch top 10 listings only.
     // eBay Browse API condition IDs:
     //   1000 = New  |  1500 = New other  |  3000 = Used
-    let url = `https://api.ebay.com/buy/browse/v1/item_summary/search?q=${encodeURIComponent(ebayQuery)}&limit=100&offset=0`;
+    let url = `https://api.ebay.com/buy/browse/v1/item_summary/search?q=${encodeURIComponent(ebayQuery)}&limit=10&offset=0`;
     if      (condition === "new")  url += "&filter=conditionIds:{1000|1500}";
     else if (condition === "used") url += "&filter=conditionIds:{3000}";
     // "any" → no condition filter
