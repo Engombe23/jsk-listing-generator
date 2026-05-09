@@ -334,10 +334,11 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
   const [savedFlash,     setSavedFlash]     = useState(false);
 
   // ── Market pricing state ─────────────────────────────────────────────────────
-  const [smQuery,   setSmQuery]   = useSessionState("jsk_calc_sm_query", "");
-  const [smData,    setSmData]    = useSessionState("jsk_calc_sm_data",  null);
-  const [smLoading, setSmLoading] = useState(false);
-  const [smError,   setSmError]   = useState("");
+  const [smQuery,     setSmQuery]     = useSessionState("jsk_calc_sm_query",     "");
+  const [smCondition, setSmCondition] = useSessionState("jsk_calc_sm_condition", "any");
+  const [smData,      setSmData]      = useSessionState("jsk_calc_sm_data",      null);
+  const [smLoading,   setSmLoading]   = useState(false);
+  const [smError,     setSmError]     = useState("");
 
   // ── Derived calculations ─────────────────────────────────────────────────────
   const cost        = parseFloat(itemCost)      || 0;
@@ -395,10 +396,10 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
     if (!smQuery.trim()) return;
     setSmLoading(true); setSmError("");
     try {
-      const res  = await fetch(`${API_URL}/api/ebay/search-prices`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ query: smQuery.trim() }) });
+      const res  = await fetch(`${API_URL}/api/ebay/search-prices`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ query: smQuery.trim(), condition: smCondition }) });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Failed to fetch prices.");
-      if (json.priceCount === 0) throw new Error("No active listings found — try a different search term.");
+      if (json.priceCount === 0) throw new Error("No listings found for this filter — try changing the condition or search term.");
       setSmData(json);
     } catch (err) { setSmError(err.message); setSmData(null); }
     finally       { setSmLoading(false); }
@@ -466,6 +467,23 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
                     </div>
                   )}
                 </div>
+                {/* Condition toggle */}
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                  <span style={{ fontSize: 11, color: C.muted, flexShrink: 0 }}>Condition</span>
+                  <div style={{ display: "flex", gap: 3, background: "#060d1a", borderRadius: 8, padding: 3, border: "1px solid rgba(255,255,255,0.07)" }}>
+                    {[{ key: "any", label: "Any" }, { key: "new", label: "New" }, { key: "used", label: "Used" }].map(({ key, label }) => {
+                      const active = smCondition === key;
+                      return (
+                        <button key={key} onClick={() => { setSmCondition(key); if (smData) setSmData(null); }}
+                          style={{ padding: "4px 16px", borderRadius: 6, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, background: active ? C.blue : "transparent", color: active ? "#fff" : C.muted, boxShadow: active ? "0 0 10px rgba(19,93,255,0.35)" : "none", transition: "all 0.15s" }}>
+                          {label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Search row */}
                 <div style={{ display: "flex", gap: 8 }}>
                   <input value={smQuery} onChange={(e) => setSmQuery(e.target.value)} onKeyDown={(e) => e.key === "Enter" && !smLoading && handleFetch()} placeholder="OEM / part number or product name…" style={{ ...CI, flex: 1, fontSize: 14 }} />
                   <button onClick={handleFetch} disabled={smLoading || !smQuery.trim()} style={{ ...BUTTON_BASE, padding: "8px 22px", fontSize: 13, flexShrink: 0, background: smLoading || !smQuery.trim() ? "#0d2040" : C.blue, color: "#fff", opacity: smLoading || !smQuery.trim() ? 0.5 : 1, whiteSpace: "nowrap", boxShadow: smLoading || !smQuery.trim() ? "none" : "0 0 16px rgba(19,93,255,0.4)" }}>
@@ -666,7 +684,14 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
                   <div style={{ background: C.bg3, borderRadius: 12, padding: "14px 16px", border: "1px solid rgba(255,255,255,0.06)", flex: 1 }}>
 
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-                      <div style={{ fontSize: 10, fontWeight: 700, color: C.dim, textTransform: "uppercase", letterSpacing: 0.7 }}>Market Snapshot · eBay UK</div>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: C.dim, textTransform: "uppercase", letterSpacing: 0.7 }}>
+                        Market Snapshot · eBay UK
+                        {smData && smData.condition !== "any" && (
+                          <span style={{ marginLeft: 7, fontSize: 9, fontWeight: 800, color: "#93c5fd", background: "rgba(147,197,253,0.1)", border: "1px solid rgba(147,197,253,0.25)", borderRadius: 4, padding: "1px 6px", letterSpacing: 0.5 }}>
+                            {smData.condition.toUpperCase()}
+                          </span>
+                        )}
+                      </div>
                       {smData && (
                         <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 9, fontWeight: 700, color: "#4ade80", background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.2)", borderRadius: 20, padding: "3px 9px" }}>
                           <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#4ade80", display: "inline-block", animation: "pcPulse 2s ease-in-out infinite" }} />

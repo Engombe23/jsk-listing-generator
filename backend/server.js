@@ -948,16 +948,22 @@ async function getEbayAccessToken() {
 
 app.post("/api/ebay/search-prices", async (req, res) => {
   try {
-    const { query } = req.body;
+    const { query, condition = "any" } = req.body;
     if (!query?.trim()) {
       return res.status(400).json({ error: "query is required" });
     }
 
     const token = await getEbayAccessToken();
 
-    const params = new URLSearchParams({ q: query.trim(), limit: "50", offset: "0" });
-    const ebayRes = await fetch(
-      `https://api.ebay.com/buy/browse/v1/item_summary/search?${params}`,
+    // Build URL manually so curly-brace filter syntax is not percent-encoded
+    // eBay Browse API condition IDs:
+    //   1000 = New  |  1500 = New other  |  3000 = Used
+    let url = `https://api.ebay.com/buy/browse/v1/item_summary/search?q=${encodeURIComponent(query.trim())}&limit=50&offset=0`;
+    if      (condition === "new")  url += "&filter=conditionIds:{1000|1500}";
+    else if (condition === "used") url += "&filter=conditionIds:{3000}";
+    // "any" → no condition filter
+
+    const ebayRes = await fetch(url,
       {
         headers: {
           Authorization:                `Bearer ${token}`,
@@ -1003,6 +1009,7 @@ app.post("/api/ebay/search-prices", async (req, res) => {
       average:     +average.toFixed(2),
       median:      +median.toFixed(2),
       currency,
+      condition,
       resultCount: items.length,
       priceCount:  n
     });
