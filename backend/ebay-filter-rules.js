@@ -1,29 +1,74 @@
-// ─── eBay Smart Pricing: Product Filter Rules ─────────────────────────────────
+// ─── eBay Smart Pricing: Central Configuration ───────────────────────────────
 //
-// Each rule describes one automotive part type.
+// This file is the single source of truth for all Smart Pricing logic.
+// No pricing/filtering decisions should be hard-coded elsewhere.
 //
-//   productType    – Display name shown in the UI
-//   synonyms       – Terms used to DETECT the type in the user's search query
-//   requiredAny    – Phrases that must appear in eBay listing TITLES (filter)
-//   exclude        – Phrases that must NOT appear in eBay listing titles
-//   minimumResults – Minimum relevant listings before flagging low-data warning
+// ── conditionOptions ─────────────────────────────────────────────────────────
+//   Maps UI condition keys to eBay Browse API filter strings.
+//   Note: eBay condition 2500 = "Manufacturer Refurbished" (closest to
+//   "Remanufactured / Reconditioned" in UK automotive parts listings).
 //
-// Detection: longest-match-wins across all synonyms from all rules.
+// ── EXCLUSION_REASONS ────────────────────────────────────────────────────────
+//   Canonical reason strings attached to every excluded listing.
+//
+// ── productFilterRules ───────────────────────────────────────────────────────
+//   Each entry describes one automotive part type.
+//
+//   productType    – display name shown in the UI
+//   synonyms       – terms used to DETECT the type from the search query
+//   requiredAny    – phrases that MUST appear in an eBay listing title
+//   exclude        – phrases that must NOT appear in a listing title
+//   unitSensitive  – true → sets/kits/bundles/pairs excluded from pricing
+//                    (parts sold per-unit where qty distorts price)
+//   highMultiplier – listing price > (initial median × highMultiplier) → excluded
+//   lowMultiplier  – listing price < (initial median × lowMultiplier)  → excluded
+//   minimumResults – minimum relevant listings before flagging low-data warning
+//
+// ── Detection ────────────────────────────────────────────────────────────────
+//   Longest-match-wins across all synonyms.
 //   "cylinder head gasket" (20 chars, Head Gasket rule) beats
-//   "cylinder head"        (14 chars, Cylinder Head rule)
-//   → correct type always wins even when terms overlap.
+//   "cylinder head"        (14 chars, Cylinder Head rule).
 //
-// To add a product type: append one entry to productFilterRules below.
-// No other changes are required anywhere in the codebase.
-//
-// Exclusion conflicts resolved:
-//   • Head Gasket    – "cylinder head" removed (substring of required "cylinder head gasket")
-//   • Rocker Cover Gasket – "rocker cover" removed (substring of required "rocker cover gasket")
-//   • Turbo Gasket   – "turbocharger" removed (substring of required "turbocharger gasket")
-//   • DPF Pressure Sensor – "dpf" removed (substring of required "dpf pressure sensor")
-//   • Injector Seal  – "injector" removed (substring of every required term)
+// ── Exclusion conflict notes ─────────────────────────────────────────────────
+//   Terms omitted from exclude[] because they are substrings of requiredAny[]:
+//   • Head Gasket         – "cylinder head" removed
+//   • Rocker Cover Gasket – "rocker cover"  removed
+//   • Turbo Gasket        – "turbocharger"  removed
+//   • DPF Pressure Sensor – "dpf"           removed
+//   • Injector Seal       – "injector"      removed
 // ─────────────────────────────────────────────────────────────────────────────
 
+// ─── Condition options ────────────────────────────────────────────────────────
+export const conditionOptions = [
+  {
+    key:        "new",
+    label:      "New",
+    ebayFilter: "conditionIds:{1000|1500}",
+  },
+  {
+    key:        "used",
+    label:      "Used",
+    ebayFilter: "conditionIds:{3000}",
+  },
+  {
+    key:        "remanufactured",
+    label:      "Remanufactured",
+    // eBay 2500 = Manufacturer Refurbished — closest match for remanufactured
+    // / reconditioned automotive parts on eBay UK.
+    ebayFilter: "conditionIds:{2500}",
+  },
+];
+
+// ─── Exclusion reasons ────────────────────────────────────────────────────────
+export const EXCLUSION_REASONS = {
+  TITLE_FILTER: "Excluded by product-type title filter",
+  SET_KIT:      "Excluded as likely set/kit/bundle",
+  HIGH_OUTLIER: "Excluded as high-price outlier",
+  LOW_OUTLIER:  "Excluded as low-price outlier",
+  NO_PRICE:     "No valid price",
+};
+
+// ─── Product filter rules ─────────────────────────────────────────────────────
 export const productFilterRules = [
 
   // ── Cylinder Head ────────────────────────────────────────────────────────────
@@ -33,6 +78,9 @@ export const productFilterRules = [
     requiredAny:    ["cylinder head", "bare head", "complete head", "engine head", "head assembly"],
     exclude:        ["gasket", "bolts", "bolt set", "rocker cover", "camshaft",
                      "valve", "valves", "manifold", "seal", "repair kit", "timing kit"],
+    unitSensitive:  false,
+    highMultiplier: 3.5,
+    lowMultiplier:  0.35,
     minimumResults: 3,
   },
 
@@ -41,8 +89,12 @@ export const productFilterRules = [
     productType:    "Head Gasket",
     synonyms:       ["head gasket", "cylinder head gasket"],
     requiredAny:    ["head gasket", "cylinder head gasket"],
+    // "cylinder head" omitted — substring of required "cylinder head gasket"
     exclude:        ["full gasket set", "headset", "head set", "bolts",
                      "rocker cover gasket", "manifold gasket"],
+    unitSensitive:  false,
+    highMultiplier: 4.0,
+    lowMultiplier:  0.3,
     minimumResults: 3,
   },
 
@@ -53,6 +105,9 @@ export const productFilterRules = [
     requiredAny:    ["full gasket set", "engine gasket set", "conversion set", "overhaul gasket set"],
     exclude:        ["head gasket only", "rocker cover gasket", "sump gasket",
                      "manifold gasket", "turbo gasket", "single gasket"],
+    unitSensitive:  false,
+    highMultiplier: 3.0,
+    lowMultiplier:  0.3,
     minimumResults: 3,
   },
 
@@ -61,8 +116,11 @@ export const productFilterRules = [
     productType:    "Rocker Cover Gasket",
     synonyms:       ["rocker cover gasket", "valve cover gasket"],
     requiredAny:    ["rocker cover gasket", "valve cover gasket"],
-    // "rocker cover" omitted — it is a substring of the required phrase
+    // "rocker cover" omitted — substring of required "rocker cover gasket"
     exclude:        ["head gasket", "full gasket set", "sump gasket", "manifold gasket"],
+    unitSensitive:  false,
+    highMultiplier: 4.0,
+    lowMultiplier:  0.3,
     minimumResults: 3,
   },
 
@@ -71,8 +129,11 @@ export const productFilterRules = [
     productType:    "Turbo Gasket",
     synonyms:       ["turbo gasket", "turbocharger gasket", "turbo mounting gasket", "turbo fitting kit"],
     requiredAny:    ["turbo gasket", "turbocharger gasket", "turbo mounting gasket", "turbo fitting kit"],
-    // "turbocharger" omitted — it is a substring of the required phrase
+    // "turbocharger" omitted — substring of required "turbocharger gasket"
     exclude:        ["turbo core", "cartridge", "actuator", "manifold gasket", "exhaust gasket"],
+    unitSensitive:  false,
+    highMultiplier: 4.0,
+    lowMultiplier:  0.3,
     minimumResults: 3,
   },
 
@@ -83,6 +144,9 @@ export const productFilterRules = [
     requiredAny:    ["oil pump", "engine oil pump"],
     exclude:        ["water pump", "fuel pump", "vacuum pump", "gasket",
                      "seal", "strainer", "chain", "repair kit", "pickup pipe"],
+    unitSensitive:  false,
+    highMultiplier: 3.0,
+    lowMultiplier:  0.35,
     minimumResults: 3,
   },
 
@@ -93,6 +157,9 @@ export const productFilterRules = [
     requiredAny:    ["water pump", "coolant pump"],
     exclude:        ["oil pump", "fuel pump", "vacuum pump",
                      "thermostat", "housing only", "pulley only"],
+    unitSensitive:  false,
+    highMultiplier: 3.0,
+    lowMultiplier:  0.35,
     minimumResults: 3,
   },
 
@@ -104,6 +171,9 @@ export const productFilterRules = [
     exclude:        ["timing belt", "cambelt", "aux belt",
                      "tensioner only", "guide only", "sprocket only",
                      "oil pump chain", "single chain"],
+    unitSensitive:  false,
+    highMultiplier: 3.0,
+    lowMultiplier:  0.4,
     minimumResults: 3,
   },
 
@@ -114,6 +184,9 @@ export const productFilterRules = [
     requiredAny:    ["timing belt kit", "cambelt kit", "cam belt kit"],
     exclude:        ["timing chain", "chain kit", "aux belt", "fan belt",
                      "belt only", "tensioner only", "water pump only"],
+    unitSensitive:  false,
+    highMultiplier: 3.0,
+    lowMultiplier:  0.4,
     minimumResults: 3,
   },
 
@@ -124,6 +197,9 @@ export const productFilterRules = [
     requiredAny:    ["camshaft", "inlet camshaft", "exhaust camshaft"],
     exclude:        ["sensor", "seal", "pulley", "sprocket",
                      "timing kit", "follower", "rocker arm"],
+    unitSensitive:  false,
+    highMultiplier: 3.0,
+    lowMultiplier:  0.35,
     minimumResults: 3,
   },
 
@@ -134,6 +210,9 @@ export const productFilterRules = [
     requiredAny:    ["crankshaft"],
     exclude:        ["pulley", "sensor", "seal", "bearing",
                      "main bearing", "crankshaft pulley", "timing gear"],
+    unitSensitive:  false,
+    highMultiplier: 3.5,
+    lowMultiplier:  0.35,
     minimumResults: 3,
   },
 
@@ -143,6 +222,9 @@ export const productFilterRules = [
     synonyms:       ["connecting rod", "conrod", "con rod"],
     requiredAny:    ["connecting rod", "conrod", "con rod"],
     exclude:        ["bearing", "bolt", "piston", "crankshaft", "used engine", "engine block"],
+    unitSensitive:  true,
+    highMultiplier: 2.5,
+    lowMultiplier:  0.35,
     minimumResults: 3,
   },
 
@@ -152,6 +234,9 @@ export const productFilterRules = [
     synonyms:       ["piston", "piston kit"],
     requiredAny:    ["piston", "piston kit"],
     exclude:        ["piston rings only", "ring set", "conrod", "engine block", "liner", "bearing"],
+    unitSensitive:  true,
+    highMultiplier: 2.5,
+    lowMultiplier:  0.35,
     minimumResults: 3,
   },
 
@@ -161,6 +246,9 @@ export const productFilterRules = [
     synonyms:       ["piston rings", "piston ring set", "ring set"],
     requiredAny:    ["piston rings", "piston ring set", "ring set"],
     exclude:        ["piston kit", "liner", "conrod", "bearing"],
+    unitSensitive:  true,
+    highMultiplier: 2.5,
+    lowMultiplier:  0.35,
     minimumResults: 3,
   },
 
@@ -170,6 +258,9 @@ export const productFilterRules = [
     synonyms:       ["main bearing", "main bearings", "crankshaft bearing", "crankshaft bearings"],
     requiredAny:    ["main bearing", "main bearings", "crankshaft bearing", "crankshaft bearings"],
     exclude:        ["big end bearing", "conrod bearing", "thrust washer", "wheel bearing"],
+    unitSensitive:  true,
+    highMultiplier: 2.5,
+    lowMultiplier:  0.35,
     minimumResults: 3,
   },
 
@@ -179,6 +270,9 @@ export const productFilterRules = [
     synonyms:       ["big end bearing", "big end bearings", "conrod bearing", "connecting rod bearing"],
     requiredAny:    ["big end bearing", "big end bearings", "conrod bearing", "connecting rod bearing"],
     exclude:        ["main bearing", "thrust washer", "wheel bearing"],
+    unitSensitive:  true,
+    highMultiplier: 2.5,
+    lowMultiplier:  0.35,
     minimumResults: 3,
   },
 
@@ -188,6 +282,9 @@ export const productFilterRules = [
     synonyms:       ["inlet valve", "intake valve"],
     requiredAny:    ["inlet valve", "intake valve"],
     exclude:        ["exhaust valve", "egr valve", "valve stem seal", "valve spring", "valve guide"],
+    unitSensitive:  true,
+    highMultiplier: 2.5,
+    lowMultiplier:  0.35,
     minimumResults: 3,
   },
 
@@ -198,6 +295,9 @@ export const productFilterRules = [
     requiredAny:    ["exhaust valve"],
     exclude:        ["inlet valve", "intake valve", "egr valve",
                      "valve stem seal", "valve spring", "valve guide"],
+    unitSensitive:  true,
+    highMultiplier: 2.5,
+    lowMultiplier:  0.35,
     minimumResults: 3,
   },
 
@@ -207,6 +307,9 @@ export const productFilterRules = [
     synonyms:       ["rocker arm", "cam follower", "finger follower"],
     requiredAny:    ["rocker arm", "cam follower", "finger follower"],
     exclude:        ["rocker cover", "tappet", "lifter", "camshaft", "valve"],
+    unitSensitive:  true,
+    highMultiplier: 2.5,
+    lowMultiplier:  0.35,
     minimumResults: 3,
   },
 
@@ -216,6 +319,9 @@ export const productFilterRules = [
     synonyms:       ["hydraulic lifter", "tappet", "hydraulic tappet"],
     requiredAny:    ["hydraulic lifter", "tappet", "hydraulic tappet"],
     exclude:        ["rocker arm", "camshaft", "valve", "lifter pump"],
+    unitSensitive:  true,
+    highMultiplier: 3.0,
+    lowMultiplier:  0.35,
     minimumResults: 3,
   },
 
@@ -225,6 +331,9 @@ export const productFilterRules = [
     synonyms:       ["egr valve", "exhaust gas recirculation valve"],
     requiredAny:    ["egr valve", "exhaust gas recirculation valve"],
     exclude:        ["egr cooler", "egr pipe", "gasket", "blanking plate", "sensor only"],
+    unitSensitive:  false,
+    highMultiplier: 3.0,
+    lowMultiplier:  0.35,
     minimumResults: 3,
   },
 
@@ -233,8 +342,11 @@ export const productFilterRules = [
     productType:    "DPF Pressure Sensor",
     synonyms:       ["dpf pressure sensor", "exhaust pressure sensor", "differential pressure sensor"],
     requiredAny:    ["dpf pressure sensor", "exhaust pressure sensor", "differential pressure sensor"],
-    // "dpf" omitted — it is a substring of the required "dpf pressure sensor"
+    // "dpf" omitted — substring of required "dpf pressure sensor"
     exclude:        ["dpf filter", "pipe only", "hose only", "egr sensor"],
+    unitSensitive:  false,
+    highMultiplier: 3.5,
+    lowMultiplier:  0.3,
     minimumResults: 3,
   },
 
@@ -243,8 +355,11 @@ export const productFilterRules = [
     productType:    "Injector Seal",
     synonyms:       ["injector seal", "injector washer", "injector copper washer", "injector seal kit"],
     requiredAny:    ["injector seal", "injector washer", "injector copper washer", "injector seal kit"],
-    // "injector" omitted — it appears in every required term; use more specific excludes
+    // "injector" omitted — appears in every required term
     exclude:        ["fuel injector", "injector pipe", "leak off pipe", "nozzle"],
+    unitSensitive:  true,
+    highMultiplier: 4.0,
+    lowMultiplier:  0.3,
     minimumResults: 3,
   },
 
@@ -254,14 +369,16 @@ export const productFilterRules = [
     synonyms:       ["glow plug", "heater plug"],
     requiredAny:    ["glow plug", "heater plug"],
     exclude:        ["glow plug relay", "controller", "module", "wiring loom"],
+    unitSensitive:  true,
+    highMultiplier: 3.0,
+    lowMultiplier:  0.35,
     minimumResults: 3,
   },
 ];
 
 // ─── Detect product type from user search query ───────────────────────────────
-// Uses longest-match-wins: the synonym with the most characters that matches the
-// query wins. This ensures "cylinder head gasket" (20 chars, Head Gasket rule)
-// beats "cylinder head" (14 chars, Cylinder Head rule).
+// Longest-match-wins: the synonym with the most characters that appears in the
+// query wins, ensuring "cylinder head gasket" beats "cylinder head".
 export function detectProductType(query) {
   const q = query.toLowerCase().trim();
   let best = null, bestLen = 0;
@@ -278,22 +395,21 @@ export function detectProductType(query) {
 }
 
 // ─── Build eBay query with single-word negative keywords ─────────────────────
-// Single-word exclusions are appended to the eBay query string (e.g. -gasket).
-// Multi-word exclusions are handled server-side in filterItems() because
+// Single-word exclusions are appended directly (e.g. -gasket).
+// Multi-word exclusions are handled server-side in the title filter because
 // eBay's Browse API does not reliably support negative phrase syntax.
 export function buildEbayQuery(baseQuery, rule) {
   if (!rule) return baseQuery;
   const negatives = rule.exclude
-    .filter(term => !term.includes(" ")) // single-word only
-    .slice(0, 6)                          // keep URL reasonable length
+    .filter(term => !term.includes(" "))
+    .slice(0, 6)
     .map(term => `-${term}`)
     .join(" ");
   return negatives ? `${baseQuery} ${negatives}` : baseQuery;
 }
 
-// ─── Filter eBay items against a product rule ─────────────────────────────────
-// Returns { relevant, excluded } arrays.
-// When no rule is provided (type undetected) all items pass as relevant.
+// ─── Title filter ─────────────────────────────────────────────────────────────
+// Simple pass/fail for compatibility. Server uses richer inline logic.
 export function filterItems(items, rule) {
   if (!rule) return { relevant: items, excluded: [] };
   const relevant = [], excluded = [];
@@ -307,10 +423,38 @@ export function filterItems(items, rule) {
   return { relevant, excluded };
 }
 
+// ─── Detect unit type from listing title ─────────────────────────────────────
+// Used for unit-sensitive product types (connecting rods, valves, bearings etc.)
+// to identify and exclude multi-unit listings that would distort single-unit pricing.
+export function detectUnitType(title) {
+  const t = (title || "").toLowerCase();
+
+  // Single indicators — check first so "x1" doesn't fall into set logic
+  if (/\bsingle\b|\bx1\b|\b1x\b|\bqty[\s:]?1\b/.test(t)) return "single";
+
+  // Pair indicators
+  if (/\bpair\b|\bx2\b|\b2x\b|\bset of 2\b|\bset of two\b|\bqty[\s:]?2\b/.test(t)) return "pair";
+
+  // Set of 3+ (explicit quantity)
+  if (/\bset of [3-9]\b|\bset of \d{2,}\b|\bpack of [3-9]\b|\bx[3-9]\b|\b[3-9]x\b/.test(t)) return "set";
+
+  // Generic kit (no quantity specified — still multi-unit)
+  if (/\bkit\b/.test(t)) return "kit";
+
+  // Generic bundle
+  if (/\bbundle\b/.test(t)) return "bundle";
+
+  // Generic set or pack (without specific quantity)
+  if (/\bset\b|\bpack\b/.test(t)) return "set";
+
+  return "unknown";
+}
+
 // ─── Confidence level ─────────────────────────────────────────────────────────
+// Thresholds based on relevant listings after all filtering.
 export function getConfidence(relevantCount) {
-  if (relevantCount >= 15) return { level: "high",        label: "High confidence",   color: "#4ade80" };
-  if (relevantCount >= 8)  return { level: "medium",      label: "Medium confidence", color: "#fbbf24" };
+  if (relevantCount >= 10) return { level: "high",        label: "High confidence",   color: "#4ade80" };
+  if (relevantCount >= 6)  return { level: "medium",      label: "Medium confidence", color: "#fbbf24" };
   if (relevantCount >= 3)  return { level: "low",         label: "Low confidence",    color: "#f97316" };
   return                          { level: "insufficient", label: "Not enough data",   color: "#f87171" };
 }

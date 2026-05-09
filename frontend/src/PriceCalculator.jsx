@@ -335,7 +335,7 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
 
   // ── Market pricing state ─────────────────────────────────────────────────────
   const [smQuery,     setSmQuery]     = useSessionState("jsk_calc_sm_query",     "");
-  const [smCondition, setSmCondition] = useSessionState("jsk_calc_sm_condition", "any");
+  const [smCondition, setSmCondition] = useSessionState("jsk_calc_sm_condition", "new");
   const [smData,      setSmData]      = useSessionState("jsk_calc_sm_data",      null);
   const [smLoading,   setSmLoading]   = useState(false);
   const [smError,     setSmError]     = useState("");
@@ -405,6 +405,11 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
     finally       { setSmLoading(false); }
   };
 
+  // Reset legacy "any" condition (removed in favour of explicit condition-first flow)
+  useEffect(() => {
+    if (!["new", "used", "remanufactured"].includes(smCondition)) setSmCondition("new");
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Sync target fields when calculated values change
   useEffect(() => { if (!editingMarkup && !isNaN(markup) && price > 0) setTargetMarkup(markup.toFixed(1)); }, [markup, editingMarkup, price]);
   useEffect(() => { if (!editingMargin && !isNaN(margin) && price > 0) setTargetMargin(margin.toFixed(1)); }, [margin, editingMargin, price]);
@@ -463,23 +468,28 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
                     <div style={{ display: "flex", alignItems: "center", gap: 7, background: "rgba(19,93,255,0.1)", border: "1px solid rgba(19,93,255,0.22)", borderRadius: 8, padding: "7px 13px", flexShrink: 0 }}>
                       <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#4ade80", display: "inline-block", animation: "pcPulse 2s ease-in-out infinite" }} />
                       <span style={{ fontSize: 15, fontWeight: 800, color: "#93c5fd" }}>{smData.priceCount}</span>
-                      <span style={{ fontSize: 11, color: C.muted }}>listings analysed</span>
+                      <span style={{ fontSize: 11, color: C.muted }}>{smData.conditionLabel?.toLowerCase() || ""} listings used</span>
                     </div>
                   )}
                 </div>
                 {/* Condition toggle */}
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                  <span style={{ fontSize: 11, color: C.muted, flexShrink: 0 }}>Condition</span>
-                  <div style={{ display: "flex", gap: 3, background: "#060d1a", borderRadius: 8, padding: 3, border: "1px solid rgba(255,255,255,0.07)" }}>
-                    {[{ key: "any", label: "Any" }, { key: "new", label: "New" }, { key: "used", label: "Used" }].map(({ key, label }) => {
-                      const active = smCondition === key;
-                      return (
-                        <button key={key} onClick={() => { setSmCondition(key); if (smData) setSmData(null); }}
-                          style={{ padding: "4px 16px", borderRadius: 6, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, background: active ? C.blue : "transparent", color: active ? "#fff" : C.muted, boxShadow: active ? "0 0 10px rgba(19,93,255,0.35)" : "none", transition: "all 0.15s" }}>
-                          {label}
-                        </button>
-                      );
-                    })}
+                <div style={{ marginBottom: 8 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5 }}>
+                    <span style={{ fontSize: 11, color: C.muted, flexShrink: 0 }}>Condition</span>
+                    <div style={{ display: "flex", gap: 3, background: "#060d1a", borderRadius: 8, padding: 3, border: "1px solid rgba(255,255,255,0.07)" }}>
+                      {[{ key: "new", label: "New" }, { key: "used", label: "Used" }, { key: "remanufactured", label: "Remanufactured" }].map(({ key, label }) => {
+                        const active = smCondition === key;
+                        return (
+                          <button key={key} onClick={() => { setSmCondition(key); if (smData) setSmData(null); }}
+                            style={{ padding: "4px 16px", borderRadius: 6, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, background: active ? C.blue : "transparent", color: active ? "#fff" : C.muted, boxShadow: active ? "0 0 10px rgba(19,93,255,0.35)" : "none", transition: "all 0.15s" }}>
+                            {label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <div style={{ fontSize: 10, color: C.dim, paddingLeft: 2 }}>
+                    Market data will only use listings matching the selected condition.
                   </div>
                 </div>
 
@@ -685,12 +695,10 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
 
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
                       <div style={{ fontSize: 10, fontWeight: 700, color: C.dim, textTransform: "uppercase", letterSpacing: 0.7 }}>
-                        Market Snapshot · eBay UK
-                        {smData?.condition && smData.condition !== "any" && (
-                          <span style={{ marginLeft: 7, fontSize: 9, fontWeight: 800, color: "#93c5fd", background: "rgba(147,197,253,0.1)", border: "1px solid rgba(147,197,253,0.25)", borderRadius: 4, padding: "1px 6px", letterSpacing: 0.5 }}>
-                            {smData.condition.toUpperCase()}
-                          </span>
-                        )}
+                        {smData
+                          ? `Market Snapshot — ${smData.conditionLabel}${smData.detectedType ? ` ${smData.detectedType}` : ""} listings`
+                          : "Market Snapshot · eBay UK"
+                        }
                       </div>
                       {smData && (
                         <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 9, fontWeight: 700, color: "#4ade80", background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.2)", borderRadius: 20, padding: "3px 9px" }}>
@@ -719,27 +727,27 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
                     {!smLoading && smData && (
                       <div style={{ animation: "pcIn 0.3s ease" }}>
 
-                        {/* ── Detected type + confidence row ── */}
-                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
+                        {/* ── Type badge + confidence badge ── */}
+                        <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 10, flexWrap: "wrap" }}>
                           {smData.detectedType ? (
-                            <div style={{
+                            <span style={{
                               display: "inline-flex", alignItems: "center", gap: 5,
                               background: "rgba(19,93,255,0.1)", border: "1px solid rgba(19,93,255,0.3)",
                               borderRadius: 6, padding: "4px 10px", fontSize: 11, fontWeight: 700, color: "#93c5fd",
                             }}>
                               🔍 {smData.detectedType}
-                            </div>
+                            </span>
                           ) : (
-                            <div style={{
+                            <span style={{
                               display: "inline-flex", alignItems: "center", gap: 5,
                               background: "rgba(251,191,36,0.08)", border: "1px solid rgba(251,191,36,0.25)",
                               borderRadius: 6, padding: "4px 10px", fontSize: 11, fontWeight: 700, color: "#fbbf24",
                             }}>
-                              ⚠ Type undetected — all results used
-                            </div>
+                              ⚠ Type undetected
+                            </span>
                           )}
                           {smData.confidenceLabel && (
-                            <div style={{
+                            <span style={{
                               display: "inline-flex", alignItems: "center", gap: 5,
                               background: `${smData.confidenceColor}14`,
                               border: `1px solid ${smData.confidenceColor}40`,
@@ -748,43 +756,56 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
                             }}>
                               <span style={{ width: 6, height: 6, borderRadius: "50%", background: smData.confidenceColor, display: "inline-block" }} />
                               {smData.confidenceLabel}
-                            </div>
+                            </span>
                           )}
                         </div>
 
-                        {/* ── Filter transparency ── */}
-                        {smData.filterApplied && (
-                          <div style={{
-                            marginBottom: 12, padding: "7px 12px",
-                            background: "rgba(255,255,255,0.03)",
-                            border: "1px solid rgba(255,255,255,0.07)",
-                            borderRadius: 8, fontSize: 11, color: C.muted,
-                            display: "flex", gap: 14, flexWrap: "wrap",
-                          }}>
-                            <span><span style={{ color: "#93c5fd", fontWeight: 700 }}>{smData.totalFetched}</span> fetched</span>
-                            <span style={{ color: "rgba(255,255,255,0.12)" }}>·</span>
-                            <span><span style={{ color: "#4ade80", fontWeight: 700 }}>{smData.relevantCount}</span> relevant</span>
-                            <span style={{ color: "rgba(255,255,255,0.12)" }}>·</span>
-                            <span><span style={{ color: "#f87171", fontWeight: 700 }}>{smData.excludedCount}</span> excluded</span>
+                        {/* ── Median hero ── */}
+                        <div style={{
+                          background: "rgba(147,197,253,0.06)", border: "1px solid rgba(147,197,253,0.2)",
+                          borderRadius: 10, padding: "12px 16px", marginBottom: 8,
+                          display: "flex", alignItems: "baseline", gap: 12,
+                        }}>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontSize: 11, color: "#93c5fd", fontWeight: 600, marginBottom: 4 }}>Median price</div>
+                            <div style={{ fontSize: 32, fontWeight: 900, color: "#93c5fd", letterSpacing: -1, lineHeight: 1 }}>{fmtGBP(smData.median)}</div>
                           </div>
-                        )}
+                          <div style={{ fontSize: 10, color: C.dim, maxWidth: 130, textAlign: "right", lineHeight: 1.4 }}>
+                            Most reliable — less affected by outliers than the average
+                          </div>
+                        </div>
 
-                        {/* 2×2 price grid */}
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12 }}>
+                        {/* ── Average / Lowest / Highest ── */}
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 10 }}>
                           {[
-                            { label: "Lowest",  value: fmtGBP(smData.low),     color: "#60a5fa" },
-                            { label: "Median",  value: fmtGBP(smData.median),  color: "#93c5fd" },
                             { label: "Average", value: fmtGBP(smData.average), color: "#bae6fd" },
+                            { label: "Lowest",  value: fmtGBP(smData.low),     color: "#60a5fa" },
                             { label: "Highest", value: fmtGBP(smData.high),    color: "#dbeafe" },
                           ].map(({ label, value, color }) => (
-                            <div key={label} style={{ background: C.bg1, borderRadius: 8, padding: "9px 12px", border: "1px solid rgba(255,255,255,0.05)" }}>
-                              <div style={{ fontSize: 11, color: C.muted, marginBottom: 3 }}>{label}</div>
-                              <div style={{ fontSize: 20, fontWeight: 800, color }}>{value}</div>
+                            <div key={label} style={{ background: C.bg1, borderRadius: 8, padding: "9px 10px", border: "1px solid rgba(255,255,255,0.05)" }}>
+                              <div style={{ fontSize: 10, color: C.muted, marginBottom: 3 }}>{label}</div>
+                              <div style={{ fontSize: 17, fontWeight: 800, color }}>{value}</div>
                             </div>
                           ))}
                         </div>
 
-                        {/* Pricing band */}
+                        {/* ── Transparency row ── */}
+                        <div style={{
+                          marginBottom: 12, padding: "8px 12px",
+                          background: "rgba(255,255,255,0.02)",
+                          border: "1px solid rgba(255,255,255,0.06)",
+                          borderRadius: 8, fontSize: 11, color: C.muted, lineHeight: 1.8,
+                        }}>
+                          <span style={{ color: "#93c5fd", fontWeight: 700 }}>{smData.totalFetched}</span> {smData.conditionLabel} listings fetched
+                          {" · "}
+                          <span style={{ color: "#4ade80", fontWeight: 700 }}>{smData.priceCount}</span> used
+                          {smData.excludedByFilter   > 0 && <span> · <span style={{ color: "#f87171", fontWeight: 700 }}>{smData.excludedByFilter}</span> unrelated</span>}
+                          {smData.excludedAsSetKit   > 0 && <span> · <span style={{ color: "#f87171", fontWeight: 700 }}>{smData.excludedAsSetKit}</span> sets/kits</span>}
+                          {smData.excludedHighOutlier > 0 && <span> · <span style={{ color: "#f87171", fontWeight: 700 }}>{smData.excludedHighOutlier}</span> high outliers</span>}
+                          {smData.excludedLowOutlier  > 0 && <span> · <span style={{ color: "#f87171", fontWeight: 700 }}>{smData.excludedLowOutlier}</span> low outliers</span>}
+                        </div>
+
+                        {/* ── Pricing band ── */}
                         <PricingBand data={smData} price={price} />
 
                         <div style={{ fontSize: 10, color: C.dim, textAlign: "right", marginTop: 10 }}>

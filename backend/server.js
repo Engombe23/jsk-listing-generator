@@ -5,7 +5,10 @@ import { Parser } from "json2csv";
 import { buildHtml } from "./html-builder.js";
 import { getTemplateById, THEME_LIST } from "./templates/index.js";
 import { checkCompatibility } from "./compatibility/checker.js";
-import { detectProductType, buildEbayQuery, filterItems, getConfidence } from "./ebay-filter-rules.js";
+import {
+  detectProductType, buildEbayQuery, detectUnitType, getConfidence,
+  conditionOptions, EXCLUSION_REASONS,
+} from "./ebay-filter-rules.js";
 import OpenAI from "openai";
 
 const openaiClient = process.env.OPENAI_API_KEY
@@ -897,6 +900,14 @@ Respond with valid JSON only, no markdown:
   }
 });
 
+// ─── Median helper ────────────────────────────────────────────────────────────
+function calcMedian(sortedArr) {
+  const n = sortedArr.length;
+  if (n === 0) return null;
+  const mid = Math.floor(n / 2);
+  return n % 2 === 0 ? (sortedArr[mid - 1] + sortedArr[mid]) / 2 : sortedArr[mid];
+}
+
 // ─── eBay OAuth token cache ───────────────────────────────────────────────────
 
 let _ebayToken    = null;
@@ -947,34 +958,47 @@ async function getEbayAccessToken() {
 //   - exclude sponsored     (not directly available via Browse API)
 //   - AI pricing suggestion (pass stats + costs to OpenAI)
 
+// ─── eBay Smart Pricing ───────────────────────────────────────────────────────
+// POST /api/ebay/search-prices
+//
+// Full pipeline:
+//   1. Resolve condition → eBay filter string
+//   2. Detect product type from query; build eBay query with neg-keyword hints
+//   3. Fetch top 25 listings for the selected condition
+//   4. Title filter  (requiredAny + exclude per product rule)
+//   5. Unit filter   (sets/kits/bundles removed for unit-sensitive types)
+//   6. Initial median from surviving price-valid items
+//   7. Multiplier outlier filter  (per-rule high/low thresholds)
+//   8. Recalculate final stats from clean set
+//   9. Return enriched response with per-reason exclusion counts
 app.post("/api/ebay/search-prices", async (req, res) => {
   try {
-    const { query, condition = "any" } = req.body;
+    const { query, condition = "new" } = req.body;
     if (!query?.trim()) {
       return res.status(400).json({ error: "query is required" });
     }
 
-    const token = await getEbayAccessToken();
+    // ── Step 1: Resolve condition ─────────────────────────────────────────────
+    const condOpt    = conditionOptions.find(c => c.key === condition);
+    const condFilter = condOpt?.ebayFilter || null;
+    const condLabel  = condOpt?.label      || condition;
 
-    // Detect product type and build a filtered query (single-word negative keywords)
+    // ── Step 2: Detect product type + build filtered eBay query ───────────────
     const rule      = detectProductType(query.trim());
     const ebayQuery = buildEbayQuery(query.trim(), rule);
 
-    // Build URL manually so curly-brace filter syntax is not percent-encoded.
-    // Fetch top 10 listings only.
-    // eBay Browse API condition IDs:
-    //   1000 = New  |  1500 = New other  |  3000 = Used
-    let url = `https://api.ebay.com/buy/browse/v1/item_summary/search?q=${encodeURIComponent(ebayQuery)}&limit=10&offset=0`;
-    if      (condition === "new")  url += "&filter=conditionIds:{1000|1500}";
-    else if (condition === "used") url += "&filter=conditionIds:{3000}";
-    // "any" → no condition filter
+    // ── Step 3: Fetch top 25 listings ─────────────────────────────────────────
+    // URL built manually — eBay requires literal { } in filter strings; encoding breaks it.
+    const token = await getEbayAccessToken();
+    let url = `https://api.ebay.com/buy/browse/v1/item_summary/search?q=${encodeURIComponent(ebayQuery)}&limit=25&offset=0`;
+    if (condFilter) url += `&filter=${condFilter}`;
 
     const ebayRes = await fetch(url, {
       headers: {
         Authorization:             `Bearer ${token}`,
         "X-EBAY-C-MARKETPLACE-ID": "EBAY_GB",
-        "Content-Type":            "application/json"
-      }
+        "Content-Type":            "application/json",
+      },
     });
 
     if (!ebayRes.ok) {
@@ -983,38 +1007,114 @@ app.post("/api/ebay/search-prices", async (req, res) => {
     }
 
     const data         = await ebayRes.json();
-    const allItems     = data.itemSummaries || [];
-    const totalFetched = allItems.length;
+    const rawItems     = data.itemSummaries || [];
+    const totalFetched = rawItems.length;
+    const currency     = rawItems.find(i => i.price?.currency)?.price?.currency || "GBP";
 
-    // Apply product-type title filter (requiredAny + exclude)
-    const { relevant, excluded } = filterItems(allItems, rule);
-    const filterApplied = rule !== null;
-    const items         = filterApplied ? relevant : allItems;
+    // Enrich each item with parsed price for pipeline use
+    const enriched = rawItems.map(item => ({
+      title: item.title || "",
+      price: (() => { const v = parseFloat(item.price?.value); return Number.isFinite(v) && v > 0 ? v : null; })(),
+    }));
 
-    // Extract valid, positive prices — sort ascending for statistics
-    const prices = items
-      .map((item) => parseFloat(item.price?.value))
-      .filter((v) => Number.isFinite(v) && v > 0)
-      .sort((a, b) => a - b);
+    // ── Step 4: Title filter ──────────────────────────────────────────────────
+    const titlePassed  = [];
+    const titleExcluded = [];
 
-    const currency   = allItems.find((i) => i.price?.currency)?.price?.currency || "GBP";
-    const confidence = getConfidence(prices.length);
+    for (const item of enriched) {
+      if (!rule) {
+        titlePassed.push(item);
+        continue;
+      }
+      const t          = item.title.toLowerCase();
+      const hasRequired = rule.requiredAny.some(r => t.includes(r.toLowerCase()));
+      const hasExcluded = rule.exclude.some(e => t.includes(e.toLowerCase()));
+      if (hasRequired && !hasExcluded) {
+        titlePassed.push(item);
+      } else {
+        titleExcluded.push({ ...item, exclusionReason: EXCLUSION_REASONS.TITLE_FILTER });
+      }
+    }
 
-    if (prices.length === 0) {
-      const zeroResultsMsg = filterApplied
-        ? `No relevant ${rule.productType} listings found after filtering ${totalFetched} results. Try a different search term.`
-        : "No listings found for this search — try a different search term.";
+    // ── Step 5: Unit filter (unit-sensitive types only) ───────────────────────
+    const unitPassed  = [];
+    const unitExcluded = [];
+
+    if (rule?.unitSensitive) {
+      for (const item of titlePassed) {
+        const unitType = detectUnitType(item.title);
+        if (["set", "kit", "bundle", "pair"].includes(unitType)) {
+          unitExcluded.push({ ...item, exclusionReason: EXCLUSION_REASONS.SET_KIT, unitType });
+        } else {
+          unitPassed.push(item);
+        }
+      }
+    } else {
+      unitPassed.push(...titlePassed);
+    }
+
+    // ── Step 6: Initial median from price-valid items ─────────────────────────
+    const withPrice    = unitPassed.filter(i => i.price !== null);
+    const sortedInit   = withPrice.map(i => i.price).sort((a, b) => a - b);
+    const initMedian   = calcMedian(sortedInit);
+
+    // ── Step 7: Multiplier outlier filter ─────────────────────────────────────
+    const highMult = rule?.highMultiplier ?? 3.0;
+    const lowMult  = rule?.lowMultiplier  ?? 0.35;
+
+    const relevantItems    = [];
+    const highExcluded     = [];
+    const lowExcluded      = [];
+
+    if (initMedian && initMedian > 0) {
+      const highThreshold = initMedian * highMult;
+      const lowThreshold  = initMedian * lowMult;
+      for (const item of withPrice) {
+        if (item.price > highThreshold) {
+          highExcluded.push({ ...item, exclusionReason: EXCLUSION_REASONS.HIGH_OUTLIER });
+        } else if (item.price < lowThreshold) {
+          lowExcluded.push({ ...item, exclusionReason: EXCLUSION_REASONS.LOW_OUTLIER });
+        } else {
+          relevantItems.push(item);
+        }
+      }
+    } else {
+      // No median to compare against — keep all price-valid items
+      relevantItems.push(...withPrice);
+    }
+
+    // ── Step 8: Final stats ───────────────────────────────────────────────────
+    const finalPrices = relevantItems.map(i => i.price).sort((a, b) => a - b);
+    const confidence  = getConfidence(finalPrices.length);
+
+    // Exclusion counts by reason
+    const excludedByFilter   = titleExcluded.length;
+    const excludedAsSetKit   = unitExcluded.length;
+    const excludedHighOutlier = highExcluded.length;
+    const excludedLowOutlier  = lowExcluded.length;
+    const totalExcluded = excludedByFilter + excludedAsSetKit + excludedHighOutlier + excludedLowOutlier;
+
+    if (finalPrices.length === 0) {
+      const zeroResultsMsg = rule
+        ? `No relevant ${rule.productType} ${condLabel.toLowerCase()} listings found after filtering ${totalFetched} results. Try a different search term.`
+        : `No ${condLabel.toLowerCase()} listings found for this search — try a different search term.`;
+
       return res.json({
         low: null, high: null, average: null, median: null,
         currency,
         condition,
-        resultCount:     totalFetched,
-        priceCount:      0,
-        detectedType:    rule?.productType || null,
-        filterApplied,
+        conditionLabel: condLabel,
+        priceCount:          0,
         totalFetched,
-        relevantCount:   0,
-        excludedCount:   filterApplied ? excluded.length : 0,
+        relevantCount:       0,
+        excludedByFilter,
+        excludedAsSetKit,
+        excludedHighOutlier,
+        excludedLowOutlier,
+        totalExcluded,
+        detectedType:    rule?.productType || null,
+        filterApplied:   rule !== null,
+        unitSensitive:   rule?.unitSensitive ?? false,
         confidenceLevel: confidence.level,
         confidenceLabel: confidence.label,
         confidenceColor: confidence.color,
@@ -1022,31 +1122,42 @@ app.post("/api/ebay/search-prices", async (req, res) => {
       });
     }
 
-    const n       = prices.length;
-    const low     = prices[0];
-    const high    = prices[n - 1];
-    const average = prices.reduce((s, v) => s + v, 0) / n;
-    const mid     = Math.floor(n / 2);
-    const median  = n % 2 === 0 ? (prices[mid - 1] + prices[mid]) / 2 : prices[mid];
+    const n       = finalPrices.length;
+    const low     = finalPrices[0];
+    const high    = finalPrices[n - 1];
+    const average = finalPrices.reduce((s, v) => s + v, 0) / n;
+    const median  = calcMedian(finalPrices);
+
+    console.log(
+      `[eBay] "${query}" | ${condLabel} | type=${rule?.productType || "undetected"} | ` +
+      `fetched=${totalFetched} relevant=${n} excluded=${totalExcluded} ` +
+      `(title:${excludedByFilter} unit:${excludedAsSetKit} hi:${excludedHighOutlier} lo:${excludedLowOutlier})`
+    );
 
     res.json({
-      low:          +low.toFixed(2),
-      high:         +high.toFixed(2),
-      average:      +average.toFixed(2),
-      median:       +median.toFixed(2),
+      low:     +low.toFixed(2),
+      high:    +high.toFixed(2),
+      average: +average.toFixed(2),
+      median:  +median.toFixed(2),
       currency,
       condition,
-      resultCount:     totalFetched,
-      priceCount:      n,
-      detectedType:    rule?.productType || null,
-      filterApplied,
+      conditionLabel: condLabel,
+      priceCount:          n,
       totalFetched,
-      relevantCount:   filterApplied ? relevant.length : n,
-      excludedCount:   filterApplied ? excluded.length : 0,
+      relevantCount:       n,
+      excludedByFilter,
+      excludedAsSetKit,
+      excludedHighOutlier,
+      excludedLowOutlier,
+      totalExcluded,
+      detectedType:    rule?.productType || null,
+      filterApplied:   rule !== null,
+      unitSensitive:   rule?.unitSensitive ?? false,
       confidenceLevel: confidence.level,
       confidenceLabel: confidence.label,
       confidenceColor: confidence.color,
     });
+
   } catch (err) {
     console.error("[/api/ebay/search-prices]", err.message);
     res.status(500).json({ error: err.message });
