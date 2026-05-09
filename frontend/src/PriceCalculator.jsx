@@ -399,7 +399,7 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
       const res  = await fetch(`${API_URL}/api/ebay/search-prices`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ query: smQuery.trim(), condition: smCondition }) });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Failed to fetch prices.");
-      if (json.priceCount === 0) throw new Error("No listings found for this filter — try changing the condition or search term.");
+      if (json.priceCount === 0) throw new Error(json.zeroResultsMsg || "No listings found — try changing the condition or search term.");
       setSmData(json);
     } catch (err) { setSmError(err.message); setSmData(null); }
     finally       { setSmLoading(false); }
@@ -719,6 +719,56 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
                     {!smLoading && smData && (
                       <div style={{ animation: "pcIn 0.3s ease" }}>
 
+                        {/* ── Detected type + confidence row ── */}
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
+                          {smData.detectedType ? (
+                            <div style={{
+                              display: "inline-flex", alignItems: "center", gap: 5,
+                              background: "rgba(19,93,255,0.1)", border: "1px solid rgba(19,93,255,0.3)",
+                              borderRadius: 6, padding: "4px 10px", fontSize: 11, fontWeight: 700, color: "#93c5fd",
+                            }}>
+                              🔍 {smData.detectedType}
+                            </div>
+                          ) : (
+                            <div style={{
+                              display: "inline-flex", alignItems: "center", gap: 5,
+                              background: "rgba(251,191,36,0.08)", border: "1px solid rgba(251,191,36,0.25)",
+                              borderRadius: 6, padding: "4px 10px", fontSize: 11, fontWeight: 700, color: "#fbbf24",
+                            }}>
+                              ⚠ Type undetected — all results used
+                            </div>
+                          )}
+                          {smData.confidenceLabel && (
+                            <div style={{
+                              display: "inline-flex", alignItems: "center", gap: 5,
+                              background: `${smData.confidenceColor}14`,
+                              border: `1px solid ${smData.confidenceColor}40`,
+                              borderRadius: 6, padding: "4px 10px", fontSize: 11, fontWeight: 700,
+                              color: smData.confidenceColor,
+                            }}>
+                              <span style={{ width: 6, height: 6, borderRadius: "50%", background: smData.confidenceColor, display: "inline-block" }} />
+                              {smData.confidenceLabel}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* ── Filter transparency ── */}
+                        {smData.filterApplied && (
+                          <div style={{
+                            marginBottom: 12, padding: "7px 12px",
+                            background: "rgba(255,255,255,0.03)",
+                            border: "1px solid rgba(255,255,255,0.07)",
+                            borderRadius: 8, fontSize: 11, color: C.muted,
+                            display: "flex", gap: 14, flexWrap: "wrap",
+                          }}>
+                            <span><span style={{ color: "#93c5fd", fontWeight: 700 }}>{smData.totalFetched}</span> fetched</span>
+                            <span style={{ color: "rgba(255,255,255,0.12)" }}>·</span>
+                            <span><span style={{ color: "#4ade80", fontWeight: 700 }}>{smData.relevantCount}</span> relevant</span>
+                            <span style={{ color: "rgba(255,255,255,0.12)" }}>·</span>
+                            <span><span style={{ color: "#f87171", fontWeight: 700 }}>{smData.excludedCount}</span> excluded</span>
+                          </div>
+                        )}
+
                         {/* 2×2 price grid */}
                         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12 }}>
                           {[
@@ -734,17 +784,11 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
                           ))}
                         </div>
 
-                        {/* Listings count */}
-                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
-                          <span style={{ fontSize: 12, color: C.muted }}>Listings analysed</span>
-                          <span style={{ fontSize: 14, fontWeight: 800, color: "#93c5fd" }}>{smData.priceCount}</span>
-                        </div>
-
                         {/* Pricing band */}
                         <PricingBand data={smData} price={price} />
 
                         <div style={{ fontSize: 10, color: C.dim, textAlign: "right", marginTop: 10 }}>
-                          Based on first-page active eBay UK listings only.
+                          Based on active eBay UK listings only.
                         </div>
                       </div>
                     )}

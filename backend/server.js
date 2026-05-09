@@ -5,6 +5,7 @@ import { Parser } from "json2csv";
 import { buildHtml } from "./html-builder.js";
 import { getTemplateById, THEME_LIST } from "./templates/index.js";
 import { checkCompatibility } from "./compatibility/checker.js";
+import { detectProductType, buildEbayQuery, filterItems, getConfidence } from "./ebay-filter-rules.js";
 import OpenAI from "openai";
 
 const openaiClient = process.env.OPENAI_API_KEY
@@ -955,31 +956,40 @@ app.post("/api/ebay/search-prices", async (req, res) => {
 
     const token = await getEbayAccessToken();
 
-    // Build URL manually so curly-brace filter syntax is not percent-encoded
+    // Detect product type and build a filtered query (single-word negative keywords)
+    const rule      = detectProductType(query.trim());
+    const ebayQuery = buildEbayQuery(query.trim(), rule);
+
+    // Build URL manually so curly-brace filter syntax is not percent-encoded.
+    // Fetch 100 listings so the title filter has more to work with.
     // eBay Browse API condition IDs:
     //   1000 = New  |  1500 = New other  |  3000 = Used
-    let url = `https://api.ebay.com/buy/browse/v1/item_summary/search?q=${encodeURIComponent(query.trim())}&limit=50&offset=0`;
+    let url = `https://api.ebay.com/buy/browse/v1/item_summary/search?q=${encodeURIComponent(ebayQuery)}&limit=100&offset=0`;
     if      (condition === "new")  url += "&filter=conditionIds:{1000|1500}";
     else if (condition === "used") url += "&filter=conditionIds:{3000}";
     // "any" → no condition filter
 
-    const ebayRes = await fetch(url,
-      {
-        headers: {
-          Authorization:                `Bearer ${token}`,
-          "X-EBAY-C-MARKETPLACE-ID":    "EBAY_GB",
-          "Content-Type":               "application/json"
-        }
+    const ebayRes = await fetch(url, {
+      headers: {
+        Authorization:             `Bearer ${token}`,
+        "X-EBAY-C-MARKETPLACE-ID": "EBAY_GB",
+        "Content-Type":            "application/json"
       }
-    );
+    });
 
     if (!ebayRes.ok) {
       const text = await ebayRes.text();
       throw new Error(`eBay search failed (${ebayRes.status}): ${text.slice(0, 300)}`);
     }
 
-    const data  = await ebayRes.json();
-    const items = data.itemSummaries || [];
+    const data         = await ebayRes.json();
+    const allItems     = data.itemSummaries || [];
+    const totalFetched = allItems.length;
+
+    // Apply product-type title filter (requiredAny + exclude)
+    const { relevant, excluded } = filterItems(allItems, rule);
+    const filterApplied = rule !== null;
+    const items         = filterApplied ? relevant : allItems;
 
     // Extract valid, positive prices — sort ascending for statistics
     const prices = items
@@ -987,12 +997,28 @@ app.post("/api/ebay/search-prices", async (req, res) => {
       .filter((v) => Number.isFinite(v) && v > 0)
       .sort((a, b) => a - b);
 
-    const currency = items.find((i) => i.price?.currency)?.price?.currency || "GBP";
+    const currency   = allItems.find((i) => i.price?.currency)?.price?.currency || "GBP";
+    const confidence = getConfidence(prices.length);
 
     if (prices.length === 0) {
+      const zeroResultsMsg = filterApplied
+        ? `No relevant ${rule.productType} listings found after filtering ${totalFetched} results. Try a different search term.`
+        : "No listings found for this search — try a different search term.";
       return res.json({
         low: null, high: null, average: null, median: null,
-        currency, resultCount: items.length, priceCount: 0
+        currency,
+        condition,
+        resultCount:     totalFetched,
+        priceCount:      0,
+        detectedType:    rule?.productType || null,
+        filterApplied,
+        totalFetched,
+        relevantCount:   0,
+        excludedCount:   filterApplied ? excluded.length : 0,
+        confidenceLevel: confidence.level,
+        confidenceLabel: confidence.label,
+        confidenceColor: confidence.color,
+        zeroResultsMsg,
       });
     }
 
@@ -1004,14 +1030,22 @@ app.post("/api/ebay/search-prices", async (req, res) => {
     const median  = n % 2 === 0 ? (prices[mid - 1] + prices[mid]) / 2 : prices[mid];
 
     res.json({
-      low:         +low.toFixed(2),
-      high:        +high.toFixed(2),
-      average:     +average.toFixed(2),
-      median:      +median.toFixed(2),
+      low:          +low.toFixed(2),
+      high:         +high.toFixed(2),
+      average:      +average.toFixed(2),
+      median:       +median.toFixed(2),
       currency,
       condition,
-      resultCount: items.length,
-      priceCount:  n
+      resultCount:     totalFetched,
+      priceCount:      n,
+      detectedType:    rule?.productType || null,
+      filterApplied,
+      totalFetched,
+      relevantCount:   filterApplied ? relevant.length : n,
+      excludedCount:   filterApplied ? excluded.length : 0,
+      confidenceLevel: confidence.level,
+      confidenceLabel: confidence.label,
+      confidenceColor: confidence.color,
     });
   } catch (err) {
     console.error("[/api/ebay/search-prices]", err.message);
