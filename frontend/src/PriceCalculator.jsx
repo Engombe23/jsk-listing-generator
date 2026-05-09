@@ -689,14 +689,14 @@ function SmartPricingLocked() {
           <div style={{ flex: 1, height: 46, background: "#0D2040", borderRadius: 12 }} />
           <div style={{ width: 140, height: 46, background: "#135DFF", borderRadius: 12 }} />
         </div>
-        {/* Fake gauge — matches PriceGauge cx=280, cy=195, R=148 */}
-        <svg viewBox="0 0 560 210" style={{ width: "100%", display: "block", marginBottom: 8 }}>
-          <path d="M 132 195 A 148 148 0 0 1 280 47"  fill="none" stroke="#22c55e" strokeWidth={24} strokeLinecap="butt" opacity={0.7} />
-          <path d="M 280 47  A 148 148 0 0 1 362 75"  fill="none" stroke="#fbbf24" strokeWidth={24} strokeLinecap="butt" opacity={0.7} />
-          <path d="M 362 75  A 148 148 0 0 1 428 195" fill="none" stroke="#ef4444" strokeWidth={24} strokeLinecap="butt" opacity={0.7} />
-          <line x1="280" y1="195" x2="336" y2="95" stroke="#93c5fd" strokeWidth="3" strokeLinecap="round" />
-          <circle cx="280" cy="195" r="9"   fill="#0D1B36" stroke="#93c5fd" strokeWidth="2" />
-          <circle cx="280" cy="195" r="3.5" fill="#93c5fd" />
+        {/* Fake gauge — matches PriceGauge cx=200, cy=200, R=178 */}
+        <svg viewBox="0 0 400 220" style={{ width: "100%", display: "block", marginBottom: 8 }}>
+          <path d="M 22 200 A 178 178 0 0 1 200 22"   fill="none" stroke="#22c55e" strokeWidth={22} strokeLinecap="butt" opacity={0.7} />
+          <path d="M 200 22  A 178 178 0 0 1 326 74"  fill="none" stroke="#fbbf24" strokeWidth={22} strokeLinecap="butt" opacity={0.7} />
+          <path d="M 326 74  A 178 178 0 0 1 378 200" fill="none" stroke="#ef4444" strokeWidth={22} strokeLinecap="butt" opacity={0.7} />
+          <line x1="200" y1="200" x2="245" y2="61" stroke="#93c5fd" strokeWidth="3" strokeLinecap="round" />
+          <circle cx="200" cy="200" r="9"   fill="#0D1B36" stroke="#93c5fd" strokeWidth="2" />
+          <circle cx="200" cy="200" r="3.5" fill="#93c5fd" />
         </svg>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 10 }}>
           {["£12.49", "£22.40", "£26.80", "£54.99", "47"].map((v, i) => (
@@ -997,15 +997,17 @@ function getPricingVerdict(price, data) {
 // ─── Price Gauge (speedometer) ───────────────────────────────────────────────
 
 function PriceGauge({ data, price }) {
-  // Wide viewBox so outer labels never overflow — all computed positions
-  // are relative to cx/cy so nothing else needs changing.
-  const cx = 280, cy = 195;
-  const R  = 148;             // arc radius
-  const SW = 24;              // arc stroke width
-  const NL = R - SW - 10;    // needle length (just inside inner edge of arc)
+  // ── Gauge geometry ────────────────────────────────────────────────────────
+  // SVG is used ONLY for the arc visual (zones + zone labels + needle + pivot).
+  // All outer text labels (LOW / MED / AVG / HIGH) live in HTML below the SVG
+  // so they can never overflow the viewBox or collide inside the arc area.
+  const VW = 400, VH = 220;
+  const cx = 200, cy = 200;  // centre of semicircle — near bottom of viewBox
+  const R  = 178;             // arc radius
+  const SW = 22;              // arc stroke width
+  const NL = 144;             // needle length (clears inner edge of arc)
 
   const range = data.high - data.low;
-
   const safeP = (v) => range > 0
     ? Math.min(0.97, Math.max(0.03, (v - data.low) / range))
     : 0.5;
@@ -1016,42 +1018,50 @@ function PriceGauge({ data, price }) {
     ? Math.min(1.0, Math.max(0.0, (price - data.low) / range))
     : null;
 
-  // p (0→1) → SVG coordinate on the semicircular arc (clockwise, left→right)
+  // p (0→1) → SVG point on semicircle (clockwise, left→right via top)
   const pToXY = (p, r = R) => {
     const a = Math.PI * (1 + p);
     return { x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) };
   };
 
-  // SVG arc path between two positions
+  // SVG arc path from p0 to p1
   const arc = (p0, p1, r = R) => {
-    const s  = pToXY(p0, r);
-    const e  = pToXY(p1, r);
-    const lg = (p1 - p0) > 0.5 ? 1 : 0;
-    return `M ${s.x.toFixed(2)} ${s.y.toFixed(2)} A ${r} ${r} 0 ${lg} 1 ${e.x.toFixed(2)} ${e.y.toFixed(2)}`;
+    const s = pToXY(p0, r), e = pToXY(p1, r);
+    return `M ${s.x.toFixed(2)} ${s.y.toFixed(2)} A ${r} ${r} 0 ${(p1 - p0) > 0.5 ? 1 : 0} 1 ${e.x.toFixed(2)} ${e.y.toFixed(2)}`;
   };
 
-  // Needle drawn pointing straight up, then CSS-rotated to the price position
-  const needleRotation = pUser !== null ? (pUser - 0.5) * 180 : 0;
+  // p → horizontal % within arc span (accounts for arc curvature)
+  // At p=0: 0%, p=0.5: 50%, p=1: 100% — matches actual x-position on arc
+  const arcHPct = (p) => ((1 - Math.cos(p * Math.PI)) / 2) * 100;
 
+  // Margins for the HTML label row — align it to arc endpoints
+  const arcLeftPct  = ((cx - R) / VW) * 100;          // ≈ 5.5%
+  const arcRightPct = ((VW - (cx + R)) / VW) * 100;   // ≈ 5.5%
+
+  const needleRotation = pUser !== null ? (pUser - 0.5) * 180 : 0;
   const posColor =
     pUser === null ? "#4b5563" :
     pUser <= pMed  ? "#22c55e" :
     pUser <= pAvg  ? "#fbbf24" :
     "#ef4444";
 
-  const verdict = getPricingVerdict(price, data);
+  // Label collision: if MED and AVG are within 15% of horizontal span, merge them
+  const mMedPct       = arcHPct(pMed);
+  const mAvgPct       = arcHPct(pAvg);
+  const labelsCollide = Math.abs(mMedPct - mAvgPct) < 15;
 
   const midGreen  = pMed / 2;
   const midYellow = (pMed + pAvg) / 2;
   const midRed    = (pAvg + 1) / 2;
-  const showAvgLabel = Math.abs(pAvg - pMed) > 0.09;
+
+  const verdict = getPricingVerdict(price, data);
 
   return (
-    <div>
-      {/* Cap gauge width — 560-wide viewBox fits all labels without overflow */}
-      <div style={{ maxWidth: 520, margin: "0 auto" }}>
+    <div style={{ maxWidth: 500, margin: "0 auto" }}>
+
+      {/* ── SVG: arc zones + zone labels + needle + pivot ONLY ── */}
       <svg
-        viewBox="0 0 560 240"
+        viewBox={`0 0 ${VW} ${VH}`}
         style={{ width: "100%", display: "block" }}
         aria-label="Pricing gauge"
       >
@@ -1062,22 +1072,22 @@ function PriceGauge({ data, price }) {
           </filter>
         </defs>
 
-        {/* ── Depth shadow behind arc ── */}
+        {/* Depth shadow */}
         <path d={arc(0, 1)} fill="none" stroke="rgba(0,0,0,0.55)" strokeWidth={SW + 10} strokeLinecap="butt" />
-        {/* ── Background track ── */}
+        {/* Background track */}
         <path d={arc(0, 1)} fill="none" stroke="rgba(255,255,255,0.04)" strokeWidth={SW + 2} strokeLinecap="butt" />
 
-        {/* ── Coloured zone arcs ── */}
+        {/* Coloured zone arcs */}
         <path d={arc(0,    pMed)} fill="none" stroke="#22c55e" strokeWidth={SW} strokeLinecap="butt" opacity={0.9} />
         <path d={arc(pMed, pAvg)} fill="none" stroke="#fbbf24" strokeWidth={SW} strokeLinecap="butt" opacity={0.9} />
         <path d={arc(pAvg, 1   )} fill="none" stroke="#ef4444" strokeWidth={SW} strokeLinecap="butt" opacity={0.9} />
 
-        {/* ── Inner glow echo (thinner, softer overlay) ── */}
-        <path d={arc(0,    pMed)} fill="none" stroke="#4ade80" strokeWidth={SW - 16} strokeLinecap="butt" opacity={0.2} />
-        <path d={arc(pMed, pAvg)} fill="none" stroke="#fde68a" strokeWidth={SW - 16} strokeLinecap="butt" opacity={0.2} />
-        <path d={arc(pAvg, 1   )} fill="none" stroke="#fca5a5" strokeWidth={SW - 16} strokeLinecap="butt" opacity={0.2} />
+        {/* Inner glow overlay */}
+        <path d={arc(0,    pMed)} fill="none" stroke="#4ade80" strokeWidth={SW - 14} strokeLinecap="butt" opacity={0.2} />
+        <path d={arc(pMed, pAvg)} fill="none" stroke="#fde68a" strokeWidth={SW - 14} strokeLinecap="butt" opacity={0.2} />
+        <path d={arc(pAvg, 1   )} fill="none" stroke="#fca5a5" strokeWidth={SW - 14} strokeLinecap="butt" opacity={0.2} />
 
-        {/* ── Zone divider cuts ── */}
+        {/* Zone dividers */}
         {[pMed, pAvg].map((p, i) => {
           const inner = pToXY(p, R - SW / 2 - 3);
           const outer = pToXY(p, R + SW / 2 + 3);
@@ -1090,51 +1100,24 @@ function PriceGauge({ data, price }) {
           );
         })}
 
-        {/* ── Zone labels inside arc ── */}
+        {/* Zone name labels — inside arc, short text to avoid overflow */}
         {[
-          { p: midGreen,  text: "COMPETITIVE", color: "#4ade80" },
-          { p: midYellow, text: "FAIR",         color: "#fde68a" },
-          { p: midRed,    text: "OVERPRICED",   color: "#fca5a5" },
+          { p: midGreen,  text: "VALUE",   color: "#4ade80" },
+          { p: midYellow, text: "FAIR",    color: "#fde68a" },
+          { p: midRed,    text: "PRICEY",  color: "#fca5a5" },
         ].map(({ p, text, color }) => {
           const pos = pToXY(p, R);
           return (
             <text key={text}
-              x={pos.x.toFixed(1)} y={(pos.y + 4.5).toFixed(1)}
-              fill={color} fillOpacity={0.7}
-              fontSize="8" fontWeight="900" textAnchor="middle"
-              fontFamily="Arial, sans-serif" letterSpacing="0.5"
+              x={pos.x.toFixed(1)} y={(pos.y + 4).toFixed(1)}
+              fill={color} fillOpacity={0.8}
+              fontSize="9" fontWeight="900" textAnchor="middle"
+              fontFamily="Arial, sans-serif" letterSpacing="0.8"
             >{text}</text>
           );
         })}
 
-        {/* ── Outer tick marks + value labels ── */}
-        {[
-          { p: 0.0,  label: "LOW",  value: fmtGBP(data.low),     color: "#22c55e", anchor: "end"    },
-          { p: pMed, label: "MED",  value: fmtGBP(data.median),  color: "#9ca3af", anchor: "middle" },
-          ...(showAvgLabel ? [{ p: pAvg, label: "AVG", value: fmtGBP(data.average), color: "#9ca3af", anchor: "middle" }] : []),
-          { p: 1.0,  label: "HIGH", value: fmtGBP(data.high),    color: "#ef4444", anchor: "start"  },
-        ].map(({ p, label, value, color, anchor }) => {
-          const dot  = pToXY(p, R + SW / 2 + 6);
-          const ltxt = pToXY(p, R + SW / 2 + 20);
-          const vtxt = pToXY(p, R + SW / 2 + 34);
-          return (
-            <g key={label}>
-              <circle cx={dot.x.toFixed(1)} cy={dot.y.toFixed(1)} r={2.5} fill={color} opacity={0.65} />
-              <text x={ltxt.x.toFixed(1)} y={(ltxt.y + 3.5).toFixed(1)}
-                fill={color} fillOpacity={0.6}
-                fontSize="9" fontWeight="700" textAnchor={anchor}
-                fontFamily="Arial, sans-serif" letterSpacing="0.5"
-              >{label}</text>
-              <text x={vtxt.x.toFixed(1)} y={(vtxt.y + 3.5).toFixed(1)}
-                fill={color} fillOpacity={0.92}
-                fontSize="12" fontWeight="800" textAnchor={anchor}
-                fontFamily="Arial, sans-serif"
-              >{value}</text>
-            </g>
-          );
-        })}
-
-        {/* ── Needle — CSS-animated rotation around pivot ── */}
+        {/* Needle — drawn pointing up, CSS-rotated to price position */}
         <g
           filter="url(#smNeedleGlow)"
           style={{
@@ -1145,53 +1128,111 @@ function PriceGauge({ data, price }) {
               : "none"
           }}
         >
-          {/* Drop shadow */}
           <line x1={cx} y1={cy} x2={cx} y2={cy - NL}
             stroke="rgba(0,0,0,0.5)" strokeWidth={5} strokeLinecap="round"
             style={{ transform: "translate(1.5px, 2.5px)" }}
           />
-          {/* Needle body */}
           <line x1={cx} y1={cy} x2={cx} y2={cy - NL}
             stroke={posColor} strokeWidth={3} strokeLinecap="round"
           />
-          {/* Highlight streak */}
           <line x1={cx} y1={cy} x2={cx} y2={cy - NL * 0.62}
             stroke="rgba(255,255,255,0.3)" strokeWidth={1.5} strokeLinecap="round"
           />
         </g>
 
-        {/* ── Pivot ── */}
+        {/* Pivot */}
         <circle cx={cx} cy={cy} r={14} fill="#080F1E" stroke="rgba(255,255,255,0.07)" strokeWidth={1} />
         <circle cx={cx} cy={cy} r={9}  fill="#0D1B36"
           stroke={pUser !== null ? posColor : "#374151"} strokeWidth={2}
         />
         <circle cx={cx} cy={cy} r={3.5} fill={pUser !== null ? posColor : "#374151"} />
+      </svg>
 
-        {/* ── Centre readout ── */}
-        {pUser !== null ? (
-          <g>
-            <text x={cx} y={cy + 27}
-              fill={posColor} fontSize="22" fontWeight="900"
-              textAnchor="middle" fontFamily="Arial, sans-serif" letterSpacing="-0.5"
-            >{fmtGBP(price)}</text>
-            <text x={cx} y={cy + 40}
-              fill="#4b5563" fontSize="8.5" fontWeight="700"
-              textAnchor="middle" fontFamily="Arial, sans-serif" letterSpacing="1"
-            >YOUR PRICE</text>
-          </g>
+      {/* ── HTML label row — aligned to arc endpoints, no SVG text issues ── */}
+      <div style={{
+        position: "relative",
+        height: 46,
+        marginLeft:  `${arcLeftPct}%`,
+        marginRight: `${arcRightPct}%`,
+        marginTop: 4,
+      }}>
+        {/* LOW — pinned to left endpoint */}
+        <div style={{ position: "absolute", left: 0, textAlign: "left" }}>
+          <div style={{ fontSize: 9, fontWeight: 700, color: "#22c55e", letterSpacing: 0.6, opacity: 0.7, textTransform: "uppercase" }}>Low</div>
+          <div style={{ fontSize: 12, fontWeight: 800, color: "#22c55e" }}>{fmtGBP(data.low)}</div>
+        </div>
+
+        {/* MED + AVG — mid positions, with collision fallback */}
+        {labelsCollide ? (
+          <div style={{
+            position: "absolute",
+            left: `${(mMedPct + mAvgPct) / 2}%`,
+            transform: "translateX(-50%)",
+            textAlign: "center"
+          }}>
+            <div style={{ fontSize: 9, fontWeight: 700, color: "#9ca3af", letterSpacing: 0.6, opacity: 0.7, textTransform: "uppercase", whiteSpace: "nowrap" }}>Avg / Med</div>
+            <div style={{ fontSize: 11, fontWeight: 800, color: "#9ca3af", whiteSpace: "nowrap" }}>
+              {fmtGBP(data.average)} / {fmtGBP(data.median)}
+            </div>
+          </div>
         ) : (
-          <text x={cx} y={cy + 22}
-            fill="#374151" fontSize="10.5"
-            textAnchor="middle" fontFamily="Arial, sans-serif"
-          >Set a selling price</text>
+          <>
+            <div style={{
+              position: "absolute",
+              left: `${mMedPct}%`,
+              transform: "translateX(-50%)",
+              textAlign: "center"
+            }}>
+              <div style={{ fontSize: 9, fontWeight: 700, color: "#9ca3af", letterSpacing: 0.6, opacity: 0.7, textTransform: "uppercase" }}>Med</div>
+              <div style={{ fontSize: 12, fontWeight: 800, color: "#9ca3af" }}>{fmtGBP(data.median)}</div>
+            </div>
+            <div style={{
+              position: "absolute",
+              left: `${mAvgPct}%`,
+              transform: "translateX(-50%)",
+              textAlign: "center"
+            }}>
+              <div style={{ fontSize: 9, fontWeight: 700, color: "#9ca3af", letterSpacing: 0.6, opacity: 0.7, textTransform: "uppercase" }}>Avg</div>
+              <div style={{ fontSize: 12, fontWeight: 800, color: "#9ca3af" }}>{fmtGBP(data.average)}</div>
+            </div>
+          </>
         )}
 
-      </svg>
-      </div>{/* end gauge max-width wrapper */}
+        {/* HIGH — pinned to right endpoint */}
+        <div style={{ position: "absolute", right: 0, textAlign: "right" }}>
+          <div style={{ fontSize: 9, fontWeight: 700, color: "#ef4444", letterSpacing: 0.6, opacity: 0.7, textTransform: "uppercase" }}>High</div>
+          <div style={{ fontSize: 12, fontWeight: 800, color: "#ef4444" }}>{fmtGBP(data.high)}</div>
+        </div>
+      </div>
+
+      {/* ── User price — large centred HTML element, below label row ── */}
+      <div style={{ textAlign: "center", marginTop: 18, minHeight: 52 }}>
+        {pUser !== null ? (
+          <>
+            <div style={{
+              fontSize: 34, fontWeight: 900, color: posColor,
+              letterSpacing: "-0.5px", lineHeight: 1
+            }}>
+              {fmtGBP(price)}
+            </div>
+            <div style={{
+              fontSize: 10, fontWeight: 700, color: "#4b5563",
+              letterSpacing: 1.2, marginTop: 5, textTransform: "uppercase"
+            }}>
+              Your Price
+            </div>
+          </>
+        ) : (
+          <div style={{ fontSize: 12, color: "#374151", paddingTop: 14 }}>
+            Enter a selling price to see where you stand
+          </div>
+        )}
+      </div>
 
       {/* ── AI verdict ── */}
       {verdict && (
         <div style={{
+          marginTop: 18,
           padding: "14px 18px",
           background: `${verdict.color}0d`,
           border: `1px solid ${verdict.color}22`,
