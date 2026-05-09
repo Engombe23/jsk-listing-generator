@@ -689,14 +689,14 @@ function SmartPricingLocked() {
           <div style={{ flex: 1, height: 46, background: "#0D2040", borderRadius: 12 }} />
           <div style={{ width: 140, height: 46, background: "#135DFF", borderRadius: 12 }} />
         </div>
-        {/* Fake gauge */}
-        <svg viewBox="0 0 420 210" style={{ width: "100%", display: "block", marginBottom: 8 }}>
-          <path d="M 58 188 A 152 152 0 0 1 210 36" fill="none" stroke="#22c55e" strokeWidth={26} strokeLinecap="butt" opacity={0.7} />
-          <path d="M 210 36 A 152 152 0 0 1 290 72" fill="none" stroke="#fbbf24" strokeWidth={26} strokeLinecap="butt" opacity={0.7} />
-          <path d="M 290 72 A 152 152 0 0 1 362 188" fill="none" stroke="#ef4444" strokeWidth={26} strokeLinecap="butt" opacity={0.7} />
-          <line x1="210" y1="188" x2="272" y2="78" stroke="#93c5fd" strokeWidth="3" strokeLinecap="round" />
-          <circle cx="210" cy="188" r="9"  fill="#0D1B36" stroke="#93c5fd" strokeWidth="2" />
-          <circle cx="210" cy="188" r="3.5" fill="#93c5fd" />
+        {/* Fake gauge — matches PriceGauge cx=280, cy=195, R=148 */}
+        <svg viewBox="0 0 560 210" style={{ width: "100%", display: "block", marginBottom: 8 }}>
+          <path d="M 132 195 A 148 148 0 0 1 280 47"  fill="none" stroke="#22c55e" strokeWidth={24} strokeLinecap="butt" opacity={0.7} />
+          <path d="M 280 47  A 148 148 0 0 1 362 75"  fill="none" stroke="#fbbf24" strokeWidth={24} strokeLinecap="butt" opacity={0.7} />
+          <path d="M 362 75  A 148 148 0 0 1 428 195" fill="none" stroke="#ef4444" strokeWidth={24} strokeLinecap="butt" opacity={0.7} />
+          <line x1="280" y1="195" x2="336" y2="95" stroke="#93c5fd" strokeWidth="3" strokeLinecap="round" />
+          <circle cx="280" cy="195" r="9"   fill="#0D1B36" stroke="#93c5fd" strokeWidth="2" />
+          <circle cx="280" cy="195" r="3.5" fill="#93c5fd" />
         </svg>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 10 }}>
           {["£12.49", "£22.40", "£26.80", "£54.99", "47"].map((v, i) => (
@@ -997,9 +997,11 @@ function getPricingVerdict(price, data) {
 // ─── Price Gauge (speedometer) ───────────────────────────────────────────────
 
 function PriceGauge({ data, price }) {
-  const cx = 210, cy = 188;
-  const R  = 152;             // arc radius
-  const SW = 26;              // arc stroke width
+  // Wide viewBox so outer labels never overflow — all computed positions
+  // are relative to cx/cy so nothing else needs changing.
+  const cx = 280, cy = 195;
+  const R  = 148;             // arc radius
+  const SW = 24;              // arc stroke width
   const NL = R - SW - 10;    // needle length (just inside inner edge of arc)
 
   const range = data.high - data.low;
@@ -1046,11 +1048,11 @@ function PriceGauge({ data, price }) {
 
   return (
     <div>
-      {/* Cap gauge width so it doesn't stretch across a wide hero card */}
-      <div style={{ maxWidth: 480, margin: "0 auto" }}>
+      {/* Cap gauge width — 560-wide viewBox fits all labels without overflow */}
+      <div style={{ maxWidth: 520, margin: "0 auto" }}>
       <svg
-        viewBox="0 0 420 230"
-        style={{ width: "100%", display: "block", overflow: "visible" }}
+        viewBox="0 0 560 240"
+        style={{ width: "100%", display: "block" }}
         aria-label="Pricing gauge"
       >
         <defs>
