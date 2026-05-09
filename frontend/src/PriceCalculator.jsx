@@ -132,6 +132,14 @@ function PricingBand({ data, price }) {
   const avgPct = toPct(data.average);
   const close  = Math.abs(medPct - avgPct) < 12;
 
+  // Suppress any mid label that falls within EDGE% of the Low or High anchor label.
+  // This prevents text collision when market prices bunch near one end of the range.
+  const EDGE         = 14; // percent — tune if needed
+  const mergedMidPct = (medPct + avgPct) / 2;
+  const showMedLabel    = !close && medPct > EDGE && medPct < (100 - EDGE);
+  const showAvgLabel    = !close && avgPct > EDGE && avgPct < (100 - EDGE);
+  const showMergedLabel = close  && mergedMidPct > EDGE && mergedMidPct < (100 - EDGE);
+
   const hasPrice     = price > 0;
   const userPctRaw   = hasPrice ? ((price - data.low) / range) * 100 : null;
   const userPctBar   = userPctRaw !== null ? Math.min(100, Math.max(0, userPctRaw)) : null;
@@ -217,22 +225,40 @@ function PricingBand({ data, price }) {
 
         {/* Labels */}
         <div style={{ position: "relative", height: 44, marginTop: 14 }}>
+
+          {/* LOW — always shown */}
           <div style={{ position: "absolute", left: 0 }}>
             <div style={{ fontSize: 13, fontWeight: 800, color: "#7dd3fc", lineHeight: 1 }}>{fmtGBP(data.low)}</div>
             <div style={{ fontSize: 11, color: C.muted, marginTop: 3 }}>Low</div>
           </div>
-          <div style={{ position: "absolute", left: `${medPct}%`, transform: "translateX(-50%)", textAlign: "center", whiteSpace: "nowrap" }}>
-            <div style={{ fontSize: 13, fontWeight: 800, color: "#c4d4e8", lineHeight: 1 }}>
-              {close ? `${fmtGBP(data.median)} / ${fmtGBP(data.average)}` : fmtGBP(data.median)}
+
+          {/* MERGED Avg / Med */}
+          {showMergedLabel && (
+            <div style={{ position: "absolute", left: `${mergedMidPct}%`, transform: "translateX(-50%)", textAlign: "center", whiteSpace: "nowrap" }}>
+              <div style={{ fontSize: 13, fontWeight: 800, color: "#c4d4e8", lineHeight: 1 }}>
+                {fmtGBP(data.average)} / {fmtGBP(data.median)}
+              </div>
+              <div style={{ fontSize: 11, color: C.muted, marginTop: 3 }}>Avg / Med</div>
             </div>
-            <div style={{ fontSize: 11, color: C.muted, marginTop: 3 }}>{close ? "Avg / Med" : "Median"}</div>
-          </div>
-          {!close && (
+          )}
+
+          {/* MEDIAN (only when not merged and not too close to Low or High) */}
+          {showMedLabel && (
+            <div style={{ position: "absolute", left: `${medPct}%`, transform: "translateX(-50%)", textAlign: "center", whiteSpace: "nowrap" }}>
+              <div style={{ fontSize: 13, fontWeight: 800, color: "#c4d4e8", lineHeight: 1 }}>{fmtGBP(data.median)}</div>
+              <div style={{ fontSize: 11, color: C.muted, marginTop: 3 }}>Median</div>
+            </div>
+          )}
+
+          {/* AVERAGE (only when not merged and not too close to Low or High) */}
+          {showAvgLabel && (
             <div style={{ position: "absolute", left: `${avgPct}%`, transform: "translateX(-50%)", textAlign: "center", whiteSpace: "nowrap" }}>
               <div style={{ fontSize: 13, fontWeight: 800, color: "#c4d4e8", lineHeight: 1 }}>{fmtGBP(data.average)}</div>
               <div style={{ fontSize: 11, color: C.muted, marginTop: 3 }}>Average</div>
             </div>
           )}
+
+          {/* HIGH — always shown */}
           <div style={{ position: "absolute", right: 0, textAlign: "right" }}>
             <div style={{ fontSize: 13, fontWeight: 800, color: "#7dd3fc", lineHeight: 1 }}>{fmtGBP(data.high)}</div>
             <div style={{ fontSize: 11, color: C.muted, marginTop: 3 }}>High</div>
