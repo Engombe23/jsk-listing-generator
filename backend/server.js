@@ -1011,10 +1011,12 @@ app.post("/api/ebay/search-prices", async (req, res) => {
     const totalFetched = rawItems.length;
     const currency     = rawItems.find(i => i.price?.currency)?.price?.currency || "GBP";
 
-    // Enrich each item with parsed price for pipeline use
+    // Enrich each item with parsed price + URL for pipeline use
     const enriched = rawItems.map(item => ({
       title: item.title || "",
       price: (() => { const v = parseFloat(item.price?.value); return Number.isFinite(v) && v > 0 ? v : null; })(),
+      url:   item.itemWebUrl || "",
+      image: item.image?.imageUrl || null,
     }));
 
     // ── Step 4: Title filter ──────────────────────────────────────────────────
@@ -1099,6 +1101,13 @@ app.post("/api/ebay/search-prices", async (req, res) => {
         ? `No relevant ${rule.productType} ${condLabel.toLowerCase()} listings found after filtering ${totalFetched} results. Try a different search term.`
         : `No ${condLabel.toLowerCase()} listings found for this search — try a different search term.`;
 
+      const allExcluded = [
+        ...titleExcluded,
+        ...unitExcluded,
+        ...highExcluded,
+        ...lowExcluded,
+      ].map(i => ({ title: i.title, price: i.price, url: i.url, exclusionReason: i.exclusionReason }));
+
       return res.json({
         low: null, high: null, average: null, median: null,
         currency,
@@ -1119,6 +1128,8 @@ app.post("/api/ebay/search-prices", async (req, res) => {
         confidenceLabel: confidence.label,
         confidenceColor: confidence.color,
         zeroResultsMsg,
+        listings:         [],
+        excludedListings: allExcluded,
       });
     }
 
@@ -1133,6 +1144,13 @@ app.post("/api/ebay/search-prices", async (req, res) => {
       `fetched=${totalFetched} relevant=${n} excluded=${totalExcluded} ` +
       `(title:${excludedByFilter} unit:${excludedAsSetKit} hi:${excludedHighOutlier} lo:${excludedLowOutlier})`
     );
+
+    const allExcluded = [
+      ...titleExcluded,
+      ...unitExcluded,
+      ...highExcluded,
+      ...lowExcluded,
+    ].map(i => ({ title: i.title, price: i.price, url: i.url, exclusionReason: i.exclusionReason }));
 
     res.json({
       low:     +low.toFixed(2),
@@ -1156,6 +1174,8 @@ app.post("/api/ebay/search-prices", async (req, res) => {
       confidenceLevel: confidence.level,
       confidenceLabel: confidence.label,
       confidenceColor: confidence.color,
+      listings:         relevantItems.map(i => ({ title: i.title, price: i.price, url: i.url })),
+      excludedListings: allExcluded,
     });
 
   } catch (err) {
