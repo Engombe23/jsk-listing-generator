@@ -148,7 +148,24 @@ export default function App() {
     () => sessionStorage.getItem("jsk_active_page") || "listing"
   );
 
+  // Session-state key prefixes per page — used to wipe state on navigation away
+  const PAGE_SS_PREFIXES = {
+    listing:       "jsk_gen_",
+    calculator:    "jsk_calc_",
+    compatibility: "jsk_compat_",
+  };
+
   const navigateTo = (key) => {
+    if (key !== page) {
+      // Clear all session-state keys for the page we're leaving so it
+      // starts fresh the next time the user visits it.
+      const prefix = PAGE_SS_PREFIXES[page];
+      if (prefix) {
+        Object.keys(sessionStorage)
+          .filter((k) => k.startsWith(prefix))
+          .forEach((k) => sessionStorage.removeItem(k));
+      }
+    }
     sessionStorage.setItem("jsk_active_page", key);
     setPage(key);
   };
