@@ -1046,6 +1046,8 @@ function PriceGauge({ data, price }) {
 
   return (
     <div>
+      {/* Cap gauge width so it doesn't stretch across a wide hero card */}
+      <div style={{ maxWidth: 480, margin: "0 auto" }}>
       <svg
         viewBox="0 0 420 230"
         style={{ width: "100%", display: "block", overflow: "visible" }}
@@ -1183,6 +1185,7 @@ function PriceGauge({ data, price }) {
         )}
 
       </svg>
+      </div>{/* end gauge max-width wrapper */}
 
       {/* ── AI verdict ── */}
       {verdict && (
