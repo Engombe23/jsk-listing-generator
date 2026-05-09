@@ -686,7 +686,7 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
                       <div style={{ fontSize: 10, fontWeight: 700, color: C.dim, textTransform: "uppercase", letterSpacing: 0.7 }}>
                         Market Snapshot · eBay UK
-                        {smData && smData.condition !== "any" && (
+                        {smData?.condition && smData.condition !== "any" && (
                           <span style={{ marginLeft: 7, fontSize: 9, fontWeight: 800, color: "#93c5fd", background: "rgba(147,197,253,0.1)", border: "1px solid rgba(147,197,253,0.25)", borderRadius: 4, padding: "1px 6px", letterSpacing: 0.5 }}>
                             {smData.condition.toUpperCase()}
                           </span>
