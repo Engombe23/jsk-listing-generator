@@ -689,12 +689,15 @@ function SmartPricingLocked() {
           <div style={{ flex: 1, height: 46, background: "#0D2040", borderRadius: 12 }} />
           <div style={{ width: 140, height: 46, background: "#135DFF", borderRadius: 12 }} />
         </div>
-        <div style={{ height: 22, borderRadius: 11, background: "linear-gradient(to right, #4ade80, #fbbf24, #f87171)", marginBottom: 10 }} />
-        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 28 }}>
-          <span style={{ fontSize: 12, color: "#4ade80" }}>£12.49</span>
-          <span style={{ fontSize: 12, color: "#fbbf24" }}>£26.80</span>
-          <span style={{ fontSize: 12, color: "#f87171" }}>£54.99</span>
-        </div>
+        {/* Fake gauge */}
+        <svg viewBox="0 0 420 210" style={{ width: "100%", display: "block", marginBottom: 8 }}>
+          <path d="M 58 188 A 152 152 0 0 1 210 36" fill="none" stroke="#22c55e" strokeWidth={26} strokeLinecap="butt" opacity={0.7} />
+          <path d="M 210 36 A 152 152 0 0 1 290 72" fill="none" stroke="#fbbf24" strokeWidth={26} strokeLinecap="butt" opacity={0.7} />
+          <path d="M 290 72 A 152 152 0 0 1 362 188" fill="none" stroke="#ef4444" strokeWidth={26} strokeLinecap="butt" opacity={0.7} />
+          <line x1="210" y1="188" x2="272" y2="78" stroke="#93c5fd" strokeWidth="3" strokeLinecap="round" />
+          <circle cx="210" cy="188" r="9"  fill="#0D1B36" stroke="#93c5fd" strokeWidth="2" />
+          <circle cx="210" cy="188" r="3.5" fill="#93c5fd" />
+        </svg>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 10 }}>
           {["£12.49", "£22.40", "£26.80", "£54.99", "47"].map((v, i) => (
             <div key={i} style={{ background: "#081322", borderRadius: 14, padding: "14px 10px", textAlign: "center" }}>
@@ -802,25 +805,6 @@ function SmartPricing({ sellingPrice, isPro }) {
       setSmLoading(false);
     }
   };
-
-  // Position of user's price on the LOW→HIGH track (0–100)
-  const meterPct = smData && smData.low != null && smData.high > smData.low && price > 0
-    ? Math.min(100, Math.max(0, ((price - smData.low) / (smData.high - smData.low)) * 100))
-    : null;
-
-  const posColor =
-    meterPct === null       ? "#9ca3af" :
-    price <= smData.median  ? "#4ade80" :
-    price <= smData.average ? "#fbbf24" :
-    "#f87171";
-
-  const posLabel =
-    meterPct === null       ? null :
-    price < smData.low      ? "Below market low" :
-    price > smData.high     ? "Above market high" :
-    price <= smData.median  ? "✓ Competitive — at or below median" :
-    price <= smData.average ? "↑ Above median — still reasonable" :
-    "⚠ Above average — consider lowering";
 
   if (!isPro) return <SmartPricingLocked />;
 
@@ -942,16 +926,10 @@ function SmartPricing({ sellingPrice, isPro }) {
         </div>
       )}
 
-      {/* ── Results: meter + stat cards ── */}
+      {/* ── Results: gauge + stat cards ── */}
       {!smLoading && smData && smData.priceCount > 0 && (
-        <div style={{ display: "grid", gap: 24, animation: "smFadeUp 0.4s ease" }}>
-          <HeroPriceMeter
-            data={smData}
-            price={price}
-            meterPct={meterPct}
-            posColor={posColor}
-            posLabel={posLabel}
-          />
+        <div style={{ display: "grid", gap: 20, animation: "smFadeUp 0.4s ease" }}>
+          <PriceGauge data={smData} price={price} />
           <MarketStatCards data={smData} />
           <div style={{ fontSize: 11, color: "#374151", textAlign: "center" }}>
             Based on first-page active eBay UK listings only.
@@ -985,155 +963,250 @@ function SmartPricing({ sellingPrice, isPro }) {
   );
 }
 
-// ─── Hero Price Meter ─────────────────────────────────────────────────────────
+// ─── AI pricing verdict ───────────────────────────────────────────────────────
 
-function HeroPriceMeter({ data, price, meterPct, posColor, posLabel }) {
-  const hasPrice = price > 0;
-  const clampedPct = meterPct != null ? Math.min(92, Math.max(8, meterPct)) : null;
+function getPricingVerdict(price, data) {
+  if (!price || price <= 0 || !data) return null;
+  const { low, high, median, average } = data;
+  const range = high - low;
+  if (range <= 0) return null;
 
-  const range      = data.high - data.low;
-  const medianPct  = range > 0 ? Math.min(96, Math.max(4, ((data.median  - data.low) / range) * 100)) : 50;
-  const averagePct = range > 0 ? Math.min(96, Math.max(4, ((data.average - data.low) / range) * 100)) : 50;
+  const p    = (price - low)    / range;
+  const pMed = (median  - low)  / range;
+  const pAvg = (average - low)  / range;
+
+  if (price < low * 0.9)
+    return { text: "Your price is well below the cheapest active listing. There may be room to increase your margin without impacting conversion.", color: "#93c5fd", icon: "💡" };
+  if (price < low)
+    return { text: "Your price undercuts the current market low. You will almost certainly convert, but consider testing a slightly higher price point.", color: "#93c5fd", icon: "💡" };
+  if (p <= pMed * 0.55)
+    return { text: "Your price is highly competitive and well below most active sellers. Excellent conversion potential at this level.", color: "#4ade80", icon: "✦" };
+  if (p <= pMed)
+    return { text: "Your price is competitive and sits below the market median. A strong position that balances conversion rate with healthy margin.", color: "#4ade80", icon: "✦" };
+  if (p <= (pMed + pAvg) / 2)
+    return { text: "Your price is close to the market median — a balanced position. A slight reduction could sharpen your competitive edge.", color: "#a3e635", icon: "◈" };
+  if (p <= pAvg)
+    return { text: "Your price is aligned with the market average and in line with most active sellers at this price point.", color: "#fbbf24", icon: "◈" };
+  if (p <= pAvg + (1 - pAvg) * 0.35)
+    return { text: "Your price is above the market average. Conversion may be impacted. A modest reduction toward the median is worth testing.", color: "#fb923c", icon: "⚑" };
+  if (price <= high)
+    return { text: "Your price is among the highest active listings. Only strong brand presence or unique listing quality will support conversion here.", color: "#f87171", icon: "⚑" };
+  return { text: "Your price exceeds all active listings in this market. A significant reduction is recommended to remain competitive.", color: "#f87171", icon: "⚑" };
+}
+
+// ─── Price Gauge (speedometer) ───────────────────────────────────────────────
+
+function PriceGauge({ data, price }) {
+  const cx = 210, cy = 188;
+  const R  = 152;             // arc radius
+  const SW = 26;              // arc stroke width
+  const NL = R - SW - 10;    // needle length (just inside inner edge of arc)
+
+  const range = data.high - data.low;
+
+  const safeP = (v) => range > 0
+    ? Math.min(0.97, Math.max(0.03, (v - data.low) / range))
+    : 0.5;
+
+  const pMed  = safeP(data.median);
+  const pAvg  = safeP(data.average);
+  const pUser = (price > 0 && range > 0)
+    ? Math.min(1.0, Math.max(0.0, (price - data.low) / range))
+    : null;
+
+  // p (0→1) → SVG coordinate on the semicircular arc (clockwise, left→right)
+  const pToXY = (p, r = R) => {
+    const a = Math.PI * (1 + p);
+    return { x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) };
+  };
+
+  // SVG arc path between two positions
+  const arc = (p0, p1, r = R) => {
+    const s  = pToXY(p0, r);
+    const e  = pToXY(p1, r);
+    const lg = (p1 - p0) > 0.5 ? 1 : 0;
+    return `M ${s.x.toFixed(2)} ${s.y.toFixed(2)} A ${r} ${r} 0 ${lg} 1 ${e.x.toFixed(2)} ${e.y.toFixed(2)}`;
+  };
+
+  // Needle drawn pointing straight up, then CSS-rotated to the price position
+  const needleRotation = pUser !== null ? (pUser - 0.5) * 180 : 0;
+
+  const posColor =
+    pUser === null ? "#4b5563" :
+    pUser <= pMed  ? "#22c55e" :
+    pUser <= pAvg  ? "#fbbf24" :
+    "#ef4444";
+
+  const verdict = getPricingVerdict(price, data);
+
+  const midGreen  = pMed / 2;
+  const midYellow = (pMed + pAvg) / 2;
+  const midRed    = (pAvg + 1) / 2;
+  const showAvgLabel = Math.abs(pAvg - pMed) > 0.09;
 
   return (
     <div>
+      <svg
+        viewBox="0 0 420 230"
+        style={{ width: "100%", display: "block", overflow: "visible" }}
+        aria-label="Pricing gauge"
+      >
+        <defs>
+          <filter id="smNeedleGlow" x="-150%" y="-150%" width="400%" height="400%">
+            <feGaussianBlur stdDeviation="3" result="blur"/>
+            <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+        </defs>
 
-      {/* ── Your price pill (above track) ── */}
-      <div style={{ position: "relative", height: 50, marginBottom: 4 }}>
-        {hasPrice && clampedPct !== null ? (
-          <div style={{
-            position: "absolute",
-            left: `${clampedPct}%`,
-            transform: "translateX(-50%)",
-            bottom: 0,
-            display: "flex", flexDirection: "column", alignItems: "center", gap: 3,
-            animation: "smFadeUp 0.35s ease",
-            transition: "left 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)"
-          }}>
-            <div style={{
-              background: posColor,
-              color: posColor === "#4ade80" ? "#052e16" : posColor === "#fbbf24" ? "#451a03" : "#fff",
-              fontSize: 13, fontWeight: 800,
-              borderRadius: 20, padding: "5px 13px",
-              boxShadow: `0 0 16px ${posColor}55`,
-              whiteSpace: "nowrap", lineHeight: 1
-            }}>
-              Your price: {fmtGBP(price)}
-            </div>
-            <div style={{ width: 2, height: 12, background: posColor, opacity: 0.6 }} />
-          </div>
+        {/* ── Depth shadow behind arc ── */}
+        <path d={arc(0, 1)} fill="none" stroke="rgba(0,0,0,0.55)" strokeWidth={SW + 10} strokeLinecap="butt" />
+        {/* ── Background track ── */}
+        <path d={arc(0, 1)} fill="none" stroke="rgba(255,255,255,0.04)" strokeWidth={SW + 2} strokeLinecap="butt" />
+
+        {/* ── Coloured zone arcs ── */}
+        <path d={arc(0,    pMed)} fill="none" stroke="#22c55e" strokeWidth={SW} strokeLinecap="butt" opacity={0.9} />
+        <path d={arc(pMed, pAvg)} fill="none" stroke="#fbbf24" strokeWidth={SW} strokeLinecap="butt" opacity={0.9} />
+        <path d={arc(pAvg, 1   )} fill="none" stroke="#ef4444" strokeWidth={SW} strokeLinecap="butt" opacity={0.9} />
+
+        {/* ── Inner glow echo (thinner, softer overlay) ── */}
+        <path d={arc(0,    pMed)} fill="none" stroke="#4ade80" strokeWidth={SW - 16} strokeLinecap="butt" opacity={0.2} />
+        <path d={arc(pMed, pAvg)} fill="none" stroke="#fde68a" strokeWidth={SW - 16} strokeLinecap="butt" opacity={0.2} />
+        <path d={arc(pAvg, 1   )} fill="none" stroke="#fca5a5" strokeWidth={SW - 16} strokeLinecap="butt" opacity={0.2} />
+
+        {/* ── Zone divider cuts ── */}
+        {[pMed, pAvg].map((p, i) => {
+          const inner = pToXY(p, R - SW / 2 - 3);
+          const outer = pToXY(p, R + SW / 2 + 3);
+          return (
+            <line key={i}
+              x1={inner.x.toFixed(1)} y1={inner.y.toFixed(1)}
+              x2={outer.x.toFixed(1)} y2={outer.y.toFixed(1)}
+              stroke="#080F1E" strokeWidth={3}
+            />
+          );
+        })}
+
+        {/* ── Zone labels inside arc ── */}
+        {[
+          { p: midGreen,  text: "COMPETITIVE", color: "#4ade80" },
+          { p: midYellow, text: "FAIR",         color: "#fde68a" },
+          { p: midRed,    text: "OVERPRICED",   color: "#fca5a5" },
+        ].map(({ p, text, color }) => {
+          const pos = pToXY(p, R);
+          return (
+            <text key={text}
+              x={pos.x.toFixed(1)} y={(pos.y + 4.5).toFixed(1)}
+              fill={color} fillOpacity={0.7}
+              fontSize="8" fontWeight="900" textAnchor="middle"
+              fontFamily="Arial, sans-serif" letterSpacing="0.5"
+            >{text}</text>
+          );
+        })}
+
+        {/* ── Outer tick marks + value labels ── */}
+        {[
+          { p: 0.0,  label: "LOW",  value: fmtGBP(data.low),     color: "#22c55e", anchor: "end"    },
+          { p: pMed, label: "MED",  value: fmtGBP(data.median),  color: "#9ca3af", anchor: "middle" },
+          ...(showAvgLabel ? [{ p: pAvg, label: "AVG", value: fmtGBP(data.average), color: "#9ca3af", anchor: "middle" }] : []),
+          { p: 1.0,  label: "HIGH", value: fmtGBP(data.high),    color: "#ef4444", anchor: "start"  },
+        ].map(({ p, label, value, color, anchor }) => {
+          const dot  = pToXY(p, R + SW / 2 + 6);
+          const ltxt = pToXY(p, R + SW / 2 + 20);
+          const vtxt = pToXY(p, R + SW / 2 + 34);
+          return (
+            <g key={label}>
+              <circle cx={dot.x.toFixed(1)} cy={dot.y.toFixed(1)} r={2.5} fill={color} opacity={0.65} />
+              <text x={ltxt.x.toFixed(1)} y={(ltxt.y + 3.5).toFixed(1)}
+                fill={color} fillOpacity={0.6}
+                fontSize="9" fontWeight="700" textAnchor={anchor}
+                fontFamily="Arial, sans-serif" letterSpacing="0.5"
+              >{label}</text>
+              <text x={vtxt.x.toFixed(1)} y={(vtxt.y + 3.5).toFixed(1)}
+                fill={color} fillOpacity={0.92}
+                fontSize="12" fontWeight="800" textAnchor={anchor}
+                fontFamily="Arial, sans-serif"
+              >{value}</text>
+            </g>
+          );
+        })}
+
+        {/* ── Needle — CSS-animated rotation around pivot ── */}
+        <g
+          filter="url(#smNeedleGlow)"
+          style={{
+            transform: `rotate(${needleRotation}deg)`,
+            transformOrigin: `${cx}px ${cy}px`,
+            transition: pUser !== null
+              ? "transform 0.75s cubic-bezier(0.34, 1.56, 0.64, 1)"
+              : "none"
+          }}
+        >
+          {/* Drop shadow */}
+          <line x1={cx} y1={cy} x2={cx} y2={cy - NL}
+            stroke="rgba(0,0,0,0.5)" strokeWidth={5} strokeLinecap="round"
+            style={{ transform: "translate(1.5px, 2.5px)" }}
+          />
+          {/* Needle body */}
+          <line x1={cx} y1={cy} x2={cx} y2={cy - NL}
+            stroke={posColor} strokeWidth={3} strokeLinecap="round"
+          />
+          {/* Highlight streak */}
+          <line x1={cx} y1={cy} x2={cx} y2={cy - NL * 0.62}
+            stroke="rgba(255,255,255,0.3)" strokeWidth={1.5} strokeLinecap="round"
+          />
+        </g>
+
+        {/* ── Pivot ── */}
+        <circle cx={cx} cy={cy} r={14} fill="#080F1E" stroke="rgba(255,255,255,0.07)" strokeWidth={1} />
+        <circle cx={cx} cy={cy} r={9}  fill="#0D1B36"
+          stroke={pUser !== null ? posColor : "#374151"} strokeWidth={2}
+        />
+        <circle cx={cx} cy={cy} r={3.5} fill={pUser !== null ? posColor : "#374151"} />
+
+        {/* ── Centre readout ── */}
+        {pUser !== null ? (
+          <g>
+            <text x={cx} y={cy + 27}
+              fill={posColor} fontSize="22" fontWeight="900"
+              textAnchor="middle" fontFamily="Arial, sans-serif" letterSpacing="-0.5"
+            >{fmtGBP(price)}</text>
+            <text x={cx} y={cy + 40}
+              fill="#4b5563" fontSize="8.5" fontWeight="700"
+              textAnchor="middle" fontFamily="Arial, sans-serif" letterSpacing="1"
+            >YOUR PRICE</text>
+          </g>
         ) : (
-          <div style={{
-            height: "100%", display: "flex", alignItems: "flex-end",
-            justifyContent: "center", paddingBottom: 6
-          }}>
-            <span style={{ fontSize: 12, color: "#374151" }}>
-              Enter a selling price in the calculator below to see your position
-            </span>
-          </div>
+          <text x={cx} y={cy + 22}
+            fill="#374151" fontSize="10.5"
+            textAnchor="middle" fontFamily="Arial, sans-serif"
+          >Set a selling price</text>
         )}
-      </div>
 
-      {/* ── Gradient track ── */}
-      <div style={{ position: "relative", height: 22 }}>
+      </svg>
+
+      {/* ── AI verdict ── */}
+      {verdict && (
         <div style={{
-          position: "absolute", inset: 0, borderRadius: 11,
-          background: "linear-gradient(to right, #22c55e 0%, #86efac 18%, #fbbf24 52%, #fb923c 72%, #ef4444 100%)",
-          boxShadow: "0 2px 16px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.1)"
-        }} />
-
-        {/* Median line (solid white) */}
-        <div title={`Median: ${fmtGBP(data.median)}`} style={{
-          position: "absolute",
-          left: `${medianPct}%`,
-          top: -6, bottom: -6, width: 2,
-          background: "rgba(255,255,255,0.75)", borderRadius: 1
-        }} />
-
-        {/* Average line (dashed) */}
-        <div title={`Average: ${fmtGBP(data.average)}`} style={{
-          position: "absolute",
-          left: `${averagePct}%`,
-          top: -6, bottom: -6, width: 2,
-          background: "repeating-linear-gradient(to bottom, rgba(255,255,255,0.55) 0px, rgba(255,255,255,0.55) 4px, transparent 4px, transparent 8px)",
-          borderRadius: 1
-        }} />
-
-        {/* User price bar on track */}
-        {hasPrice && clampedPct !== null && (
-          <div style={{
-            position: "absolute",
-            left: `${clampedPct}%`,
-            top: -4, bottom: -4, width: 4,
-            background: posColor,
-            borderRadius: 2,
-            boxShadow: `0 0 12px ${posColor}bb`,
-            transform: "translateX(-50%)",
-            transition: "left 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)"
-          }} />
-        )}
-      </div>
-
-      {/* ── Labels below track ── */}
-      <div style={{ position: "relative", height: 42, marginTop: 8 }}>
-
-        <div style={{ position: "absolute", left: 0 }}>
-          <div style={{ fontSize: 9, fontWeight: 700, color: "#22c55e", letterSpacing: 0.6, textTransform: "uppercase" }}>Low</div>
-          <div style={{ fontSize: 13, fontWeight: 800, color: "#22c55e" }}>{fmtGBP(data.low)}</div>
-        </div>
-
-        <div style={{ position: "absolute", left: `${medianPct}%`, transform: "translateX(-50%)", textAlign: "center" }}>
-          <div style={{ fontSize: 9, fontWeight: 700, color: "#9ca3af", letterSpacing: 0.6, textTransform: "uppercase" }}>Median</div>
-          <div style={{ fontSize: 13, fontWeight: 800, color: "#d1d5db" }}>{fmtGBP(data.median)}</div>
-        </div>
-
-        {Math.abs(averagePct - medianPct) > 9 && (
-          <div style={{ position: "absolute", left: `${averagePct}%`, transform: "translateX(-50%)", textAlign: "center" }}>
-            <div style={{ fontSize: 9, fontWeight: 700, color: "#9ca3af", letterSpacing: 0.6, textTransform: "uppercase" }}>Avg</div>
-            <div style={{ fontSize: 13, fontWeight: 800, color: "#d1d5db" }}>{fmtGBP(data.average)}</div>
-          </div>
-        )}
-
-        <div style={{ position: "absolute", right: 0, textAlign: "right" }}>
-          <div style={{ fontSize: 9, fontWeight: 700, color: "#ef4444", letterSpacing: 0.6, textTransform: "uppercase" }}>High</div>
-          <div style={{ fontSize: 13, fontWeight: 800, color: "#ef4444" }}>{fmtGBP(data.high)}</div>
-        </div>
-      </div>
-
-      {/* ── Verdict banner ── */}
-      {hasPrice && posLabel && (
-        <div style={{
-          marginTop: 12, textAlign: "center",
-          padding: "11px 18px",
-          background: `${posColor}12`,
-          border: `1px solid ${posColor}28`,
-          borderRadius: 12,
-          fontSize: 14, fontWeight: 700, color: posColor
+          padding: "14px 18px",
+          background: `${verdict.color}0d`,
+          border: `1px solid ${verdict.color}22`,
+          borderRadius: 14,
+          display: "flex", alignItems: "flex-start", gap: 12
         }}>
-          {posLabel}
+          <span style={{ fontSize: 17, flexShrink: 0, marginTop: 1 }}>{verdict.icon}</span>
+          <div>
+            <div style={{
+              fontSize: 10, fontWeight: 700, color: verdict.color,
+              letterSpacing: 0.5, marginBottom: 4, textTransform: "uppercase"
+            }}>
+              Pricing Intelligence
+            </div>
+            <div style={{ fontSize: 13, color: "#cbd5e1", lineHeight: 1.6 }}>
+              {verdict.text}
+            </div>
+          </div>
         </div>
       )}
-
-      {/* ── Reference legend ── */}
-      <div style={{
-        display: "flex", gap: 20, justifyContent: "center", flexWrap: "wrap",
-        marginTop: 14, paddingTop: 12, borderTop: "1px solid rgba(255,255,255,0.05)"
-      }}>
-        {[
-          { color: "rgba(255,255,255,0.75)", label: `Median ${fmtGBP(data.median)}`,  solid: true  },
-          { color: "rgba(255,255,255,0.55)", label: `Average ${fmtGBP(data.average)}`, solid: false },
-        ].map(({ color, label, solid }) => (
-          <div key={label} style={{ display: "flex", alignItems: "center", gap: 7 }}>
-            <div style={{
-              width: 2, height: 14, borderRadius: 1,
-              background: solid ? color : "transparent",
-              borderLeft: solid ? "none" : `2px dashed ${color}`
-            }} />
-            <span style={{ fontSize: 11, color: "#4b5563" }}>{label}</span>
-          </div>
-        ))}
-      </div>
-
     </div>
   );
 }
