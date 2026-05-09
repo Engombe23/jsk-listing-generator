@@ -15,27 +15,27 @@ const fmtGBP = (v) => (v != null && !isNaN(v)) ? `£${Number(v).toFixed(2)}` : "
   if (typeof document === "undefined" || document.getElementById("__pc2-kf")) return;
   const s = document.createElement("style"); s.id = "__pc2-kf";
   s.textContent = `
-    @keyframes pcPulse { 0%,100%{opacity:1;box-shadow:0 0 6px #4ade80} 50%{opacity:.3;box-shadow:0 0 14px #4ade80} }
-    @keyframes pcIn    { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:translateY(0)} }
+    @keyframes pcPulse  { 0%,100%{opacity:1;box-shadow:0 0 6px #4ade80} 50%{opacity:.3;box-shadow:0 0 14px #4ade80} }
+    @keyframes pcGlow   { 0%,100%{box-shadow:0 0 8px #00e5ff,0 0 20px #00e5ff60} 50%{box-shadow:0 0 14px #00e5ff,0 0 30px #00e5ff80} }
+    @keyframes pcIn     { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:translateY(0)} }
   `;
   document.head.appendChild(s);
 })();
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 const C = {
-  bg0: "#080f1c",   // page
-  bg1: "#0b1929",   // outer card
-  bg2: "#0d1f35",   // left column
-  bg3: "#060d1a",   // inner cards
-  border: "1px solid rgba(255,255,255,0.07)",
+  bg0: "#080f1c",
+  bg1: "#0b1929",
+  bg2: "#0d1f35",
+  bg3: "#060d1a",
+  border:     "1px solid rgba(255,255,255,0.07)",
   borderBlue: "1px solid rgba(19,93,255,0.22)",
   blue: "#135DFF",
   text: "#e2e8f0",
   muted: "#6b7280",
-  dim: "#374151",
+  dim:   "#374151",
 };
 
-// Compact input
 const CI = {
   ...INPUT_STYLE,
   padding: "7px 10px",
@@ -45,7 +45,7 @@ const CI = {
   border: "1px solid rgba(255,255,255,0.09)",
 };
 
-// ─── Market position (all blue palette — no green/yellow/red) ────────────────
+// ─── Market position (all blue palette) ──────────────────────────────────────
 function getPos(price, data) {
   if (!price || price <= 0 || !data) return null;
   const range = data.high - data.low;
@@ -60,20 +60,20 @@ function getPos(price, data) {
   return                         { label: "Above Market",  color: "#eff6ff" };
 }
 
-// ─── Pricing verdict (short) ──────────────────────────────────────────────────
+// ─── Pricing verdict ──────────────────────────────────────────────────────────
 function getVerdict(price, data) {
   if (!price || price <= 0 || !data) return null;
   const { low, high, median, average } = data;
   const range = high - low; if (range <= 0) return null;
   const p = (price - low) / range, pm = (median - low) / range, pa = (average - low) / range;
-  if (price < low * 0.9)       return "Well below the market low — room to increase margin.";
-  if (price < low)             return "Undercuts the market low — near-certain conversion.";
-  if (p <= pm * 0.55)          return "Highly competitive — well below most active sellers.";
-  if (p <= pm)                 return "Below the median — strong conversion position.";
-  if (p <= (pm + pa) / 2)     return "Near the median — a slight reduction could sharpen your edge.";
-  if (p <= pa)                 return "Aligned with the average — in line with most sellers.";
-  if (p <= pa + (1 - pa) * 0.35) return "Above average — conversion may be impacted.";
-  if (price <= high)           return "Among the highest listings — only strong branding will convert.";
+  if (price < low * 0.9)           return "Well below the market low — strong room to increase margin.";
+  if (price < low)                 return "Undercuts the market low — near-certain conversion.";
+  if (p <= pm * 0.55)              return "Highly competitive — well below most active sellers.";
+  if (p <= pm)                     return "Below the median — strong conversion position.";
+  if (p <= (pm + pa) / 2)         return "Near the median — a slight reduction could sharpen your edge.";
+  if (p <= pa)                     return "Aligned with the average — in line with most sellers.";
+  if (p <= pa + (1 - pa) * 0.35)  return "Above average — conversion may be impacted.";
+  if (price <= high)               return "Among the highest listings — strong branding needed to convert.";
   return "Exceeds all active listings — significant reduction recommended.";
 }
 
@@ -91,7 +91,6 @@ function Row({ label, children, last }) {
   );
 }
 
-// ─── Section label ────────────────────────────────────────────────────────────
 function SL({ children, mt }) {
   return (
     <div style={{ fontSize: 10, fontWeight: 700, color: C.dim, textTransform: "uppercase", letterSpacing: 0.7, paddingTop: mt ?? 10, paddingBottom: 4 }}>
@@ -100,7 +99,6 @@ function SL({ children, mt }) {
   );
 }
 
-// ─── Horizontal divider ───────────────────────────────────────────────────────
 const HD = () => <div style={{ height: 1, background: "rgba(255,255,255,0.06)", margin: "10px 0" }} />;
 
 // ─── Result stat box ──────────────────────────────────────────────────────────
@@ -128,57 +126,224 @@ function BR({ label, value, color, strong }) {
   );
 }
 
-// ─── Pricing band (integrated, compact) ──────────────────────────────────────
+// ─── Pricing Band ─────────────────────────────────────────────────────────────
+// A prominent, self-contained market position visual.
 function PricingBand({ data, price }) {
   if (!data) return null;
-  const range = data.high - data.low; if (range <= 0) return null;
+  const range = data.high - data.low;
+  if (range <= 0) return null;
+
   const toPct = (v) => Math.min(100, Math.max(0, ((v - data.low) / range) * 100));
-  const medPct = toPct(data.median), avgPct = toPct(data.average);
-  const pos = price > 0 ? getPos(price, data) : null;
-  const userPct = price > 0 ? Math.min(100, Math.max(0, toPct(price))) : null;
-  const close = Math.abs(medPct - avgPct) < 8;
+  const medPct = toPct(data.median);
+  const avgPct = toPct(data.average);
+  const close  = Math.abs(medPct - avgPct) < 12;
+
+  const hasPrice      = price > 0;
+  // raw percentage (can be <0 or >100 for out-of-range prices)
+  const userPctRaw    = hasPrice ? ((price - data.low) / range) * 100 : null;
+  // clamped position on bar (0–100)
+  const userPctBar    = userPctRaw !== null ? Math.min(100, Math.max(0, userPctRaw)) : null;
+  // label position clamped so it doesn't clip off edge
+  const userPctLabel  = userPctRaw !== null ? Math.min(93, Math.max(7, userPctRaw))  : null;
+
+  const pos     = hasPrice ? getPos(price, data)     : null;
+  const verdict = hasPrice ? getVerdict(price, data) : null;
+
+  // Bright cyan marker — stands out against every blue gradient shade
+  const MARKER = "#00e5ff";
 
   return (
-    <div>
-      {/* Bar + pointer */}
-      <div style={{ position: "relative", paddingTop: userPct !== null ? 26 : 4 }}>
-        {userPct !== null && (
-          <div style={{ position: "absolute", left: `${userPct}%`, top: 0, transform: "translateX(-50%)", textAlign: "center", pointerEvents: "none" }}>
-            <div style={{ fontSize: 12, fontWeight: 800, color: pos?.color || "#93c5fd", whiteSpace: "nowrap" }}>▲ {fmtGBP(price)}</div>
-          </div>
-        )}
-        {/* Bar */}
-        <div style={{ height: 14, borderRadius: 7, background: "linear-gradient(90deg,#0ea5e9 0%,#135DFF 40%,#4338ca 100%)", position: "relative" }}>
-          <div style={{ position: "absolute", inset: 0, borderRadius: 7, background: "linear-gradient(180deg,rgba(255,255,255,0.15) 0%,transparent 55%)" }} />
-          {/* Ticks */}
-          <div style={{ position: "absolute", left: `${medPct}%`, top: 0, bottom: 0, width: 2, background: "rgba(255,255,255,0.55)", transform: "translateX(-50%)" }} />
-          {!close && <div style={{ position: "absolute", left: `${avgPct}%`, top: 0, bottom: 0, width: 2, background: "rgba(255,255,255,0.35)", transform: "translateX(-50%)" }} />}
-          {userPct !== null && (
-            <div style={{ position: "absolute", left: `${userPct}%`, top: -2, bottom: -2, width: 3, background: pos?.color || "#93c5fd", transform: "translateX(-50%)", borderRadius: 2, boxShadow: `0 0 8px ${pos?.color || "#93c5fd"}` }} />
-          )}
+    <div style={{
+      background: "#030b17",
+      border: "1px solid rgba(19,93,255,0.45)",
+      borderRadius: 14,
+      padding: "18px 20px 16px",
+      boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04), 0 4px 24px rgba(0,0,0,0.4)",
+    }}>
+
+      {/* ── Header row: position badge + price label ── */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: C.dim, textTransform: "uppercase", letterSpacing: 0.8 }}>
+          Market Pricing Band
         </div>
-        {/* Labels */}
-        <div style={{ position: "relative", height: 32, marginTop: 4 }}>
-          <div style={{ position: "absolute", left: 0 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: "#9ca3af" }}>{fmtGBP(data.low)}</div>
-            <div style={{ fontSize: 9, color: C.dim }}>Low</div>
+        {pos ? (
+          <div style={{
+            display: "inline-flex", alignItems: "center", gap: 7,
+            background: `${pos.color}15`,
+            border: `1px solid ${pos.color}45`,
+            borderRadius: 20, padding: "5px 14px",
+          }}>
+            <span style={{
+              width: 8, height: 8, borderRadius: "50%",
+              background: pos.color, display: "inline-block",
+              boxShadow: `0 0 8px ${pos.color}`,
+            }} />
+            <span style={{ fontSize: 13, fontWeight: 800, color: pos.color }}>{pos.label}</span>
           </div>
-          <div style={{ position: "absolute", left: `${medPct}%`, transform: "translateX(-50%)", textAlign: "center", whiteSpace: "nowrap" }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: "#c4cdd8" }}>{fmtGBP(data.median)}</div>
-            <div style={{ fontSize: 9, color: C.dim }}>Med</div>
-          </div>
-          {!close && (
-            <div style={{ position: "absolute", left: `${avgPct}%`, transform: "translateX(-50%)", textAlign: "center", whiteSpace: "nowrap" }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "#c4cdd8" }}>{fmtGBP(data.average)}</div>
-              <div style={{ fontSize: 9, color: C.dim }}>Avg</div>
+        ) : (
+          <div style={{ fontSize: 12, color: C.dim, fontStyle: "italic" }}>Enter a price to see position</div>
+        )}
+      </div>
+
+      {/* ── Bar area ── */}
+      <div style={{ position: "relative" }}>
+
+        {/* Floating label above bar (48px tall space) */}
+        <div style={{ position: "relative", height: 48 }}>
+          {userPctLabel !== null && (
+            <div style={{
+              position: "absolute",
+              left: `${userPctLabel}%`,
+              bottom: 0,
+              transform: "translateX(-50%)",
+              display: "flex", flexDirection: "column", alignItems: "center",
+              pointerEvents: "none",
+            }}>
+              {/* Price pill */}
+              <div style={{
+                background: MARKER,
+                color: "#001520",
+                fontSize: 14, fontWeight: 900,
+                padding: "4px 12px", borderRadius: 20,
+                whiteSpace: "nowrap",
+                boxShadow: `0 0 16px ${MARKER}99, 0 2px 8px rgba(0,0,0,0.5)`,
+                letterSpacing: -0.2,
+              }}>
+                {fmtGBP(price)}
+              </div>
+              {/* Stem down to bar */}
+              <div style={{
+                width: 2, height: 14,
+                background: `linear-gradient(to bottom, ${MARKER}cc, transparent)`,
+              }} />
             </div>
           )}
+        </div>
+
+        {/* The bar */}
+        <div style={{
+          height: 24,
+          borderRadius: 12,
+          background: "linear-gradient(90deg, #0c2d4a 0%, #0369a1 22%, #0ea5e9 42%, #2563eb 62%, #4338ca 82%, #312e81 100%)",
+          position: "relative",
+          boxShadow: "inset 0 2px 4px rgba(0,0,0,0.4)",
+        }}>
+          {/* Inner highlight */}
+          <div style={{
+            position: "absolute", top: 0, left: 0, right: 0, height: "50%",
+            borderRadius: "12px 12px 0 0",
+            background: "linear-gradient(180deg, rgba(255,255,255,0.2) 0%, transparent 100%)",
+            pointerEvents: "none",
+          }} />
+
+          {/* Median tick — taller, overflows bar */}
+          <div style={{
+            position: "absolute", left: `${medPct}%`,
+            top: -5, bottom: -5,
+            width: 2,
+            background: "rgba(255,255,255,0.75)",
+            transform: "translateX(-50%)",
+            borderRadius: 1,
+          }} />
+
+          {/* Average tick */}
+          {!close && (
+            <div style={{
+              position: "absolute", left: `${avgPct}%`,
+              top: -5, bottom: -5,
+              width: 2,
+              background: "rgba(255,255,255,0.45)",
+              transform: "translateX(-50%)",
+              borderRadius: 1,
+            }} />
+          )}
+
+          {/* User price marker */}
+          {userPctBar !== null && (
+            <>
+              {/* Vertical line — overflows bar top and bottom */}
+              <div style={{
+                position: "absolute", left: `${userPctBar}%`,
+                top: -8, bottom: -8,
+                width: 3,
+                background: MARKER,
+                transform: "translateX(-50%)",
+                borderRadius: 2,
+                boxShadow: `0 0 10px ${MARKER}, 0 0 22px ${MARKER}70`,
+                animation: "pcGlow 2.2s ease-in-out infinite",
+              }} />
+              {/* Circle cap below bar */}
+              <div style={{
+                position: "absolute",
+                left: `${userPctBar}%`,
+                bottom: -16,
+                transform: "translateX(-50%)",
+                width: 10, height: 10,
+                borderRadius: "50%",
+                background: MARKER,
+                boxShadow: `0 0 10px ${MARKER}, 0 0 20px ${MARKER}80`,
+              }} />
+            </>
+          )}
+        </div>
+
+        {/* Labels below bar */}
+        <div style={{ position: "relative", height: 44, marginTop: 14 }}>
+
+          {/* LOW */}
+          <div style={{ position: "absolute", left: 0, textAlign: "left" }}>
+            <div style={{ fontSize: 13, fontWeight: 800, color: "#7dd3fc", lineHeight: 1 }}>{fmtGBP(data.low)}</div>
+            <div style={{ fontSize: 11, color: C.muted, marginTop: 3 }}>Low</div>
+          </div>
+
+          {/* MEDIAN (or merged Avg/Med) */}
+          <div style={{
+            position: "absolute", left: `${medPct}%`,
+            transform: "translateX(-50%)", textAlign: "center", whiteSpace: "nowrap",
+          }}>
+            <div style={{ fontSize: 13, fontWeight: 800, color: "#c4d4e8", lineHeight: 1 }}>
+              {close ? `${fmtGBP(data.median)} / ${fmtGBP(data.average)}` : fmtGBP(data.median)}
+            </div>
+            <div style={{ fontSize: 11, color: C.muted, marginTop: 3 }}>{close ? "Avg / Med" : "Median"}</div>
+          </div>
+
+          {/* AVERAGE */}
+          {!close && (
+            <div style={{
+              position: "absolute", left: `${avgPct}%`,
+              transform: "translateX(-50%)", textAlign: "center", whiteSpace: "nowrap",
+            }}>
+              <div style={{ fontSize: 13, fontWeight: 800, color: "#c4d4e8", lineHeight: 1 }}>{fmtGBP(data.average)}</div>
+              <div style={{ fontSize: 11, color: C.muted, marginTop: 3 }}>Average</div>
+            </div>
+          )}
+
+          {/* HIGH */}
           <div style={{ position: "absolute", right: 0, textAlign: "right" }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: "#9ca3af" }}>{fmtGBP(data.high)}</div>
-            <div style={{ fontSize: 9, color: C.dim }}>High</div>
+            <div style={{ fontSize: 13, fontWeight: 800, color: "#7dd3fc", lineHeight: 1 }}>{fmtGBP(data.high)}</div>
+            <div style={{ fontSize: 11, color: C.muted, marginTop: 3 }}>High</div>
           </div>
         </div>
       </div>
+
+      {/* ── Interpretation line ── */}
+      {verdict && (
+        <div style={{
+          marginTop: 18,
+          padding: "10px 14px",
+          background: "rgba(14,165,233,0.07)",
+          border: "1px solid rgba(14,165,233,0.2)",
+          borderRadius: 10,
+          fontSize: 13, color: "#93c5fd", lineHeight: 1.55,
+        }}>
+          💡 {verdict}
+        </div>
+      )}
+      {!verdict && hasPrice && (
+        <div style={{ marginTop: 18, fontSize: 12, color: C.dim, textAlign: "center" }}>
+          Add market data above to see position analysis.
+        </div>
+      )}
     </div>
   );
 }
@@ -217,7 +382,6 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
   const [innerPage, setInnerPage] = useState("calculator");
   const savedCount = products?.length ?? 0;
 
-  // Calculator state
   const [productName,   setProductName]   = useSessionState("jsk_calc_product_name", "");
   const [itemCost,      setItemCost]       = useSessionState("jsk_calc_item_cost",    "");
   const [shippingCost,  setShippingCost]   = useSessionState("jsk_calc_shipping",     "");
@@ -233,13 +397,11 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
   const [editingMargin, setEditingMargin]  = useState(false);
   const [savedFlash,    setSavedFlash]     = useState(false);
 
-  // Smart Pricing state
   const [smQuery,   setSmQuery]   = useSessionState("jsk_calc_sm_query", "");
   const [smData,    setSmData]    = useSessionState("jsk_calc_sm_data",  null);
   const [smLoading, setSmLoading] = useState(false);
   const [smError,   setSmError]   = useState("");
 
-  // Calculations
   const cost      = parseFloat(itemCost)      || 0;
   const shipping  = parseFloat(shippingCost)  || 0;
   const packaging = parseFloat(packagingCost) || 0;
@@ -261,12 +423,8 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
   const breakEven  = R > 0    ? (totalCosts + fixed) / R  : NaN;
   const hasResult  = price > 0 && cost > 0;
 
-  const pos     = getPos(price, smData);
-  const verdict = getVerdict(price, smData);
-
   const profitColor = !hasResult ? C.text : profit > 0 ? "#4ade80" : profit < 0 ? "#f87171" : C.text;
 
-  // Handlers
   const loadProduct = (p) => {
     setProductName(p.name || ""); setItemCost(String(p.itemCost ?? "")); setShippingCost(String(p.shippingCost ?? ""));
     setSellingPrice(String(p.sellingPrice ?? "")); setFvfPct(String(p.fvfPct ?? "12.8"));
@@ -299,7 +457,6 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
   function calcFromMarkup() { const mk = parseFloat(targetMarkup); if (!isNaN(mk) && cost > 0 && R > 0) setSellingPrice(((cost * (1 + mk / 100) + shipping + packaging + fixed) / R).toFixed(2)); }
   function calcFromMargin() { const mg = parseFloat(targetMargin); if (!isNaN(mg) && mg < 100) { const d = R - mg / 100; if (d > 0) setSellingPrice(((fixed + cost + shipping + packaging) / d).toFixed(2)); } }
 
-  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div style={{ maxWidth: 1080, margin: "0 auto" }}>
 
@@ -319,13 +476,11 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
           {!isPro && <Locked />}
 
           {isPro && (
-            /* ═══ ONE OUTER CARD ═══ */
             <div style={{ background: C.bg1, border: C.borderBlue, borderRadius: 16, overflow: "hidden" }}>
 
               {/* ── Card header ── */}
               <div style={{ padding: "14px 20px 12px", borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
-                  {/* Title */}
                   <div>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       <span style={{ fontSize: 16, fontWeight: 800, color: "#fff", letterSpacing: -0.3 }}>Smart eBay Pricing</span>
@@ -333,7 +488,6 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
                     </div>
                     <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>Compare market pricing, fees and profit in one place</div>
                   </div>
-                  {/* Listings badge */}
                   {smData && (
                     <div style={{ display: "flex", alignItems: "center", gap: 7, background: "rgba(19,93,255,0.1)", border: "1px solid rgba(19,93,255,0.22)", borderRadius: 8, padding: "7px 13px", flexShrink: 0 }}>
                       <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#4ade80", display: "inline-block", animation: "pcPulse 2s ease-in-out infinite" }} />
@@ -361,7 +515,7 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
               {/* ── Two-column body ── */}
               <div style={{ display: "flex", alignItems: "stretch" }}>
 
-                {/* ═══ LEFT: Inputs (narrow sidebar) ═══ */}
+                {/* ═══ LEFT: Inputs ═══ */}
                 <div style={{ width: 300, flexShrink: 0, background: C.bg2, borderRight: "1px solid rgba(255,255,255,0.07)", padding: "14px 16px", display: "flex", flexDirection: "column" }}>
 
                   <SL mt={0}>Product</SL>
@@ -391,7 +545,6 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
                     <input type="number" value={promoPct} onChange={(e) => setPromoPct(e.target.value)} placeholder="0" style={CI} />
                   </Row>
 
-                  {/* VAT */}
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 0", marginTop: 6 }}>
                     <span style={{ fontSize: 12, color: C.muted }}>VAT registered (20%)</span>
                     <button onClick={() => setVatRegistered(v => !v)} style={{ ...BUTTON_BASE, padding: "4px 14px", fontSize: 11, background: vatRegistered ? C.blue : "#0d2040", color: "#fff", boxShadow: vatRegistered ? "0 0 10px rgba(19,93,255,0.3)" : "none" }}>
@@ -401,7 +554,6 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
 
                   <HD />
 
-                  {/* Selling price */}
                   <div style={{ marginBottom: 8 }}>
                     <div style={{ fontSize: 10, fontWeight: 700, color: C.dim, textTransform: "uppercase", letterSpacing: 0.7, marginBottom: 5 }}>
                       Selling Price {vatRegistered ? "(inc. VAT)" : ""}
@@ -415,7 +567,6 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
                     />
                   </div>
 
-                  {/* Markup / Margin */}
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 7 }}>
                     <div>
                       <div style={{ fontSize: 10, color: C.dim, marginBottom: 3 }}>Target markup %</div>
@@ -443,10 +594,8 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
                     </div>
                   </div>
 
-                  {/* Spacer push Save to bottom */}
                   <div style={{ flex: 1, minHeight: 12 }} />
 
-                  {/* Save */}
                   {hasResult && (
                     <button onClick={handleSave} style={{ ...BUTTON_BASE, background: savedFlash ? "#166534" : C.blue, color: "#fff", width: "100%", textAlign: "center", fontSize: 13, padding: "9px", marginTop: 8, boxShadow: savedFlash ? "0 0 14px rgba(22,101,52,0.4)" : "0 0 14px rgba(19,93,255,0.3)" }}>
                       {savedFlash ? "✓ Saved!" : "Save Product"}
@@ -454,13 +603,11 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
                   )}
                 </div>
 
-                {/* ═══ RIGHT: Results + Market Data ═══ */}
+                {/* ═══ RIGHT: Results + Market ═══ */}
                 <div style={{ flex: 1, padding: "14px 18px", display: "flex", flexDirection: "column", gap: 12, minWidth: 0 }}>
 
                   {/* ── Price Result Card ── */}
                   <div style={{ background: C.bg3, borderRadius: 12, padding: "14px 16px", border: "1px solid rgba(255,255,255,0.06)" }}>
-
-                    {/* Selling price large display */}
                     <div style={{ marginBottom: 12 }}>
                       <div style={{ fontSize: 10, fontWeight: 700, color: C.dim, textTransform: "uppercase", letterSpacing: 0.7, marginBottom: 4 }}>Selling Price</div>
                       <div style={{ fontSize: 32, fontWeight: 900, color: "#fff", lineHeight: 1 }}>
@@ -468,14 +615,12 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
                       </div>
                     </div>
 
-                    {/* Profit / Margin / Markup */}
                     <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
                       <Stat label="Net Profit" value={hasResult ? fmt(profit)    : "—"} color={hasResult ? profitColor : C.dim} size={24} />
                       <Stat label="Margin"     value={hasResult ? fmtPct(margin) : "—"} color={hasResult ? profitColor : C.dim} size={24} sub={hasResult ? "÷ sell price" : null} />
                       <Stat label="Markup"     value={hasResult ? fmtPct(markup) : "—"} color={hasResult ? profitColor : C.dim} size={24} sub={hasResult ? "÷ item cost"  : null} />
                     </div>
 
-                    {/* Break-even */}
                     {hasResult && !isNaN(breakEven) && (
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, padding: "7px 10px", background: "rgba(251,191,36,0.06)", border: "1px solid rgba(251,191,36,0.15)", borderRadius: 8 }}>
                         <span style={{ fontSize: 12, color: C.muted }}>Break-even price</span>
@@ -483,7 +628,6 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
                       </div>
                     )}
 
-                    {/* Cost breakdown */}
                     {hasResult ? (
                       <div>
                         <div style={{ fontSize: 10, fontWeight: 700, color: C.dim, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 5 }}>Breakdown</div>
@@ -501,16 +645,16 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
                     )}
                   </div>
 
-                  {/* ── Market Snapshot + Pricing Band ── */}
+                  {/* ── Market Snapshot ── */}
                   <div style={{ background: C.bg3, borderRadius: 12, padding: "14px 16px", border: "1px solid rgba(255,255,255,0.06)", flex: 1 }}>
 
-                    {/* Header */}
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
                       <div style={{ fontSize: 10, fontWeight: 700, color: C.dim, textTransform: "uppercase", letterSpacing: 0.7 }}>Market Snapshot · eBay UK</div>
-                      {pos && (
-                        <div style={{ fontSize: 11, fontWeight: 700, color: pos.color, background: `${pos.color}18`, border: `1px solid ${pos.color}30`, borderRadius: 20, padding: "3px 12px" }}>
-                          {pos.label}
-                        </div>
+                      {smData && (
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 9, fontWeight: 700, color: "#4ade80", background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.2)", borderRadius: 20, padding: "3px 9px" }}>
+                          <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#4ade80", display: "inline-block", animation: "pcPulse 2s ease-in-out infinite" }} />
+                          LIVE
+                        </span>
                       )}
                     </div>
 
@@ -528,13 +672,14 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
 
                     {!smLoading && smData && (
                       <div style={{ animation: "pcIn 0.3s ease" }}>
+
                         {/* 2×2 price grid */}
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 10 }}>
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12 }}>
                           {[
-                            { label: "Lowest",   value: fmtGBP(smData.low),     color: "#60a5fa" },
-                            { label: "Median",   value: fmtGBP(smData.median),  color: "#93c5fd" },
-                            { label: "Average",  value: fmtGBP(smData.average), color: "#bae6fd" },
-                            { label: "Highest",  value: fmtGBP(smData.high),    color: "#dbeafe" },
+                            { label: "Lowest",  value: fmtGBP(smData.low),     color: "#60a5fa" },
+                            { label: "Median",  value: fmtGBP(smData.median),  color: "#93c5fd" },
+                            { label: "Average", value: fmtGBP(smData.average), color: "#bae6fd" },
+                            { label: "Highest", value: fmtGBP(smData.high),    color: "#dbeafe" },
                           ].map(({ label, value, color }) => (
                             <div key={label} style={{ background: C.bg1, borderRadius: 8, padding: "9px 12px", border: "1px solid rgba(255,255,255,0.05)" }}>
                               <div style={{ fontSize: 11, color: C.muted, marginBottom: 3 }}>{label}</div>
@@ -544,29 +689,15 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
                         </div>
 
                         {/* Listings count */}
-                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
                           <span style={{ fontSize: 12, color: C.muted }}>Listings analysed</span>
                           <span style={{ fontSize: 14, fontWeight: 800, color: "#93c5fd" }}>{smData.priceCount}</span>
-                          <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 9, fontWeight: 700, color: "#4ade80", background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.2)", borderRadius: 20, padding: "2px 8px" }}>
-                            <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#4ade80", display: "inline-block", animation: "pcPulse 2s ease-in-out infinite" }} />
-                            LIVE
-                          </span>
                         </div>
 
-                        {/* Verdict */}
-                        {verdict && (
-                          <div style={{ fontSize: 12, color: "#9ca3af", lineHeight: 1.55, padding: "8px 10px", background: "rgba(19,93,255,0.05)", borderRadius: 8, marginBottom: 12, border: "1px solid rgba(19,93,255,0.12)" }}>
-                            {verdict}
-                          </div>
-                        )}
-
-                        {/* Pricing band */}
-                        <div style={{ fontSize: 10, fontWeight: 700, color: C.dim, textTransform: "uppercase", letterSpacing: 0.7, marginBottom: 8 }}>
-                          Pricing Band
-                        </div>
+                        {/* ── Prominent Pricing Band ── */}
                         <PricingBand data={smData} price={price} />
 
-                        <div style={{ fontSize: 10, color: C.dim, textAlign: "right", marginTop: 8 }}>
+                        <div style={{ fontSize: 10, color: C.dim, textAlign: "right", marginTop: 10 }}>
                           Based on first-page active eBay UK listings only.
                         </div>
                       </div>
@@ -574,7 +705,7 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
                   </div>
                 </div>{/* end right */}
               </div>{/* end two-column */}
-            </div> /* end outer card */
+            </div>
           )}
         </>
       )}
