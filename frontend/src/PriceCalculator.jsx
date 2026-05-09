@@ -121,6 +121,133 @@ function BR({ label, value, color, strong, note }) {
   );
 }
 
+// ─── Source Listings (internal transparency panel) ────────────────────────────
+function SourceListings({ listings, excludedListings, show, onToggle, tab, onTab }) {
+  // listings === undefined → stale cached data (no listings field yet)
+  // listings === []        → fetched but nothing passed filters
+  const hasData    = listings !== undefined;
+  const usedList   = listings        || [];
+  const excList    = excludedListings || [];
+  const activeList = tab === "used"  ? usedList : excList;
+
+  return (
+    <div style={{ marginBottom: 12 }}>
+      {/* Toggle header */}
+      <button
+        onClick={onToggle}
+        style={{
+          width: "100%", padding: "6px 10px",
+          background: "transparent",
+          border: "1px solid rgba(255,255,255,0.06)",
+          borderRadius: 7, cursor: "pointer",
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          transition: "border-color 0.15s",
+        }}
+        onMouseEnter={e => e.currentTarget.style.borderColor = "rgba(255,255,255,0.14)"}
+        onMouseLeave={e => e.currentTarget.style.borderColor = "rgba(255,255,255,0.06)"}
+      >
+        <span style={{ fontSize: 10, fontWeight: 700, color: C.dim, textTransform: "uppercase", letterSpacing: 0.8 }}>
+          Source listings
+        </span>
+        <span style={{ fontSize: 10, color: C.dim }}>
+          {hasData
+            ? `${usedList.length} used · ${excList.length} excluded`
+            : "run a new search to load"
+          } {show ? "▲" : "▼"}
+        </span>
+      </button>
+
+      {show && (
+        <div style={{ marginTop: 4, border: "1px solid rgba(255,255,255,0.07)", borderRadius: 7, overflow: "hidden" }}>
+          {!hasData ? (
+            /* Stale cached data — no listings field present */
+            <div style={{ padding: "16px 14px", textAlign: "center", fontSize: 12, color: C.dim }}>
+              Run a fresh search to see the source listings.
+            </div>
+          ) : (
+            <>
+              {/* Sub-tabs */}
+              <div style={{ display: "flex", background: "#060d1a", borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
+                {[
+                  { key: "used",     label: `✓ Used (${usedList.length})`,   color: "#4ade80" },
+                  { key: "excluded", label: `✕ Excluded (${excList.length})`, color: "#f87171" },
+                ].map(({ key, label, color }) => {
+                  const active = tab === key;
+                  return (
+                    <button key={key} onClick={() => onTab(key)} style={{
+                      flex: 1, padding: "6px 10px", border: "none", cursor: "pointer",
+                      background: active ? "rgba(255,255,255,0.04)" : "transparent",
+                      fontSize: 11, fontWeight: 700,
+                      color: active ? color : C.dim,
+                      borderBottom: active ? `2px solid ${color}` : "2px solid transparent",
+                      transition: "all 0.15s",
+                    }}>
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Rows */}
+              <div style={{ maxHeight: 300, overflowY: "auto" }}>
+                {activeList.length === 0 ? (
+                  <div style={{ padding: "16px 14px", textAlign: "center", fontSize: 12, color: C.dim }}>
+                    None in this group.
+                  </div>
+                ) : activeList.map((item, i) => {
+                  const isExc = tab === "excluded";
+                  const Row = item.url ? "a" : "div";
+                  return (
+                    <Row
+                      key={i}
+                      href={item.url || undefined}
+                      target={item.url ? "_blank" : undefined}
+                      rel={item.url ? "noopener noreferrer" : undefined}
+                      style={{
+                        display: "flex", alignItems: "flex-start", gap: 10,
+                        padding: "8px 12px",
+                        borderBottom: i < activeList.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none",
+                        textDecoration: "none",
+                        cursor: item.url ? "pointer" : "default",
+                      }}
+                      onMouseEnter={e => { if (item.url) e.currentTarget.style.background = "rgba(255,255,255,0.04)"; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
+                    >
+                      <span style={{
+                        flexShrink: 0, minWidth: 60, textAlign: "right",
+                        fontSize: 12, fontWeight: 800,
+                        color: isExc ? "#4b5563" : "#93c5fd",
+                      }}>
+                        {item.price != null ? `£${item.price.toFixed(2)}` : "—"}
+                      </span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{
+                          fontSize: 11, lineHeight: 1.4,
+                          color: isExc ? "#374151" : "#94a3b8",
+                          overflow: "hidden", display: "-webkit-box",
+                          WebkitLineClamp: 2, WebkitBoxOrient: "vertical",
+                        }}>
+                          {item.title || "—"}
+                        </div>
+                        {isExc && item.exclusionReason && (
+                          <div style={{ fontSize: 10, color: "#6b7280", marginTop: 2, fontStyle: "italic" }}>
+                            {item.exclusionReason}
+                          </div>
+                        )}
+                      </div>
+                      {item.url && <span style={{ flexShrink: 0, fontSize: 9, color: "#374151", paddingTop: 3 }}>↗</span>}
+                    </Row>
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Pricing Band ─────────────────────────────────────────────────────────────
 function PricingBand({ data, price }) {
   if (!data) return null;
@@ -807,119 +934,15 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
                           {smData.excludedLowOutlier  > 0 && <span> · <span style={{ color: "#f87171", fontWeight: 700 }}>{smData.excludedLowOutlier}</span> low outliers</span>}
                         </div>
 
-                        {/* ── Listings view ── */}
-                        {(() => {
-                          const usedList     = smData.listings         || [];
-                          const excludedList = smData.excludedListings || [];
-                          const activeList   = listingsTab === "used" ? usedList : excludedList;
-                          return (
-                            <div style={{ marginBottom: 12 }}>
-                              {/* Toggle button */}
-                              <button
-                                onClick={() => setShowListings(v => !v)}
-                                style={{
-                                  width: "100%", padding: "7px 12px",
-                                  background: showListings ? "rgba(19,93,255,0.12)" : "rgba(255,255,255,0.03)",
-                                  border: showListings ? "1px solid rgba(19,93,255,0.3)" : "1px solid rgba(255,255,255,0.07)",
-                                  borderRadius: 8, cursor: "pointer", fontSize: 12, fontWeight: 700,
-                                  color: showListings ? "#93c5fd" : C.muted,
-                                  display: "flex", alignItems: "center", justifyContent: "space-between",
-                                  transition: "all 0.15s",
-                                }}
-                              >
-                                <span>🔎 View source listings</span>
-                                <span style={{ fontSize: 11, fontWeight: 400 }}>
-                                  {usedList.length} used · {excludedList.length} excluded {showListings ? "▲" : "▼"}
-                                </span>
-                              </button>
-
-                              {showListings && (
-                                <div style={{ marginTop: 6, border: "1px solid rgba(255,255,255,0.07)", borderRadius: 8, overflow: "hidden" }}>
-                                  {/* Sub-tabs */}
-                                  <div style={{ display: "flex", background: "#060d1a", borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
-                                    {[
-                                      { key: "used",     label: `✓ Used (${usedList.length})`,         color: "#4ade80" },
-                                      { key: "excluded", label: `✕ Excluded (${excludedList.length})`, color: "#f87171" },
-                                    ].map(({ key, label, color }) => {
-                                      const active = listingsTab === key;
-                                      return (
-                                        <button key={key} onClick={() => setListingsTab(key)} style={{
-                                          flex: 1, padding: "7px 10px", border: "none", cursor: "pointer",
-                                          background: active ? "rgba(255,255,255,0.05)" : "transparent",
-                                          fontSize: 11, fontWeight: 700,
-                                          color: active ? color : C.muted,
-                                          borderBottom: active ? `2px solid ${color}` : "2px solid transparent",
-                                          transition: "all 0.15s",
-                                        }}>
-                                          {label}
-                                        </button>
-                                      );
-                                    })}
-                                  </div>
-
-                                  {/* List */}
-                                  <div style={{ maxHeight: 320, overflowY: "auto" }}>
-                                    {activeList.length === 0 ? (
-                                      <div style={{ padding: "20px 16px", textAlign: "center", fontSize: 12, color: C.dim }}>
-                                        No listings in this group.
-                                      </div>
-                                    ) : activeList.map((item, i) => {
-                                      const isExcluded = listingsTab === "excluded";
-                                      return (
-                                        <a
-                                          key={i}
-                                          href={item.url || "#"}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          style={{
-                                            display: "flex", alignItems: "flex-start", gap: 10,
-                                            padding: "9px 12px",
-                                            borderBottom: i < activeList.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none",
-                                            background: i % 2 === 0 ? "transparent" : "rgba(255,255,255,0.015)",
-                                            textDecoration: "none",
-                                            cursor: item.url ? "pointer" : "default",
-                                            transition: "background 0.1s",
-                                          }}
-                                          onMouseEnter={e => e.currentTarget.style.background = "rgba(19,93,255,0.08)"}
-                                          onMouseLeave={e => e.currentTarget.style.background = i % 2 === 0 ? "transparent" : "rgba(255,255,255,0.015)"}
-                                        >
-                                          {/* Price pill */}
-                                          <span style={{
-                                            flexShrink: 0, minWidth: 64, textAlign: "right",
-                                            fontSize: 13, fontWeight: 800,
-                                            color: isExcluded ? "#6b7280" : "#93c5fd",
-                                          }}>
-                                            {item.price != null ? `£${item.price.toFixed(2)}` : "—"}
-                                          </span>
-                                          {/* Title + reason */}
-                                          <div style={{ flex: 1, minWidth: 0 }}>
-                                            <div style={{
-                                              fontSize: 12, lineHeight: 1.4,
-                                              color: isExcluded ? "#4b5563" : "#cbd5e1",
-                                              overflow: "hidden", display: "-webkit-box",
-                                              WebkitLineClamp: 2, WebkitBoxOrient: "vertical",
-                                            }}>
-                                              {item.title || "—"}
-                                            </div>
-                                            {isExcluded && item.exclusionReason && (
-                                              <div style={{ fontSize: 10, color: "#f87171", marginTop: 2, fontStyle: "italic" }}>
-                                                {item.exclusionReason}
-                                              </div>
-                                            )}
-                                          </div>
-                                          {/* External link indicator */}
-                                          {item.url && (
-                                            <span style={{ flexShrink: 0, fontSize: 10, color: C.dim, paddingTop: 2 }}>↗</span>
-                                          )}
-                                        </a>
-                                      );
-                                    })}
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })()}
+                        {/* ── Source listings (internal view) ── */}
+                        <SourceListings
+                          listings={smData.listings}
+                          excludedListings={smData.excludedListings}
+                          show={showListings}
+                          onToggle={() => setShowListings(v => !v)}
+                          tab={listingsTab}
+                          onTab={setListingsTab}
+                        />
 
                         {/* ── Pricing band ── */}
                         <PricingBand data={smData} price={price} />
