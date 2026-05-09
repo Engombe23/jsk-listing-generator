@@ -77,6 +77,34 @@ function getVerdict(price, data) {
   return "Exceeds all active listings — significant reduction recommended.";
 }
 
+// ─── Distribution insight ─────────────────────────────────────────────────────
+function getDistributionInsight(price, clusterStart, clusterEnd, low, high, prices) {
+  const r = v => `£${Math.round(v)}`;
+  const band = `${r(clusterStart)}–${r(clusterEnd)}`;
+  const hasPrice = price > 0;
+
+  // Is the highest listing a one-off? (only 1 listing above 130% of cluster end AND well above the cluster)
+  const highOneOff =
+    prices.filter(p => p > clusterEnd * 1.3).length === 1 && high > clusterEnd * 1.45;
+
+  if (!hasPrice) {
+    return highOneOff
+      ? `Most listings cluster between ${band}. The highest listing appears to be a one-off and does not represent the main market.`
+      : `Most listings cluster between ${band}.`;
+  }
+
+  const inCluster = price >= clusterStart && price <= clusterEnd;
+  const below     = price < clusterStart;
+  const above     = price > clusterEnd;
+
+  if (inCluster) return `Your price sits inside the main cluster (${band}) — well-positioned for conversion.`;
+  if (below)     return `Your price is below the main cluster (${band}) — very competitive.`;
+  if (above && highOneOff && price < high)
+                 return `Your price is above the main cluster (${band}). The highest listing appears to be a one-off and does not represent the main market.`;
+  if (above)     return `Your price is above the main cluster (${band}) — conversion may be impacted.`;
+  return `Most listings cluster between ${band}.`;
+}
+
 // ─── Row (sidebar input rows) ─────────────────────────────────────────────────
 function Row({ label, children, last, note }) {
   return (
@@ -404,6 +432,218 @@ function PricingBand({ data, price }) {
           Add market data above to see position analysis.
         </div>
       )}
+    </div>
+  );
+}
+
+// ─── Price Distribution histogram ────────────────────────────────────────────
+function PriceDistribution({ data, listings, price }) {
+  const prices = (listings || [])
+    .map(l => l.price)
+    .filter(p => p != null && p > 0)
+    .sort((a, b) => a - b);
+
+  // Not enough data → fall back to flat band
+  if (prices.length < 3 || !data) return <PricingBand data={data} price={price} />;
+  const { low, high, median } = data;
+  const range = high - low;
+  if (range <= 0) return <PricingBand data={data} price={price} />;
+
+  // ── Buckets ───────────────────────────────────────────────────────────────
+  const n = prices.length;
+  const bucketCount = n <= 3 ? n : n <= 6 ? 4 : n <= 10 ? 6 : 8;
+  const bw = range / bucketCount;
+  const counts = Array(bucketCount).fill(0);
+  for (const p of prices) {
+    counts[Math.min(bucketCount - 1, Math.floor((p - low) / bw))]++;
+  }
+  const maxCount = Math.max(...counts, 1);
+  const peakIdx  = counts.indexOf(maxCount);
+
+  // Cluster = all buckets at ≥40% of peak
+  const clusterIdxs = counts.reduce((a, c, i) => { if (c >= maxCount * 0.4) a.push(i); return a; }, []);
+  const clStart      = clusterIdxs.length ? Math.min(...clusterIdxs) : 0;
+  const clEnd        = clusterIdxs.length ? Math.max(...clusterIdxs) : bucketCount - 1;
+  const clusterStart = low + clStart * bw;
+  const clusterEnd   = low + (clEnd + 1) * bw;
+  const clusterCount = clusterIdxs.reduce((s, i) => s + counts[i], 0);
+
+  // ── Positions (0–100 %) ───────────────────────────────────────────────────
+  const pct          = v  => Math.min(100, Math.max(0, ((v - low) / range) * 100));
+  const medPct       = pct(median);
+  const hasPrice     = price > 0;
+  const userPct      = hasPrice ? pct(price) : null;
+  const userLabelPct = userPct !== null ? Math.min(93, Math.max(7, userPct)) : null;
+
+  const pos     = hasPrice ? getPos(price, data)                                               : null;
+  const insight = getDistributionInsight(price, clusterStart, clusterEnd, low, high, prices);
+  const fmtR    = v => `£${Math.round(v)}`;
+
+  // ── SVG geometry ──────────────────────────────────────────────────────────
+  const SVG_W = 400, SVG_H = 64, GAP = 3;
+  const barW  = (SVG_W - GAP * (bucketCount - 1)) / bucketCount;
+  const clRectX = clStart * (barW + GAP);
+  const clRectW = (clEnd - clStart + 1) * (barW + GAP) - GAP;
+  const MARKER  = "#00e5ff";
+
+  return (
+    <div style={{
+      background: "#030b17",
+      border: "1px solid rgba(19,93,255,0.45)",
+      borderRadius: 14,
+      padding: "18px 20px 16px",
+      boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04), 0 4px 24px rgba(0,0,0,0.4)",
+    }}>
+
+      {/* Header */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: C.dim, textTransform: "uppercase", letterSpacing: 0.8 }}>
+          Price Distribution
+        </div>
+        {pos ? (
+          <div style={{
+            display: "inline-flex", alignItems: "center", gap: 7,
+            background: `${pos.color}15`, border: `1px solid ${pos.color}45`,
+            borderRadius: 20, padding: "5px 14px",
+          }}>
+            <span style={{ width: 8, height: 8, borderRadius: "50%", background: pos.color, display: "inline-block", boxShadow: `0 0 8px ${pos.color}` }} />
+            <span style={{ fontSize: 13, fontWeight: 800, color: pos.color }}>{pos.label}</span>
+          </div>
+        ) : (
+          <div style={{ fontSize: 12, color: C.dim, fontStyle: "italic" }}>Enter a price to see position</div>
+        )}
+      </div>
+
+      <div style={{ position: "relative" }}>
+
+        {/* Floating price label */}
+        <div style={{ position: "relative", height: 48 }}>
+          {userLabelPct !== null && (
+            <div style={{
+              position: "absolute", left: `${userLabelPct}%`, bottom: 0,
+              transform: "translateX(-50%)",
+              display: "flex", flexDirection: "column", alignItems: "center",
+              pointerEvents: "none",
+            }}>
+              <div style={{
+                background: MARKER, color: "#001520",
+                fontSize: 14, fontWeight: 900,
+                padding: "4px 12px", borderRadius: 20,
+                whiteSpace: "nowrap",
+                boxShadow: `0 0 16px ${MARKER}99, 0 2px 8px rgba(0,0,0,0.5)`,
+                letterSpacing: -0.2,
+              }}>
+                {fmtGBP(price)}
+              </div>
+              <div style={{ width: 2, height: 14, background: `linear-gradient(to bottom, ${MARKER}cc, transparent)` }} />
+            </div>
+          )}
+        </div>
+
+        {/* SVG histogram */}
+        <svg
+          viewBox={`0 0 ${SVG_W} ${SVG_H}`}
+          preserveAspectRatio="none"
+          width="100%"
+          height={SVG_H}
+          style={{ display: "block", overflow: "visible" }}
+        >
+          <defs>
+            <linearGradient id="pdBar" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#3b82f6" />
+              <stop offset="100%" stopColor="#1e3a8a" />
+            </linearGradient>
+            <linearGradient id="pdPeak" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#93c5fd" />
+              <stop offset="100%" stopColor="#1d4ed8" />
+            </linearGradient>
+            <filter id="pdGlow" x="-50%" y="-50%" width="200%" height="200%">
+              <feDropShadow dx="0" dy="0" stdDeviation="3" floodColor={MARKER} floodOpacity="0.8" />
+            </filter>
+          </defs>
+
+          {/* Cluster highlight band */}
+          {clusterIdxs.length > 0 && (
+            <rect x={clRectX} y={0} width={clRectW} height={SVG_H} fill="rgba(59,130,246,0.10)" rx={4} />
+          )}
+
+          {/* Bars */}
+          {counts.map((count, i) => {
+            if (count === 0) return null;
+            const barH     = Math.max(6, (count / maxCount) * (SVG_H - 6));
+            const x        = i * (barW + GAP);
+            const y        = SVG_H - barH;
+            const isPeak   = i === peakIdx;
+            const inCluster = clusterIdxs.includes(i);
+            const opacity  = inCluster ? 1 : Math.max(0.3, (count / maxCount) * 0.8);
+            return (
+              <rect key={i}
+                x={x} y={y} width={barW} height={barH}
+                fill={isPeak ? "url(#pdPeak)" : "url(#pdBar)"}
+                rx={2} opacity={opacity}
+              />
+            );
+          })}
+
+          {/* Median dashed line */}
+          <line
+            x1={medPct / 100 * SVG_W} y1={-4}
+            x2={medPct / 100 * SVG_W} y2={SVG_H + 4}
+            stroke="rgba(255,255,255,0.55)" strokeWidth={1.5} strokeDasharray="4,3"
+          />
+
+          {/* User price line */}
+          {userPct !== null && (
+            <line
+              x1={userPct / 100 * SVG_W} y1={-4}
+              x2={userPct / 100 * SVG_W} y2={SVG_H + 4}
+              stroke={MARKER} strokeWidth={2.5}
+              filter="url(#pdGlow)"
+              style={{ animation: "pcGlow 2.2s ease-in-out infinite" }}
+            />
+          )}
+        </svg>
+
+        {/* Low / Median / High labels */}
+        <div style={{ position: "relative", height: 44, marginTop: 14 }}>
+          <div style={{ position: "absolute", left: 0 }}>
+            <div style={{ fontSize: 13, fontWeight: 800, color: "#7dd3fc", lineHeight: 1 }}>{fmtGBP(low)}</div>
+            <div style={{ fontSize: 11, color: C.muted, marginTop: 3 }}>Low</div>
+          </div>
+          {medPct > 14 && medPct < 86 && (
+            <div style={{ position: "absolute", left: `${medPct}%`, transform: "translateX(-50%)", textAlign: "center", whiteSpace: "nowrap" }}>
+              <div style={{ fontSize: 13, fontWeight: 800, color: "#c4d4e8", lineHeight: 1 }}>{fmtGBP(median)}</div>
+              <div style={{ fontSize: 11, color: C.muted, marginTop: 3 }}>Median</div>
+            </div>
+          )}
+          <div style={{ position: "absolute", right: 0, textAlign: "right" }}>
+            <div style={{ fontSize: 13, fontWeight: 800, color: "#7dd3fc", lineHeight: 1 }}>{fmtGBP(high)}</div>
+            <div style={{ fontSize: 11, color: C.muted, marginTop: 3 }}>High</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Most Common Range pill */}
+      <div style={{ marginTop: 14, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+        <span style={{ fontSize: 10, fontWeight: 700, color: C.muted, textTransform: "uppercase", letterSpacing: 0.6, flexShrink: 0 }}>
+          Most Common Range
+        </span>
+        <span style={{
+          background: "rgba(59,130,246,0.15)", border: "1px solid rgba(59,130,246,0.4)",
+          borderRadius: 20, padding: "3px 12px",
+          fontSize: 13, fontWeight: 800, color: "#93c5fd", flexShrink: 0,
+        }}>
+          {fmtR(clusterStart)}–{fmtR(clusterEnd)}
+        </span>
+        <span style={{ fontSize: 11, color: C.dim }}>
+          {clusterCount} of {prices.length} listing{prices.length !== 1 ? "s" : ""}
+        </span>
+      </div>
+
+      {/* Distribution insight */}
+      <div style={{ marginTop: 10, padding: "10px 14px", background: "rgba(14,165,233,0.07)", border: "1px solid rgba(14,165,233,0.2)", borderRadius: 10, fontSize: 13, color: "#93c5fd", lineHeight: 1.55 }}>
+        💡 {insight}
+      </div>
     </div>
   );
 }
@@ -944,8 +1184,8 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
                           onTab={setListingsTab}
                         />
 
-                        {/* ── Pricing band ── */}
-                        <PricingBand data={smData} price={price} />
+                        {/* ── Price distribution histogram ── */}
+                        <PriceDistribution data={smData} listings={smData.listings} price={price} />
 
                         <div style={{ fontSize: 10, color: C.dim, textAlign: "right", marginTop: 10 }}>
                           Based on active eBay UK listings only.
