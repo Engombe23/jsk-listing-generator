@@ -496,24 +496,8 @@ function PriceDistribution({ data, listings, price }) {
 
   const maxBucket = Math.max(...bins.map(b => b.count), 1);
 
-  // ── KDE (computed on core prices only — sharper, no outlier distortion) ────
-  const coreN    = corePrices.length || 1;
-  const coreMean = corePrices.reduce((sum, p) => sum + p, 0) / coreN;
-  const coreVar  = corePrices.reduce((sum, p) => sum + (p - coreMean) ** 2, 0) / coreN;
-  const coreStd  = Math.sqrt(coreVar) || viewRange * 0.1;
-  // Under-smooth by 0.7× Silverman → more dramatic peaks
-  const bw = Math.max(coreStd * 0.22, 0.7 * 1.06 * coreStd * Math.pow(coreN, -0.2));
-  const kde = x => corePrices.reduce((s, p) => {
-    const z = (x - p) / bw;
-    return s + Math.exp(-0.5 * z * z);
-  }, 0);
-
-  const STEPS = 260;
-  const kdePts = Array.from({ length: STEPS + 1 }, (_, i) => {
-    const x = viewMin + (i / STEPS) * viewRange;
-    return { x, d: kde(x) };
-  });
-  const maxD = Math.max(...kdePts.map(pt => pt.d), 0.001);
+  // ── Bar-height density curve (Catmull-Rom spline through bin tops) ──────────
+  // Curve tracks actual histogram bars — no bell-curve floating artefact
 
   // ── Cluster = IQR range (middle 50% — where most competition lives) ─────────
   const clusterStart = q1;
@@ -541,13 +525,57 @@ function PriceDistribution({ data, listings, price }) {
   const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
   const inView = v => v >= viewMin && v <= viewMax;
 
-  // KDE path (density normalised to count scale)
-  const kdeScaled = kdePts.map(pt => ({
-    sx: toX(pt.x),
-    sy: toY((pt.d / maxD) * maxBucket),
+  // Bin midpoints + zero-height anchors outside view for natural curve taper
+  const halfBin  = binW * 0.5;
+  const binMids  = bins.map(b => ({ x: (b.s + b.e) / 2, y: b.count }));
+  const allMids  = [
+    { x: viewMin - halfBin, y: 0 },
+    ...binMids,
+    { x: viewMax + halfBin, y: 0 },
+  ];
+
+  // Single-pass 3-tap smooth (0.15 / 0.70 / 0.15) — kills single-bin spikes
+  // while keeping the curve tightly anchored to real bar heights
+  const smoothed = allMids.map((p, i) => {
+    const prev = allMids[i - 1];
+    const next = allMids[i + 1];
+    const y = prev && next
+      ? prev.y * 0.15 + p.y * 0.70 + next.y * 0.15
+      : prev ? prev.y * 0.15 + p.y * 0.85
+      : next ? p.y * 0.85 + next.y * 0.15
+      : p.y;
+    return { x: p.x, y };
+  });
+
+  // Map to SVG space
+  const curvePts = smoothed.map(p => ({
+    sx: Math.max(0, Math.min(plotW, toX(p.x))),
+    sy: toY(p.y),
   }));
-  const linePath = "M " + kdeScaled.map(p => `${p.sx.toFixed(1)},${p.sy.toFixed(1)}`).join(" ");
-  const areaPath = `${linePath} L ${plotW.toFixed(1)},${(PAD_T + plotH).toFixed(1)} L 0,${(PAD_T + plotH).toFixed(1)} Z`;
+
+  // Catmull-Rom → cubic bezier — smooth organic curve through bar tops
+  const buildCRPath = pts => {
+    if (pts.length < 2) return '';
+    let d = `M ${pts[0].sx.toFixed(1)},${pts[0].sy.toFixed(1)}`;
+    for (let i = 0; i < pts.length - 1; i++) {
+      const p0 = pts[Math.max(0, i - 1)];
+      const p1 = pts[i];
+      const p2 = pts[i + 1];
+      const p3 = pts[Math.min(pts.length - 1, i + 2)];
+      const cp1x = p1.sx + (p2.sx - p0.sx) / 6;
+      const cp1y = p1.sy + (p2.sy - p0.sy) / 6;
+      const cp2x = p2.sx - (p3.sx - p1.sx) / 6;
+      const cp2y = p2.sy - (p3.sy - p1.sy) / 6;
+      d += ` C ${cp1x.toFixed(1)},${cp1y.toFixed(1)} ${cp2x.toFixed(1)},${cp2y.toFixed(1)} ${p2.sx.toFixed(1)},${p2.sy.toFixed(1)}`;
+    }
+    return d;
+  };
+
+  const baseline = PAD_T + plotH;
+  const linePath = buildCRPath(curvePts);
+  const areaPath = curvePts.length > 1
+    ? `${linePath} L ${curvePts[curvePts.length - 1].sx.toFixed(1)},${baseline} L ${curvePts[0].sx.toFixed(1)},${baseline} Z`
+    : '';
 
   // ── Y-axis ticks ────────────────────────────────────────────────────────────
   const yStep  = maxBucket <= 5 ? 1 : maxBucket <= 10 ? 2 : maxBucket <= 20 ? 4 : 5;
@@ -594,8 +622,10 @@ function PriceDistribution({ data, listings, price }) {
   const CARD_H = 70;
   const fmtX   = v => v >= 1000 ? `£${+(v / 1000).toFixed(1)}k` : `£${Math.round(v)}`;
 
-  // Which bars are "highlight" tier (high density, >= 55% of peak)
-  const hlThreshold = maxBucket * 0.55;
+  // 3-tier bar density thresholds — graduated visual hierarchy
+  const tier1Cut = maxBucket * 0.68;  // bright cluster zone
+  const tier2Cut = maxBucket * 0.35;  // mid-density
+  // below tier2Cut → dim/sparse
 
   return (
     <div style={{
@@ -738,31 +768,32 @@ function PriceDistribution({ data, listings, price }) {
             {/* X-axis baseline */}
             <line x1={0} y1={PAD_T + plotH} x2={CHART_W - PAD_R} y2={PAD_T + plotH} stroke="rgba(255,255,255,0.1)" strokeWidth={1} vectorEffect="non-scaling-stroke" />
 
-            {/* Histogram bars */}
+            {/* Histogram bars — 3-tier density hierarchy */}
             {bins.map(({ s, e, count }, i) => {
               if (count === 0) return null;
               const x1   = toX(s);
               const x2   = toX(e);
               const barH = (count / maxBucket) * plotH;
-              const isHL = count >= hlThreshold;
+              const t1   = count >= tier1Cut;
+              const t2   = count >= tier2Cut;
               return (
                 <rect key={i}
                   x={x1 + 0.5} y={toY(count)}
                   width={Math.max(1.5, x2 - x1 - 1.5)}
                   height={barH}
-                  fill={isHL ? "url(#pdBarHL4)" : "#1e3a8a"}
-                  opacity={isHL ? 0.78 : 0.25}
+                  fill={t1 ? "url(#pdBarHL4)" : t2 ? "#2563eb" : "#1e3a8a"}
+                  opacity={t1 ? 0.88 : t2 ? 0.48 : 0.20}
                   rx={1.5}
                 />
               );
             })}
 
-            {/* KDE area fill */}
+            {/* Density curve area fill */}
             <path d={areaPath} fill="url(#pdKdeFill4)" />
 
-            {/* KDE curve — soft bloom + crisp line */}
-            <path d={linePath} fill="none" stroke="#38bdf8" strokeWidth={12} opacity={0.04} />
-            <path d={linePath} fill="none" stroke="#38bdf8" strokeWidth={2.2} opacity={0.90} vectorEffect="non-scaling-stroke" />
+            {/* Density curve — bar-tracking spline, bars are primary */}
+            <path d={linePath} fill="none" stroke="#60a5fa" strokeWidth={6} opacity={0.06} />
+            <path d={linePath} fill="none" stroke="#60a5fa" strokeWidth={1.8} opacity={0.70} vectorEffect="non-scaling-stroke" />
 
             {/* Marker dashed vertical lines */}
             {markers.filter(m => !m.outside).map(m => (
