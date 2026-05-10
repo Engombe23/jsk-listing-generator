@@ -113,7 +113,7 @@ function getDistributionInsight(price, clusterStart, clusterEnd, low, high, pric
 function Row({ label, children, last, note }) {
   return (
     <div style={{
-      display: "grid", gridTemplateColumns: "115px 1fr", alignItems: "center", gap: 8,
+      display: "grid", gridTemplateColumns: "100px 1fr", alignItems: "center", gap: 8,
       padding: "4px 0",
       borderBottom: last ? "none" : "1px solid rgba(255,255,255,0.04)",
     }}>
@@ -128,7 +128,7 @@ function Row({ label, children, last, note }) {
 
 function SL({ children, mt }) {
   return (
-    <div style={{ fontSize: 10, fontWeight: 700, color: "#2d4a6b", textTransform: "uppercase", letterSpacing: 1.2, paddingTop: mt ?? 10, paddingBottom: 4 }}>
+    <div style={{ fontSize: 10, fontWeight: 700, color: "#4a7096", textTransform: "uppercase", letterSpacing: 1.2, paddingTop: mt ?? 10, paddingBottom: 4 }}>
       {children}
     </div>
   );
@@ -531,7 +531,7 @@ function PriceDistribution({ data, listings, price }) {
   const cheaperThan = hasPrice ? n - priceRank : 0;
 
   // ── SVG coordinate system ───────────────────────────────────────────────────
-  const CHART_W = 500, CHART_H = 152, PAD_T = 6, PAD_B = 5, PAD_R = 6;
+  const CHART_W = 500, CHART_H = 190, PAD_T = 6, PAD_B = 5, PAD_R = 6;
   const plotW = CHART_W - PAD_R;
   const plotH = CHART_H - PAD_T - PAD_B;
 
@@ -1028,7 +1028,7 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
 
   // ── Render ────────────────────────────────────────────────────────────────────
   return (
-    <div style={{ maxWidth: 1080, margin: "0 auto" }}>
+    <div style={{ maxWidth: 1440, margin: "0 auto" }}>
 
       {/* ── Inner tab bar ── */}
       <div style={{ display: "flex", gap: 5, marginBottom: 14, background: "#0F1E35", borderRadius: 12, padding: 4, border: "1px solid rgba(255,255,255,0.08)" }}>
@@ -1046,7 +1046,7 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
           {!isPro && <Locked />}
 
           {isPro && (
-            <div style={{ background: C.bg1, border: C.borderBlue, borderRadius: 16, overflow: "hidden" }}>
+            <div style={{ background: C.bg1, border: C.borderBlue, borderRadius: 16, overflow: "hidden", display: "flex", flexDirection: "column" }}>
 
               {/* ── Card header ── */}
               <div style={{ padding: "14px 20px 12px", borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
@@ -1098,10 +1098,10 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
               </div>
 
               {/* ── Two-column body ── */}
-              <div style={{ display: "flex", alignItems: "stretch" }}>
+              <div style={{ display: "flex", alignItems: "stretch", flex: 1 }}>
 
                 {/* ═══ LEFT: Inputs ═══ */}
-                <div style={{ width: 290, flexShrink: 0, background: C.bg2, borderRight: "1px solid rgba(30,58,138,0.2)", padding: "16px 18px", display: "flex", flexDirection: "column" }}>
+                <div style={{ width: 230, flexShrink: 0, background: C.bg2, borderRight: "1px solid rgba(255,255,255,0.05)", padding: "14px 16px", display: "flex", flexDirection: "column" }}>
 
                   <SL mt={0}>Product</SL>
                   <Row label="Product / SKU">
@@ -1205,68 +1205,60 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
                 </div>
 
                 {/* ═══ RIGHT: Results + Market ═══ */}
-                <div style={{ flex: 1, padding: "14px 18px", display: "flex", flexDirection: "column", gap: 12, minWidth: 0 }}>
+                <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
 
-                  {/* ── 4-stat result row ── */}
-                  <div style={{ background: C.bg3, borderRadius: 12, border: "1px solid rgba(255,255,255,0.06)", overflow: "hidden" }}>
-
-                    {/* 4 equal stat blocks separated by 1px borders */}
+                  {/* ── Compact profit stats bar ── */}
+                  <div style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", flexShrink: 0 }}>
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)" }}>
                       {[
                         {
                           label: "Selling Price",
                           value: price > 0 ? fmtGBP(price) : "—",
-                          color: price > 0 ? "#e2e8f0" : C.dim,
-                          sub: buyerShip > 0 ? `+ ${fmtGBP(buyerShip)} shipping` : null,
+                          color: price > 0 ? "#e2e8f0" : "#2a3f55",
+                          sub: buyerShip > 0 ? `+ ${fmtGBP(buyerShip)} p&p` : null,
                         },
                         {
                           label: "Net Profit",
-                          value: hasResult ? fmt(profit)    : "—",
-                          color: hasResult ? profitColor : C.dim,
+                          value: hasResult ? fmt(profit) : "—",
+                          color: hasResult ? profitColor : "#2a3f55",
                           sub: null,
                         },
                         {
                           label: "Margin",
                           value: hasResult ? fmtPct(margin) : "—",
-                          color: hasResult ? profitColor : C.dim,
+                          color: hasResult ? profitColor : "#2a3f55",
                           sub: hasResult ? "of revenue" : null,
                         },
                         {
                           label: "Markup",
                           value: hasResult ? fmtPct(markup) : "—",
-                          color: hasResult ? profitColor : C.dim,
-                          sub: hasResult ? "on item cost" : null,
+                          color: hasResult ? profitColor : "#2a3f55",
+                          sub: hasResult ? "on cost" : null,
                         },
                       ].map(({ label, value, color, sub }, i) => (
                         <div key={label} style={{
-                          padding: "16px 12px", textAlign: "center",
-                          borderLeft: i > 0 ? "1px solid rgba(255,255,255,0.06)" : "none",
+                          padding: "12px 14px", textAlign: "center",
+                          borderLeft: i > 0 ? "1px solid rgba(255,255,255,0.05)" : "none",
                         }}>
-                          <div style={{ fontSize: 10, fontWeight: 700, color: C.muted, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 6 }}>{label}</div>
-                          <div style={{ fontSize: 24, fontWeight: 900, color, lineHeight: 1, letterSpacing: -0.5 }}>{value}</div>
-                          {sub && <div style={{ fontSize: 10, color: C.dim, marginTop: 4 }}>{sub}</div>}
-                          {!sub && <div style={{ height: 14 }} />}
+                          <div style={{ fontSize: 9, fontWeight: 700, color: "#4a6a8a", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 5 }}>{label}</div>
+                          <div style={{ fontSize: 22, fontWeight: 900, color, lineHeight: 1, letterSpacing: -0.5 }}>{value}</div>
+                          {sub && <div style={{ fontSize: 10, color: "#3d5a7a", marginTop: 3 }}>{sub}</div>}
                         </div>
                       ))}
                     </div>
 
-                    {/* Break-even + cost breakdown — shown only when we have enough data */}
+                    {/* Break-even + cost breakdown */}
                     {hasResult && (
-                      <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", padding: "10px 16px" }}>
+                      <div style={{ borderTop: "1px solid rgba(255,255,255,0.05)", padding: "8px 16px" }}>
 
-                        {/* Break-even row */}
                         {!isNaN(breakEven) && (
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10, padding: "6px 10px", background: "rgba(251,191,36,0.06)", border: "1px solid rgba(251,191,36,0.15)", borderRadius: 8 }}>
-                            <div>
-                              <span style={{ fontSize: 12, color: C.muted }}>Break-even price</span>
-                              {buyerShip > 0 && <div style={{ fontSize: 10, color: C.dim }}>Item price only — buyer pays {fmtGBP(buyerShip)} shipping</div>}
-                            </div>
-                            <span style={{ fontSize: 16, fontWeight: 800, color: "#fbbf24" }}>{fmt(breakEven)}</span>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, padding: "5px 10px", background: "rgba(251,191,36,0.05)", border: "1px solid rgba(251,191,36,0.12)", borderRadius: 7 }}>
+                            <span style={{ fontSize: 12, color: "#6b7280" }}>Break-even</span>
+                            <span style={{ fontSize: 15, fontWeight: 800, color: "#fbbf24" }}>{fmt(breakEven)}</span>
                           </div>
                         )}
 
-                        {/* Cost breakdown */}
-                        <div style={{ fontSize: 10, fontWeight: 700, color: C.dim, textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 5 }}>Breakdown</div>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: "#3d5268", textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 4 }}>Breakdown</div>
                         {buyerShip > 0 && <BR label="Buyer shipping (income)" value={`+${fmt(buyerShip)}`} color="#93c5fd" />}
                         {cost > 0      && <BR label="Product cost"            value={`-${fmt(cost)}`}       color="#f87171" />}
                         {(shipping + packaging) > 0 && <BR label="Postage & packaging" value={`-${fmt(shipping + packaging)}`} color="#f87171" />}
@@ -1278,20 +1270,21 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
                     )}
 
                     {!hasResult && (
-                      <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", padding: "12px 16px", textAlign: "center", fontSize: 13, color: C.dim }}>
+                      <div style={{ padding: "8px 0 2px", textAlign: "center", fontSize: 12, color: "#2a3f55" }}>
                         Enter item cost &amp; selling price to calculate profit
                       </div>
                     )}
                   </div>
 
-                  {/* ── Market Snapshot + Pricing Band ── */}
-                  <div style={{ background: C.bg3, borderRadius: 14, padding: "16px 18px", border: "1px solid rgba(30,58,138,0.3)", flex: 1, boxShadow: "0 4px 32px rgba(0,0,0,0.4)" }}>
+                  {/* ── Market Intelligence — HERO section ── */}
+                  <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0, padding: "0 20px 16px" }}>
 
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-                      <div style={{ fontSize: 10, fontWeight: 700, color: "#7a9cc0", textTransform: "uppercase", letterSpacing: 1 }}>
+                    {/* Section header */}
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 0 8px" }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: "#5a8ab0", textTransform: "uppercase", letterSpacing: 1.2 }}>
                         {smData
-                          ? `eBay UK Market · ${smData.conditionLabel}${smData.detectedType ? ` ${smData.detectedType}` : ""}`
-                          : "eBay UK Market"
+                          ? `eBay UK Market · ${smData.conditionLabel} · ${smData.priceCount} listings`
+                          : "Market Intelligence"
                         }
                       </div>
                       {smData && (
@@ -1321,55 +1314,7 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
                     {!smLoading && smData && (
                       <div style={{ animation: "pcIn 0.3s ease" }}>
 
-                        {/* ── Type badge + confidence badge ── */}
-                        <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 10, flexWrap: "wrap" }}>
-                          {smData.detectedType ? (
-                            <span style={{
-                              display: "inline-flex", alignItems: "center", gap: 5,
-                              background: "rgba(19,93,255,0.1)", border: "1px solid rgba(19,93,255,0.3)",
-                              borderRadius: 6, padding: "4px 10px", fontSize: 11, fontWeight: 700, color: "#93c5fd",
-                            }}>
-                              🔍 {smData.detectedType}
-                            </span>
-                          ) : (
-                            <span style={{
-                              display: "inline-flex", alignItems: "center", gap: 5,
-                              background: "rgba(251,191,36,0.08)", border: "1px solid rgba(251,191,36,0.25)",
-                              borderRadius: 6, padding: "4px 10px", fontSize: 11, fontWeight: 700, color: "#fbbf24",
-                            }}>
-                              ⚠ Type undetected
-                            </span>
-                          )}
-                          {smData.confidenceLabel && (
-                            <span style={{
-                              display: "inline-flex", alignItems: "center", gap: 5,
-                              background: `${smData.confidenceColor}14`,
-                              border: `1px solid ${smData.confidenceColor}40`,
-                              borderRadius: 6, padding: "4px 10px", fontSize: 11, fontWeight: 700,
-                              color: smData.confidenceColor,
-                            }}>
-                              <span style={{ width: 6, height: 6, borderRadius: "50%", background: smData.confidenceColor, display: "inline-block" }} />
-                              {smData.confidenceLabel}
-                            </span>
-                          )}
-                        </div>
-
-                        {/* ── Transparency row ── */}
-                        <div style={{
-                          marginBottom: 12, padding: "8px 12px",
-                          background: "rgba(255,255,255,0.015)",
-                          borderRadius: 8, fontSize: 11, color: "#3d5a7a", lineHeight: 1.8,
-                        }}>
-                          <span style={{ color: "#93c5fd", fontWeight: 700 }}>{smData.totalFetched}</span> {smData.conditionLabel} listings fetched
-                          {" · "}
-                          <span style={{ color: "#4ade80", fontWeight: 700 }}>{smData.priceCount}</span> used
-                          {smData.excludedByFilter   > 0 && <span> · <span style={{ color: "#f87171", fontWeight: 700 }}>{smData.excludedByFilter}</span> unrelated</span>}
-                          {smData.excludedAsSetKit   > 0 && <span> · <span style={{ color: "#f87171", fontWeight: 700 }}>{smData.excludedAsSetKit}</span> sets/kits</span>}
-                          {smData.excludedHighOutlier > 0 && <span> · <span style={{ color: "#f87171", fontWeight: 700 }}>{smData.excludedHighOutlier}</span> high outliers</span>}
-                          {smData.excludedLowOutlier  > 0 && <span> · <span style={{ color: "#f87171", fontWeight: 700 }}>{smData.excludedLowOutlier}</span> low outliers</span>}
-                        </div>
-
-                        {/* ── Source listings (internal view) ── */}
+                        {/* ── Source listings (subtle toggle) ── */}
                         <SourceListings
                           listings={smData.listings}
                           excludedListings={smData.excludedListings}
@@ -1379,12 +1324,9 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
                           onTab={setListingsTab}
                         />
 
-                        {/* ── Price distribution histogram ── */}
+                        {/* ── Price Distribution — HERO ── */}
                         <PriceDistribution data={smData} listings={smData.listings} price={price} />
 
-                        <div style={{ fontSize: 10, color: C.dim, textAlign: "right", marginTop: 10 }}>
-                          Based on active eBay UK listings only.
-                        </div>
                       </div>
                     )}
                   </div>
