@@ -436,7 +436,7 @@ function PricingBand({ data, price }) {
   );
 }
 
-// ─── Price Distribution histogram ────────────────────────────────────────────
+// ─── Price Distribution — KDE oscillating curve ───────────────────────────────
 function PriceDistribution({ data, listings, price }) {
   const prices = (listings || [])
     .map(l => l.price)
@@ -444,46 +444,61 @@ function PriceDistribution({ data, listings, price }) {
     .sort((a, b) => a - b);
 
   // Not enough data → fall back to flat band
-  if (prices.length < 3 || !data) return <PricingBand data={data} price={price} />;
-  const { low, high, median } = data;
+  if (prices.length < 2 || !data) return <PricingBand data={data} price={price} />;
+  const { low, high, median, average } = data;
   const range = high - low;
   if (range <= 0) return <PricingBand data={data} price={price} />;
 
-  // ── Buckets ───────────────────────────────────────────────────────────────
+  // ── KDE (kernel density estimation) — smooth oscillating curve ────────────
   const n = prices.length;
-  const bucketCount = n <= 3 ? n : n <= 6 ? 4 : n <= 10 ? 6 : 8;
-  const bw = range / bucketCount;
-  const counts = Array(bucketCount).fill(0);
-  for (const p of prices) {
-    counts[Math.min(bucketCount - 1, Math.floor((p - low) / bw))]++;
-  }
-  const maxCount = Math.max(...counts, 1);
-  const peakIdx  = counts.indexOf(maxCount);
+  const mean = prices.reduce((s, p) => s + p, 0) / n;
+  const std  = Math.sqrt(prices.reduce((s, p) => s + (p - mean) ** 2, 0) / n) || range * 0.15;
+  // Silverman bandwidth — floor at 8% of range to keep curve readable
+  const bw = Math.max(range * 0.08, 1.06 * std * Math.pow(n, -0.2));
 
-  // Cluster = all buckets at ≥40% of peak
-  const clusterIdxs = counts.reduce((a, c, i) => { if (c >= maxCount * 0.4) a.push(i); return a; }, []);
-  const clStart      = clusterIdxs.length ? Math.min(...clusterIdxs) : 0;
-  const clEnd        = clusterIdxs.length ? Math.max(...clusterIdxs) : bucketCount - 1;
-  const clusterStart = low + clStart * bw;
-  const clusterEnd   = low + (clEnd + 1) * bw;
-  const clusterCount = clusterIdxs.reduce((s, i) => s + counts[i], 0);
+  const STEPS = 180;
+  const kdePts = Array.from({ length: STEPS + 1 }, (_, i) => {
+    const x = low + (i / STEPS) * range;
+    const d = prices.reduce((s, p) => { const z = (x - p) / bw; return s + Math.exp(-0.5 * z * z); }, 0);
+    return { x, d };
+  });
+  const maxD = Math.max(...kdePts.map(pt => pt.d), 0.001);
 
-  // ── Positions (0–100 %) ───────────────────────────────────────────────────
-  const pct          = v  => Math.min(100, Math.max(0, ((v - low) / range) * 100));
+  // ── SVG helpers ───────────────────────────────────────────────────────────
+  const W = 400, H = 80, PAD_T = 6, PAD_B = 14;
+  const toX = v => ((v - low) / range) * W;
+  const toY = d => H - PAD_B - (d / maxD) * (H - PAD_T - PAD_B);
+
+  const linePts  = kdePts.map(pt => `${toX(pt.x).toFixed(1)},${toY(pt.d).toFixed(1)}`).join(" ");
+  const linePath = `M ${linePts}`;
+  const areaPath = `${linePath} L ${W},${H} L 0,${H} Z`;
+
+  // Cluster = KDE region above 40% of peak
+  const threshold  = maxD * 0.4;
+  const clPts      = kdePts.filter(pt => pt.d >= threshold);
+  const clusterStart = clPts.length ? clPts[0].x  : low;
+  const clusterEnd   = clPts.length ? clPts[clPts.length - 1].x : high;
+  const clusterCount = prices.filter(p => p >= clusterStart && p <= clusterEnd).length;
+
+  // ── Percentage position helpers (0–100) ───────────────────────────────────
+  const pct          = v => Math.min(100, Math.max(0, ((v - low) / range) * 100));
   const medPct       = pct(median);
+  const avgPct       = pct(average);
   const hasPrice     = price > 0;
   const userPct      = hasPrice ? pct(price) : null;
   const userLabelPct = userPct !== null ? Math.min(93, Math.max(7, userPct)) : null;
 
-  const pos     = hasPrice ? getPos(price, data)                                               : null;
+  // Merge avg/med labels when too close; suppress any that hug the edges
+  const EDGE          = 13;
+  const tooClose      = Math.abs(medPct - avgPct) < 9;
+  const mergedPct     = (medPct + avgPct) / 2;
+  const showMerged    = tooClose  && mergedPct > EDGE && mergedPct < (100 - EDGE);
+  const showMed       = !tooClose && medPct > EDGE    && medPct    < (100 - EDGE);
+  const showAvg       = !tooClose && avgPct > EDGE    && avgPct    < (100 - EDGE);
+
+  const pos     = hasPrice ? getPos(price, data) : null;
   const insight = getDistributionInsight(price, clusterStart, clusterEnd, low, high, prices);
   const fmtR    = v => `£${Math.round(v)}`;
-
-  // ── SVG geometry ──────────────────────────────────────────────────────────
-  const SVG_W = 400, SVG_H = 64, GAP = 3;
-  const barW  = (SVG_W - GAP * (bucketCount - 1)) / bucketCount;
-  const clRectX = clStart * (barW + GAP);
-  const clRectW = (clEnd - clStart + 1) * (barW + GAP) - GAP;
   const MARKER  = "#00e5ff";
 
   return (
@@ -495,7 +510,7 @@ function PriceDistribution({ data, listings, price }) {
       boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04), 0 4px 24px rgba(0,0,0,0.4)",
     }}>
 
-      {/* Header */}
+      {/* ── Header ── */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
         <div style={{ fontSize: 11, fontWeight: 700, color: C.dim, textTransform: "uppercase", letterSpacing: 0.8 }}>
           Price Distribution
@@ -514,9 +529,10 @@ function PriceDistribution({ data, listings, price }) {
         )}
       </div>
 
+      {/* ── Chart area ── */}
       <div style={{ position: "relative" }}>
 
-        {/* Floating price label */}
+        {/* Floating user price bubble */}
         <div style={{ position: "relative", height: 48 }}>
           {userLabelPct !== null && (
             <div style={{
@@ -540,84 +556,138 @@ function PriceDistribution({ data, listings, price }) {
           )}
         </div>
 
-        {/* SVG histogram */}
+        {/* KDE oscillating curve */}
         <svg
-          viewBox={`0 0 ${SVG_W} ${SVG_H}`}
+          viewBox={`0 0 ${W} ${H}`}
           preserveAspectRatio="none"
           width="100%"
-          height={SVG_H}
+          height={H}
           style={{ display: "block", overflow: "visible" }}
         >
           <defs>
-            <linearGradient id="pdBar" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#3b82f6" />
-              <stop offset="100%" stopColor="#1e3a8a" />
-            </linearGradient>
-            <linearGradient id="pdPeak" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#93c5fd" />
-              <stop offset="100%" stopColor="#1d4ed8" />
+            <linearGradient id="kdeArea" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%"   stopColor="#3b82f6" stopOpacity="0.28" />
+              <stop offset="100%" stopColor="#1e3a8a" stopOpacity="0.04" />
             </linearGradient>
             <filter id="pdGlow" x="-50%" y="-50%" width="200%" height="200%">
-              <feDropShadow dx="0" dy="0" stdDeviation="3" floodColor={MARKER} floodOpacity="0.8" />
+              <feDropShadow dx="0" dy="0" stdDeviation="3" floodColor={MARKER} floodOpacity="0.85" />
+            </filter>
+            <filter id="medGlow" x="-50%" y="-50%" width="200%" height="200%">
+              <feDropShadow dx="0" dy="0" stdDeviation="2.5" floodColor="rgba(255,255,255,0.5)" floodOpacity="1" />
             </filter>
           </defs>
 
-          {/* Cluster highlight band */}
-          {clusterIdxs.length > 0 && (
-            <rect x={clRectX} y={0} width={clRectW} height={SVG_H} fill="rgba(59,130,246,0.10)" rx={4} />
+          {/* Cluster highlight */}
+          {clPts.length > 0 && (
+            <rect
+              x={toX(clusterStart)} y={0}
+              width={Math.max(0, toX(clusterEnd) - toX(clusterStart))} height={H}
+              fill="rgba(59,130,246,0.09)" rx={6}
+            />
           )}
 
-          {/* Bars */}
-          {counts.map((count, i) => {
-            if (count === 0) return null;
-            const barH     = Math.max(6, (count / maxCount) * (SVG_H - 6));
-            const x        = i * (barW + GAP);
-            const y        = SVG_H - barH;
-            const isPeak   = i === peakIdx;
-            const inCluster = clusterIdxs.includes(i);
-            const opacity  = inCluster ? 1 : Math.max(0.3, (count / maxCount) * 0.8);
-            return (
-              <rect key={i}
-                x={x} y={y} width={barW} height={barH}
-                fill={isPeak ? "url(#pdPeak)" : "url(#pdBar)"}
-                rx={2} opacity={opacity}
-              />
-            );
-          })}
+          {/* Filled area under curve */}
+          <path d={areaPath} fill="url(#kdeArea)" />
 
-          {/* Median dashed line */}
+          {/* Oscillating KDE line */}
+          <path d={linePath} fill="none" stroke="#60a5fa" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
+
+          {/* Individual listing tick marks (short ticks at the bottom baseline) */}
+          {prices.map((p, i) => (
+            <line key={i}
+              x1={toX(p)} y1={H - PAD_B + 2}
+              x2={toX(p)} y2={H - 2}
+              stroke="#93c5fd" strokeWidth={1.5}
+              opacity={0.5}
+            />
+          ))}
+
+          {/* Average dashed line — secondary */}
           <line
-            x1={medPct / 100 * SVG_W} y1={-4}
-            x2={medPct / 100 * SVG_W} y2={SVG_H + 4}
-            stroke="rgba(255,255,255,0.55)" strokeWidth={1.5} strokeDasharray="4,3"
+            x1={toX(average)} y1={-4} x2={toX(average)} y2={H}
+            stroke="rgba(255,255,255,0.28)" strokeWidth={1.5} strokeDasharray="3,4"
+          />
+
+          {/* Median dashed line — most prominent */}
+          <line
+            x1={toX(median)} y1={-4} x2={toX(median)} y2={H}
+            stroke="rgba(255,255,255,0.80)" strokeWidth={2.5} strokeDasharray="5,3"
+            filter="url(#medGlow)"
           />
 
           {/* User price line */}
           {userPct !== null && (
             <line
-              x1={userPct / 100 * SVG_W} y1={-4}
-              x2={userPct / 100 * SVG_W} y2={SVG_H + 4}
+              x1={userPct / 100 * W} y1={-4}
+              x2={userPct / 100 * W} y2={H}
               stroke={MARKER} strokeWidth={2.5}
               filter="url(#pdGlow)"
-              style={{ animation: "pcGlow 2.2s ease-in-out infinite" }}
             />
           )}
         </svg>
 
-        {/* Low / Median / High labels */}
-        <div style={{ position: "relative", height: 44, marginTop: 14 }}>
+        {/* Individual listing price labels — rotated ticks below the curve */}
+        <div style={{ position: "relative", height: 38, marginTop: 2, overflow: "hidden" }}>
+          {prices.map((p, i) => (
+            <div key={i} style={{
+              position: "absolute",
+              left: `${pct(p)}%`,
+              top: 0,
+              transform: "translateX(-50%)",
+              display: "flex", flexDirection: "column", alignItems: "flex-start",
+            }}>
+              <div style={{
+                fontSize: 9, fontWeight: 600,
+                color: "rgba(147,197,253,0.65)",
+                whiteSpace: "nowrap",
+                transform: "rotate(42deg)",
+                transformOrigin: "top left",
+                lineHeight: 1,
+              }}>
+                {fmtR(p)}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Key stat labels — Low · Avg · Median · High */}
+        <div style={{ position: "relative", height: 46, marginTop: 8 }}>
+
+          {/* LOW */}
           <div style={{ position: "absolute", left: 0 }}>
-            <div style={{ fontSize: 13, fontWeight: 800, color: "#7dd3fc", lineHeight: 1 }}>{fmtGBP(low)}</div>
+            <div style={{ fontSize: 15, fontWeight: 900, color: "#7dd3fc", lineHeight: 1, letterSpacing: -0.3 }}>{fmtGBP(low)}</div>
             <div style={{ fontSize: 11, color: C.muted, marginTop: 3 }}>Low</div>
           </div>
-          {medPct > 14 && medPct < 86 && (
+
+          {/* MERGED Avg / Median */}
+          {showMerged && (
+            <div style={{ position: "absolute", left: `${mergedPct}%`, transform: "translateX(-50%)", textAlign: "center", whiteSpace: "nowrap" }}>
+              <div style={{ fontSize: 15, fontWeight: 900, color: "#e2e8f0", lineHeight: 1 }}>
+                {fmtGBP(average)} / {fmtGBP(median)}
+              </div>
+              <div style={{ fontSize: 11, color: C.muted, marginTop: 3 }}>Avg / Med</div>
+            </div>
+          )}
+
+          {/* AVERAGE */}
+          {showAvg && (
+            <div style={{ position: "absolute", left: `${avgPct}%`, transform: "translateX(-50%)", textAlign: "center", whiteSpace: "nowrap" }}>
+              <div style={{ fontSize: 14, fontWeight: 800, color: "#bae6fd", lineHeight: 1 }}>{fmtGBP(average)}</div>
+              <div style={{ fontSize: 11, color: C.muted, marginTop: 3 }}>Average</div>
+            </div>
+          )}
+
+          {/* MEDIAN — most prominent */}
+          {showMed && (
             <div style={{ position: "absolute", left: `${medPct}%`, transform: "translateX(-50%)", textAlign: "center", whiteSpace: "nowrap" }}>
-              <div style={{ fontSize: 13, fontWeight: 800, color: "#c4d4e8", lineHeight: 1 }}>{fmtGBP(median)}</div>
+              <div style={{ fontSize: 15, fontWeight: 900, color: "#ffffff", lineHeight: 1, textShadow: "0 0 12px rgba(255,255,255,0.5)" }}>{fmtGBP(median)}</div>
               <div style={{ fontSize: 11, color: C.muted, marginTop: 3 }}>Median</div>
             </div>
           )}
+
+          {/* HIGH */}
           <div style={{ position: "absolute", right: 0, textAlign: "right" }}>
-            <div style={{ fontSize: 13, fontWeight: 800, color: "#7dd3fc", lineHeight: 1 }}>{fmtGBP(high)}</div>
+            <div style={{ fontSize: 15, fontWeight: 900, color: "#7dd3fc", lineHeight: 1, letterSpacing: -0.3 }}>{fmtGBP(high)}</div>
             <div style={{ fontSize: 11, color: C.muted, marginTop: 3 }}>High</div>
           </div>
         </div>
