@@ -454,66 +454,94 @@ function PriceDistribution({ data, listings, price }) {
   const n = prices.length;
   const hasPrice = price > 0;
 
-  // ── KDE (under-smoothed for dramatic peaks) ──────────────────────────────────
-  const mean = prices.reduce((s, p) => s + p, 0) / n;
-  const variance = prices.reduce((s, p) => s + (p - mean) ** 2, 0) / n;
-  const std = Math.sqrt(variance) || range * 0.15;
-  const bw = Math.max(std * 0.3, 0.85 * 1.06 * std * Math.pow(n, -0.2));
-  const kde = x => prices.reduce((s, p) => {
+  // ── IQR-based outlier compression ──────────────────────────────────────────
+  // Gives sellers a focused view of where real competition is priced
+  const q1 = prices[Math.max(0, Math.floor((n - 1) * 0.25))];
+  const q3 = prices[Math.min(n - 1, Math.ceil((n - 1) * 0.75))];
+  const iqr = Math.max(q3 - q1, range * 0.1);
+
+  // Tukey outer fences (2.5× IQR = very lenient, only clips true outliers)
+  const fenceLow  = q1 - 2.5 * iqr;
+  const fenceHigh = q3 + 2.5 * iqr;
+  const corePrices = prices.filter(p => p >= fenceLow && p <= fenceHigh);
+  const outlierCount = n - corePrices.length;
+
+  // View range = core extent + 8% padding each side
+  const coreMin = corePrices.length ? corePrices[0] : low;
+  const coreMax = corePrices.length ? corePrices[corePrices.length - 1] : high;
+  const coreSpread = Math.max(coreMax - coreMin, 1);
+  const viewPad = Math.max(coreSpread * 0.08, 10);
+  const viewMin = coreMin - viewPad;
+  const viewMax = coreMax + viewPad;
+  const viewRange = viewMax - viewMin;
+
+  // ── Adaptive binning ────────────────────────────────────────────────────────
+  // Bin width scales with view range so bars are always readable
+  const targetBins = Math.max(8, Math.min(14, Math.round(corePrices.length * 1.1)));
+  const rawBinW = viewRange / targetBins;
+  const binW = ([5, 10, 20, 25, 50, 75, 100, 150, 200, 250, 500, 1000]
+    .find(s => s >= rawBinW)) ?? 1000;
+
+  const bsStart = Math.floor(viewMin / binW) * binW;
+  const viewPrices = prices.filter(p => p >= viewMin && p <= viewMax);
+  const numBinsEst = Math.ceil((viewMax - bsStart) / binW) + 2;
+  const bins = Array.from({ length: numBinsEst }, (_, i) => {
+    const s = bsStart + i * binW;
+    const e = s + binW;
+    if (e <= viewMin || s >= viewMax + 0.001) return null;
+    const isLast = e >= viewMax;
+    const count = viewPrices.filter(p => p >= s && (isLast ? p <= viewMax : p < e)).length;
+    return { s, e, count };
+  }).filter(Boolean);
+
+  const maxBucket = Math.max(...bins.map(b => b.count), 1);
+
+  // ── KDE (computed on core prices only — sharper, no outlier distortion) ────
+  const coreN    = corePrices.length || 1;
+  const coreMean = corePrices.reduce((sum, p) => sum + p, 0) / coreN;
+  const coreVar  = corePrices.reduce((sum, p) => sum + (p - coreMean) ** 2, 0) / coreN;
+  const coreStd  = Math.sqrt(coreVar) || viewRange * 0.1;
+  // Under-smooth by 0.7× Silverman → more dramatic peaks
+  const bw = Math.max(coreStd * 0.22, 0.7 * 1.06 * coreStd * Math.pow(coreN, -0.2));
+  const kde = x => corePrices.reduce((s, p) => {
     const z = (x - p) / bw;
     return s + Math.exp(-0.5 * z * z);
   }, 0);
 
-  // Extended x domain with breathing room
-  const xPad = range * 0.07;
-  const xMin = low - xPad;
-  const xMax = high + xPad;
-  const xRange = xMax - xMin;
-
-  const STEPS = 280;
+  const STEPS = 260;
   const kdePts = Array.from({ length: STEPS + 1 }, (_, i) => {
-    const x = xMin + (i / STEPS) * xRange;
+    const x = viewMin + (i / STEPS) * viewRange;
     return { x, d: kde(x) };
   });
   const maxD = Math.max(...kdePts.map(pt => pt.d), 0.001);
 
-  // ── Histogram ────────────────────────────────────────────────────────────────
-  const numBuckets = Math.max(10, Math.min(18, Math.round(n * 1.2)));
-  const bWidth = xRange / numBuckets;
-  const buckets = Array.from({ length: numBuckets }, (_, i) => {
-    const bStart = xMin + i * bWidth;
-    const bEnd = bStart + bWidth;
-    const count = prices.filter(p => p >= bStart && (i === numBuckets - 1 ? p <= bEnd : p < bEnd)).length;
-    return { bStart, bEnd, count };
-  });
-  const maxBucket = Math.max(...buckets.map(b => b.count), 1);
+  // ── Cluster = IQR range (middle 50% — where most competition lives) ─────────
+  const clusterStart = q1;
+  const clusterEnd   = q3;
+  const clusterCount = prices.filter(p => p >= q1 && p <= q3).length;
+  const inCluster    = hasPrice && price >= clusterStart && price <= clusterEnd;
 
-  // ── Cluster detection ────────────────────────────────────────────────────────
-  const clPts = kdePts.filter(pt => pt.d >= maxD * 0.4);
-  const clusterStart = clPts.length ? clPts[0].x : low;
-  const clusterEnd   = clPts.length ? clPts[clPts.length - 1].x : high;
-  const clusterCount = prices.filter(p => p >= clusterStart && p <= clusterEnd).length;
-
-  // ── Competition & rank ───────────────────────────────────────────────────────
-  const compWindow  = range * 0.1;
+  // ── Competition & ranking ───────────────────────────────────────────────────
+  const compWindow  = Math.max(range * 0.08, 15);
   const compCount   = hasPrice ? prices.filter(p => Math.abs(p - price) <= compWindow).length : 0;
   const compLevel   = compCount >= 6 ? "High" : compCount >= 3 ? "Medium" : "Low";
   const compColor   = compCount >= 6 ? "#f87171" : compCount >= 3 ? "#fbbf24" : "#4ade80";
-  const compBg      = compCount >= 6 ? "rgba(60,15,15,0.95)" : compCount >= 3 ? "rgba(60,45,5,0.95)" : "rgba(10,45,20,0.95)";
   const compBd      = compCount >= 6 ? "rgba(239,68,68,0.3)" : compCount >= 3 ? "rgba(245,158,11,0.3)" : "rgba(74,222,128,0.3)";
   const priceRank   = hasPrice ? prices.filter(p => p < price).length + 1 : null;
   const cheaperThan = hasPrice ? n - priceRank : 0;
-  const inCluster   = hasPrice && price >= clusterStart && price <= clusterEnd;
 
-  // ── SVG coordinate system (no left padding — Y-axis is separate DOM) ─────────
-  const CHART_W = 500, CHART_H = 158, PAD_T = 5, PAD_B = 5, PAD_R = 6;
+  // ── SVG coordinate system ───────────────────────────────────────────────────
+  const CHART_W = 500, CHART_H = 152, PAD_T = 6, PAD_B = 5, PAD_R = 6;
   const plotW = CHART_W - PAD_R;
   const plotH = CHART_H - PAD_T - PAD_B;
 
-  const toX = v  => ((v - xMin) / xRange) * plotW;
-  const toY = cnt => (PAD_T + plotH) - (cnt / maxBucket) * plotH;
+  const toX   = v   => ((v - viewMin) / viewRange) * plotW;
+  const toY   = cnt => (PAD_T + plotH) - (cnt / maxBucket) * plotH;
+  const toPct = v   => (toX(v) / CHART_W) * 100;
+  const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+  const inView = v => v >= viewMin && v <= viewMax;
 
-  // KDE scaled to count units, for overlay on bars
+  // KDE path (density normalised to count scale)
   const kdeScaled = kdePts.map(pt => ({
     sx: toX(pt.x),
     sy: toY((pt.d / maxD) * maxBucket),
@@ -521,38 +549,58 @@ function PriceDistribution({ data, listings, price }) {
   const linePath = "M " + kdeScaled.map(p => `${p.sx.toFixed(1)},${p.sy.toFixed(1)}`).join(" ");
   const areaPath = `${linePath} L ${plotW.toFixed(1)},${(PAD_T + plotH).toFixed(1)} L 0,${(PAD_T + plotH).toFixed(1)} Z`;
 
-  // DOM overlay: % of chart column width
-  const toPct = v => Math.min(97, Math.max(3, (toX(v) / CHART_W) * 100));
-
-  // ── Y-axis ticks ─────────────────────────────────────────────────────────────
-  const yStep = maxBucket <= 5 ? 1 : maxBucket <= 10 ? 2 : maxBucket <= 20 ? 4 : 5;
+  // ── Y-axis ticks ────────────────────────────────────────────────────────────
+  const yStep  = maxBucket <= 5 ? 1 : maxBucket <= 10 ? 2 : maxBucket <= 20 ? 4 : 5;
   const yTicks = Array.from({ length: Math.floor(maxBucket / yStep) + 1 }, (_, i) => i * yStep);
 
-  // ── X-axis ticks (nice round numbers) ────────────────────────────────────────
-  const rawXStep = xRange / 7;
-  const xMag = Math.pow(10, Math.floor(Math.log10(rawXStep)));
+  // ── X-axis ticks (nice round numbers within view range) ─────────────────────
+  const rawXStep  = viewRange / 6;
+  const xMag      = Math.pow(10, Math.floor(Math.log10(Math.max(rawXStep, 1))));
   const niceXStep = ([1, 2, 2.5, 5, 10].map(f => f * xMag).find(s => s >= rawXStep)) ?? (xMag * 10);
-  const xTickStart = Math.ceil((xMin + niceXStep * 0.05) / niceXStep) * niceXStep;
+  const xTickStart = Math.ceil((viewMin + niceXStep * 0.1) / niceXStep) * niceXStep;
   const xTicks = [];
-  for (let v = xTickStart; v <= xMax - niceXStep * 0.05; v += niceXStep) xTicks.push(Math.round(v));
+  for (let v = xTickStart; v <= viewMax - niceXStep * 0.1; v += niceXStep) xTicks.push(Math.round(v));
 
-  // ── Price marker card definitions ────────────────────────────────────────────
-  const MARKERS = [
-    { key: "low",  v: low,     label: "LOW PRICE",    col: "#3b82f6", bg: "rgba(10,22,65,0.96)",  bd: "rgba(59,130,246,0.55)"  },
-    { key: "med",  v: median,  label: "MEDIAN PRICE", col: "#a855f7", bg: "rgba(35,12,60,0.96)",  bd: "rgba(168,85,247,0.55)"  },
-    ...(hasPrice ? [{ key: "usr", v: price, label: "YOUR PRICE", col: "#00e5ff", bg: "rgba(0,38,58,0.97)", bd: "rgba(0,229,255,0.75)", hero: true }] : []),
-    { key: "avg",  v: average, label: "AVG PRICE",    col: "#f59e0b", bg: "rgba(55,30,4,0.96)",   bd: "rgba(245,158,11,0.55)"  },
-    { key: "high", v: high,    label: "HIGH PRICE",   col: "#ef4444", bg: "rgba(55,10,10,0.96)",  bd: "rgba(239,68,68,0.55)"   },
+  // ── Price marker cards (5 equal-style cards with collision resolution) ───────
+  const MARKERS_DEF = [
+    { key: "low",  v: low,     label: "LOW PRICE",    col: "#3b82f6", bg: "rgba(8,20,65,0.97)",   bd: "rgba(59,130,246,0.6)"   },
+    { key: "med",  v: median,  label: "MEDIAN PRICE", col: "#a855f7", bg: "rgba(32,10,58,0.97)",  bd: "rgba(168,85,247,0.6)"   },
+    ...(hasPrice ? [{ key: "usr", v: price, label: "YOUR PRICE", col: "#00e5ff", bg: "rgba(0,35,55,0.98)", bd: "rgba(0,229,255,0.8)", hero: true }] : []),
+    { key: "avg",  v: average, label: "AVG PRICE",    col: "#f59e0b", bg: "rgba(52,28,2,0.97)",   bd: "rgba(245,158,11,0.6)"   },
+    { key: "high", v: high,    label: "HIGH PRICE",   col: "#ef4444", bg: "rgba(52,8,8,0.97)",    bd: "rgba(239,68,68,0.6)"    },
   ].filter(m => m.v != null && !isNaN(m.v));
 
-  const CARD_H = 74; // height reserved above SVG for marker cards
+  // Assign initial positions (clamped to card edges)
+  let markers = MARKERS_DEF
+    .map(m => ({ ...m, rawPct: toPct(m.v), pct: clamp(toPct(m.v), 4, 94), outside: !inView(m.v) }))
+    .sort((a, b) => a.pct - b.pct);
 
-  const fmtX = v => v >= 1000 ? `£${+(v / 1000).toFixed(1)}k` : `£${Math.round(v)}`;
+  // Iterative push-apart to resolve label overlaps (min gap = 13%)
+  const MIN_GAP = 13;
+  for (let iter = 0; iter < 30; iter++) {
+    let moved = false;
+    for (let i = 0; i < markers.length - 1; i++) {
+      const gap = markers[i + 1].pct - markers[i].pct;
+      if (gap < MIN_GAP) {
+        const push = (MIN_GAP - gap) / 2;
+        markers[i].pct     = clamp(markers[i].pct     - push, 3, 95);
+        markers[i + 1].pct = clamp(markers[i + 1].pct + push, 3, 95);
+        moved = true;
+      }
+    }
+    if (!moved) break;
+  }
+
+  const CARD_H = 70;
+  const fmtX   = v => v >= 1000 ? `£${+(v / 1000).toFixed(1)}k` : `£${Math.round(v)}`;
+
+  // Which bars are "highlight" tier (high density, >= 55% of peak)
+  const hlThreshold = maxBucket * 0.55;
 
   return (
     <div style={{
-      background: "linear-gradient(180deg, #020e1f 0%, #010c1a 60%, #010810 100%)",
-      border: "1px solid rgba(30,58,138,0.3)",
+      background: "linear-gradient(180deg, #020e1f 0%, #010c1a 55%, #010810 100%)",
+      border: "1px solid rgba(30,58,138,0.28)",
       borderRadius: 16,
       overflow: "hidden",
       boxShadow: "0 8px 48px rgba(0,0,0,0.65), inset 0 1px 0 rgba(255,255,255,0.04)",
@@ -561,143 +609,109 @@ function PriceDistribution({ data, listings, price }) {
     }}>
 
       {/* ── Header ── */}
-      <div style={{ padding: "16px 20px 10px", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-        <div>
-          <div style={{ fontSize: 9, fontWeight: 800, color: "#2563eb", textTransform: "uppercase", letterSpacing: 2.5, marginBottom: 5 }}>
-            Market Intelligence
-          </div>
-          <div style={{ fontSize: 17, fontWeight: 800, color: "#e2e8f0", letterSpacing: -0.4, lineHeight: 1.2 }}>
-            Price Distribution
-          </div>
-          <div style={{ fontSize: 11, color: "#4b5563", marginTop: 3 }}>
-            Based on {n} active eBay UK listings
-          </div>
+      <div style={{ padding: "16px 20px 10px" }}>
+        <div style={{ fontSize: 9, fontWeight: 800, color: "#2563eb", textTransform: "uppercase", letterSpacing: 2.5, marginBottom: 5 }}>
+          Market Intelligence
+        </div>
+        <div style={{ fontSize: 17, fontWeight: 800, color: "#e2e8f0", letterSpacing: -0.4, lineHeight: 1.2 }}>
+          Price Distribution
+        </div>
+        <div style={{ fontSize: 11, color: "#4b5563", marginTop: 3 }}>
+          Based on {n} active eBay UK listings
+          {outlierCount > 0 && (
+            <span style={{ color: "#1e3a5f", marginLeft: 6 }}>
+              · {outlierCount} outlier{outlierCount > 1 ? "s" : ""} compressed
+            </span>
+          )}
         </div>
       </div>
 
-      {/* ── Chart outer wrapper: Y-axis col + chart col ── */}
+      {/* ── Chart wrapper: Y-axis col + chart col ── */}
       <div style={{ display: "flex", paddingRight: 10, paddingBottom: 2 }}>
 
         {/* Y-axis column */}
-        <div style={{ width: 46, flexShrink: 0 }}>
-          {/* Spacer matching marker cards height */}
+        <div style={{ width: 44, flexShrink: 0 }}>
           <div style={{ height: CARD_H }} />
-          {/* Tick labels + rotated title */}
           <div style={{ position: "relative", height: CHART_H }}>
-            {/* Rotated "LISTING VOLUME" */}
-            <div style={{
-              position: "absolute", left: 2, top: 0, width: 14, height: "100%",
-              display: "flex", alignItems: "center", justifyContent: "center",
-            }}>
-              <span style={{
-                fontSize: 7, fontWeight: 600, color: "#334155",
-                textTransform: "uppercase", letterSpacing: 1.8,
-                writingMode: "vertical-rl",
-                transform: "rotate(180deg)",
-                whiteSpace: "nowrap",
-                userSelect: "none",
-              }}>
+            {/* Rotated axis title */}
+            <div style={{ position: "absolute", left: 1, top: 0, width: 14, height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <span style={{ fontSize: 7, fontWeight: 600, color: "#2d3f55", textTransform: "uppercase", letterSpacing: 1.8, writingMode: "vertical-rl", transform: "rotate(180deg)", whiteSpace: "nowrap", userSelect: "none" }}>
                 Listing Volume
               </span>
             </div>
-            {/* Y tick numbers */}
+            {/* Tick numbers */}
             {yTicks.map(t => (
-              <div key={t} style={{
-                position: "absolute",
-                right: 5,
-                top: toY(t),
-                transform: "translateY(-50%)",
-                fontSize: 8,
-                color: "#475569",
-                lineHeight: 1,
-                fontVariantNumeric: "tabular-nums",
-                userSelect: "none",
-              }}>{t}</div>
+              <div key={t} style={{ position: "absolute", right: 4, top: toY(t), transform: "translateY(-50%)", fontSize: 8, color: "#3d5268", lineHeight: 1, fontVariantNumeric: "tabular-nums", userSelect: "none" }}>
+                {t}
+              </div>
             ))}
           </div>
         </div>
 
-        {/* Chart content column */}
+        {/* Chart content */}
         <div style={{ flex: 1, position: "relative", minWidth: 0 }}>
 
-          {/* ── Marker cards row ── */}
+          {/* ── Marker cards ── */}
           <div style={{ position: "relative", height: CARD_H }}>
             {!hasPrice && (
-              <div style={{
-                position: "absolute", left: "50%", top: "50%",
-                transform: "translate(-50%, -50%)",
-                fontSize: 10, color: "#1e3655", fontStyle: "italic",
-                whiteSpace: "nowrap",
-              }}>
+              <div style={{ position: "absolute", left: "50%", top: "50%", transform: "translate(-50%,-50%)", fontSize: 10, color: "#1a3050", fontStyle: "italic", whiteSpace: "nowrap" }}>
                 Enter a selling price to see live market position
               </div>
             )}
-            {MARKERS.map(m => {
-              const pct = toPct(m.v);
-              const clamped = Math.min(93, Math.max(5, pct));
-              return (
-                <div key={m.key} style={{
-                  position: "absolute",
-                  left: `${clamped}%`,
-                  top: 2,
-                  transform: "translateX(-50%)",
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  pointerEvents: "none",
-                  zIndex: 10,
-                }}>
-                  <div style={{
-                    fontSize: 7, fontWeight: 800, color: m.col,
-                    textTransform: "uppercase", letterSpacing: 1.5,
-                    marginBottom: 3, whiteSpace: "nowrap", opacity: 0.85,
-                  }}>
-                    {m.label}
-                  </div>
-                  <div style={{
-                    background: m.bg,
-                    border: `1px solid ${m.bd}`,
-                    borderRadius: 6,
-                    padding: m.hero ? "5px 13px" : "4px 10px",
-                    fontSize: m.hero ? 14 : 12,
-                    fontWeight: 900,
-                    color: m.col,
-                    whiteSpace: "nowrap",
-                    letterSpacing: -0.3,
-                    lineHeight: 1.4,
-                    boxShadow: m.hero
-                      ? `0 0 20px ${m.col}55, 0 2px 12px rgba(0,0,0,0.5)`
-                      : `0 0 10px ${m.col}22, 0 2px 8px rgba(0,0,0,0.4)`,
-                  }}>
-                    {fmtGBP(m.v)}
-                  </div>
-                  {/* Connector line below card */}
-                  <div style={{
-                    width: 1, height: 10,
-                    background: `linear-gradient(to bottom, ${m.col}99, ${m.col}00)`,
-                    marginTop: 2,
-                  }} />
+            {markers.map(m => (
+              <div key={m.key} style={{ position: "absolute", left: `${m.pct}%`, top: 2, transform: "translateX(-50%)", display: "flex", flexDirection: "column", alignItems: "center", pointerEvents: "none", zIndex: 10 }}>
+                {/* Label */}
+                <div style={{ fontSize: 7, fontWeight: 800, color: m.col, textTransform: "uppercase", letterSpacing: 1.4, marginBottom: 3, whiteSpace: "nowrap", opacity: 0.9 }}>
+                  {m.label}
                 </div>
-              );
-            })}
+                {/* Price card */}
+                <div style={{
+                  background: m.bg,
+                  border: `1px solid ${m.bd}`,
+                  borderRadius: 7,
+                  padding: m.hero ? "5px 14px" : "4px 10px",
+                  fontSize: m.hero ? 14 : 12,
+                  fontWeight: 900,
+                  color: m.col,
+                  whiteSpace: "nowrap",
+                  letterSpacing: -0.3,
+                  lineHeight: 1.4,
+                  boxShadow: m.hero
+                    ? `0 0 22px ${m.col}55, 0 0 44px ${m.col}18, 0 3px 12px rgba(0,0,0,0.55)`
+                    : `0 0 10px ${m.col}25, 0 2px 8px rgba(0,0,0,0.45)`,
+                }}>
+                  {fmtGBP(m.v)}
+                  {m.outside && <span style={{ fontSize: 8, marginLeft: 4, opacity: 0.55 }}>{m.v < viewMin ? "◀" : "▶"}</span>}
+                </div>
+                {/* Connector line to chart */}
+                {!m.outside && (
+                  <div style={{ width: 1, height: 9, background: `linear-gradient(to bottom, ${m.col}88, transparent)`, marginTop: 2 }} />
+                )}
+              </div>
+            ))}
           </div>
 
-          {/* ── SVG chart ── */}
+          {/* ── SVG ── */}
           <svg
             viewBox={`0 0 ${CHART_W} ${CHART_H}`}
             preserveAspectRatio="none"
-            width="100%" height={CHART_H}
+            width="100%"
+            height={CHART_H}
             style={{ display: "block" }}
           >
             <defs>
-              <linearGradient id="pdKdeFill2" x1="0" y1="0" x2="0" y2="1">
+              <linearGradient id="pdKdeFill4" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%"   stopColor="#38bdf8" stopOpacity="0.20" />
-                <stop offset="65%"  stopColor="#1d4ed8" stopOpacity="0.04" />
+                <stop offset="55%"  stopColor="#1e40af" stopOpacity="0.05" />
                 <stop offset="100%" stopColor="#38bdf8" stopOpacity="0.00" />
               </linearGradient>
-              <linearGradient id="pdBarCluster2" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%"   stopColor="#2563eb" stopOpacity="0.82" />
-                <stop offset="100%" stopColor="#1d4ed8" stopOpacity="0.55" />
+              <linearGradient id="pdBarHL4" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%"   stopColor="#3b82f6" stopOpacity="0.9" />
+                <stop offset="100%" stopColor="#1d4ed8" stopOpacity="0.6" />
+              </linearGradient>
+              <linearGradient id="pdClusterZone4" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%"   stopColor="#1d4ed8" stopOpacity="0.10" />
+                <stop offset="100%" stopColor="#1d4ed8" stopOpacity="0.02" />
               </linearGradient>
             </defs>
 
@@ -705,124 +719,97 @@ function PriceDistribution({ data, listings, price }) {
             {yTicks.filter(t => t > 0).map(t => (
               <line key={t}
                 x1={0} y1={toY(t)} x2={CHART_W - PAD_R} y2={toY(t)}
-                stroke="rgba(255,255,255,0.045)" strokeWidth={1} strokeDasharray="3,7"
+                stroke="rgba(255,255,255,0.04)" strokeWidth={1} strokeDasharray="2,8"
                 vectorEffect="non-scaling-stroke"
               />
             ))}
 
+            {/* IQR cluster zone (subtle background highlight) */}
+            {inView(clusterStart) && inView(clusterEnd) && (
+              <rect
+                x={Math.max(0, toX(clusterStart))}
+                y={PAD_T}
+                width={Math.min(plotW, toX(clusterEnd)) - Math.max(0, toX(clusterStart))}
+                height={plotH}
+                fill="url(#pdClusterZone4)"
+              />
+            )}
+
             {/* X-axis baseline */}
-            <line
-              x1={0} y1={PAD_T + plotH} x2={CHART_W - PAD_R} y2={PAD_T + plotH}
-              stroke="rgba(255,255,255,0.12)" strokeWidth={1}
-              vectorEffect="non-scaling-stroke"
-            />
+            <line x1={0} y1={PAD_T + plotH} x2={CHART_W - PAD_R} y2={PAD_T + plotH} stroke="rgba(255,255,255,0.1)" strokeWidth={1} vectorEffect="non-scaling-stroke" />
 
             {/* Histogram bars */}
-            {buckets.map(({ bStart, bEnd, count }, i) => {
+            {bins.map(({ s, e, count }, i) => {
               if (count === 0) return null;
-              const mid = (bStart + bEnd) / 2;
-              const isCluster = mid >= clusterStart && mid <= clusterEnd;
+              const x1   = toX(s);
+              const x2   = toX(e);
               const barH = (count / maxBucket) * plotH;
+              const isHL = count >= hlThreshold;
               return (
                 <rect key={i}
-                  x={toX(bStart) + 0.5}
-                  y={toY(count)}
-                  width={Math.max(1, toX(bEnd) - toX(bStart) - 1.5)}
+                  x={x1 + 0.5} y={toY(count)}
+                  width={Math.max(1.5, x2 - x1 - 1.5)}
                   height={barH}
-                  fill={isCluster ? "url(#pdBarCluster2)" : "#1e3a8a"}
-                  opacity={isCluster ? 0.7 : 0.3}
+                  fill={isHL ? "url(#pdBarHL4)" : "#1e3a8a"}
+                  opacity={isHL ? 0.78 : 0.25}
                   rx={1.5}
                 />
               );
             })}
 
-            {/* KDE area gradient */}
-            <path d={areaPath} fill="url(#pdKdeFill2)" />
+            {/* KDE area fill */}
+            <path d={areaPath} fill="url(#pdKdeFill4)" />
 
-            {/* KDE curve — soft glow + crisp line */}
-            <path d={linePath} fill="none" stroke="#38bdf8" strokeWidth={10} opacity={0.05} />
-            <path d={linePath} fill="none" stroke="#38bdf8" strokeWidth={2.2} opacity={0.92}
-              vectorEffect="non-scaling-stroke"
-            />
+            {/* KDE curve — soft bloom + crisp line */}
+            <path d={linePath} fill="none" stroke="#38bdf8" strokeWidth={12} opacity={0.04} />
+            <path d={linePath} fill="none" stroke="#38bdf8" strokeWidth={2.2} opacity={0.90} vectorEffect="non-scaling-stroke" />
 
-            {/* Marker vertical dashed lines */}
-            {MARKERS.map(m => (
+            {/* Marker dashed vertical lines */}
+            {markers.filter(m => !m.outside).map(m => (
               <line key={m.key}
                 x1={toX(m.v)} y1={0} x2={toX(m.v)} y2={PAD_T + plotH}
-                stroke={m.col} strokeWidth={m.hero ? 1.5 : 1}
-                strokeDasharray="4,4" opacity={m.hero ? 0.85 : 0.6}
+                stroke={m.col}
+                strokeWidth={m.hero ? 1.5 : 1}
+                strokeDasharray="4,4"
+                opacity={m.hero ? 0.88 : 0.58}
                 vectorEffect="non-scaling-stroke"
               />
             ))}
 
-            {/* Marker dots at x-axis */}
-            {MARKERS.map(m => (
+            {/* Marker anchor dots at x-axis */}
+            {markers.filter(m => !m.outside).map(m => (
               <g key={m.key}>
                 <circle cx={toX(m.v)} cy={PAD_T + plotH} r={7}  fill={m.col} opacity={0.10} />
-                <circle cx={toX(m.v)} cy={PAD_T + plotH} r={3}  fill={m.col} opacity={0.90} />
+                <circle cx={toX(m.v)} cy={PAD_T + plotH} r={2.8} fill={m.col} opacity={0.92} />
               </g>
             ))}
           </svg>
 
           {/* ── X-axis labels ── */}
-          <div style={{ position: "relative", height: 32, marginTop: 1 }}>
+          <div style={{ position: "relative", height: 30, marginTop: 1 }}>
             {xTicks.map(v => (
-              <div key={v} style={{
-                position: "absolute",
-                left: `${toPct(v)}%`,
-                top: 4,
-                transform: "translateX(-50%)",
-                fontSize: 9,
-                color: "#475569",
-                whiteSpace: "nowrap",
-                fontVariantNumeric: "tabular-nums",
-                userSelect: "none",
-              }}>
+              <div key={v} style={{ position: "absolute", left: `${clamp(toPct(v), 2, 96)}%`, top: 4, transform: "translateX(-50%)", fontSize: 9, color: "#3d5268", whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums", userSelect: "none" }}>
                 {fmtX(v)}
               </div>
             ))}
-            <div style={{
-              textAlign: "center", paddingTop: 18,
-              fontSize: 7, color: "#2d3f55",
-              textTransform: "uppercase", letterSpacing: 1.5,
-              userSelect: "none",
-            }}>
+            <div style={{ textAlign: "center", paddingTop: 18, fontSize: 7, color: "#243040", textTransform: "uppercase", letterSpacing: 1.6, userSelect: "none" }}>
               PRICE (£)
             </div>
           </div>
         </div>
       </div>
 
-      {/* ── Bottom 3-column insight panel ── */}
-      <div style={{
-        margin: "10px 14px 14px",
-        display: "grid",
-        gridTemplateColumns: hasPrice ? "1fr 1fr 1fr" : "1fr",
-        gap: 8,
-      }}>
+      {/* ── Bottom insight panel ── */}
+      <div style={{ margin: "10px 14px 14px", display: "grid", gridTemplateColumns: hasPrice ? "1fr 1fr 1fr" : "1fr", gap: 8 }}>
 
         {/* Most Common Range */}
-        <div style={{
-          background: "rgba(0,6,20,0.7)",
-          border: "1px solid rgba(37,99,235,0.2)",
-          borderRadius: 10,
-          padding: "14px",
-          display: "flex",
-          alignItems: "flex-start",
-          gap: 12,
-        }}>
-          <div style={{
-            width: 36, height: 36, borderRadius: "50%",
-            background: "rgba(37,99,235,0.14)",
-            border: "1px solid rgba(37,99,235,0.3)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            flexShrink: 0, fontSize: 16,
-          }}>
+        <div style={{ background: "rgba(0,5,18,0.75)", border: "1px solid rgba(37,99,235,0.2)", borderRadius: 10, padding: "14px 16px", display: "flex", alignItems: "flex-start", gap: 12 }}>
+          <div style={{ width: 36, height: 36, borderRadius: "50%", background: "rgba(37,99,235,0.13)", border: "1px solid rgba(37,99,235,0.28)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 17 }}>
             📊
           </div>
           <div style={{ minWidth: 0 }}>
             <div style={{ fontSize: 10, color: "#4b5563", marginBottom: 5, lineHeight: 1.4 }}>
-              Most listings are priced between
+              Most sellers are priced between
             </div>
             <div style={{ fontSize: 17, fontWeight: 900, color: "#00e5ff", letterSpacing: -0.5, lineHeight: 1.1, marginBottom: 6, fontVariantNumeric: "tabular-nums" }}>
               £{Math.round(clusterStart)} – £{Math.round(clusterEnd)}
@@ -834,30 +821,15 @@ function PriceDistribution({ data, listings, price }) {
                   ? price < clusterStart
                     ? "Your price is below the main cluster."
                     : "Your price is above the main cluster."
-                  : `${clusterCount} of ${n} listings in this range.`
-              }
+                  : `${clusterCount} of ${n} listings in this range.`}
             </div>
           </div>
         </div>
 
         {/* Competition */}
         {hasPrice && (
-          <div style={{
-            background: "rgba(0,6,20,0.7)",
-            border: `1px solid ${compBd}`,
-            borderRadius: 10,
-            padding: "14px",
-            display: "flex",
-            alignItems: "flex-start",
-            gap: 12,
-          }}>
-            <div style={{
-              width: 36, height: 36, borderRadius: "50%",
-              background: `${compColor}14`,
-              border: `1px solid ${compColor}44`,
-              display: "flex", alignItems: "center", justifyContent: "center",
-              flexShrink: 0, fontSize: 16,
-            }}>
+          <div style={{ background: "rgba(0,5,18,0.75)", border: `1px solid ${compBd}`, borderRadius: 10, padding: "14px 16px", display: "flex", alignItems: "flex-start", gap: 12 }}>
+            <div style={{ width: 36, height: 36, borderRadius: "50%", background: `${compColor}13`, border: `1px solid ${compColor}40`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 17 }}>
               🎯
             </div>
             <div>
@@ -874,22 +846,8 @@ function PriceDistribution({ data, listings, price }) {
 
         {/* Price Ranking */}
         {hasPrice && priceRank !== null && (
-          <div style={{
-            background: "rgba(0,6,20,0.7)",
-            border: "1px solid rgba(245,158,11,0.2)",
-            borderRadius: 10,
-            padding: "14px",
-            display: "flex",
-            alignItems: "flex-start",
-            gap: 12,
-          }}>
-            <div style={{
-              width: 36, height: 36, borderRadius: "50%",
-              background: "rgba(245,158,11,0.14)",
-              border: "1px solid rgba(245,158,11,0.35)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              flexShrink: 0, fontSize: 16,
-            }}>
+          <div style={{ background: "rgba(0,5,18,0.75)", border: "1px solid rgba(245,158,11,0.2)", borderRadius: 10, padding: "14px 16px", display: "flex", alignItems: "flex-start", gap: 12 }}>
+            <div style={{ width: 36, height: 36, borderRadius: "50%", background: "rgba(245,158,11,0.13)", border: "1px solid rgba(245,158,11,0.32)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 17 }}>
               🏆
             </div>
             <div>
@@ -906,16 +864,8 @@ function PriceDistribution({ data, listings, price }) {
       </div>
 
       {/* ── Footer ── */}
-      <div style={{
-        padding: "10px 20px 14px",
-        borderTop: "1px solid rgba(255,255,255,0.03)",
-        fontSize: 10,
-        color: "#1e3050",
-        display: "flex",
-        alignItems: "center",
-        gap: 7,
-      }}>
-        <span style={{ fontSize: 13, opacity: 0.5 }}>ⓘ</span>
+      <div style={{ padding: "10px 20px 14px", borderTop: "1px solid rgba(255,255,255,0.03)", fontSize: 10, color: "#1a2e45", display: "flex", alignItems: "center", gap: 7 }}>
+        <span style={{ fontSize: 13, opacity: 0.4 }}>ⓘ</span>
         Prices analysed from active listings only. Data updates every 24 hours.
       </div>
 
