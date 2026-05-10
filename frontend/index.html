@@ -2,9 +2,21 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/png" sizes="32x32" href="/FAV-ICON-32.png" />
-    <link rel="icon" type="image/png" sizes="16x16" href="/FAV-ICON-16.png" />
+
+    <!-- Favicon: dark mode -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/FAV-ICON-32.png" media="(prefers-color-scheme: dark)" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/FAV-ICON-16.png" media="(prefers-color-scheme: dark)" />
+
+    <!-- Favicon: light mode -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/FAV-ICON-32.png" media="(prefers-color-scheme: light)" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/FAV-ICON-16.png" media="(prefers-color-scheme: light)" />
+
+    <!-- Fallback for browsers that ignore media queries on icons -->
     <link rel="shortcut icon" href="/FAV-ICON-32.png" />
+
+    <!-- Apple / PWA -->
+    <link rel="apple-touch-icon" sizes="32x32" href="/FAV-ICON-32.png" />
+
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>JSK Listing Generator</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
