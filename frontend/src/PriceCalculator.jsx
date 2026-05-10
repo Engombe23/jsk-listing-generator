@@ -1,4 +1,4 @@
-import React, { memo, useState, useEffect } from "react";
+﻿import React, { memo, useState, useEffect } from "react";
 import { useSessionState } from "./useSessionState.js";
 import { BUTTON_BASE, SMALL_BUTTON_STYLE, INPUT_STYLE } from "./shared.jsx";
 import SavedProducts from "./SavedProducts.jsx";
@@ -15,9 +15,13 @@ const fmtGBP = (v) => (v != null && !isNaN(v)) ? `£${Number(v).toFixed(2)}` : "
   if (typeof document === "undefined" || document.getElementById("__pc2-kf")) return;
   const s = document.createElement("style"); s.id = "__pc2-kf";
   s.textContent = `
-    @keyframes pcPulse { 0%,100%{opacity:1;box-shadow:0 0 6px #4ade80} 50%{opacity:.3;box-shadow:0 0 14px #4ade80} }
-    @keyframes pcGlow  { 0%,100%{box-shadow:0 0 8px #00e5ff,0 0 20px #00e5ff60} 50%{box-shadow:0 0 14px #00e5ff,0 0 30px #00e5ff80} }
-    @keyframes pcIn    { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:translateY(0)} }
+    @keyframes pcPulse     { 0%,100%{opacity:1;box-shadow:0 0 6px #4ade80} 50%{opacity:.3;box-shadow:0 0 14px #4ade80} }
+    @keyframes pcGlow      { 0%,100%{box-shadow:0 0 8px #00e5ff,0 0 20px #00e5ff60} 50%{box-shadow:0 0 14px #00e5ff,0 0 30px #00e5ff80} }
+    @keyframes pcIn        { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:translateY(0)} }
+    @keyframes pdIn        { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+    @keyframes pdBeamPulse { 0%,100%{box-shadow:0 0 28px #38bdf8cc,0 0 56px #38bdf844,0 3px 12px rgba(0,0,0,.5)} 50%{box-shadow:0 0 40px #38bdf8ff,0 0 80px #38bdf866,0 3px 12px rgba(0,0,0,.5)} }
+    @keyframes pdDotPulse  { 0%,100%{r:5;opacity:1} 50%{r:7;opacity:.7} }
+    @keyframes pdBeamLine  { 0%,100%{opacity:.55} 50%{opacity:.85} }
   `;
   document.head.appendChild(s);
 })();
@@ -114,7 +118,7 @@ function Row({ label, children, last, note }) {
       borderBottom: last ? "none" : "1px solid rgba(255,255,255,0.04)",
     }}>
       <div>
-        <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.3 }}>{label}</div>
+        <div style={{ fontSize: 12, color: "#7a9cc0", lineHeight: 1.3 }}>{label}</div>
         {note && <div style={{ fontSize: 10, color: C.dim, marginTop: 1, lineHeight: 1.2 }}>{note}</div>}
       </div>
       {children}
@@ -124,7 +128,7 @@ function Row({ label, children, last, note }) {
 
 function SL({ children, mt }) {
   return (
-    <div style={{ fontSize: 10, fontWeight: 700, color: C.dim, textTransform: "uppercase", letterSpacing: 0.7, paddingTop: mt ?? 10, paddingBottom: 4 }}>
+    <div style={{ fontSize: 10, fontWeight: 700, color: "#2d4a6b", textTransform: "uppercase", letterSpacing: 1.2, paddingTop: mt ?? 10, paddingBottom: 4 }}>
       {children}
     </div>
   );
@@ -454,18 +458,18 @@ function PriceDistribution({ data, listings, price }) {
   // ── KDE ─────────────────────────────────────────────────────────────────────
   const mean = prices.reduce((s, p) => s + p, 0) / n;
   const std  = Math.sqrt(prices.reduce((s, p) => s + (p - mean) ** 2, 0) / n) || range * 0.15;
-  const bw   = Math.max(range * 0.08, 1.06 * std * Math.pow(n, -0.2));
+  const bw   = Math.max(range * 0.07, 1.06 * std * Math.pow(n, -0.2));
   const kde  = x => prices.reduce((s, p) => { const z = (x - p) / bw; return s + Math.exp(-0.5 * z * z); }, 0);
 
-  const STEPS = 200;
+  const STEPS = 300;
   const kdePts = Array.from({ length: STEPS + 1 }, (_, i) => {
     const x = low + (i / STEPS) * range;
     return { x, d: kde(x) };
   });
   const maxD = Math.max(...kdePts.map(pt => pt.d), 0.001);
 
-  // ── Histogram buckets ──────────────────────────────────────────────────────
-  const numBuckets = Math.max(12, Math.min(28, n * 2));
+  // ── Histogram buckets ────────────────────────────────────────────────────────
+  const numBuckets = Math.max(14, Math.min(30, n * 2));
   const bucketW    = range / numBuckets;
   const buckets    = Array.from({ length: numBuckets }, (_, i) => {
     const bStart = low + i * bucketW;
@@ -482,15 +486,15 @@ function PriceDistribution({ data, listings, price }) {
   const clusterCount = prices.filter(p => p >= clusterStart && p <= clusterEnd).length;
 
   // ── SVG ──────────────────────────────────────────────────────────────────
-  const W = 500, H = 160, PAD_T = 12, PAD_B = 6;
+  const W = 500, H = 200, PAD_T = 18, PAD_B = 10;
   const toX = v => ((v - low) / range) * W;
   const toY = d => H - PAD_B - (d / maxD) * (H - PAD_T - PAD_B);
 
-  const kPts    = kdePts.map(pt => `${toX(pt.x).toFixed(1)},${toY(pt.d).toFixed(1)}`).join(" ");
+  const kPts     = kdePts.map(pt => `${toX(pt.x).toFixed(1)},${toY(pt.d).toFixed(1)}`).join(" ");
   const linePath = `M ${kPts}`;
   const areaPath = `${linePath} L ${W},${H} L 0,${H} Z`;
 
-  // ── Pct helpers ───────────────────────────────────────────────────────────
+  // ── Pct helpers ──────────────────────────────────────────────────────────
   const pct      = v => Math.min(100, Math.max(0, ((v - low) / range) * 100));
   const medPct   = pct(median);
   const avgPct   = pct(average);
@@ -499,31 +503,28 @@ function PriceDistribution({ data, listings, price }) {
   const hasPrice = price > 0;
   const userPct  = hasPrice ? pct(price) : null;
 
-  // KDE y-coords at key prices (for glowing dots)
   const userD    = hasPrice ? kde(price) : 0;
   const userDotY = hasPrice ? toY(userD) : H;
   const medDotY  = toY(kde(median));
   const avgDotY  = toY(kde(average));
 
-  // ── Competition ───────────────────────────────────────────────────────────
+  // ── Competition & rank ───────────────────────────────────────────────────
   const compWindow = range * 0.1;
   const compCount  = hasPrice ? prices.filter(p => Math.abs(p - price) <= compWindow).length : 0;
   const compLevel  = compCount >= 6 ? "High" : compCount >= 3 ? "Medium" : "Low";
   const compColor  = compCount >= 6 ? "#f87171" : compCount >= 3 ? "#fbbf24" : "#4ade80";
+  const priceRank  = hasPrice ? prices.filter(p => p < price).length + 1 : null;
 
-  // ── Price rank ────────────────────────────────────────────────────────────
-  const priceRank = hasPrice ? prices.filter(p => p < price).length + 1 : null;
-
-  // ── Insight ───────────────────────────────────────────────────────────────
+  // ── Insight ──────────────────────────────────────────────────────────────
   const insight = (() => {
     if (!hasPrice) return {
       headline: `${clusterCount} of ${n} listings cluster between £${Math.round(clusterStart)}–£${Math.round(clusterEnd)}.`,
-      sub: "Enter a selling price to see your market position.",
+      sub: "Enter a selling price above to see your live market position.",
     };
     const inCluster = price >= clusterStart && price <= clusterEnd;
     const below     = price < clusterStart;
     if (inCluster && compCount >= 3)
-      return { headline: "Your price sits in the highest-volume market range.", sub: `${compCount} competing listings within 10% of your price — strong competition.` };
+      return { headline: "Your price sits in the highest-volume market range.", sub: `${compCount} competing listings within 10% — strong competition at this level.` };
     if (inCluster)
       return { headline: "Your price sits within the main market cluster.", sub: "Well-positioned against the majority of active listings." };
     if (below)
@@ -535,82 +536,98 @@ function PriceDistribution({ data, listings, price }) {
   const MARKER  = "#00e5ff";
   const MED_COL = "#a78bfa";
   const AVG_COL = "#60a5fa";
+  const LABEL_H = 76;
 
-  // Label clamping
   const userLabelLeft = userPct !== null ? Math.min(86, Math.max(12, userPct)) : 50;
   const hovLeft       = hovered  !== null ? Math.min(88, Math.max(12, pct(hovered))) : 0;
-
-  // X-axis labels
-  const tooClose = Math.abs(medPct - avgPct) < 8;
+  const tooClose      = Math.abs(medPct - avgPct) < 8;
   const xLabels = (() => {
-    const labels = [
-      { v: low,  label: fmtR(low),  col: "#475569" },
-      { v: high, label: fmtR(high), col: "#475569" },
+    const ls = [
+      { v: low,  label: fmtR(low),  col: "#3d5a7a" },
+      { v: high, label: fmtR(high), col: "#3d5a7a" },
     ];
-    if (medPct > 8 && medPct < 92) labels.push({ v: median,  label: fmtR(median),  col: MED_COL });
+    if (medPct > 8 && medPct < 92) ls.push({ v: median,  label: fmtR(median),  col: MED_COL });
     if (!tooClose && avgPct > 8 && avgPct < 92 && Math.abs(avgPct - medPct) > 7)
-      labels.push({ v: average, label: fmtR(average), col: AVG_COL });
-    return labels;
+      ls.push({ v: average, label: fmtR(average), col: AVG_COL });
+    return ls;
   })();
-
-  const LABEL_H = 56;
 
   return (
     <div style={{
-      background: "#020c1b",
-      border: "1px solid rgba(30,58,138,0.55)",
-      borderRadius: 14,
+      background: "linear-gradient(180deg, #010d1e 0%, #020c1b 50%, #010810 100%)",
+      border: "1px solid rgba(30,58,138,0.35)",
+      borderRadius: 16,
       overflow: "hidden",
-      boxShadow: "0 4px 32px rgba(0,0,0,0.5)",
+      boxShadow: "0 8px 48px rgba(0,0,0,0.65), inset 0 1px 0 rgba(255,255,255,0.04)",
       marginTop: 2,
+      position: "relative",
+      animation: "pdIn 0.4s ease",
     }}>
+
+      {/* Atmospheric radial glow */}
+      <div style={{
+        position: "absolute", top: 100, left: "50%", transform: "translateX(-50%)",
+        width: "90%", height: 220,
+        background: "radial-gradient(ellipse at 50% 40%, rgba(56,189,248,0.05) 0%, transparent 68%)",
+        pointerEvents: "none", zIndex: 0,
+      }} />
 
       {/* ── Header ── */}
       <div style={{
-        padding: "12px 18px 10px",
-        borderBottom: "1px solid rgba(255,255,255,0.04)",
-        display: "flex", alignItems: "center", justifyContent: "space-between",
+        padding: "16px 20px 14px",
+        display: "flex", alignItems: "flex-start", justifyContent: "space-between",
+        position: "relative", zIndex: 1,
       }}>
         <div>
-          <div style={{ fontSize: 9, fontWeight: 800, color: "#3b82f6", textTransform: "uppercase", letterSpacing: 2, marginBottom: 4 }}>
+          <div style={{ fontSize: 9, fontWeight: 800, color: "#2563eb", textTransform: "uppercase", letterSpacing: 2.5, marginBottom: 5 }}>
             Market Intelligence
           </div>
-          <div style={{ fontSize: 14, fontWeight: 800, color: "#e2e8f0", lineHeight: 1.2 }}>
+          <div style={{ fontSize: 16, fontWeight: 800, color: "#e2e8f0", lineHeight: 1.2, letterSpacing: -0.4 }}>
             Price Distribution
           </div>
-          <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>
+          <div style={{ fontSize: 11, color: "#3d5a7a", marginTop: 3 }}>
             Real-time eBay UK market data
           </div>
         </div>
         <div style={{ textAlign: "right" }}>
-          <div style={{ fontSize: 26, fontWeight: 900, color: "#1e40af", letterSpacing: -1, lineHeight: 1 }}>{n}</div>
-          <div style={{ fontSize: 9, color: "#1e3a8a", textTransform: "uppercase", letterSpacing: 1, marginTop: 2 }}>listings</div>
+          <div style={{ fontSize: 28, fontWeight: 900, color: "#1a3352", letterSpacing: -1.5, lineHeight: 1 }}>{n}</div>
+          <div style={{ fontSize: 9, color: "#243d56", textTransform: "uppercase", letterSpacing: 1.2, marginTop: 2 }}>listings</div>
         </div>
       </div>
 
       {/* ── Chart area ── */}
-      <div style={{ position: "relative", background: "#030d1e" }}>
+      <div style={{ position: "relative", zIndex: 1 }}>
 
-        {/* Zone labels strip */}
-        <div style={{ position: "relative", height: 22, background: "#020c1b", borderBottom: "1px solid rgba(255,255,255,0.03)" }}>
-          {coreL > 14 && (
-            <div style={{ position: "absolute", left: `${coreL / 2}%`, top: "50%", transform: "translate(-50%,-50%)", fontSize: 8, fontWeight: 800, color: "#0ea5e9", textTransform: "uppercase", letterSpacing: 1.5, whiteSpace: "nowrap" }}>
-              Lower
+        {/* Zone label strip */}
+        <div style={{ position: "relative", height: 22, display: "flex", alignItems: "center" }}>
+          {coreL > 16 && (
+            <div style={{ position: "absolute", left: `${coreL / 2}%`, transform: "translateX(-50%)", fontSize: 8, fontWeight: 600, color: "#1e5a78", textTransform: "uppercase", letterSpacing: 1.1, whiteSpace: "nowrap" }}>
+              Lower Market Range
             </div>
           )}
-          <div style={{ position: "absolute", left: `${(coreL + coreR) / 2}%`, top: "50%", transform: "translate(-50%,-50%)", fontSize: 8, fontWeight: 800, color: "#22c55e", textTransform: "uppercase", letterSpacing: 1.5, whiteSpace: "nowrap" }}>
-            Core Market
+          <div style={{ position: "absolute", left: `${(coreL + coreR) / 2}%`, transform: "translateX(-50%)", fontSize: 8, fontWeight: 600, color: "#1a6640", textTransform: "uppercase", letterSpacing: 1.1, whiteSpace: "nowrap" }}>
+            Core Market Range
           </div>
-          {coreR < 86 && (
-            <div style={{ position: "absolute", left: `${(coreR + 100) / 2}%`, top: "50%", transform: "translate(-50%,-50%)", fontSize: 8, fontWeight: 800, color: "#f97316", textTransform: "uppercase", letterSpacing: 1.5, whiteSpace: "nowrap" }}>
-              Upper
+          {coreR < 84 && (
+            <div style={{ position: "absolute", left: `${(coreR + 100) / 2}%`, transform: "translateX(-50%)", fontSize: 8, fontWeight: 600, color: "#7a3f1a", textTransform: "uppercase", letterSpacing: 1.1, whiteSpace: "nowrap" }}>
+              Upper Market Range
             </div>
           )}
         </div>
 
-        {/* YOUR PRICE label area */}
+        {/* YOUR PRICE floating label area */}
         <div style={{ position: "relative", height: LABEL_H }}>
-          {hasPrice && userPct !== null && (
+          {!hasPrice && (
+            <div style={{
+              position: "absolute", left: "50%", top: "50%",
+              transform: "translate(-50%, -50%)",
+              fontSize: 10, color: "#1e3655", fontStyle: "italic",
+              whiteSpace: "nowrap", letterSpacing: 0.2,
+            }}>
+              Enter a selling price to see live market position
+            </div>
+          )}
+          {hasPrice && (
             <div style={{
               position: "absolute",
               left: `${userLabelLeft}%`, top: 0, height: "100%",
@@ -618,91 +635,101 @@ function PriceDistribution({ data, listings, price }) {
               display: "flex", flexDirection: "column", alignItems: "center",
               pointerEvents: "none", zIndex: 10,
             }}>
-              <div style={{ height: 8 }} />
-              <div style={{ fontSize: 8, fontWeight: 800, color: MARKER, letterSpacing: 2, textTransform: "uppercase", marginBottom: 3, whiteSpace: "nowrap" }}>
+              <div style={{ height: 10 }} />
+              <div style={{ fontSize: 8, fontWeight: 800, color: MARKER, letterSpacing: 2.5, textTransform: "uppercase", marginBottom: 4, whiteSpace: "nowrap" }}>
                 Your Price
               </div>
               <div style={{
-                background: MARKER, color: "#001520",
-                fontSize: 14, fontWeight: 900,
-                padding: "4px 13px", borderRadius: 3,
+                background: `linear-gradient(135deg, ${MARKER} 0%, #0891b2 100%)`,
+                color: "#001624",
+                fontSize: 16, fontWeight: 900,
+                padding: "5px 16px", borderRadius: 5,
                 whiteSpace: "nowrap",
-                boxShadow: `0 0 22px ${MARKER}aa, 0 0 44px ${MARKER}44`,
-                letterSpacing: -0.3, lineHeight: 1.6,
+                boxShadow: `0 0 28px ${MARKER}cc, 0 0 56px ${MARKER}44, 0 3px 12px rgba(0,0,0,0.5)`,
+                letterSpacing: -0.5, lineHeight: 1.5,
+                animation: "pdBeamPulse 2.8s ease-in-out infinite",
               }}>
                 {fmtGBP(price)}
               </div>
-              <div style={{ flex: 1, width: 1.5, background: `linear-gradient(to bottom, ${MARKER}cc, ${MARKER}00)`, marginTop: 5 }} />
+              <div style={{
+                flex: 1, width: 2,
+                background: `linear-gradient(to bottom, ${MARKER}ff, ${MARKER}00)`,
+                marginTop: 6,
+              }} />
             </div>
           )}
           {hovered !== null && (
             <div style={{
-              position: "absolute", top: 10, left: `${hovLeft}%`,
+              position: "absolute", top: 8, left: `${hovLeft}%`,
               transform: "translateX(-50%)",
-              background: "rgba(2,12,27,0.97)",
-              border: "1px solid rgba(56,189,248,0.3)",
-              borderRadius: 4, padding: "3px 9px",
-              fontSize: 11, fontWeight: 700, color: "#7dd3fc",
+              background: "rgba(1,12,28,0.97)",
+              border: "1px solid rgba(56,189,248,0.2)",
+              borderRadius: 5, padding: "4px 11px",
+              fontSize: 11, fontWeight: 700, color: "#93c5fd",
               whiteSpace: "nowrap", pointerEvents: "none", zIndex: 20,
-              boxShadow: "0 2px 12px rgba(0,0,0,0.6)",
+              boxShadow: "0 4px 20px rgba(0,0,0,0.55)",
             }}>
               {fmtGBP(hovered)}
             </div>
           )}
         </div>
 
-        {/* ── SVG chart ── */}
+        {/* ── SVG ── */}
         <svg
           viewBox={`0 0 ${W} ${H}`}
           preserveAspectRatio="none"
-          width="100%"
-          height={H}
+          width="100%" height={H}
           style={{ display: "block" }}
         >
           <defs>
-            <linearGradient id="pd_kdeG" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%"   stopColor="#38bdf8" stopOpacity="0.22" />
-              <stop offset="60%"  stopColor="#1e40af" stopOpacity="0.08" />
-              <stop offset="100%" stopColor="#020c1b" stopOpacity="0.00" />
+            <linearGradient id="pd3_kdeG" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%"    stopColor="#38bdf8" stopOpacity="0.28" />
+              <stop offset="45%"   stopColor="#1e40af" stopOpacity="0.10" />
+              <stop offset="100%"  stopColor="#010d1e" stopOpacity="0.00" />
             </linearGradient>
-            <linearGradient id="pd_coreG" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%"   stopColor="#22c55e" stopOpacity="0.05" />
-              <stop offset="100%" stopColor="#22c55e" stopOpacity="0.01" />
+            <linearGradient id="pd3_clusterHL" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%"   stopColor="#22c55e" stopOpacity="0.14" />
+              <stop offset="55%"  stopColor="#22c55e" stopOpacity="0.06" />
+              <stop offset="100%" stopColor="#22c55e" stopOpacity="0.00" />
+            </linearGradient>
+            <linearGradient id="pd3_userBeam" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%"   stopColor="#00e5ff" stopOpacity="0.22" />
+              <stop offset="60%"  stopColor="#00e5ff" stopOpacity="0.08" />
+              <stop offset="100%" stopColor="#00e5ff" stopOpacity="0.00" />
             </linearGradient>
           </defs>
 
           {/* Zone backgrounds */}
-          {coreL > 1 && <rect x={0} y={0} width={toX(clusterStart)} height={H} fill="rgba(6,14,30,0.5)" />}
-          <rect x={toX(clusterStart)} y={0} width={Math.max(0, toX(clusterEnd) - toX(clusterStart))} height={H} fill="url(#pd_coreG)" />
-          {coreR < 99 && <rect x={toX(clusterEnd)} y={0} width={W - toX(clusterEnd)} height={H} fill="rgba(6,14,30,0.5)" />}
+          {coreL > 1 && <rect x={0} y={0} width={toX(clusterStart)} height={H} fill="rgba(0,6,16,0.45)" />}
+          <rect x={toX(clusterStart)} y={0} width={Math.max(0, toX(clusterEnd) - toX(clusterStart))} height={H} fill="url(#pd3_clusterHL)" />
+          <line x1={toX(clusterStart)} y1={0} x2={toX(clusterStart)} y2={H} stroke="rgba(34,197,94,0.18)" strokeWidth={1} vectorEffect="non-scaling-stroke" />
+          <line x1={toX(clusterEnd)}   y1={0} x2={toX(clusterEnd)}   y2={H} stroke="rgba(34,197,94,0.18)" strokeWidth={1} vectorEffect="non-scaling-stroke" />
+          {coreR < 99 && <rect x={toX(clusterEnd)} y={0} width={W - toX(clusterEnd)} height={H} fill="rgba(0,6,16,0.45)" />}
 
-          {/* Histogram bars */}
+          {/* Histogram bars — soft, atmospheric */}
           {buckets.map(({ bStart, bEnd, count }, i) => {
-            const barH    = (count / maxBucket) * (H - PAD_T - PAD_B);
-            const inCore  = bStart >= clusterStart && bEnd <= clusterEnd;
-            const barCol  = inCore ? "#22c55e" : "#1d4ed8";
-            const opacity = 0.13 + (count / maxBucket) * 0.52;
+            const barH   = (count / maxBucket) * (H - PAD_T - PAD_B);
+            const inCore = bStart >= clusterStart && bEnd <= clusterEnd;
+            const col    = inCore ? "#22c55e" : "#1d4ed8";
+            const op     = 0.04 + (count / maxBucket) * 0.22;
             return (
               <rect key={i}
                 x={toX(bStart) + 0.5}
                 y={H - PAD_B - barH}
                 width={Math.max(1, toX(bEnd) - toX(bStart) - 1)}
                 height={barH}
-                fill={barCol}
-                opacity={opacity}
+                fill={col} opacity={op} rx={0.5}
               />
             );
           })}
 
-          {/* KDE area fill */}
-          <path d={areaPath} fill="url(#pd_kdeG)" />
+          {/* KDE area + strokes */}
+          <path d={areaPath} fill="url(#pd3_kdeG)" />
+          <path d={linePath} fill="none" stroke="#38bdf8" strokeWidth={16} opacity={0.04} />
+          <path d={linePath} fill="none" stroke="#38bdf8" strokeWidth={6}  opacity={0.07} />
+          <path d={linePath} fill="none" stroke="#38bdf8" strokeWidth={1.8} opacity={0.93} vectorEffect="non-scaling-stroke" />
 
-          {/* KDE glow layer */}
-          <path d={linePath} fill="none" stroke="#38bdf8" strokeWidth={8} opacity={0.08} />
-          {/* KDE main line */}
-          <path d={linePath} fill="none" stroke="#38bdf8" strokeWidth={1.8} opacity={0.9} vectorEffect="non-scaling-stroke" />
-
-          {/* Hoverable individual listing lines */}
+          {/* Hoverable listing lines */}
           {prices.map((p, i) => {
             const isHov = hovered === p;
             return (
@@ -712,8 +739,8 @@ function PriceDistribution({ data, listings, price }) {
                 style={{ cursor: "crosshair" }}
               >
                 <line x1={toX(p)} y1={0} x2={toX(p)} y2={H}
-                  stroke={isHov ? "rgba(148,163,184,0.8)" : "rgba(148,163,184,0.12)"}
-                  strokeWidth={isHov ? 1.5 : 1}
+                  stroke={isHov ? "rgba(148,163,184,0.9)" : "rgba(148,163,184,0.09)"}
+                  strokeWidth={isHov ? 1.5 : 0.8}
                   vectorEffect="non-scaling-stroke"
                 />
                 <rect x={toX(p) - 7} y={0} width={14} height={H} fill="transparent" />
@@ -722,168 +749,160 @@ function PriceDistribution({ data, listings, price }) {
           })}
 
           {/* Boundary lines */}
-          <line x1={toX(low)}  y1={0} x2={toX(low)}  y2={H} stroke="rgba(71,85,105,0.5)" strokeWidth={1} vectorEffect="non-scaling-stroke" />
-          <line x1={toX(high)} y1={0} x2={toX(high)} y2={H} stroke="rgba(71,85,105,0.5)" strokeWidth={1} vectorEffect="non-scaling-stroke" />
+          <line x1={toX(low)}  y1={0} x2={toX(low)}  y2={H} stroke="rgba(40,55,75,0.7)"  strokeWidth={1} vectorEffect="non-scaling-stroke" />
+          <line x1={toX(high)} y1={0} x2={toX(high)} y2={H} stroke="rgba(40,55,75,0.7)"  strokeWidth={1} vectorEffect="non-scaling-stroke" />
 
-          {/* Average: dashed + dot */}
+          {/* Average: dashed + glow dot */}
           <line x1={toX(average)} y1={0} x2={toX(average)} y2={H}
-            stroke={AVG_COL} strokeWidth={1} strokeDasharray="4,4" opacity={0.7}
+            stroke={AVG_COL} strokeWidth={1} strokeDasharray="3,6" opacity={0.45}
             vectorEffect="non-scaling-stroke"
           />
-          <circle cx={toX(average)} cy={avgDotY} r={10} fill={AVG_COL} opacity={0.12} />
-          <circle cx={toX(average)} cy={avgDotY} r={5}  fill={AVG_COL} opacity={0.25} />
-          <circle cx={toX(average)} cy={avgDotY} r={3}  fill={AVG_COL} opacity={1}    />
+          <circle cx={toX(average)} cy={avgDotY} r={13} fill={AVG_COL} opacity={0.07} />
+          <circle cx={toX(average)} cy={avgDotY} r={6}  fill={AVG_COL} opacity={0.17} />
+          <circle cx={toX(average)} cy={avgDotY} r={2.5} fill={AVG_COL} opacity={1}   />
 
-          {/* Median: prominent + dot */}
+          {/* Median: prominent + bloom dot */}
           <line x1={toX(median)} y1={0} x2={toX(median)} y2={H}
-            stroke={MED_COL} strokeWidth={8} opacity={0.10}
+            stroke={MED_COL} strokeWidth={12} opacity={0.05}
           />
           <line x1={toX(median)} y1={0} x2={toX(median)} y2={H}
-            stroke={MED_COL} strokeWidth={1.5} strokeDasharray="5,3" opacity={0.9}
+            stroke={MED_COL} strokeWidth={1.5} strokeDasharray="5,4" opacity={0.88}
             vectorEffect="non-scaling-stroke"
           />
-          <circle cx={toX(median)} cy={medDotY} r={14} fill={MED_COL} opacity={0.08} />
-          <circle cx={toX(median)} cy={medDotY} r={7}  fill={MED_COL} opacity={0.2}  />
-          <circle cx={toX(median)} cy={medDotY} r={3.5} fill={MED_COL} opacity={1}   />
+          <circle cx={toX(median)} cy={medDotY} r={18} fill={MED_COL} opacity={0.06} />
+          <circle cx={toX(median)} cy={medDotY} r={9}  fill={MED_COL} opacity={0.14} />
+          <circle cx={toX(median)} cy={medDotY} r={3}  fill={MED_COL} opacity={1}    />
 
-          {/* User price marker */}
+          {/* YOUR PRICE — hero beam marker */}
           {hasPrice && userPct !== null && (
             <>
-              <line x1={userPct / 100 * W} y1={0} x2={userPct / 100 * W} y2={H} stroke={MARKER} strokeWidth={20} opacity={0.08} />
-              <line x1={userPct / 100 * W} y1={0} x2={userPct / 100 * W} y2={H} stroke={MARKER} strokeWidth={2} opacity={1} vectorEffect="non-scaling-stroke" />
-              <circle cx={userPct / 100 * W} cy={userDotY} r={16} fill={MARKER} opacity={0.07} />
-              <circle cx={userPct / 100 * W} cy={userDotY} r={8}  fill={MARKER} opacity={0.18} />
-              <circle cx={userPct / 100 * W} cy={userDotY} r={4}  fill={MARKER} opacity={1}    />
+              <rect x={userPct / 100 * W - 24} y={0} width={48} height={H} fill="url(#pd3_userBeam)" />
+              <line x1={userPct / 100 * W} y1={0} x2={userPct / 100 * W} y2={H}
+                stroke={MARKER} strokeWidth={10} opacity={0.18}
+              />
+              <line x1={userPct / 100 * W} y1={0} x2={userPct / 100 * W} y2={H}
+                stroke={MARKER} strokeWidth={2} opacity={1}
+                vectorEffect="non-scaling-stroke"
+              />
+              <circle cx={userPct / 100 * W} cy={userDotY} r={22} fill={MARKER} opacity={0.05} />
+              <circle cx={userPct / 100 * W} cy={userDotY} r={11} fill={MARKER} opacity={0.14} />
+              <circle cx={userPct / 100 * W} cy={userDotY} r={5}  fill={MARKER} opacity={1}    />
+              <circle cx={userPct / 100 * W} cy={userDotY} r={2}  fill="#fff"   opacity={0.9}  />
             </>
           )}
         </svg>
 
         {/* X-axis price labels */}
-        <div style={{ position: "relative", height: 28, background: "#020c1b", borderTop: "1px solid rgba(255,255,255,0.04)" }}>
-          <div style={{ position: "absolute", left: 0, top: "50%", transform: "translateY(-50%)", paddingLeft: 8, fontSize: 9, color: "#1e3a8a", textTransform: "uppercase", letterSpacing: 0.8 }}>Lowest</div>
-          <div style={{ position: "absolute", right: 0, top: "50%", transform: "translateY(-50%)", paddingRight: 8, fontSize: 9, color: "#1e3a8a", textTransform: "uppercase", letterSpacing: 0.8 }}>Highest</div>
-          {xLabels.map(({ v, label, col }) => {
-            const lPct = pct(v);
-            const clampL = Math.min(92, Math.max(6, lPct));
-            return (
-              <div key={v} style={{
-                position: "absolute",
-                left: `${clampL}%`, top: "50%",
-                transform: "translate(-50%, -50%)",
-                fontSize: 10, fontWeight: 700, color: col,
-                whiteSpace: "nowrap",
-              }}>
-                {label}
-              </div>
-            );
-          })}
+        <div style={{ position: "relative", height: 28, borderTop: "1px solid rgba(255,255,255,0.03)" }}>
+          <div style={{ position: "absolute", left: 0, top: "50%", transform: "translateY(-50%)", paddingLeft: 12, fontSize: 9, color: "#243d56", textTransform: "uppercase", letterSpacing: 1 }}>Lowest</div>
+          <div style={{ position: "absolute", right: 0, top: "50%", transform: "translateY(-50%)", paddingRight: 12, fontSize: 9, color: "#243d56", textTransform: "uppercase", letterSpacing: 1 }}>Highest</div>
+          {xLabels.map(({ v, label, col }) => (
+            <div key={v} style={{
+              position: "absolute",
+              left: `${Math.min(92, Math.max(6, pct(v)))}%`,
+              top: "50%", transform: "translate(-50%, -50%)",
+              fontSize: 10, fontWeight: 700, color: col, whiteSpace: "nowrap",
+            }}>
+              {label}
+            </div>
+          ))}
         </div>
       </div>
 
       {/* ── Legend ── */}
-      <div style={{ padding: "8px 16px", display: "flex", gap: 16, background: "#020c1b", borderTop: "1px solid rgba(255,255,255,0.03)", flexWrap: "wrap", alignItems: "center" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-          <div style={{ width: 20, height: 2, background: "#38bdf8", borderRadius: 1 }} />
-          <span style={{ fontSize: 9, color: "#475569", textTransform: "uppercase", letterSpacing: 0.8 }}>Distribution</span>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-          <div style={{ width: 14, height: 9, background: "#22c55e", opacity: 0.45, borderRadius: 1 }} />
-          <span style={{ fontSize: 9, color: "#475569", textTransform: "uppercase", letterSpacing: 0.8 }}>Volume</span>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-          <div style={{ width: 14, height: 2, background: MED_COL, borderRadius: 1 }} />
-          <span style={{ fontSize: 9, color: "#475569", textTransform: "uppercase", letterSpacing: 0.8 }}>Median</span>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-          <div style={{ width: 14, height: 2, background: AVG_COL, borderRadius: 1, opacity: 0.7 }} />
-          <span style={{ fontSize: 9, color: "#475569", textTransform: "uppercase", letterSpacing: 0.8 }}>Average</span>
-        </div>
-        {hasPrice && (
-          <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-            <div style={{ width: 14, height: 2, background: MARKER, borderRadius: 1 }} />
-            <span style={{ fontSize: 9, color: "#475569", textTransform: "uppercase", letterSpacing: 0.8 }}>Your Price</span>
+      <div style={{ padding: "10px 20px", display: "flex", gap: 18, flexWrap: "wrap", alignItems: "center", borderTop: "1px solid rgba(255,255,255,0.03)" }}>
+        {[
+          { col: "#38bdf8", label: "Distribution", w: 20, h: 2 },
+          { col: "#22c55e", label: "Volume",        w: 12, h: 9, op: 0.35 },
+          { col: MED_COL,  label: "Median",         w: 14, h: 2 },
+          { col: AVG_COL,  label: "Average",        w: 14, h: 2, op: 0.6 },
+          ...(hasPrice ? [{ col: MARKER, label: "Your Price", w: 14, h: 2 }] : []),
+        ].map(({ col, label, w, h, op }) => (
+          <div key={label} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <div style={{ width: w, height: h, background: col, borderRadius: 1, opacity: op ?? 1, flexShrink: 0 }} />
+            <span style={{ fontSize: 9, color: "#2d4a6b", textTransform: "uppercase", letterSpacing: 0.9 }}>{label}</span>
           </div>
-        )}
+        ))}
       </div>
 
       {/* ── 3-column insight panel ── */}
       <div style={{
-        padding: "14px 18px",
-        borderTop: "1px solid rgba(255,255,255,0.05)",
+        padding: "16px 20px",
+        borderTop: "1px solid rgba(255,255,255,0.04)",
         display: "grid",
         gridTemplateColumns: hasPrice ? "1fr auto auto" : "1fr",
         gap: 20, alignItems: "start",
       }}>
         <div>
-          <div style={{ fontSize: 13, fontWeight: 700, color: "#cbd5e1", lineHeight: 1.5, marginBottom: 3 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "#c8d8f0", lineHeight: 1.6, marginBottom: 4 }}>
             {insight.headline}
           </div>
-          <div style={{ fontSize: 11, color: "#475569", lineHeight: 1.5 }}>
+          <div style={{ fontSize: 11, color: "#3d5a7a", lineHeight: 1.6 }}>
             {insight.sub}
           </div>
         </div>
         {hasPrice && (
-          <div style={{ textAlign: "center", flexShrink: 0, minWidth: 70 }}>
-            <div style={{ fontSize: 8, fontWeight: 700, color: "#1e3a8a", textTransform: "uppercase", letterSpacing: 1.2, marginBottom: 5, whiteSpace: "nowrap" }}>
+          <div style={{ textAlign: "center", flexShrink: 0, minWidth: 76, paddingTop: 2 }}>
+            <div style={{ fontSize: 8, fontWeight: 700, color: "#243d56", textTransform: "uppercase", letterSpacing: 1.2, marginBottom: 7, whiteSpace: "nowrap" }}>
               Competition
             </div>
             <div style={{ fontSize: 14, fontWeight: 900, color: compColor }}>{compLevel}</div>
-            <div style={{ fontSize: 9, color: "#374151", marginTop: 2 }}>{compCount} nearby</div>
+            <div style={{ fontSize: 9, color: "#243d56", marginTop: 4 }}>{compCount} nearby</div>
           </div>
         )}
         {hasPrice && priceRank !== null && (
-          <div style={{ textAlign: "center", flexShrink: 0, minWidth: 70 }}>
-            <div style={{ fontSize: 8, fontWeight: 700, color: "#1e3a8a", textTransform: "uppercase", letterSpacing: 1.2, marginBottom: 5, whiteSpace: "nowrap" }}>
+          <div style={{ textAlign: "center", flexShrink: 0, minWidth: 76, paddingTop: 2 }}>
+            <div style={{ fontSize: 8, fontWeight: 700, color: "#243d56", textTransform: "uppercase", letterSpacing: 1.2, marginBottom: 7, whiteSpace: "nowrap" }}>
               Price Rank
             </div>
-            <div style={{ fontSize: 14, fontWeight: 900, color: "#e2e8f0" }}>
-              #{priceRank}<span style={{ fontSize: 10, fontWeight: 600, color: "#374151" }}>/{n}</span>
+            <div style={{ fontSize: 14, fontWeight: 900, color: "#c8d8f0" }}>
+              #{priceRank}<span style={{ fontSize: 10, fontWeight: 500, color: "#243d56" }}>/{n}</span>
             </div>
-            <div style={{ fontSize: 9, color: "#374151", marginTop: 2 }}>cheapest</div>
+            <div style={{ fontSize: 9, color: "#243d56", marginTop: 4 }}>cheapest</div>
           </div>
         )}
       </div>
 
       {/* ── Most Common Range ── */}
       <div style={{
-        padding: "10px 18px 14px",
-        borderTop: "1px solid rgba(255,255,255,0.04)",
+        padding: "12px 20px 16px",
+        borderTop: "1px solid rgba(255,255,255,0.03)",
         display: "flex", alignItems: "center", justifyContent: "space-between",
       }}>
         <div>
-          <div style={{ fontSize: 9, fontWeight: 700, color: "#1e3a8a", textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 4 }}>
+          <div style={{ fontSize: 9, fontWeight: 700, color: "#1a6640", textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 5 }}>
             Most Common Range
           </div>
-          <div style={{ fontSize: 22, fontWeight: 900, color: "#38bdf8", letterSpacing: -0.5, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>
+          <div style={{ fontSize: 22, fontWeight: 900, color: "#34d399", letterSpacing: -0.5, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>
             {fmtR(clusterStart)} — {fmtR(clusterEnd)}
           </div>
         </div>
         <div style={{ textAlign: "right" }}>
-          <div style={{ fontSize: 22, fontWeight: 900, color: "#1e3a8a", lineHeight: 1, letterSpacing: -1, fontVariantNumeric: "tabular-nums" }}>
-            {clusterCount}<span style={{ fontSize: 12, fontWeight: 500, color: "#0f2044" }}>/{n}</span>
+          <div style={{ fontSize: 22, fontWeight: 900, color: "#1a4a2e", lineHeight: 1, letterSpacing: -1, fontVariantNumeric: "tabular-nums" }}>
+            {clusterCount}<span style={{ fontSize: 12, fontWeight: 500, color: "#0f3020" }}>/{n}</span>
           </div>
-          <div style={{ fontSize: 9, color: "#0f2044", textTransform: "uppercase", letterSpacing: 1, marginTop: 3 }}>listings</div>
+          <div style={{ fontSize: 9, color: "#0f3020", textTransform: "uppercase", letterSpacing: 1, marginTop: 3 }}>in cluster</div>
         </div>
       </div>
 
-      {/* ── 5-stat bottom row ── */}
+      {/* ── 5-stat footer ── */}
       <div style={{
         display: "grid", gridTemplateColumns: "repeat(5, 1fr)",
-        borderTop: "1px solid rgba(255,255,255,0.05)",
-        background: "#010810",
+        background: "rgba(0,4,10,0.7)",
+        borderTop: "1px solid rgba(255,255,255,0.04)",
       }}>
         {[
           { label: "Lowest",   value: fmtGBP(low),     color: "#60a5fa" },
           { label: "Median",   value: fmtGBP(median),  color: MED_COL   },
           { label: "Average",  value: fmtGBP(average), color: AVG_COL   },
-          { label: "Highest",  value: fmtGBP(high),    color: "#94a3b8" },
-          { label: "Analysed", value: String(n),        color: "#e2e8f0" },
+          { label: "Highest",  value: fmtGBP(high),    color: "#6b8aaa" },
+          { label: "Analysed", value: String(n),        color: "#c8d8f0" },
         ].map(({ label, value, color }, i) => (
           <div key={label} style={{
-            padding: "12px 8px", textAlign: "center",
-            borderLeft: i > 0 ? "1px solid rgba(255,255,255,0.04)" : "none",
+            padding: "16px 8px", textAlign: "center",
+            borderLeft: i > 0 ? "1px solid rgba(255,255,255,0.03)" : "none",
           }}>
-            <div style={{ fontSize: 9, fontWeight: 700, color: "#1e3a8a", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 5 }}>{label}</div>
+            <div style={{ fontSize: 9, fontWeight: 600, color: "#243d56", textTransform: "uppercase", letterSpacing: 0.9, marginBottom: 7 }}>{label}</div>
             <div style={{ fontSize: label === "Analysed" ? 18 : 14, fontWeight: 900, color, lineHeight: 1 }}>{value}</div>
           </div>
         ))}
@@ -1120,7 +1139,7 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
               <div style={{ display: "flex", alignItems: "stretch" }}>
 
                 {/* ═══ LEFT: Inputs ═══ */}
-                <div style={{ width: 300, flexShrink: 0, background: C.bg2, borderRight: "1px solid rgba(255,255,255,0.07)", padding: "14px 16px", display: "flex", flexDirection: "column" }}>
+                <div style={{ width: 290, flexShrink: 0, background: C.bg2, borderRight: "1px solid rgba(30,58,138,0.2)", padding: "16px 18px", display: "flex", flexDirection: "column" }}>
 
                   <SL mt={0}>Product</SL>
                   <Row label="Product / SKU">
@@ -1304,17 +1323,17 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
                   </div>
 
                   {/* ── Market Snapshot + Pricing Band ── */}
-                  <div style={{ background: C.bg3, borderRadius: 12, padding: "14px 16px", border: "1px solid rgba(255,255,255,0.06)", flex: 1 }}>
+                  <div style={{ background: C.bg3, borderRadius: 14, padding: "16px 18px", border: "1px solid rgba(30,58,138,0.3)", flex: 1, boxShadow: "0 4px 32px rgba(0,0,0,0.4)" }}>
 
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-                      <div style={{ fontSize: 10, fontWeight: 700, color: C.dim, textTransform: "uppercase", letterSpacing: 0.7 }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: "#7a9cc0", textTransform: "uppercase", letterSpacing: 1 }}>
                         {smData
-                          ? `Market Snapshot — ${smData.conditionLabel}${smData.detectedType ? ` ${smData.detectedType}` : ""} listings`
-                          : "Market Snapshot · eBay UK"
+                          ? `eBay UK Market · ${smData.conditionLabel}${smData.detectedType ? ` ${smData.detectedType}` : ""}`
+                          : "eBay UK Market"
                         }
                       </div>
                       {smData && (
-                        <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 9, fontWeight: 700, color: "#4ade80", background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.2)", borderRadius: 20, padding: "3px 9px" }}>
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 9, fontWeight: 700, color: "#4ade80", background: "rgba(74,222,128,0.08)", borderRadius: 20, padding: "3px 9px" }}>
                           <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#4ade80", display: "inline-block", animation: "pcPulse 2s ease-in-out infinite" }} />
                           LIVE
                         </span>
@@ -1376,9 +1395,8 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
                         {/* ── Transparency row ── */}
                         <div style={{
                           marginBottom: 12, padding: "8px 12px",
-                          background: "rgba(255,255,255,0.02)",
-                          border: "1px solid rgba(255,255,255,0.06)",
-                          borderRadius: 8, fontSize: 11, color: C.muted, lineHeight: 1.8,
+                          background: "rgba(255,255,255,0.015)",
+                          borderRadius: 8, fontSize: 11, color: "#3d5a7a", lineHeight: 1.8,
                         }}>
                           <span style={{ color: "#93c5fd", fontWeight: 700 }}>{smData.totalFetched}</span> {smData.conditionLabel} listings fetched
                           {" · "}
