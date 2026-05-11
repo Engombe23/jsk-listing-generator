@@ -28,16 +28,12 @@ const TYPE_ID           = "1";
 const LANG_ID           = "4";
 const COUNTRY_FILTER_ID = "63";
 
-// Max individual vehicle-detail calls when the direct compatibility endpoint
-// does not return engine-code data. Keeps worst-case calls low.
-const VEHICLE_FETCH_CAP = 10;
-
 // ─── In-memory caches ─────────────────────────────────────────────────────────
 
-// vehicleId → raw vehicle-type-details response
-const vehicleDetailCache = new Map();
+// modelId → array of engine-type rows from /list-vehicles-types/{modelId}
+const modelEngineCache = new Map();
 // articleNumber → { normalized, articleId, articleImage }  (populated after first lookup)
-const articleNormCache   = new Map();
+const articleNormCache = new Map();
 
 // ─── Shared helpers ───────────────────────────────────────────────────────────
 
@@ -70,18 +66,6 @@ function extractSpecLabel(spec) {
 
 function extractSpecValue(spec) {
   return spec?.formattedValue || spec?.criteriaValue || spec?.displayValue || spec?.value || spec?.valueText || "";
-}
-
-function extractVehicleDetail(data) {
-  // Only unwrap one level if the nested value is a plain object.
-  // vehicleType / vehicleTypeDetails can be category strings ("PC", "T") from
-  // some TecDoc endpoints — unwrapping those would lose all engine-data fields
-  // that sit at the top level of the vehicle entry.
-  const candidates = [data?.vehicleType, data?.vehicleTypeDetails, data?.vehicleDetails, data?.data];
-  for (const c of candidates) {
-    if (c && typeof c === "object" && !Array.isArray(c)) return c;
-  }
-  return data || null;
 }
 
 function apiHeaders(contentType = false) {
@@ -121,14 +105,6 @@ async function fetchArticleMedia(articleId) {
   } catch { return null; }
 }
 
-async function fetchVehicleDetails(vehicleId) {
-  const url = `https://${RAPIDAPI_HOST}/api/types/type-id/${TYPE_ID}/vehicle-type-details/${vehicleId}/lang-id/${LANG_ID}/country-filter-id/${COUNTRY_FILTER_ID}`;
-  try {
-    const res = await fetch(url, { method: "GET", headers: apiHeaders() });
-    if (!res.ok) return null;
-    return res.json();
-  } catch { return null; }
-}
 
 // ─── OEM search helpers ───────────────────────────────────────────────────────
 // Used when the user enters an OEM/reference number instead of a TecDoc article number.
@@ -207,96 +183,65 @@ async function resolveArticleResponse(input) {
   throw new Error(`No article found for "${input}" — try a TecDoc article number or OEM reference number`);
 }
 
-// ─── NEW: Direct article compatibility endpoint ───────────────────────────────
-// Tries to get compatible vehicle list directly from the article number + supplier,
-// which may include engine codes / kW / HP / CC per vehicle — one call instead of N.
-//
-// Autodoc endpoint: POST /api/articles/compatible-vehicles-by-article-number-supplier-id
-// Falls back silently if unavailable or empty.
+// ─── Model-series engine data (primary strategy) ─────────────────────────────
+// Fetches ALL engine variants for a model series in one call.
+// e.g. modelId for "Golf IV" returns every Golf IV variant with kW/HP/CC/engine codes.
+// A part compatible with 100 vehicles typically spans only 8-15 unique model series,
+// so this covers everything with far fewer calls than per-vehicle fetches.
 
-async function fetchCompatibleVehiclesDirect(articleNo, dataSupplierId) {
-  if (!articleNo || !dataSupplierId) return null;
-  const url = `https://${RAPIDAPI_HOST}/api/articles/compatible-vehicles-by-article-number-supplier-id`;
-  const params = new URLSearchParams();
-  params.append("langId", LANG_ID);
-  params.append("typeId", TYPE_ID);
-  params.append("articleNo", String(articleNo));
-  params.append("dataSupplierId", String(dataSupplierId));
+async function fetchEngineTypesByModel(modelId) {
+  const url = `https://${RAPIDAPI_HOST}/api/types/type-id/${TYPE_ID}/list-vehicles-types/${modelId}/lang-id/${LANG_ID}/country-filter-id/${COUNTRY_FILTER_ID}`;
   try {
-    const res = await fetch(url, { method: "POST", headers: apiHeaders(true), body: params.toString() });
-    if (!res.ok) return null;
+    const res = await fetch(url, { method: "GET", headers: apiHeaders() });
+    if (!res.ok) return [];
     const data = await res.json();
-    // Could return an array or wrapper object
-    const list = Array.isArray(data) ? data : (data?.data || data?.vehicles || data?.compatibleCars || null);
-    return Array.isArray(list) && list.length > 0 ? list : null;
-  } catch { return null; }
+    const rows = data?.modelTypes || data?.vehicleTypes || data?.vehicles || data?.data || [];
+    return Array.isArray(rows) ? rows : [];
+  } catch { return []; }
 }
 
-// ─── NEW: OEM-based vehicle list (re-uses Autodoc endpoint already in compat module) ──
-// Returns vehicles by the article's first OEM number — may include engine codes.
-// This is the same endpoint the compatibility checker uses for exact-match checks.
+// Match a compatibleCar entry to the best engine-type row from the model series.
+// Priority: exact vehicleId → typeEngineName + date range → typeEngineName alone.
+function findEngineMatch(car, engineRows) {
+  if (!Array.isArray(engineRows) || engineRows.length === 0) return null;
 
-async function fetchVehiclesByOem(oemNumber) {
-  if (!oemNumber) return null;
-  const url = `https://${RAPIDAPI_HOST}/api/articles-oem/selecting-a-list-of-cars-for-oem-part-number`;
-  const params = new URLSearchParams();
-  params.append("langId", LANG_ID);
-  params.append("articleOemNo", String(oemNumber));
-  try {
-    const res = await fetch(url, { method: "POST", headers: apiHeaders(true), body: params.toString() });
-    if (!res.ok) return null;
-    const data = await res.json();
-    return Array.isArray(data) && data.length > 0 ? data : null;
-  } catch { return null; }
+  // 1. Exact vehicleId match
+  const byId = engineRows.find(r => String(r.vehicleId) === String(car.vehicleId));
+  if (byId) return byId;
+
+  const carName  = String(car.typeEngineName  || "").trim().toLowerCase();
+  const carStart = String(car.constructionIntervalStart || "");
+  const carEnd   = String(car.constructionIntervalEnd   || "");
+
+  // 2. typeEngineName + construction dates
+  const byNameAndDate = engineRows.find(r =>
+    String(r.typeEngineName || "").trim().toLowerCase() === carName &&
+    String(r.constructionIntervalStart || "") === carStart &&
+    String(r.constructionIntervalEnd   || "") === carEnd
+  );
+  if (byNameAndDate) return byNameAndDate;
+
+  // 3. typeEngineName only
+  return engineRows.find(r =>
+    String(r.typeEngineName || "").trim().toLowerCase() === carName
+  ) || null;
 }
 
-// Build a vehicleId → detail map from a direct/OEM vehicle list, but only when the
-// response actually carries engine-code data (otherwise there's no benefit).
-
-function vehicleListHasEngineData(list) {
-  if (!Array.isArray(list) || list.length === 0) return false;
-  return list.some((v) => {
-    return (
-      v?.engCodes       ||
-      v?.engineCodes    ||
-      v?.engineCode     ||
-      v?.powerKw        ||
-      v?.powerPs        ||
-      v?.capacityTech
-    );
-  });
-}
-
-function buildVehicleMapFromList(list) {
-  const map = {};
-  for (const v of list) {
-    const id = String(v?.vehicleId || v?.typeId || v?.kType || v?.id || "").trim();
-    if (id) map[id] = v;
-  }
-  return map;
-}
-
-// Fetch vehicle details in batches, writing into the shared cache
-async function fetchVehicleDetailsForIds(vehicleIds) {
-  const BATCH_SIZE = 5;
+// Fetch engine data for all unique modelIds in a compatible-cars list.
+// Results are cached in modelEngineCache (persists across requests).
+async function fetchEngineDataByModelIds(cars) {
+  const uniqueModelIds = uniq(cars.map(c => String(c.modelId)).filter(Boolean));
   const result = {};
 
-  for (let i = 0; i < vehicleIds.length; i += BATCH_SIZE) {
-    const batch = vehicleIds.slice(i, i + BATCH_SIZE);
-    const batchResults = await Promise.all(
-      batch.map(async (id) => {
-        if (vehicleDetailCache.has(id)) return [id, vehicleDetailCache.get(id)];
-        try {
-          const data = await fetchVehicleDetails(id);
-          vehicleDetailCache.set(id, data);
-          return [id, data];
-        } catch {
-          return [id, null];
-        }
-      })
-    );
-    for (const [id, data] of batchResults) result[id] = data;
-    if (i + BATCH_SIZE < vehicleIds.length) await sleep(300);
+  for (const modelId of uniqueModelIds) {
+    if (modelEngineCache.has(modelId)) {
+      result[modelId] = modelEngineCache.get(modelId);
+    } else {
+      const rows = await fetchEngineTypesByModel(modelId);
+      modelEngineCache.set(modelId, rows);
+      result[modelId] = rows;
+      await sleep(300); // respect rate limits
+    }
   }
 
   return result;
@@ -324,28 +269,25 @@ function extractFirstImageUrl(mediaResponse) {
 
 // ─── Normalize ────────────────────────────────────────────────────────────────
 
-function normalizeTecdoc(articleResponse, vehicleDataById) {
+function normalizeTecdoc(articleResponse, engineDataByModelId) {
   const article = articleResponse?.articles?.[0];
   if (!article) throw new Error("No article found");
 
   const compatibility = article.compatibleCars || [];
 
   const rows = compatibility.map((car) => {
-    const raw    = vehicleDataById[String(car.vehicleId)] || null;
-    const detail = raw ? extractVehicleDetail(raw) : null;
+    // Look up the model-series engine list, then find the best match for this variant
+    const engineRows = engineDataByModelId[String(car.modelId)] || [];
+    const match      = findEngineMatch(car, engineRows);
 
-    // Engine codes: prefer extracted detail, then raw vehicle entry, then car entry
-    // (raw catches cases where detail is a nested object that lacks these fields)
+    // Engine codes: matched engine row first, then any field on the car entry itself
     const rawCodes =
-      detail?.engCodes       ||
-      detail?.engineCodes    ||
-      detail?.engineCode     ||
-      raw?.engCodes          ||
-      raw?.engineCodes       ||
-      raw?.engineCode        ||
-      car?.engCodes          ||
-      car?.engineCodes       ||
-      car?.engineCode        ||
+      match?.engCodes    ||
+      match?.engineCodes ||
+      match?.engineCode  ||
+      car?.engCodes      ||
+      car?.engineCodes   ||
+      car?.engineCode    ||
       "";
 
     return {
@@ -354,9 +296,9 @@ function normalizeTecdoc(articleResponse, vehicleDataById) {
       engine:           car.typeEngineName   || "",
       vehicle:          `${car.manufacturerName || ""} ${car.modelName || ""} ${car.typeEngineName || ""}`.trim(),
       production_years: formatYearRange(car.constructionIntervalStart, car.constructionIntervalEnd),
-      kw:               cleanNumber(detail?.powerKw    ?? raw?.powerKw    ?? car?.powerKw),
-      hp:               cleanNumber(detail?.powerPs    ?? raw?.powerPs    ?? car?.powerPs),
-      cc:               cleanNumber(detail?.capacityTech ?? raw?.capacityTech ?? car?.capacityTech),
+      kw:               cleanNumber(match?.powerKw      ?? car?.powerKw),
+      hp:               cleanNumber(match?.powerPs      ?? car?.powerPs),
+      cc:               cleanNumber(match?.capacityTech ?? car?.capacityTech),
       engine_codes:     uniq(splitEngineCodes(rawCodes)),
       k_number:         String(car.vehicleId || "")
     };
@@ -426,53 +368,15 @@ async function buildListingFromArticle(articleNumber, themeId = "clean-default")
 
   console.log(`[Listing] ${resolvedNumber}: ${cars.length} compatible vehicles in article response`);
 
-  // ── STEP 1: Try direct compatibility endpoint (1 call) ────────────────────
-  // Preferred: returns vehicles with engine codes / kW / HP / CC already included.
-
-  let vehicleDataById = {};
-  let directUsed = false;
-
-  const directList = await fetchCompatibleVehiclesDirect(articleNumber, dataSupplierId);
-  if (directList && vehicleListHasEngineData(directList)) {
-    vehicleDataById = buildVehicleMapFromList(directList);
-    directUsed = true;
-    console.log(`[Listing] ${articleNumber}: direct compat endpoint returned ${directList.length} vehicles with engine data`);
-  }
-
-  // ── STEP 2: OEM-based vehicle list (1 call, may include engine data) ──────
-  if (!directUsed && oemNumbers.length > 0) {
-    const oemList = await fetchVehiclesByOem(oemNumbers[0]);
-    if (oemList && vehicleListHasEngineData(oemList)) {
-      vehicleDataById = buildVehicleMapFromList(oemList);
-      directUsed = true;
-      console.log(`[Listing] ${articleNumber}: OEM vehicles endpoint returned ${oemList.length} vehicles with engine data`);
-    }
-  }
-
-  // ── STEP 3: Fallback — individual vehicle detail calls (capped) ───────────
-  // Only runs when neither direct endpoint returned engine-code data.
-  if (!directUsed) {
-    const vehicleIds  = uniq(cars.map((c) => String(c.vehicleId)).filter(Boolean));
-    const alreadyCached = vehicleIds.filter((id) => vehicleDetailCache.has(id));
-    const toFetch       = vehicleIds.filter((id) => !vehicleDetailCache.has(id)).slice(0, VEHICLE_FETCH_CAP);
-
-    console.log(
-      `[Listing] ${articleNumber}: fallback — ${alreadyCached.length} cached, fetching ${toFetch.length}/${vehicleIds.length} vehicle details`
-    );
-
-    if (toFetch.length > 0) {
-      const fetched = await fetchVehicleDetailsForIds(toFetch);
-      Object.assign(vehicleDataById, fetched);
-    }
-
-    // Merge in any already-cached entries
-    for (const id of alreadyCached) {
-      vehicleDataById[id] = vehicleDetailCache.get(id);
-    }
-  }
+  // ── Fetch engine data grouped by model series ─────────────────────────────
+  // One call per unique modelId (e.g. "Golf IV") returns ALL engine variants for
+  // that series — covers 100 compatible vehicles with ~10 calls instead of 100.
+  const engineDataByModelId = await fetchEngineDataByModelIds(cars);
+  const uniqueModelIds = Object.keys(engineDataByModelId);
+  console.log(`[Listing] ${articleNumber}: fetched engine data for ${uniqueModelIds.length} model series`);
 
   // ── Normalize ─────────────────────────────────────────────────────────────
-  const normalized = normalizeTecdoc(articleResponse, vehicleDataById);
+  const normalized = normalizeTecdoc(articleResponse, engineDataByModelId);
   const kNumbers    = uniq(normalized.compatibility_rows.map((r) => r.k_number));
   const engineCodes = uniq(normalized.compatibility_rows.flatMap((r) => r.engine_codes || []));
 
