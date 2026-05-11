@@ -442,6 +442,8 @@ function PricingBand({ data, price }) {
 
 // ─── Price Distribution — Market Intelligence Chart ───────────────────────────
 function PriceDistribution({ data, listings, price }) {
+  const [hoveredDot, setHoveredDot] = useState(null);
+
   const prices = (listings || [])
     .map(l => l.price)
     .filter(p => p != null && p > 0)
@@ -571,11 +573,45 @@ function PriceDistribution({ data, listings, price }) {
     return d;
   };
 
-  const baseline = PAD_T + plotH;
-  const linePath = buildCRPath(curvePts);
-  const areaPath = curvePts.length > 1
+  const baseline    = PAD_T + plotH;
+  const linePath    = buildCRPath(curvePts);
+  const areaPath    = curvePts.length > 1
     ? `${linePath} L ${curvePts[curvePts.length - 1].sx.toFixed(1)},${baseline} L ${curvePts[0].sx.toFixed(1)},${baseline} Z`
     : '';
+
+  // ── Individual listing dot swarm ──────────────────────────────────────────
+  // Stacked rug plot: plots actual listing price positions below the histogram.
+  // Dots stack vertically when prices cluster — density becomes immediately visible.
+  const DOT_BAND_H  = 24;          // height of dot area below histogram baseline
+  const DOT_R       = 2.3;         // dot radius
+  const DOT_STEP    = DOT_R * 2 + 1.5;  // vertical spacing between rows
+  const DOT_GAP     = DOT_R * 2 + 1.0;  // min horizontal clearance before reusing a row
+  const MAX_ROWS    = 3;
+  const TOTAL_SVG_H = CHART_H + DOT_BAND_H;
+
+  // Restrict to view range; sample down if > 180 for render performance
+  const viewDots = prices.filter(p => p >= viewMin && p <= viewMax);
+  const dotSample = viewDots.length > 180
+    ? viewDots.filter((_, i) => i % Math.ceil(viewDots.length / 180) === 0)
+    : viewDots;
+  const sortedDots = [...dotSample].sort((a, b) => a - b);
+
+  // Greedy row assignment: scan left → right, place in lowest available row
+  const rowTail = new Array(MAX_ROWS).fill(-Infinity);
+  const dotMarkers = sortedDots.map(p => {
+    const sx = toX(p);
+    let row = MAX_ROWS - 1; // overflow row if all are occupied
+    for (let r = 0; r < MAX_ROWS; r++) {
+      if (sx - rowTail[r] >= DOT_GAP) { row = r; break; }
+    }
+    rowTail[row] = sx;
+    const isUser = hasPrice && Math.abs(p - price) < 0.01;
+    const inIqr  = p >= q1 && p <= q3;
+    return { p, sx, row, isUser, inIqr };
+  });
+
+  // y-position for each stacking row (upward from dot band top)
+  const dotSy = row => baseline + DOT_R + 3 + row * DOT_STEP;
 
   // ── Y-axis ticks ────────────────────────────────────────────────────────────
   const yStep  = maxBucket <= 5 ? 1 : maxBucket <= 10 ? 2 : maxBucket <= 20 ? 4 : 5;
@@ -662,7 +698,7 @@ function PriceDistribution({ data, listings, price }) {
         {/* Y-axis column */}
         <div style={{ width: 44, flexShrink: 0 }}>
           <div style={{ height: CARD_H }} />
-          <div style={{ position: "relative", height: CHART_H }}>
+          <div style={{ position: "relative", height: CHART_H + DOT_BAND_H }}>
             {/* Rotated axis title */}
             <div style={{ position: "absolute", left: 1, top: 0, width: 14, height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <span style={{ fontSize: 7, fontWeight: 600, color: "#2d3f55", textTransform: "uppercase", letterSpacing: 1.8, writingMode: "vertical-rl", transform: "rotate(180deg)", whiteSpace: "nowrap", userSelect: "none" }}>
@@ -723,95 +759,172 @@ function PriceDistribution({ data, listings, price }) {
 
           {/* ── SVG ── */}
           <svg
-            viewBox={`0 0 ${CHART_W} ${CHART_H}`}
+            viewBox={`0 0 ${CHART_W} ${TOTAL_SVG_H}`}
             preserveAspectRatio="none"
             width="100%"
-            height={CHART_H}
-            style={{ display: "block" }}
+            height={TOTAL_SVG_H}
+            style={{ display: "block", overflow: "visible" }}
           >
             <defs>
+              {/* Density curve fill */}
               <linearGradient id="pdKdeFill4" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%"   stopColor="#38bdf8" stopOpacity="0.20" />
-                <stop offset="55%"  stopColor="#1e40af" stopOpacity="0.05" />
-                <stop offset="100%" stopColor="#38bdf8" stopOpacity="0.00" />
+                <stop offset="0%"   stopColor="#3b82f6" stopOpacity="0.18" />
+                <stop offset="60%"  stopColor="#1e40af" stopOpacity="0.04" />
+                <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.00" />
               </linearGradient>
+              {/* Tier-1 bar gradient */}
               <linearGradient id="pdBarHL4" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%"   stopColor="#3b82f6" stopOpacity="0.9" />
-                <stop offset="100%" stopColor="#1d4ed8" stopOpacity="0.6" />
+                <stop offset="0%"   stopColor="#60a5fa" stopOpacity="0.95" />
+                <stop offset="100%" stopColor="#2563eb" stopOpacity="0.70" />
               </linearGradient>
-              <linearGradient id="pdClusterZone4" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%"   stopColor="#1d4ed8" stopOpacity="0.10" />
+              {/* Tier-2 bar */}
+              <linearGradient id="pdBarMid4" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%"   stopColor="#3b82f6" stopOpacity="0.60" />
+                <stop offset="100%" stopColor="#1d4ed8" stopOpacity="0.38" />
+              </linearGradient>
+              {/* IQR cluster zone tint */}
+              <linearGradient id="pdIqrZone4" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%"   stopColor="#1d4ed8" stopOpacity="0.08" />
                 <stop offset="100%" stopColor="#1d4ed8" stopOpacity="0.02" />
               </linearGradient>
+              {/* User dot glow */}
+              <radialGradient id="pdUserGlow" cx="50%" cy="50%" r="50%">
+                <stop offset="0%"   stopColor="#00e5ff" stopOpacity="0.35" />
+                <stop offset="100%" stopColor="#00e5ff" stopOpacity="0.00" />
+              </radialGradient>
             </defs>
 
-            {/* Horizontal grid lines */}
+            {/* ── LAYER 0: subtle grid ── */}
             {yTicks.filter(t => t > 0).map(t => (
               <line key={t}
-                x1={0} y1={toY(t)} x2={CHART_W - PAD_R} y2={toY(t)}
-                stroke="rgba(255,255,255,0.04)" strokeWidth={1} strokeDasharray="2,8"
+                x1={0} y1={toY(t)} x2={plotW} y2={toY(t)}
+                stroke="rgba(255,255,255,0.035)" strokeWidth={1} strokeDasharray="3,10"
                 vectorEffect="non-scaling-stroke"
               />
             ))}
 
-            {/* IQR cluster zone (subtle background highlight) */}
+            {/* IQR cluster zone tint — shows middle 50% of the market */}
             {inView(clusterStart) && inView(clusterEnd) && (
               <rect
                 x={Math.max(0, toX(clusterStart))}
                 y={PAD_T}
                 width={Math.min(plotW, toX(clusterEnd)) - Math.max(0, toX(clusterStart))}
-                height={plotH}
-                fill="url(#pdClusterZone4)"
+                height={plotH + DOT_BAND_H}
+                fill="url(#pdIqrZone4)"
               />
             )}
 
-            {/* X-axis baseline */}
-            <line x1={0} y1={PAD_T + plotH} x2={CHART_W - PAD_R} y2={PAD_T + plotH} stroke="rgba(255,255,255,0.1)" strokeWidth={1} vectorEffect="non-scaling-stroke" />
-
-            {/* Histogram bars — 3-tier density hierarchy */}
+            {/* ── LAYER 1: histogram bars ── */}
             {bins.map(({ s, e, count }, i) => {
               if (count === 0) return null;
-              const x1   = toX(s);
-              const x2   = toX(e);
+              const bx   = toX(s);
+              const bw2  = Math.max(1.5, toX(e) - bx - 1.5);
               const barH = (count / maxBucket) * plotH;
               const t1   = count >= tier1Cut;
               const t2   = count >= tier2Cut;
               return (
                 <rect key={i}
-                  x={x1 + 0.5} y={toY(count)}
-                  width={Math.max(1.5, x2 - x1 - 1.5)}
-                  height={barH}
-                  fill={t1 ? "url(#pdBarHL4)" : t2 ? "#2563eb" : "#1e3a8a"}
-                  opacity={t1 ? 0.88 : t2 ? 0.48 : 0.20}
+                  x={bx + 0.5} y={toY(count)}
+                  width={bw2} height={barH}
+                  fill={t1 ? "url(#pdBarHL4)" : t2 ? "url(#pdBarMid4)" : "#1e3a8a"}
+                  opacity={t1 ? 0.92 : t2 ? 1 : 0.22}
                   rx={1.5}
                 />
               );
             })}
 
-            {/* Density curve area fill */}
+            {/* ── LAYER 2: density curve ── */}
             <path d={areaPath} fill="url(#pdKdeFill4)" />
+            {/* Soft bloom */}
+            <path d={linePath} fill="none" stroke="#60a5fa" strokeWidth={5} opacity={0.07} vectorEffect="non-scaling-stroke" />
+            {/* Crisp line */}
+            <path d={linePath} fill="none" stroke="#93c5fd" strokeWidth={1.6} opacity={0.65} vectorEffect="non-scaling-stroke" />
 
-            {/* Density curve — bar-tracking spline, bars are primary */}
-            <path d={linePath} fill="none" stroke="#60a5fa" strokeWidth={6} opacity={0.06} />
-            <path d={linePath} fill="none" stroke="#60a5fa" strokeWidth={1.8} opacity={0.70} vectorEffect="non-scaling-stroke" />
+            {/* ── Separator between histogram and dot band ── */}
+            <line
+              x1={0} y1={baseline} x2={plotW} y2={baseline}
+              stroke="rgba(255,255,255,0.07)" strokeWidth={1}
+              vectorEffect="non-scaling-stroke"
+            />
 
-            {/* Marker dashed vertical lines */}
+            {/* ── Dot band background ── */}
+            <rect x={0} y={baseline} width={plotW} height={DOT_BAND_H}
+              fill="rgba(0,4,14,0.45)" />
+
+            {/* ── Marker guide lines — run full height including dot band ── */}
             {markers.filter(m => !m.outside).map(m => (
               <line key={m.key}
-                x1={toX(m.v)} y1={0} x2={toX(m.v)} y2={PAD_T + plotH}
+                x1={toX(m.v)} y1={0}
+                x2={toX(m.v)} y2={baseline + DOT_BAND_H}
                 stroke={m.col}
                 strokeWidth={m.hero ? 1.5 : 1}
-                strokeDasharray="4,4"
-                opacity={m.hero ? 0.88 : 0.58}
+                strokeDasharray={m.hero ? "3,3" : "3,5"}
+                opacity={m.hero ? 0.85 : 0.45}
                 vectorEffect="non-scaling-stroke"
               />
             ))}
 
-            {/* Marker anchor dots at x-axis */}
+            {/* ── LAYER 3: listing price dot swarm ── */}
+            {dotMarkers.map((d, i) => {
+              const cy  = dotSy(d.row);
+              const isH = hoveredDot?.i === i;
+              return (
+                <g key={i} style={{ cursor: "crosshair" }}
+                  onMouseEnter={() => setHoveredDot({ ...d, i })}
+                  onMouseLeave={() => setHoveredDot(null)}
+                >
+                  {/* Glow for user price dot */}
+                  {d.isUser && (
+                    <circle cx={d.sx} cy={cy} r={DOT_R + 6}
+                      fill="url(#pdUserGlow)" />
+                  )}
+                  {/* IQR zone subtle halo */}
+                  {d.inIqr && !d.isUser && (
+                    <circle cx={d.sx} cy={cy} r={DOT_R + 2}
+                      fill="#2563eb" opacity={0.12} />
+                  )}
+                  {/* Main dot */}
+                  <circle cx={d.sx} cy={cy}
+                    r={d.isUser ? DOT_R + 0.6 : DOT_R}
+                    fill={d.isUser ? "#00e5ff" : d.inIqr ? "#3b82f6" : "#1e40af"}
+                    opacity={d.isUser ? 1 : isH ? 0.95 : d.inIqr ? 0.72 : 0.45}
+                  />
+                </g>
+              );
+            })}
+
+            {/* ── Hover tooltip ── */}
+            {hoveredDot && (() => {
+              const tx  = Math.min(Math.max(hoveredDot.sx, 26), plotW - 26);
+              const ty  = dotSy(hoveredDot.row) - DOT_R - 4;
+              const col = hoveredDot.isUser ? "#00e5ff" : hoveredDot.inIqr ? "#60a5fa" : "#94a3b8";
+              return (
+                <g style={{ pointerEvents: "none" }}>
+                  {/* Connector */}
+                  <line x1={hoveredDot.sx} y1={dotSy(hoveredDot.row) - DOT_R}
+                    x2={tx} y2={ty - 1}
+                    stroke={col} strokeWidth={0.8} opacity={0.5}
+                    vectorEffect="non-scaling-stroke" />
+                  {/* Badge background */}
+                  <rect x={tx - 24} y={ty - 14} width={48} height={15}
+                    rx={4} fill="#050f1e"
+                    stroke={col} strokeWidth={0.8} opacity={0.95} />
+                  {/* Price text */}
+                  <text x={tx} y={ty - 3}
+                    textAnchor="middle" fontSize={9} fontWeight="700"
+                    fill={col} opacity={0.95}
+                  >
+                    {fmtGBP(hoveredDot.p)}
+                  </text>
+                </g>
+              );
+            })()}
+
+            {/* ── Marker anchor dots on the separator line ── */}
             {markers.filter(m => !m.outside).map(m => (
               <g key={m.key}>
-                <circle cx={toX(m.v)} cy={PAD_T + plotH} r={7}  fill={m.col} opacity={0.10} />
-                <circle cx={toX(m.v)} cy={PAD_T + plotH} r={2.8} fill={m.col} opacity={0.92} />
+                <circle cx={toX(m.v)} cy={baseline} r={6}   fill={m.col} opacity={0.10} />
+                <circle cx={toX(m.v)} cy={baseline} r={2.5} fill={m.col} opacity={0.95} />
               </g>
             ))}
           </svg>
