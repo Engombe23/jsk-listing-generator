@@ -73,7 +73,15 @@ function extractSpecValue(spec) {
 }
 
 function extractVehicleDetail(data) {
-  return data?.vehicleType || data?.vehicleTypeDetails || data?.vehicleDetails || data?.data || data || null;
+  // Only unwrap one level if the nested value is a plain object.
+  // vehicleType / vehicleTypeDetails can be category strings ("PC", "T") from
+  // some TecDoc endpoints — unwrapping those would lose all engine-data fields
+  // that sit at the top level of the vehicle entry.
+  const candidates = [data?.vehicleType, data?.vehicleTypeDetails, data?.vehicleDetails, data?.data];
+  for (const c of candidates) {
+    if (c && typeof c === "object" && !Array.isArray(c)) return c;
+  }
+  return data || null;
 }
 
 function apiHeaders(contentType = false) {
@@ -326,11 +334,15 @@ function normalizeTecdoc(articleResponse, vehicleDataById) {
     const raw    = vehicleDataById[String(car.vehicleId)] || null;
     const detail = raw ? extractVehicleDetail(raw) : null;
 
-    // Engine codes: prefer vehicle detail, then fall back to anything on the car entry itself
+    // Engine codes: prefer extracted detail, then raw vehicle entry, then car entry
+    // (raw catches cases where detail is a nested object that lacks these fields)
     const rawCodes =
       detail?.engCodes       ||
       detail?.engineCodes    ||
       detail?.engineCode     ||
+      raw?.engCodes          ||
+      raw?.engineCodes       ||
+      raw?.engineCode        ||
       car?.engCodes          ||
       car?.engineCodes       ||
       car?.engineCode        ||
@@ -342,9 +354,9 @@ function normalizeTecdoc(articleResponse, vehicleDataById) {
       engine:           car.typeEngineName   || "",
       vehicle:          `${car.manufacturerName || ""} ${car.modelName || ""} ${car.typeEngineName || ""}`.trim(),
       production_years: formatYearRange(car.constructionIntervalStart, car.constructionIntervalEnd),
-      kw:               cleanNumber(detail?.powerKw    ?? car?.powerKw),
-      hp:               cleanNumber(detail?.powerPs    ?? car?.powerPs),
-      cc:               cleanNumber(detail?.capacityTech ?? car?.capacityTech),
+      kw:               cleanNumber(detail?.powerKw    ?? raw?.powerKw    ?? car?.powerKw),
+      hp:               cleanNumber(detail?.powerPs    ?? raw?.powerPs    ?? car?.powerPs),
+      cc:               cleanNumber(detail?.capacityTech ?? raw?.capacityTech ?? car?.capacityTech),
       engine_codes:     uniq(splitEngineCodes(rawCodes)),
       k_number:         String(car.vehicleId || "")
     };
