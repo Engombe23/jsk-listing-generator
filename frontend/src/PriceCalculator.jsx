@@ -625,7 +625,7 @@ function PriceDistribution({ data, listings, price }) {
   const rawXStep  = viewRange / 10;
   const xMag      = Math.pow(10, Math.floor(Math.log10(Math.max(rawXStep, 1))));
   const niceXStep = ([1, 2, 2.5, 5, 10].map(f => f * xMag).find(s => s >= rawXStep)) ?? (xMag * 10);
-  const xTickStart = Math.ceil((viewMin + niceXStep * 0.1) / niceXStep) * niceXStep;
+  const xTickStart = Math.floor(viewMin / niceXStep) * niceXStep;
   const xTicks = [];
   for (let v = xTickStart; v <= viewMax - niceXStep * 0.1; v += niceXStep) xTicks.push(Math.round(v));
 
