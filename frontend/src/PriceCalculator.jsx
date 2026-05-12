@@ -871,29 +871,6 @@ function PriceDistribution({ data, listings, price }) {
               />
             ))}
 
-            {/* ── PRIMARY: Volume bars — dominant visual, real listing density ── */}
-            {bins.map((b, i) => {
-              const bx = toX(b.s) + 0.8;
-              const bw = Math.max(2, toX(b.e) - toX(b.s) - 1.6);
-              const by = toY(b.count);
-              const bh = baseline - by;
-              const d  = roundedTopRect(bx, by, bw, bh, 3);
-              if (!d || bh <= 0) return null;
-              const ratio   = b.count / maxBucket;
-              // Opacity scales strongly with density — busier bars glow brighter
-              const opacity = 0.30 + 0.60 * ratio;
-              // Subtle extra glow layer on tall bars
-              const glowOpacity = ratio > 0.5 ? (ratio - 0.5) * 0.30 : 0;
-              return (
-                <g key={i}>
-                  {glowOpacity > 0 && (
-                    <path d={roundedTopRect(bx - 1, by - 1, bw + 2, bh + 1, 3)}
-                      fill="url(#pdBar)" opacity={glowOpacity} />
-                  )}
-                  <path d={d} fill="url(#pdBar)" opacity={opacity} />
-                </g>
-              );
-            })}
 
             {/* ── SECONDARY: Smoothed density curve — market flow indicator ── */}
             <path d={areaPath} fill="url(#pdFill6)" opacity={0.55} />
