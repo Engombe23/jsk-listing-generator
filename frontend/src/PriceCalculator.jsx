@@ -1,4 +1,4 @@
-﻿import React, { memo, useState, useEffect } from "react";
+﻿import React, { memo, useState, useEffect, useRef } from "react";
 import { useSessionState } from "./useSessionState.js";
 import { BUTTON_BASE, SMALL_BUTTON_STYLE, INPUT_STYLE } from "./shared.jsx";
 import SavedProducts from "./SavedProducts.jsx";
@@ -442,6 +442,9 @@ function PricingBand({ data, price }) {
 
 // ─── Price Distribution — Market Intelligence Chart ───────────────────────────
 function PriceDistribution({ data, listings, price }) {
+  const svgRef        = useRef(null);
+  const [crosshairX, setCrosshairX] = useState(null); // SVG-space x coord, null = hidden
+
   const prices = (listings || [])
     .map(l => l.price)
     .filter(p => p != null && p > 0)
@@ -744,11 +747,20 @@ function PriceDistribution({ data, listings, price }) {
 
           {/* ── SVG ── */}
           <svg
+            ref={svgRef}
             viewBox={`0 0 ${CHART_W} ${CHART_H}`}
             preserveAspectRatio="none"
             width="100%"
             height={CHART_H}
-            style={{ display: "block" }}
+            style={{ display: "block", cursor: "crosshair" }}
+            onMouseMove={e => {
+              const rect = svgRef.current?.getBoundingClientRect();
+              if (!rect) return;
+              // Scale from rendered pixels → viewBox units
+              const sx = ((e.clientX - rect.left) / rect.width) * CHART_W;
+              setCrosshairX(Math.max(0, Math.min(CHART_W, sx)));
+            }}
+            onMouseLeave={() => setCrosshairX(null)}
           >
             <defs>
               {/* Curve fill */}
@@ -911,6 +923,70 @@ function PriceDistribution({ data, listings, price }) {
                   {/* Baseline anchor ring */}
                   <circle cx={ux} cy={baseline} r={5} fill="#00e5ff" opacity={0.90} />
                   <circle cx={ux} cy={baseline} r={10} fill="none" stroke="#00e5ff" strokeWidth={1} opacity={0.30} />
+                </g>
+              );
+            })()}
+
+            {/* ── Crosshair ── */}
+            {crosshairX !== null && (() => {
+              const crossPrice = viewMin + (crosshairX / plotW) * viewRange;
+              if (crossPrice < viewMin || crossPrice > viewMax) return null;
+
+              // Label text + box sizing
+              const label    = fmtGBP(crossPrice);
+              const labelW   = label.length * 7.2 + 16;
+              const labelH   = 18;
+              // Flip label to left side when too close to right edge
+              const labelX   = crosshairX + labelW / 2 + 4 > plotW
+                ? crosshairX - labelW / 2 - 4
+                : crosshairX + labelW / 2 + 4;
+              const labelY   = PAD_T + 10;
+
+              // Don't overlap with user price beam label
+              const isUserPrice = hasPrice && Math.abs(crossPrice - price) < viewRange * 0.015;
+
+              return (
+                <g style={{ pointerEvents: "none" }}>
+                  {/* Vertical hair line */}
+                  <line
+                    x1={crosshairX} y1={PAD_T}
+                    x2={crosshairX} y2={baseline}
+                    stroke="rgba(255,255,255,0.55)" strokeWidth={1}
+                    strokeDasharray="3,3"
+                    vectorEffect="non-scaling-stroke"
+                  />
+                  {/* Horizontal hair line */}
+                  <line
+                    x1={0} y1={PAD_T + (baseline - PAD_T) / 2}
+                    x2={plotW} y2={PAD_T + (baseline - PAD_T) / 2}
+                    stroke="rgba(255,255,255,0.10)" strokeWidth={1}
+                    strokeDasharray="3,6"
+                    vectorEffect="non-scaling-stroke"
+                  />
+                  {/* Price label */}
+                  {!isUserPrice && (
+                    <g>
+                      <rect
+                        x={labelX - labelW / 2} y={labelY - labelH / 2}
+                        width={labelW} height={labelH} rx={4}
+                        fill="#020c1a" stroke="rgba(255,255,255,0.22)" strokeWidth={1}
+                      />
+                      <text
+                        x={labelX} y={labelY + 4.5}
+                        textAnchor="middle" fontSize={10.5} fontWeight="700"
+                        fill="#e2e8f0" fontVariantNumeric="tabular-nums"
+                      >
+                        {label}
+                      </text>
+                    </g>
+                  )}
+                  {/* Baseline tick */}
+                  <line
+                    x1={crosshairX} y1={baseline}
+                    x2={crosshairX} y2={baseline + 4}
+                    stroke="rgba(255,255,255,0.40)" strokeWidth={1.5}
+                    vectorEffect="non-scaling-stroke"
+                  />
                 </g>
               );
             })()}
