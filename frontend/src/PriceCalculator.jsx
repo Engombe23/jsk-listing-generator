@@ -462,9 +462,8 @@ function PriceDistribution({ data, listings, price }) {
   const outlierCount = data?.iqrOutlierCount ?? 0;
 
   // View range = full price extent + small padding
-  const viewPad = Math.max(range * 0.04, 5);
-  const viewMin = low  - viewPad;
-  const viewMax = high + viewPad;
+  const viewMin   = 0;
+  const viewMax   = high + Math.max(range * 0.04, 5);
   const viewRange = viewMax - viewMin;
 
   // ── Dynamic nice-number binning ──────────────────────────────────────────────
