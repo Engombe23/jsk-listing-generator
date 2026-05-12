@@ -610,11 +610,18 @@ function PriceDistribution({ data, listings, price }) {
   const CARD_H = 72;
   const fmtX   = v => v >= 1000 ? `£${+(v / 1000).toFixed(1)}k` : `£${Math.round(v)}`;
 
-  // ── Rounded-top bar path helper ─────────────────────────────────────────────
-  const roundedTopRect = (x, y, w, h, r = 2.5) => {
-    if (h <= 0.5) return '';
-    const rr = Math.min(r, w / 2, Math.max(h - 0.5, 0.1));
-    return `M ${x},${baseline} L ${x},${y + rr} Q ${x},${y} ${x + rr},${y} L ${x + w - rr},${y} Q ${x + w},${y} ${x + w},${y + rr} L ${x + w},${baseline} Z`;
+  // ── Listing pulse visualization ──────────────────────────────────────────────
+  // Local density kernel: count listings within bandwidth around each price
+  const pulseBandwidth = Math.max(range * 0.035, binW * 0.6, 5);
+  const localDensity = prices.map(p =>
+    prices.reduce((acc, q) => acc + (Math.abs(q - p) <= pulseBandwidth ? 1 : 0), 0)
+  );
+  const maxLocalDensity = Math.max(...localDensity, 1);
+
+  // Deterministic pseudo-random jitter — stable across renders, organic feel
+  const pulseJitter = i => {
+    const x = Math.sin(i * 127.1 + 311.7) * 43758.5453;
+    return x - Math.floor(x); // 0..1
   };
 
   // ── Zone boundary X coords ───────────────────────────────────────────────────
@@ -815,34 +822,38 @@ function PriceDistribution({ data, listings, price }) {
             ))}
 
 
-            {/* ── PRIMARY: Histogram bars — real listing density ── */}
-            {bins.map((b, i) => {
-              const bx = toX(b.s) + 0.8;
-              const bw = Math.max(2, toX(b.e) - toX(b.s) - 1.6);
-              const by = toY(b.count);
-              const bh = baseline - by;
-              const d  = roundedTopRect(bx, by, bw, bh, 3);
-              if (!d || bh <= 0) return null;
-              const ratio = b.count / maxBucket;
-              const opacity = 0.28 + 0.58 * ratio;
-              const glowOpacity = ratio > 0.55 ? (ratio - 0.55) * 0.28 : 0;
+            {/* ── PRIMARY: Listing pulses — individual price signal lines ── */}
+            {prices.map((p, i) => {
+              if (!inView(p)) return null;
+              const dr = localDensity[i] / maxLocalDensity; // 0..1 density ratio
+              const jt = pulseJitter(i);                    // 0..1 deterministic
+              const sx = toX(p) + (jt - 0.5) * 1.4;       // ±0.7px x-jitter for organic overlap
+              // Denser clusters → taller pulses; jitter adds natural height variation
+              const baseH  = plotH * (0.11 + 0.70 * dr);
+              const finalH = Math.min(baseH * (0.76 + 0.48 * jt), plotH * 0.93);
+              const ty          = baseline - finalH;
+              const opacity     = 0.22 + 0.58 * dr;
+              const glowOpacity = 0.04 + 0.22 * dr;
               return (
                 <g key={i}>
-                  {glowOpacity > 0 && (
-                    <path d={roundedTopRect(bx - 1, by - 1, bw + 2, bh + 1, 3)}
-                      fill="url(#pdBar)" opacity={glowOpacity} />
-                  )}
-                  <path d={d} fill="url(#pdBar)" opacity={opacity} />
+                  {/* Soft glow halo — stacks naturally in dense zones */}
+                  <line x1={sx} y1={ty} x2={sx} y2={baseline}
+                    stroke="#38bdf8" strokeWidth={4} opacity={glowOpacity}
+                    vectorEffect="non-scaling-stroke" />
+                  {/* Crisp signal line */}
+                  <line x1={sx} y1={ty} x2={sx} y2={baseline}
+                    stroke="#7dd3fc" strokeWidth={1} opacity={opacity}
+                    vectorEffect="non-scaling-stroke" />
                 </g>
               );
             })}
 
-            {/* ── SECONDARY: Smoothed density curve — market flow indicator ── */}
-            <path d={areaPath} fill="url(#pdFill6)" opacity={0.55} />
-            {/* Soft glow */}
-            <path d={linePath} fill="none" stroke="#7dd3fc" strokeWidth={5} opacity={0.10} vectorEffect="non-scaling-stroke" />
-            {/* Crisp line — thinner, secondary */}
-            <path d={linePath} fill="none" stroke="#bae6fd" strokeWidth={1.6} opacity={0.70} vectorEffect="non-scaling-stroke" />
+            {/* ── SECONDARY: Smoothed density curve — market shape envelope ── */}
+            <path d={areaPath} fill="url(#pdFill6)" opacity={0.30} />
+            {/* Glow pass */}
+            <path d={linePath} fill="none" stroke="#7dd3fc" strokeWidth={5} opacity={0.08} vectorEffect="non-scaling-stroke" />
+            {/* Crisp envelope line */}
+            <path d={linePath} fill="none" stroke="#bae6fd" strokeWidth={1.4} opacity={0.55} vectorEffect="non-scaling-stroke" />
 
             {/* Baseline */}
             <line x1={0} y1={baseline} x2={plotW} y2={baseline}
