@@ -971,35 +971,11 @@ app.post("/api/ebay/search-prices", async (req, res) => {
       unitPassed.push(...titlePassed);
     }
 
-    // ── Step 6: Initial median from price-valid items ─────────────────────────
-    const withPrice    = unitPassed.filter(i => i.price !== null);
-    const sortedInit   = withPrice.map(i => i.price).sort((a, b) => a - b);
-    const initMedian   = calcMedian(sortedInit);
-
-    // ── Step 7: Multiplier outlier filter ─────────────────────────────────────
-    const highMult = rule?.highMultiplier ?? 3.0;
-    const lowMult  = rule?.lowMultiplier  ?? 0.35;
-
-    const relevantItems    = [];
-    const highExcluded     = [];
-    const lowExcluded      = [];
-
-    if (initMedian && initMedian > 0) {
-      const highThreshold = initMedian * highMult;
-      const lowThreshold  = initMedian * lowMult;
-      for (const item of withPrice) {
-        if (item.price > highThreshold) {
-          highExcluded.push({ ...item, exclusionReason: EXCLUSION_REASONS.HIGH_OUTLIER });
-        } else if (item.price < lowThreshold) {
-          lowExcluded.push({ ...item, exclusionReason: EXCLUSION_REASONS.LOW_OUTLIER });
-        } else {
-          relevantItems.push(item);
-        }
-      }
-    } else {
-      // No median to compare against — keep all price-valid items
-      relevantItems.push(...withPrice);
-    }
+    // ── Step 6: Keep all price-valid items — no price-based exclusions ──────────
+    const withPrice     = unitPassed.filter(i => i.price !== null);
+    const relevantItems = withPrice;
+    const highExcluded  = [];
+    const lowExcluded   = [];
 
     // ── Step 8: Final stats ───────────────────────────────────────────────────
     const finalPrices = relevantItems.map(i => i.price).sort((a, b) => a - b);
