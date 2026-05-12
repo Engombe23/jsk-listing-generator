@@ -462,8 +462,8 @@ function PriceDistribution({ data, listings, price }) {
   const q3 = prices[Math.min(n - 1, Math.ceil((n - 1) * 0.75))];
   const outlierCount = data?.iqrOutlierCount ?? 0;
 
-  // View range — x-axis opens exactly at the lowest listing price
-  const viewMin   = low;
+  // View range — starts just before the lowest listing, not from zero
+  const viewMin   = Math.max(0, low - Math.max(range * 0.06, 8));
   const viewMax   = high + Math.max(range * 0.04, 5);
   const viewRange = viewMax - viewMin;
 
