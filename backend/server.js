@@ -34,8 +34,6 @@ const COUNTRY_FILTER_ID = "63";
 const modelEngineCache = new Map();
 // articleNumber → { normalized, articleId, articleImage }  (populated after first lookup)
 const articleNormCache = new Map();
-// normalised query → TecDoc product type string | null  (for pricing relevance filter)
-const productTypeCache = new Map();
 
 // ─── Shared helpers ───────────────────────────────────────────────────────────
 
@@ -838,118 +836,6 @@ function calcPercentile(sortedArr, p) {
   return sortedArr[lo] + frac * (sortedArr[hi] - sortedArr[lo]);
 }
 
-// ─── Listing relevance scoring ────────────────────────────────────────────────
-// Scores each eBay listing title against the known TecDoc product type so we
-// only analyse listings for the SAME component — not rebuild kits, bundles,
-// or related parts that happen to share the OEM number.
-
-const TOKEN_STOP_WORDS = new Set([
-  'for', 'the', 'a', 'an', 'and', 'or', 'with', 'to', 'of', 'in', 'on', 'at', 'by',
-  'from', 'new', 'genuine', 'oem', 'oe', 'fits', 'fit', 'compatible',
-]);
-
-function tokenizeText(text) {
-  return (text || '')
-    .toLowerCase()
-    .replace(/[^a-z0-9\s]/g, ' ')
-    .split(/\s+/)
-    .filter(t => t.length > 1 && !TOKEN_STOP_WORDS.has(t));
-}
-
-// High-confidence conflict terms: strong signal of a different component type
-const STRONG_CONFLICTS = new Set([
-  'rebuild', 'overhaul',
-  'piston', 'pistons', 'crankshaft', 'crank',
-  'conrod', 'conrods', 'forged',
-]);
-
-// Soft conflict terms: suggest a different product (kits, sub-assemblies)
-const SOFT_CONFLICTS = new Set([
-  'kit', 'set', 'bundle', 'pair', 'complete',
-  'bearing', 'bearings', 'gasket', 'gaskets',
-  'ring', 'rings', 'liner', 'liners', 'sleeve', 'sleeves',
-]);
-
-// Minimum relevance score for a listing to be included in market analysis.
-// Titles must match all product-type tokens AND contain no unrelated conflict terms.
-const RELEVANCE_THRESHOLD = 0.50;
-
-/**
- * Score how closely an eBay listing title matches a target product type.
- * Returns 0.0–1.0.  Listings below RELEVANCE_THRESHOLD are excluded before
- * IQR filtering so they cannot distort the market price distribution.
- *
- * Algorithm:
- *  1. Tokenise both the product type and the title (stop-word filtered).
- *  2. Compute matchFraction = (matching tokens) / (product-type token count).
- *  3. Map to a step-based base score (all tokens must match for full score).
- *  4. Deduct penalty for any conflict term found in the title that is NOT
- *     part of the product type itself (so "Timing Chain Kit" doesn't penalise
- *     titles containing "kit").
- */
-function scoreListingRelevance(title, productTokens) {
-  if (!productTokens || productTokens.length === 0) return 1.0;
-
-  const titleSet   = new Set(tokenizeText(title));
-  const productSet = new Set(productTokens);
-
-  const matchCount    = productTokens.filter(t => titleSet.has(t)).length;
-  const matchFraction = matchCount / productTokens.length;
-
-  // All tokens must match for confident inclusion; partial matches score below threshold
-  const base = matchFraction >= 1.00 ? 1.00
-             : matchFraction >= 0.75 ? 0.60
-             : matchFraction >= 0.50 ? 0.35
-             : 0.10;
-
-  let penalty = 0;
-  for (const t of STRONG_CONFLICTS) {
-    if (!productSet.has(t) && titleSet.has(t)) penalty += 0.45;
-  }
-  for (const t of SOFT_CONFLICTS) {
-    if (!productSet.has(t) && titleSet.has(t)) penalty += 0.25;
-  }
-
-  return Math.max(0, base - penalty);
-}
-
-/**
- * Resolve the TecDoc product type name for a query string.
- * Priority: explicit override from caller → TecDoc OEM lookup (cached) → null.
- * Wrapped in a 3-second timeout so a slow TecDoc response never blocks pricing.
- */
-async function resolveProductTypeForPricing(query, override) {
-  if (override?.trim()) return override.trim();
-
-  const key = query.trim().toLowerCase();
-  if (productTypeCache.has(key)) return productTypeCache.get(key);
-
-  const lookup = Promise.race([
-    (async () => {
-      // 1. artlookup (single GET — fastest)
-      try {
-        const data     = await artlookupByOem(query.trim());
-        const articles = Array.isArray(data) ? data : (data?.articles || data?.data || []);
-        const name     = articles[0]?.articleProductName || articles[0]?.genericArticleDescription;
-        if (name?.trim()) return name.trim();
-      } catch {}
-      // 2. OEM search (POST fallback)
-      try {
-        const data     = await searchArticleByOem(query.trim());
-        const articles = Array.isArray(data) ? data : (data?.articles || data?.data || []);
-        const name     = articles[0]?.articleProductName || articles[0]?.genericArticleDescription;
-        if (name?.trim()) return name.trim();
-      } catch {}
-      return null;
-    })(),
-    new Promise(resolve => setTimeout(() => resolve(null), 3000)),
-  ]);
-
-  const result = await lookup;
-  productTypeCache.set(key, result);
-  return result;
-}
-
 // ─── eBay OAuth token cache ───────────────────────────────────────────────────
 
 let _ebayToken    = null;
@@ -1029,95 +915,41 @@ app.post("/api/ebay/search-prices", async (req, res) => {
     const rule      = detectProductType(query.trim());
     const ebayQuery = buildEbayQuery(query.trim(), rule);
 
-    // ── Step 3: Fetch eBay listings + resolve TecDoc product type (parallel) ──
-    // Both requests fire simultaneously — TecDoc lookup never blocks eBay fetch.
+    // ── Step 3: Fetch top 60 listings ─────────────────────────────────────────
+    // URL built manually — eBay requires literal { } in filter strings; encoding breaks it.
     const token = await getEbayAccessToken();
     let url = `https://api.ebay.com/buy/browse/v1/item_summary/search?q=${encodeURIComponent(ebayQuery)}&limit=60&offset=0`;
     if (condFilter) url += `&filter=${condFilter}`;
 
-    const [ebayJson, resolvedProductType] = await Promise.all([
-      fetch(url, {
-        headers: {
-          Authorization:             `Bearer ${token}`,
-          "X-EBAY-C-MARKETPLACE-ID": "EBAY_GB",
-          "Content-Type":            "application/json",
-        },
-      }).then(r => {
-        if (!r.ok) return r.text().then(t => { throw new Error(`eBay search failed (${r.status}): ${t.slice(0, 300)}`); });
-        return r.json();
-      }),
-      resolveProductTypeForPricing(query.trim(), req.body.productType || ""),
-    ]);
+    const ebayRes = await fetch(url, {
+      headers: {
+        Authorization:             `Bearer ${token}`,
+        "X-EBAY-C-MARKETPLACE-ID": "EBAY_GB",
+        "Content-Type":            "application/json",
+      },
+    });
 
-    const rawItems     = ebayJson.itemSummaries || [];
+    if (!ebayRes.ok) {
+      const text = await ebayRes.text();
+      throw new Error(`eBay search failed (${ebayRes.status}): ${text.slice(0, 300)}`);
+    }
+
+    const data         = await ebayRes.json();
+    const rawItems     = data.itemSummaries || [];
     const totalFetched = rawItems.length;
     const currency     = rawItems.find(i => i.price?.currency)?.price?.currency || "GBP";
 
-    // Enrich each item — capture eBay category for consistency check
+    // Enrich each item with parsed price + URL for pipeline use
     const enriched = rawItems.map(item => ({
-      title:        item.title || "",
-      price:        (() => { const v = parseFloat(item.price?.value); return Number.isFinite(v) && v > 0 ? v : null; })(),
-      url:          item.itemWebUrl || "",
-      image:        item.image?.imageUrl || null,
-      categoryId:   item.categories?.[0]?.categoryId   || null,
-      categoryName: item.categories?.[0]?.categoryName || null,
+      title: item.title || "",
+      price: (() => { const v = parseFloat(item.price?.value); return Number.isFinite(v) && v > 0 ? v : null; })(),
+      url:   item.itemWebUrl || "",
+      image: item.image?.imageUrl || null,
     }));
 
-    // ── Step 4: Product-type relevance filtering (runs BEFORE IQR) ────────────
-    // Score every price-valid listing against the TecDoc product type.
-    // Listings that clearly represent a different component are excluded here
-    // so they cannot shift the price distribution before IQR runs.
-    const productTokens   = resolvedProductType ? tokenizeText(resolvedProductType) : [];
-    const typeFilterReady = productTokens.length > 0;
-
-    const priceValid = enriched
-      .filter(i => i.price !== null)
-      .map(i => ({ ...i, relevanceScore: scoreListingRelevance(i.title, productTokens) }));
-
-    // ── Category consistency signal ───────────────────────────────────────────
-    // Find the dominant eBay category among relevance-passing items.
-    // Items whose category diverges from the majority get an extra -0.20 penalty,
-    // catching cases like one "Engine Rebuild Components" listing among many
-    // "Oil Pumps" listings.
-    let majorityCategory = null;
-    if (typeFilterReady) {
-      const passing  = priceValid.filter(i => i.relevanceScore >= RELEVANCE_THRESHOLD);
-      if (passing.length >= 4) {
-        const catCount = {};
-        passing.forEach(i => { if (i.categoryId) catCount[i.categoryId] = (catCount[i.categoryId] || 0) + 1; });
-        const sorted = Object.entries(catCount).sort((a, b) => b[1] - a[1]);
-        const total  = passing.filter(i => i.categoryId).length;
-        if (sorted.length > 0 && total > 0 && sorted[0][1] / total > 0.45) {
-          majorityCategory = sorted[0][0];
-        }
-      }
-      if (majorityCategory) {
-        priceValid.forEach(i => {
-          if (i.categoryId && i.categoryId !== majorityCategory) {
-            i.relevanceScore = Math.max(0, i.relevanceScore - 0.20);
-          }
-        });
-      }
-    }
-
-    // Separate type-matched from type-excluded
-    const afterTypeFilter    = typeFilterReady ? priceValid.filter(i => i.relevanceScore >= RELEVANCE_THRESHOLD) : priceValid;
-    const typeExcludedItems  = typeFilterReady ? priceValid.filter(i => i.relevanceScore <  RELEVANCE_THRESHOLD)
-      .map(i => ({ ...i, exclusionReason: "type mismatch" })) : [];
-
-    // Safety valve: if relevance filtering would leave < 5 listings, skip it to
-    // avoid an empty result when the TecDoc type doesn't match eBay title patterns.
-    const useTypeFilter = typeFilterReady && afterTypeFilter.length >= 5;
-    const typeFiltered  = useTypeFilter ? afterTypeFilter : priceValid;
-    const typeExcluded  = useTypeFilter ? typeExcludedItems : [];
-
-    console.log(
-      `[eBay] "${query}" | productType="${resolvedProductType || 'n/a'}" | ` +
-      `typeFilter=${useTypeFilter} typePassed=${typeFiltered.length} typeExcluded=${typeExcluded.length}`
-    );
-
-    // ── Step 5: IQR outlier filtering (runs on type-matched set only) ─────────
-    const allSorted = typeFiltered.map(i => i.price).sort((a, b) => a - b);
+    // ── IQR outlier filtering (Tukey method, 1.5 × IQR) ─────────────────────────
+    const priceValid   = enriched.filter(i => i.price !== null);
+    const allSorted    = priceValid.map(i => i.price).sort((a, b) => a - b);
 
     const iqrQ1  = calcPercentile(allSorted, 0.25);
     const iqrQ3  = calcPercentile(allSorted, 0.75);
@@ -1126,13 +958,15 @@ app.post("/api/ebay/search-prices", async (req, res) => {
 
     // Asymmetric bounds — symmetric low end, aggressive high-end cap
     // Upper = MIN(Q3 + 0.75×IQR, 95th percentile)
+    // Prevents premium bundles/OEM kits from distorting right-skewed eBay data
     const lowerBound = iqrQ1 - 1.5  * iqrVal;
     const upperBound = Math.min(iqrQ3 + 0.75 * iqrVal, p95);
 
-    const relevantItems = typeFiltered.filter(i => i.price >= lowerBound && i.price <= upperBound);
-    const iqrOutliers   = typeFiltered.filter(i => i.price < lowerBound || i.price > upperBound)
+    const relevantItems = priceValid.filter(i => i.price >= lowerBound && i.price <= upperBound);
+    const iqrOutliers   = priceValid.filter(i => i.price < lowerBound || i.price > upperBound)
       .map(i => ({ ...i, exclusionReason: i.price < lowerBound ? "IQR lower outlier" : "IQR upper outlier" }));
 
+    // Legacy exclusion arrays (kept for response shape compatibility)
     const titleExcluded = [];
     const unitExcluded  = [];
     const highExcluded  = iqrOutliers.filter(i => i.exclusionReason === "IQR upper outlier");
@@ -1142,20 +976,18 @@ app.post("/api/ebay/search-prices", async (req, res) => {
     const finalPrices = relevantItems.map(i => i.price).sort((a, b) => a - b);
     const confidence  = getConfidence(finalPrices.length);
 
-    const excludedByFilter    = typeExcluded.length;
+    const excludedByFilter    = 0;
     const excludedAsSetKit    = 0;
     const excludedHighOutlier = highExcluded.length;
     const excludedLowOutlier  = lowExcluded.length;
-    const totalExcluded       = typeExcluded.length + iqrOutliers.length;
+    const totalExcluded       = iqrOutliers.length;
 
     if (finalPrices.length === 0) {
-      const typeDesc = resolvedProductType ? ` "${resolvedProductType}"` : "";
       const zeroResultsMsg = rule
         ? `No relevant ${rule.productType} ${condLabel.toLowerCase()} listings found after filtering ${totalFetched} results. Try a different search term.`
         : `No ${condLabel.toLowerCase()} listings found for this search — try a different search term.`;
 
       const allExcluded = [
-        ...typeExcluded,
         ...titleExcluded,
         ...unitExcluded,
         ...highExcluded,
@@ -1175,12 +1007,9 @@ app.post("/api/ebay/search-prices", async (req, res) => {
         excludedHighOutlier,
         excludedLowOutlier,
         totalExcluded,
-        detectedType:       rule?.productType       || null,
-        resolvedProductType: resolvedProductType    || null,
-        typeFilterApplied:  useTypeFilter,
-        typeExcludedCount:  typeExcluded.length,
-        filterApplied:      rule !== null,
-        unitSensitive:      rule?.unitSensitive ?? false,
+        detectedType:    rule?.productType || null,
+        filterApplied:   rule !== null,
+        unitSensitive:   rule?.unitSensitive ?? false,
         confidenceLevel: confidence.level,
         confidenceLabel: confidence.label,
         confidenceColor: confidence.color,
@@ -1200,14 +1029,12 @@ app.post("/api/ebay/search-prices", async (req, res) => {
     const median  = calcMedian(finalPrices);
 
     console.log(
-      `[eBay] "${query}" | ${condLabel} | productType="${resolvedProductType || 'n/a'}" | ` +
-      `fetched=${totalFetched} typePassed=${typeFiltered.length} typeExcluded=${typeExcluded.length} ` +
-      `iqrUsed=${n} iqrOutliers=${iqrOutliers.length} ` +
+      `[eBay] "${query}" | ${condLabel} | fetched=${totalFetched} used=${n} ` +
+      `outliers=${totalExcluded} (lo:${excludedLowOutlier} hi:${excludedHighOutlier}) ` +
       `bounds=[£${lowerBound.toFixed(2)}, £${upperBound.toFixed(2)}]`
     );
 
     const allExcluded = [
-      ...typeExcluded,
       ...titleExcluded,
       ...unitExcluded,
       ...highExcluded,
@@ -1230,19 +1057,16 @@ app.post("/api/ebay/search-prices", async (req, res) => {
       excludedHighOutlier,
       excludedLowOutlier,
       totalExcluded,
-      detectedType:       rule?.productType       || null,
-      resolvedProductType: resolvedProductType    || null,
-      typeFilterApplied:  useTypeFilter,
-      typeExcludedCount:  typeExcluded.length,
-      filterApplied:      rule !== null,
-      unitSensitive:      rule?.unitSensitive ?? false,
+      detectedType:    rule?.productType || null,
+      filterApplied:   rule !== null,
+      unitSensitive:   rule?.unitSensitive ?? false,
       confidenceLevel: confidence.level,
       confidenceLabel: confidence.label,
       confidenceColor: confidence.color,
       iqrLowerBound:   +lowerBound.toFixed(2),
       iqrUpperBound:   +upperBound.toFixed(2),
-      iqrOutlierCount: iqrOutliers.length,
-      listings:         relevantItems.map(i => ({ title: i.title, price: i.price, url: i.url, relevanceScore: +(i.relevanceScore.toFixed(2)) })),
+      iqrOutlierCount: totalExcluded,
+      listings:         relevantItems.map(i => ({ title: i.title, price: i.price, url: i.url })),
       excludedListings: allExcluded,
     });
 

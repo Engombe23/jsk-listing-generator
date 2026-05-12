@@ -457,9 +457,7 @@ function PriceDistribution({ data, listings, price }) {
   // ── IQR for cluster markers only (no listings excluded from view) ────────────
   const q1 = prices[Math.max(0, Math.floor((n - 1) * 0.25))];
   const q3 = prices[Math.min(n - 1, Math.ceil((n - 1) * 0.75))];
-  const outlierCount       = data?.iqrOutlierCount    ?? 0;
-  const typeExcludedCount  = data?.typeExcludedCount  ?? 0;
-  const resolvedType       = data?.resolvedProductType ?? null;
+  const outlierCount = data?.iqrOutlierCount ?? 0;
 
   // View range = full price extent + small padding
   const viewMin   = 0;
@@ -661,13 +659,8 @@ function PriceDistribution({ data, listings, price }) {
           <div style={{ fontSize: 18, fontWeight: 800, color: "#e2e8f0", letterSpacing: -0.4, lineHeight: 1.2 }}>
             Price Distribution
           </div>
-          <div style={{ fontSize: 11, color: "#5a7fa0", marginTop: 4, display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+          <div style={{ fontSize: 11, color: "#5a7fa0", marginTop: 4, display: "flex", alignItems: "center", gap: 6 }}>
             <span><strong style={{ color: "#7dd3fc" }}>{n}</strong> listings analysed</span>
-            {typeExcludedCount > 0 && (
-              <span style={{ color: "#3d5a72", fontSize: 10 }} title={resolvedType ? `Type filter: "${resolvedType}"` : "Product type filter"}>
-                · <strong style={{ color: "#7a6a30" }}>{typeExcludedCount}</strong> type mismatch{typeExcludedCount > 1 ? "es" : ""} excluded
-              </span>
-            )}
             {outlierCount > 0 && (
               <span style={{ color: "#3d5a72", fontSize: 10 }}>
                 · <strong style={{ color: "#60869e" }}>{outlierCount}</strong> outlier{outlierCount > 1 ? "s" : ""} excluded (IQR)
