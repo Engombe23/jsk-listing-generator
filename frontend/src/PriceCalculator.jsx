@@ -442,8 +442,6 @@ function PricingBand({ data, price }) {
 
 // ─── Price Distribution — Market Intelligence Chart ───────────────────────────
 function PriceDistribution({ data, listings, price }) {
-  const [hoveredDot, setHoveredDot] = useState(null);
-
   const prices = (listings || [])
     .map(l => l.price)
     .filter(p => p != null && p > 0)
@@ -566,55 +564,6 @@ function PriceDistribution({ data, listings, price }) {
     ? `${linePath} L ${curvePts[curvePts.length - 1].sx.toFixed(1)},${baseline} L ${curvePts[0].sx.toFixed(1)},${baseline} Z`
     : '';
 
-  // ── Density curve interpolation ───────────────────────────────────────────
-  // Returns the SVG y at any price along the smoothed curve.
-  const getCurveY = p => {
-    for (let i = 0; i < smoothed.length - 1; i++) {
-      if (p >= smoothed[i].x && p < smoothed[i + 1].x) {
-        const t = (p - smoothed[i].x) / (smoothed[i + 1].x - smoothed[i].x);
-        return toY(smoothed[i].y * (1 - t) + smoothed[i + 1].y * t);
-      }
-    }
-    return p <= smoothed[0].x ? toY(smoothed[0].y) : toY(smoothed[smoothed.length - 1].y);
-  };
-
-  // ── Listing price dots — sit ON the density curve, stack downward ─────────
-  // First dot of a price group starts at curve height.
-  // Each additional dot in the same cluster drops by DOT_STEP toward baseline.
-  // Dense pricing = tall curve AND a column of dots hanging below it.
-  const DOT_R    = 3.0;
-  const DOT_STEP = DOT_R * 2 + 1.2;
-  const COL_W    = DOT_R * 2 + 2.0; // horizontal grouping radius (px)
-
-  const viewDots  = prices.filter(p => p >= viewMin && p <= viewMax);
-  const dotSample = viewDots.length > 180
-    ? viewDots.filter((_, i) => i % Math.ceil(viewDots.length / 180) === 0)
-    : viewDots;
-  const sortedDots = [...dotSample].sort((a, b) => a - b);
-
-  // Group adjacent prices into columns, then stack each column from curve down
-  const colGroups = [];
-  for (const p of sortedDots) {
-    const sx   = toX(p);
-    const last = colGroups[colGroups.length - 1];
-    if (last && sx - last.sx <= COL_W) {
-      last.prices.push(p);
-    } else {
-      colGroups.push({ sx, cY: getCurveY(p), prices: [p] });
-    }
-  }
-
-  const dotMarkers = colGroups.flatMap(group => {
-    // How many dots fit between the curve surface and the baseline
-    const maxStack = Math.max(1, Math.floor((baseline - group.cY) / DOT_STEP));
-    return group.prices.slice(0, maxStack).map((p, i) => ({
-      p,
-      sx:     group.sx,
-      sy:     Math.min(group.cY + i * DOT_STEP, baseline - DOT_R - 1),
-      isUser: hasPrice && Math.abs(p - price) < 0.01,
-      inIqr:  p >= q1 && p <= q3,
-    }));
-  });
 
   // ── Y-axis ticks — finer resolution for readability ────────────────────────
   const yStep  = maxBucket <= 4 ? 1 : maxBucket <= 10 ? 2 : maxBucket <= 20 ? 2 : maxBucket <= 40 ? 4 : 5;
@@ -866,6 +815,28 @@ function PriceDistribution({ data, listings, price }) {
             ))}
 
 
+            {/* ── PRIMARY: Histogram bars — real listing density ── */}
+            {bins.map((b, i) => {
+              const bx = toX(b.s) + 0.8;
+              const bw = Math.max(2, toX(b.e) - toX(b.s) - 1.6);
+              const by = toY(b.count);
+              const bh = baseline - by;
+              const d  = roundedTopRect(bx, by, bw, bh, 3);
+              if (!d || bh <= 0) return null;
+              const ratio = b.count / maxBucket;
+              const opacity = 0.28 + 0.58 * ratio;
+              const glowOpacity = ratio > 0.55 ? (ratio - 0.55) * 0.28 : 0;
+              return (
+                <g key={i}>
+                  {glowOpacity > 0 && (
+                    <path d={roundedTopRect(bx - 1, by - 1, bw + 2, bh + 1, 3)}
+                      fill="url(#pdBar)" opacity={glowOpacity} />
+                  )}
+                  <path d={d} fill="url(#pdBar)" opacity={opacity} />
+                </g>
+              );
+            })}
+
             {/* ── SECONDARY: Smoothed density curve — market flow indicator ── */}
             <path d={areaPath} fill="url(#pdFill6)" opacity={0.55} />
             {/* Soft glow */}
@@ -931,49 +902,6 @@ function PriceDistribution({ data, listings, price }) {
               );
             })()}
 
-            {/* ── Listing price dots — on curve, stacked downward ── */}
-            {dotMarkers.map((d, i) => {
-              const isH = hoveredDot?.i === i;
-              return (
-                <g key={i} style={{ cursor: "crosshair" }}
-                  onMouseEnter={() => setHoveredDot({ ...d, i })}
-                  onMouseLeave={() => setHoveredDot(null)}
-                >
-                  {d.isUser   && <circle cx={d.sx} cy={d.sy} r={DOT_R + 10} fill="url(#pdUserGlow6)" />}
-                  {d.inIqr && !d.isUser && <circle cx={d.sx} cy={d.sy} r={DOT_R + 6} fill="url(#pdIqrGlow6)" />}
-                  {isH && <circle cx={d.sx} cy={d.sy} r={DOT_R + 2.8} fill="none"
-                    stroke={d.isUser ? "#00e5ff" : d.inIqr ? "#60a5fa" : "#64748b"}
-                    strokeWidth={1.2} opacity={0.70} />}
-                  <circle
-                    cx={d.sx} cy={d.sy}
-                    r={d.isUser ? DOT_R + 1.5 : isH ? DOT_R + 0.7 : DOT_R}
-                    fill={d.isUser ? "#00e5ff" : d.inIqr ? "#7dd3fc" : "#4a7a9b"}
-                    opacity={d.isUser ? 1.0 : d.inIqr ? 0.90 : 0.65}
-                  />
-                </g>
-              );
-            })}
-
-            {/* ── Hover tooltip ── */}
-            {hoveredDot && (() => {
-              const tx  = Math.min(Math.max(hoveredDot.sx, 32), plotW - 32);
-              const ty  = Math.max(hoveredDot.sy - DOT_R - 8, PAD_T + 20);
-              const col = hoveredDot.isUser ? "#00e5ff" : hoveredDot.inIqr ? "#60a5fa" : "#94a3b8";
-              return (
-                <g style={{ pointerEvents: "none" }}>
-                  <line x1={hoveredDot.sx} y1={hoveredDot.sy - DOT_R}
-                    x2={tx} y2={ty + 1}
-                    stroke={col} strokeWidth={0.8} opacity={0.45}
-                    vectorEffect="non-scaling-stroke" />
-                  <rect x={tx - 29} y={ty - 15} width={58} height={18}
-                    rx={5} fill="#020c1a" stroke={col} strokeWidth={1} opacity={0.97} />
-                  <text x={tx} y={ty - 2}
-                    textAnchor="middle" fontSize={10} fontWeight="800" fill={col}>
-                    {fmtGBP(hoveredDot.p)}
-                  </text>
-                </g>
-              );
-            })()}
           </svg>
 
           {/* ── X-axis labels ── */}
