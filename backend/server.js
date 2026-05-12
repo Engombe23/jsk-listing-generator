@@ -935,47 +935,12 @@ app.post("/api/ebay/search-prices", async (req, res) => {
       image: item.image?.imageUrl || null,
     }));
 
-    // ── Step 4: Title filter ──────────────────────────────────────────────────
-    const titlePassed  = [];
+    // ── No filtering — all listings with a valid price are included ──────────────
     const titleExcluded = [];
-
-    for (const item of enriched) {
-      if (!rule) {
-        titlePassed.push(item);
-        continue;
-      }
-      const t          = item.title.toLowerCase();
-      const hasRequired = rule.requiredAny.some(r => t.includes(r.toLowerCase()));
-      const hasExcluded = rule.exclude.some(e => t.includes(e.toLowerCase()));
-      if (hasRequired && !hasExcluded) {
-        titlePassed.push(item);
-      } else {
-        titleExcluded.push({ ...item, exclusionReason: EXCLUSION_REASONS.TITLE_FILTER });
-      }
-    }
-
-    // ── Step 5: Unit filter (unit-sensitive types only) ───────────────────────
-    const unitPassed  = [];
-    const unitExcluded = [];
-
-    if (rule?.unitSensitive) {
-      for (const item of titlePassed) {
-        const unitType = detectUnitType(item.title);
-        if (["set", "kit", "bundle", "pair"].includes(unitType)) {
-          unitExcluded.push({ ...item, exclusionReason: EXCLUSION_REASONS.SET_KIT, unitType });
-        } else {
-          unitPassed.push(item);
-        }
-      }
-    } else {
-      unitPassed.push(...titlePassed);
-    }
-
-    // ── Step 6: Keep all price-valid items — no price-based exclusions ──────────
-    const withPrice     = unitPassed.filter(i => i.price !== null);
-    const relevantItems = withPrice;
+    const unitExcluded  = [];
     const highExcluded  = [];
     const lowExcluded   = [];
+    const relevantItems = enriched.filter(i => i.price !== null);
 
     // ── Step 8: Final stats ───────────────────────────────────────────────────
     const finalPrices = relevantItems.map(i => i.price).sort((a, b) => a - b);
