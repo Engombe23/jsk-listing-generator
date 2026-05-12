@@ -459,7 +459,7 @@ function PriceDistribution({ data, listings, price }) {
   // ── IQR for cluster markers only (no listings excluded from view) ────────────
   const q1 = prices[Math.max(0, Math.floor((n - 1) * 0.25))];
   const q3 = prices[Math.min(n - 1, Math.ceil((n - 1) * 0.75))];
-  const outlierCount = 0; // all listings shown
+  const outlierCount = data?.iqrOutlierCount ?? 0;
 
   // View range = full price extent + small padding
   const viewPad = Math.max(range * 0.04, 5);
@@ -702,10 +702,12 @@ function PriceDistribution({ data, listings, price }) {
           <div style={{ fontSize: 18, fontWeight: 800, color: "#e2e8f0", letterSpacing: -0.4, lineHeight: 1.2 }}>
             Price Distribution
           </div>
-          <div style={{ fontSize: 11, color: "#5a7fa0", marginTop: 4, display: "flex", alignItems: "center", gap: 8 }}>
-            <span>Based on <strong style={{ color: "#7dd3fc" }}>{n}</strong> active eBay UK listings</span>
+          <div style={{ fontSize: 11, color: "#5a7fa0", marginTop: 4, display: "flex", alignItems: "center", gap: 6 }}>
+            <span><strong style={{ color: "#7dd3fc" }}>{n}</strong> listings analysed</span>
             {outlierCount > 0 && (
-              <span style={{ color: "#2d4a65", fontSize: 10 }}>· {outlierCount} outlier{outlierCount > 1 ? "s" : ""} compressed</span>
+              <span style={{ color: "#3d5a72", fontSize: 10 }}>
+                · <strong style={{ color: "#60869e" }}>{outlierCount}</strong> outlier{outlierCount > 1 ? "s" : ""} excluded (IQR)
+              </span>
             )}
           </div>
         </div>
