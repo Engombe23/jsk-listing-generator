@@ -467,20 +467,24 @@ function PriceDistribution({ data, listings, price }) {
   const viewMax = high + viewPad;
   const viewRange = viewMax - viewMin;
 
-  // ── Binning: bucket size = 5% of market range, always a multiple of 5 ────────
-  const rawBinW = (high - low) * 0.05;
-  const binW = Math.max(5, Math.round(rawBinW / 5) * 5);
+  // ── Dynamic nice-number binning ──────────────────────────────────────────────
+  // Target ~12 buckets; snap to the nearest human-friendly step size
+  const TARGET_BUCKETS = 12;
+  const NICE_STEPS = [1, 2, 5, 10, 20, 25, 50, 100, 200, 250, 500, 1000];
+  const rawBinW = range / TARGET_BUCKETS;
+  const binW    = NICE_STEPS.find(s => s >= rawBinW) ?? 1000;
 
-  const bsStart = Math.floor(viewMin / binW) * binW;
-  const numBinsEst = Math.ceil((viewMax - bsStart) / binW) + 2;
-  const bins = Array.from({ length: numBinsEst }, (_, i) => {
+  // Buckets span from floor(low/binW)*binW to ceil(high/binW)*binW
+  const bsStart = Math.floor(low  / binW) * binW;
+  const bsEnd   = Math.ceil (high / binW) * binW;
+  const numBins = Math.round((bsEnd - bsStart) / binW);
+  const bins = Array.from({ length: numBins }, (_, i) => {
     const s = bsStart + i * binW;
     const e = s + binW;
-    if (e <= viewMin || s >= viewMax + 0.001) return null;
-    const isLast = e >= viewMax;
-    const count = prices.filter(p => p >= s && (isLast ? p <= viewMax : p < e)).length;
+    const isLast = i === numBins - 1;
+    const count = prices.filter(p => p >= s && (isLast ? p <= e : p < e)).length;
     return { s, e, count };
-  }).filter(Boolean);
+  }).filter(b => b.s < viewMax && b.e > viewMin);
 
   const maxBucket = Math.max(...bins.map(b => b.count), 1);
 
