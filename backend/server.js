@@ -954,8 +954,13 @@ app.post("/api/ebay/search-prices", async (req, res) => {
     const iqrQ1  = calcPercentile(allSorted, 0.25);
     const iqrQ3  = calcPercentile(allSorted, 0.75);
     const iqrVal = iqrQ3 - iqrQ1;
-    const lowerBound = iqrQ1 - 1.5 * iqrVal;
-    const upperBound = iqrQ3 + 1.5 * iqrVal;
+    const p95    = calcPercentile(allSorted, 0.95);
+
+    // Asymmetric bounds — symmetric low end, aggressive high-end cap
+    // Upper = MIN(Q3 + 0.75×IQR, 95th percentile)
+    // Prevents premium bundles/OEM kits from distorting right-skewed eBay data
+    const lowerBound = iqrQ1 - 1.5  * iqrVal;
+    const upperBound = Math.min(iqrQ3 + 0.75 * iqrVal, p95);
 
     const relevantItems = priceValid.filter(i => i.price >= lowerBound && i.price <= upperBound);
     const iqrOutliers   = priceValid.filter(i => i.price < lowerBound || i.price > upperBound)
