@@ -939,28 +939,40 @@ app.post("/api/ebay/search-prices", async (req, res) => {
     const totalFetched = rawItems.length;
     const currency     = rawItems.find(i => i.price?.currency)?.price?.currency || "GBP";
 
-    // Enrich each item with parsed price + URL for pipeline use
-    const enriched = rawItems.map(item => ({
-      title: item.title || "",
-      price: (() => { const v = parseFloat(item.price?.value); return Number.isFinite(v) && v > 0 ? v : null; })(),
-      url:   item.itemWebUrl || "",
-      image: item.image?.imageUrl || null,
-    }));
+    // Enrich each item — capture all fields needed for table view
+    const enriched = rawItems.map(item => {
+      const v           = parseFloat(item.price?.value);
+      const shippingOpt = item.shippingOptions?.[0];
+      const shippingVal = parseFloat(shippingOpt?.shippingCost?.value);
+      return {
+        title:             item.title || "",
+        price:             Number.isFinite(v) && v > 0 ? v : null,
+        url:               item.itemWebUrl || "",
+        image:             item.image?.imageUrl || null,
+        condition:         item.condition || "",
+        sellerName:        item.seller?.username || "",
+        sellerFeedback:    item.seller?.feedbackScore    != null ? Number(item.seller.feedbackScore)          : null,
+        sellerFeedbackPct: item.seller?.feedbackPercentage != null ? parseFloat(item.seller.feedbackPercentage) : null,
+        shippingCost:      Number.isFinite(shippingVal) ? shippingVal : null,
+        shippingType:      shippingOpt?.shippingType || null,
+        itemDate:          item.itemCreationDate || null,
+      };
+    });
 
-    // ── IQR outlier filtering (Tukey method, 1.5 × IQR) ─────────────────────────
+    // ── IQR outlier filtering — tighter bounds to exclude kits / bundles ──────────
     const priceValid   = enriched.filter(i => i.price !== null);
     const allSorted    = priceValid.map(i => i.price).sort((a, b) => a - b);
 
-    const iqrQ1  = calcPercentile(allSorted, 0.25);
-    const iqrQ3  = calcPercentile(allSorted, 0.75);
-    const iqrVal = iqrQ3 - iqrQ1;
-    const p95    = calcPercentile(allSorted, 0.95);
+    const iqrMedian  = calcMedian(allSorted);
+    const iqrQ1      = calcPercentile(allSorted, 0.25);
+    const iqrQ3      = calcPercentile(allSorted, 0.75);
+    const iqrVal     = iqrQ3 - iqrQ1;
 
-    // Asymmetric bounds — symmetric low end, aggressive high-end cap
-    // Upper = MIN(Q3 + 0.75×IQR, 95th percentile)
-    // Prevents premium bundles/OEM kits from distorting right-skewed eBay data
-    const lowerBound = iqrQ1 - 1.5  * iqrVal;
-    const upperBound = Math.min(iqrQ3 + 0.75 * iqrVal, p95);
+    // 1.0×IQR (tighter than the classic 1.5) + hard cap at median×2.2.
+    // The median×2.2 cap specifically targets forged kits, rebuild packages
+    // and bundle listings that clear the IQR fence but still distort scale.
+    const lowerBound = iqrQ1 - 1.0 * iqrVal;
+    const upperBound = Math.min(iqrQ3 + 1.0 * iqrVal, iqrMedian * 2.2);
 
     const relevantItems = priceValid.filter(i => i.price >= lowerBound && i.price <= upperBound);
     const iqrOutliers   = priceValid.filter(i => i.price < lowerBound || i.price > upperBound)
@@ -1066,7 +1078,18 @@ app.post("/api/ebay/search-prices", async (req, res) => {
       iqrLowerBound:   +lowerBound.toFixed(2),
       iqrUpperBound:   +upperBound.toFixed(2),
       iqrOutlierCount: totalExcluded,
-      listings:         relevantItems.map(i => ({ title: i.title, price: i.price, url: i.url })),
+      listings: relevantItems.map(i => ({
+        title:             i.title,
+        price:             i.price,
+        url:               i.url,
+        condition:         i.condition,
+        sellerName:        i.sellerName,
+        sellerFeedback:    i.sellerFeedback,
+        sellerFeedbackPct: i.sellerFeedbackPct,
+        shippingCost:      i.shippingCost,
+        shippingType:      i.shippingType,
+        itemDate:          i.itemDate,
+      })),
       excludedListings: allExcluded,
     });
 

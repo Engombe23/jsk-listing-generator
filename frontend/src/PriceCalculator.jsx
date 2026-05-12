@@ -442,8 +442,10 @@ function PricingBand({ data, price }) {
 
 // ─── Price Distribution — Market Intelligence Chart ───────────────────────────
 function PriceDistribution({ data, listings, price }) {
-  const svgRef        = useRef(null);
-  const [crosshairX, setCrosshairX] = useState(null); // SVG-space x coord, null = hidden
+  const svgRef       = useRef(null);
+  const [crosshairX, setCrosshairX] = useState(null);
+  const [viewMode,   setViewMode]   = useState("chart"); // "chart" | "table"
+  const [tableSort,  setTableSort]  = useState("price"); // "price"|"closest"|"newest"|"feedback"
 
   const prices = (listings || [])
     .map(l => l.price)
@@ -654,8 +656,8 @@ function PriceDistribution({ data, listings, price }) {
     }}>
 
       {/* ── Header ── */}
-      <div style={{ padding: "18px 22px 12px", display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
-        <div>
+      <div style={{ padding: "18px 22px 12px", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 9, fontWeight: 800, color: "#2563eb", textTransform: "uppercase", letterSpacing: 2.5, marginBottom: 5 }}>
             Market Intelligence
           </div>
@@ -671,15 +673,35 @@ function PriceDistribution({ data, listings, price }) {
             )}
           </div>
         </div>
-        {hasPrice && (
-          <div style={{ textAlign: "right", flexShrink: 0 }}>
-            <div style={{ fontSize: 9, fontWeight: 700, color: "#00e5ff", textTransform: "uppercase", letterSpacing: 1.4, marginBottom: 3, opacity: 0.8 }}>Your Price</div>
-            <div style={{ fontSize: 16, fontWeight: 900, color: "#00e5ff", letterSpacing: -0.5, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>{fmtGBP(price)}</div>
-            <div style={{ fontSize: 10, color: "#2d748a", marginTop: 3 }}>{userPosLabel}</div>
+
+        {/* Chart / Table toggle + YOUR PRICE */}
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8, flexShrink: 0 }}>
+          <div style={{ display: "flex", gap: 3 }}>
+            {[["chart", "Chart"], ["table", "Table"]].map(([mode, label]) => (
+              <button key={mode} onClick={() => setViewMode(mode)} style={{
+                padding: "4px 13px", fontSize: 10, fontWeight: 700,
+                letterSpacing: 0.8, textTransform: "uppercase",
+                background: viewMode === mode ? "rgba(19,93,255,0.22)" : "transparent",
+                border: viewMode === mode ? "1px solid rgba(56,189,248,0.40)" : "1px solid rgba(255,255,255,0.07)",
+                borderRadius: 6,
+                color: viewMode === mode ? "#7dd3fc" : "#3d5a72",
+                cursor: "pointer",
+              }}>
+                {label}
+              </button>
+            ))}
           </div>
-        )}
+          {hasPrice && (
+            <div style={{ textAlign: "right" }}>
+              <div style={{ fontSize: 9, fontWeight: 700, color: "#00e5ff", textTransform: "uppercase", letterSpacing: 1.4, marginBottom: 3, opacity: 0.8 }}>Your Price</div>
+              <div style={{ fontSize: 16, fontWeight: 900, color: "#00e5ff", letterSpacing: -0.5, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>{fmtGBP(price)}</div>
+              <div style={{ fontSize: 10, color: "#2d748a", marginTop: 3 }}>{userPosLabel}</div>
+            </div>
+          )}
+        </div>
       </div>
 
+      {viewMode === "chart" && <>
       {/* ── Chart wrapper: Y-axis col + chart col ── */}
       <div style={{ display: "flex", paddingRight: 10, paddingBottom: 2 }}>
 
@@ -1086,6 +1108,147 @@ function PriceDistribution({ data, listings, price }) {
               </div>
             </div>
 
+          </div>
+        );
+      })()}
+
+      </>}
+
+      {/* ── Table view ── */}
+      {viewMode === "table" && (() => {
+        const SORTS = [
+          { key: "price",    label: "Price" },
+          { key: "closest",  label: "Closest to yours" },
+          { key: "newest",   label: "Newest" },
+          { key: "feedback", label: "Seller rating" },
+        ];
+
+        const sorted = [...(listings || [])].sort((a, b) => {
+          if (tableSort === "price")    return a.price - b.price;
+          if (tableSort === "closest")  return Math.abs(a.price - (price || 0)) - Math.abs(b.price - (price || 0));
+          if (tableSort === "newest")   return new Date(b.itemDate || 0) - new Date(a.itemDate || 0);
+          if (tableSort === "feedback") return (b.sellerFeedback || 0) - (a.sellerFeedback || 0);
+          return 0;
+        });
+
+        const fmtShipping = (cost, type) => {
+          if (type === "FREE" || cost === 0) return "Free";
+          if (cost != null) return `+£${cost.toFixed(2)}`;
+          return "—";
+        };
+
+        const posFor = p => {
+          if (!p) return null;
+          const pct = ((p - low) / range) * 100;
+          if (p < low)    return { label: "Below",   col: "#60a5fa" };
+          if (pct < 25)   return { label: "Lower",   col: "#60a5fa" };
+          if (pct < 45)   return { label: "Low-mid", col: "#7dd3fc" };
+          if (pct < 65)   return { label: "Core",    col: "#34d399" };
+          if (pct < 82)   return { label: "Up-mid",  col: "#fbbf24" };
+          if (p <= high)  return { label: "Upper",   col: "#f87171" };
+          return               { label: "Above",    col: "#ef4444" };
+        };
+
+        const TH = ({ children, w }) => (
+          <div style={{ width: w, fontSize: 8, fontWeight: 800, color: "#2d4a65", textTransform: "uppercase", letterSpacing: 1.2, padding: "0 8px 8px", flexShrink: 0 }}>
+            {children}
+          </div>
+        );
+
+        return (
+          <div style={{ padding: "0 22px 18px" }}>
+            {/* Sort bar */}
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12 }}>
+              <span style={{ fontSize: 9, color: "#2d4a65", textTransform: "uppercase", letterSpacing: 1, fontWeight: 700 }}>Sort</span>
+              {SORTS.map(s => (
+                <button key={s.key} onClick={() => setTableSort(s.key)} style={{
+                  padding: "3px 10px", fontSize: 10, fontWeight: 600,
+                  background: tableSort === s.key ? "rgba(56,189,248,0.12)" : "transparent",
+                  border: tableSort === s.key ? "1px solid rgba(56,189,248,0.30)" : "1px solid rgba(255,255,255,0.06)",
+                  borderRadius: 5, color: tableSort === s.key ? "#7dd3fc" : "#3d5a72",
+                  cursor: "pointer",
+                }}>
+                  {s.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Header row */}
+            <div style={{ display: "flex", borderBottom: "1px solid rgba(255,255,255,0.06)", paddingBottom: 4, marginBottom: 2 }}>
+              <TH w="auto">Title</TH>
+              <TH w={62}>Price</TH>
+              <TH w={56}>Cond.</TH>
+              <TH w={100}>Seller</TH>
+              <TH w={68}>Delivery</TH>
+              <TH w={62}>Position</TH>
+            </div>
+
+            {/* Rows */}
+            <div style={{ maxHeight: 380, overflowY: "auto" }}>
+              {sorted.map((item, i) => {
+                const pos      = posFor(item.price);
+                const isUser   = hasPrice && Math.abs(item.price - price) < 0.01;
+                const rowBg    = isUser ? "rgba(0,229,255,0.04)" : i % 2 === 0 ? "transparent" : "rgba(255,255,255,0.015)";
+                return (
+                  <div key={i} style={{
+                    display: "flex", alignItems: "center",
+                    padding: "6px 0", borderBottom: "1px solid rgba(255,255,255,0.04)",
+                    background: rowBg,
+                    borderLeft: isUser ? "2px solid #00e5ff" : "2px solid transparent",
+                    paddingLeft: isUser ? 6 : 8,
+                  }}>
+                    {/* Title */}
+                    <div style={{ flex: 1, minWidth: 0, paddingRight: 8 }}>
+                      <a href={item.url} target="_blank" rel="noreferrer" style={{
+                        fontSize: 11, color: "#a8c8e8", textDecoration: "none", lineHeight: 1.4,
+                        display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden",
+                      }}
+                        onMouseEnter={e => e.currentTarget.style.color = "#e2e8f0"}
+                        onMouseLeave={e => e.currentTarget.style.color = "#a8c8e8"}
+                      >
+                        {item.title}
+                      </a>
+                    </div>
+                    {/* Price */}
+                    <div style={{ width: 62, flexShrink: 0, fontSize: 12, fontWeight: 800, color: isUser ? "#00e5ff" : "#e2e8f0", fontVariantNumeric: "tabular-nums" }}>
+                      {fmtGBP(item.price)}
+                    </div>
+                    {/* Condition */}
+                    <div style={{ width: 56, flexShrink: 0, fontSize: 10, color: "#5a7fa0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {item.condition || "—"}
+                    </div>
+                    {/* Seller */}
+                    <div style={{ width: 100, flexShrink: 0, overflow: "hidden" }}>
+                      <div style={{ fontSize: 10, color: "#5a7fa0", textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>
+                        {item.sellerName || "—"}
+                      </div>
+                      {item.sellerFeedback != null && (
+                        <div style={{ fontSize: 9, color: "#2d4a65", marginTop: 1 }}>
+                          {item.sellerFeedback.toLocaleString()}
+                          {item.sellerFeedbackPct != null && ` · ${item.sellerFeedbackPct.toFixed(1)}%`}
+                        </div>
+                      )}
+                    </div>
+                    {/* Delivery */}
+                    <div style={{ width: 68, flexShrink: 0, fontSize: 10, color: item.shippingCost === 0 || item.shippingType === "FREE" ? "#34d399" : "#5a7fa0" }}>
+                      {fmtShipping(item.shippingCost, item.shippingType)}
+                    </div>
+                    {/* Position badge */}
+                    <div style={{ width: 62, flexShrink: 0 }}>
+                      {pos && (
+                        <span style={{
+                          fontSize: 9, fontWeight: 700, color: pos.col,
+                          background: `${pos.col}18`, border: `1px solid ${pos.col}35`,
+                          borderRadius: 4, padding: "2px 6px", whiteSpace: "nowrap",
+                        }}>
+                          {pos.label}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         );
       })()}
