@@ -477,10 +477,9 @@ function PriceDistribution({ data, listings, price }) {
   const viewMax = coreMax + viewPad;
   const viewRange = viewMax - viewMin;
 
-  // ── Binning: bucket size = 5% of full market range (high − low) ─────────────
-  const rawBinW = Math.max(1, (high - low) * 0.05);
-  const binW = ([1, 2, 5, 10, 20, 25, 50, 75, 100, 150, 200, 250, 500, 1000]
-    .find(s => s >= rawBinW)) ?? 1000;
+  // ── Binning: bucket size = 5% of market range, always a multiple of 5 ────────
+  const rawBinW = (high - low) * 0.05;
+  const binW = Math.max(5, Math.round(rawBinW / 5) * 5);
 
   const bsStart = Math.floor(viewMin / binW) * binW;
   const viewPrices = prices.filter(p => p >= viewMin && p <= viewMax);
