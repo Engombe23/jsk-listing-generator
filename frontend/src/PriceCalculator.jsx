@@ -569,10 +569,12 @@ function PriceDistribution({ data, listings, price }) {
   const yStep  = maxBucket <= 4 ? 1 : maxBucket <= 10 ? 2 : maxBucket <= 20 ? 2 : maxBucket <= 40 ? 4 : 5;
   const yTicks = Array.from({ length: Math.floor(maxBucket / yStep) + 1 }, (_, i) => i * yStep);
 
-  // ── X-axis ticks — more stops for spatial precision ─────────────────────────
-  const rawXStep  = viewRange / 10;
-  const xMag      = Math.pow(10, Math.floor(Math.log10(Math.max(rawXStep, 1))));
-  const niceXStep = ([1, 2, 2.5, 5, 10].map(f => f * xMag).find(s => s >= rawXStep)) ?? (xMag * 10);
+  // ── X-axis ticks — guaranteed minimum 8 divisions ──────────────────────────
+  // Strategy: find the LARGEST nice step that still fits ≥8 ticks across the view.
+  // (old approach snapped UP to nearest nice number, silently collapsing to 5-6 ticks)
+  const maxXStep   = viewRange / 8; // maximum step size that guarantees ≥8 divisions
+  const xMag       = Math.pow(10, Math.floor(Math.log10(Math.max(maxXStep, 1))));
+  const niceXStep  = ([1, 2, 2.5, 5, 10].map(f => f * xMag)).filter(s => s <= maxXStep).pop() ?? xMag;
   const xTickStart = Math.floor(viewMin / niceXStep) * niceXStep;
   const xTicks = [];
   for (let v = xTickStart; v <= viewMax - niceXStep * 0.1; v += niceXStep) xTicks.push(Math.round(v));
