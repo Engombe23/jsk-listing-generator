@@ -456,25 +456,15 @@ function PriceDistribution({ data, listings, price }) {
   const n = prices.length;
   const hasPrice = price > 0;
 
-  // ── IQR-based outlier compression ──────────────────────────────────────────
-  // Gives sellers a focused view of where real competition is priced
+  // ── IQR for cluster markers only (no listings excluded from view) ────────────
   const q1 = prices[Math.max(0, Math.floor((n - 1) * 0.25))];
   const q3 = prices[Math.min(n - 1, Math.ceil((n - 1) * 0.75))];
-  const iqr = Math.max(q3 - q1, range * 0.1);
+  const outlierCount = 0; // all listings shown
 
-  // Tukey outer fences (2.5× IQR = very lenient, only clips true outliers)
-  const fenceLow  = q1 - 2.5 * iqr;
-  const fenceHigh = q3 + 2.5 * iqr;
-  const corePrices = prices.filter(p => p >= fenceLow && p <= fenceHigh);
-  const outlierCount = n - corePrices.length;
-
-  // View range = core extent + 8% padding each side
-  const coreMin = corePrices.length ? corePrices[0] : low;
-  const coreMax = corePrices.length ? corePrices[corePrices.length - 1] : high;
-  const coreSpread = Math.max(coreMax - coreMin, 1);
-  const viewPad = Math.max(coreSpread * 0.08, 10);
-  const viewMin = coreMin - viewPad;
-  const viewMax = coreMax + viewPad;
+  // View range = full price extent + small padding
+  const viewPad = Math.max(range * 0.04, 5);
+  const viewMin = low  - viewPad;
+  const viewMax = high + viewPad;
   const viewRange = viewMax - viewMin;
 
   // ── Binning: bucket size = 5% of market range, always a multiple of 5 ────────
@@ -482,14 +472,13 @@ function PriceDistribution({ data, listings, price }) {
   const binW = Math.max(5, Math.round(rawBinW / 5) * 5);
 
   const bsStart = Math.floor(viewMin / binW) * binW;
-  const viewPrices = prices.filter(p => p >= viewMin && p <= viewMax);
   const numBinsEst = Math.ceil((viewMax - bsStart) / binW) + 2;
   const bins = Array.from({ length: numBinsEst }, (_, i) => {
     const s = bsStart + i * binW;
     const e = s + binW;
     if (e <= viewMin || s >= viewMax + 0.001) return null;
     const isLast = e >= viewMax;
-    const count = viewPrices.filter(p => p >= s && (isLast ? p <= viewMax : p < e)).length;
+    const count = prices.filter(p => p >= s && (isLast ? p <= viewMax : p < e)).length;
     return { s, e, count };
   }).filter(Boolean);
 
