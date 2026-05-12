@@ -903,10 +903,10 @@ app.post("/api/ebay/search-prices", async (req, res) => {
     const rule      = detectProductType(query.trim());
     const ebayQuery = buildEbayQuery(query.trim(), rule);
 
-    // ── Step 3: Fetch top 25 listings ─────────────────────────────────────────
+    // ── Step 3: Fetch top 60 listings ─────────────────────────────────────────
     // URL built manually — eBay requires literal { } in filter strings; encoding breaks it.
     const token = await getEbayAccessToken();
-    let url = `https://api.ebay.com/buy/browse/v1/item_summary/search?q=${encodeURIComponent(ebayQuery)}&limit=25&offset=0`;
+    let url = `https://api.ebay.com/buy/browse/v1/item_summary/search?q=${encodeURIComponent(ebayQuery)}&limit=60&offset=0`;
     if (condFilter) url += `&filter=${condFilter}`;
 
     const ebayRes = await fetch(url, {
