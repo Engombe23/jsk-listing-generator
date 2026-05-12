@@ -517,7 +517,7 @@ function PriceDistribution({ data, listings, price }) {
   const cheaperThan = hasPrice ? n - priceRank : 0;
 
   // ── SVG coordinate system ───────────────────────────────────────────────────
-  const CHART_W = 500, CHART_H = 190, PAD_T = 6, PAD_B = 5, PAD_R = 6;
+  const CHART_W = 500, CHART_H = 220, PAD_T = 18, PAD_B = 6, PAD_R = 8;
   const plotW = CHART_W - PAD_R;
   const plotH = CHART_H - PAD_T - PAD_B;
 
@@ -629,12 +629,12 @@ function PriceDistribution({ data, listings, price }) {
     }));
   });
 
-  // ── Y-axis ticks ────────────────────────────────────────────────────────────
-  const yStep  = maxBucket <= 5 ? 1 : maxBucket <= 10 ? 2 : maxBucket <= 20 ? 4 : 5;
+  // ── Y-axis ticks — finer resolution for readability ────────────────────────
+  const yStep  = maxBucket <= 4 ? 1 : maxBucket <= 10 ? 2 : maxBucket <= 20 ? 2 : maxBucket <= 40 ? 4 : 5;
   const yTicks = Array.from({ length: Math.floor(maxBucket / yStep) + 1 }, (_, i) => i * yStep);
 
-  // ── X-axis ticks (nice round numbers within view range) ─────────────────────
-  const rawXStep  = viewRange / 6;
+  // ── X-axis ticks — more stops for spatial precision ─────────────────────────
+  const rawXStep  = viewRange / 10;
   const xMag      = Math.pow(10, Math.floor(Math.log10(Math.max(rawXStep, 1))));
   const niceXStep = ([1, 2, 2.5, 5, 10].map(f => f * xMag).find(s => s >= rawXStep)) ?? (xMag * 10);
   const xTickStart = Math.ceil((viewMin + niceXStep * 0.1) / niceXStep) * niceXStep;
@@ -671,8 +671,28 @@ function PriceDistribution({ data, listings, price }) {
     if (!moved) break;
   }
 
-  const CARD_H = 70;
+  const CARD_H = 72;
   const fmtX   = v => v >= 1000 ? `£${+(v / 1000).toFixed(1)}k` : `£${Math.round(v)}`;
+
+  // ── Rounded-top bar path helper ─────────────────────────────────────────────
+  const roundedTopRect = (x, y, w, h, r = 2.5) => {
+    if (h <= 0.5) return '';
+    const rr = Math.min(r, w / 2, Math.max(h - 0.5, 0.1));
+    return `M ${x},${baseline} L ${x},${y + rr} Q ${x},${y} ${x + rr},${y} L ${x + w - rr},${y} Q ${x + w},${y} ${x + w},${y + rr} L ${x + w},${baseline} Z`;
+  };
+
+  // ── Zone boundary X coords ───────────────────────────────────────────────────
+  const zoneClampX   = v => Math.max(0, Math.min(plotW, toX(v)));
+  const lowerZoneX2  = clusterStart >= viewMin && clusterStart <= viewMax ? zoneClampX(clusterStart) : (clusterStart < viewMin ? 0 : plotW);
+  const coreZoneX1   = lowerZoneX2;
+  const coreZoneX2   = clusterEnd   >= viewMin && clusterEnd   <= viewMax ? zoneClampX(clusterEnd)   : (clusterEnd   < viewMin ? 0 : plotW);
+  const upperZoneX1  = coreZoneX2;
+
+  // ── User price label helper ──────────────────────────────────────────────────
+  const userPosLabel = !hasPrice ? '' :
+    price < clusterStart ? 'Below core range' :
+    price > clusterEnd   ? 'Above core range' :
+    'Inside core range';
 
   return (
     <div style={{
@@ -686,21 +706,28 @@ function PriceDistribution({ data, listings, price }) {
     }}>
 
       {/* ── Header ── */}
-      <div style={{ padding: "16px 20px 10px" }}>
-        <div style={{ fontSize: 9, fontWeight: 800, color: "#2563eb", textTransform: "uppercase", letterSpacing: 2.5, marginBottom: 5 }}>
-          Market Intelligence
+      <div style={{ padding: "18px 22px 12px", display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+        <div>
+          <div style={{ fontSize: 9, fontWeight: 800, color: "#2563eb", textTransform: "uppercase", letterSpacing: 2.5, marginBottom: 5 }}>
+            Market Intelligence
+          </div>
+          <div style={{ fontSize: 18, fontWeight: 800, color: "#e2e8f0", letterSpacing: -0.4, lineHeight: 1.2 }}>
+            Price Distribution
+          </div>
+          <div style={{ fontSize: 11, color: "#5a7fa0", marginTop: 4, display: "flex", alignItems: "center", gap: 8 }}>
+            <span>Based on <strong style={{ color: "#7dd3fc" }}>{n}</strong> active eBay UK listings</span>
+            {outlierCount > 0 && (
+              <span style={{ color: "#2d4a65", fontSize: 10 }}>· {outlierCount} outlier{outlierCount > 1 ? "s" : ""} compressed</span>
+            )}
+          </div>
         </div>
-        <div style={{ fontSize: 17, fontWeight: 800, color: "#e2e8f0", letterSpacing: -0.4, lineHeight: 1.2 }}>
-          Price Distribution
-        </div>
-        <div style={{ fontSize: 11, color: "#4b5563", marginTop: 3 }}>
-          Based on {n} active eBay UK listings
-          {outlierCount > 0 && (
-            <span style={{ color: "#1e3a5f", marginLeft: 6 }}>
-              · {outlierCount} outlier{outlierCount > 1 ? "s" : ""} compressed
-            </span>
-          )}
-        </div>
+        {hasPrice && (
+          <div style={{ textAlign: "right", flexShrink: 0 }}>
+            <div style={{ fontSize: 9, fontWeight: 700, color: "#00e5ff", textTransform: "uppercase", letterSpacing: 1.4, marginBottom: 3, opacity: 0.8 }}>Your Price</div>
+            <div style={{ fontSize: 16, fontWeight: 900, color: "#00e5ff", letterSpacing: -0.5, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>{fmtGBP(price)}</div>
+            <div style={{ fontSize: 10, color: "#2d748a", marginTop: 3 }}>{userPosLabel}</div>
+          </div>
+        )}
       </div>
 
       {/* ── Chart wrapper: Y-axis col + chart col ── */}
@@ -718,7 +745,7 @@ function PriceDistribution({ data, listings, price }) {
             </div>
             {/* Tick numbers */}
             {yTicks.map(t => (
-              <div key={t} style={{ position: "absolute", right: 4, top: toY(t), transform: "translateY(-50%)", fontSize: 8, color: "#3d5268", lineHeight: 1, fontVariantNumeric: "tabular-nums", userSelect: "none" }}>
+              <div key={t} style={{ position: "absolute", right: 5, top: toY(t), transform: "translateY(-50%)", fontSize: 9, color: t === 0 ? "#2d4a65" : "#5a7fa0", lineHeight: 1, fontVariantNumeric: "tabular-nums", userSelect: "none", fontWeight: 600 }}>
                 {t}
               </div>
             ))}
@@ -777,67 +804,146 @@ function PriceDistribution({ data, listings, price }) {
             style={{ display: "block" }}
           >
             <defs>
-              {/* Curve fill — rich at peak, fades to transparent */}
-              <linearGradient id="pdFill5" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%"   stopColor="#2563eb" stopOpacity="0.50" />
-                <stop offset="40%"  stopColor="#3b82f6" stopOpacity="0.18" />
+              {/* Curve fill */}
+              <linearGradient id="pdFill6" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%"   stopColor="#2563eb" stopOpacity="0.55" />
+                <stop offset="45%"  stopColor="#3b82f6" stopOpacity="0.18" />
                 <stop offset="100%" stopColor="#1e40af" stopOpacity="0.00" />
               </linearGradient>
+              {/* Core bar gradient (inside IQR) */}
+              <linearGradient id="pdBarCore" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%"   stopColor="#06b6d4" stopOpacity="0.82" />
+                <stop offset="100%" stopColor="#0284c7" stopOpacity="0.28" />
+              </linearGradient>
+              {/* Outer bar gradient */}
+              <linearGradient id="pdBarOuter" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%"   stopColor="#3b82f6" stopOpacity="0.55" />
+                <stop offset="100%" stopColor="#1e3a8a" stopOpacity="0.18" />
+              </linearGradient>
               {/* User dot glow */}
-              <radialGradient id="pdUserGlow5" cx="50%" cy="50%" r="50%">
-                <stop offset="0%"   stopColor="#00e5ff" stopOpacity="0.45" />
+              <radialGradient id="pdUserGlow6" cx="50%" cy="50%" r="50%">
+                <stop offset="0%"   stopColor="#00e5ff" stopOpacity="0.55" />
                 <stop offset="100%" stopColor="#00e5ff" stopOpacity="0.00" />
               </radialGradient>
               {/* IQR dot glow */}
-              <radialGradient id="pdIqrGlow5" cx="50%" cy="50%" r="50%">
-                <stop offset="0%"   stopColor="#60a5fa" stopOpacity="0.32" />
+              <radialGradient id="pdIqrGlow6" cx="50%" cy="50%" r="50%">
+                <stop offset="0%"   stopColor="#60a5fa" stopOpacity="0.38" />
                 <stop offset="100%" stopColor="#60a5fa" stopOpacity="0.00" />
               </radialGradient>
+              {/* User price beam glow filter */}
+              <filter id="pdBeamGlow" x="-200%" y="-10%" width="500%" height="120%">
+                <feGaussianBlur stdDeviation="4" result="blur"/>
+                <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+              </filter>
             </defs>
 
-            {/* Subtle grid lines */}
+            {/* ── Zone backgrounds ── */}
+            {/* Lower range — cool blue */}
+            <rect x={0} y={PAD_T} width={lowerZoneX2} height={plotH} fill="rgba(37,99,235,0.07)" />
+            {/* Core range — cyan teal */}
+            <rect x={coreZoneX1} y={PAD_T} width={Math.max(0, coreZoneX2 - coreZoneX1)} height={plotH} fill="rgba(6,182,212,0.08)" />
+            {/* Upper range — amber */}
+            <rect x={upperZoneX1} y={PAD_T} width={Math.max(0, plotW - upperZoneX1)} height={plotH} fill="rgba(245,158,11,0.05)" />
+
+            {/* Zone labels — top of chart */}
+            {lowerZoneX2 > 24 && (
+              <text x={lowerZoneX2 / 2} y={PAD_T + 9} textAnchor="middle" fontSize={6.5} fill="#3b82f6" fillOpacity={0.65} fontWeight="800" letterSpacing="1">LOWER RANGE</text>
+            )}
+            {(coreZoneX2 - coreZoneX1) > 44 && (
+              <text x={(coreZoneX1 + coreZoneX2) / 2} y={PAD_T + 9} textAnchor="middle" fontSize={6.5} fill="#06b6d4" fillOpacity={0.80} fontWeight="800" letterSpacing="1">CORE MARKET</text>
+            )}
+            {(plotW - upperZoneX1) > 24 && (
+              <text x={(upperZoneX1 + plotW) / 2} y={PAD_T + 9} textAnchor="middle" fontSize={6.5} fill="#f59e0b" fillOpacity={0.60} fontWeight="800" letterSpacing="1">UPPER RANGE</text>
+            )}
+
+            {/* ── Grid lines at every Y tick ── */}
             {yTicks.filter(t => t > 0).map(t => (
               <line key={t}
                 x1={0} y1={toY(t)} x2={plotW} y2={toY(t)}
-                stroke="rgba(255,255,255,0.03)" strokeWidth={1} strokeDasharray="3,12"
+                stroke="rgba(148,163,184,0.07)" strokeWidth={1} strokeDasharray="2,9"
                 vectorEffect="non-scaling-stroke"
               />
             ))}
 
-            {/* IQR zone tint — middle 50% of market, subtle warmth */}
-            {inView(clusterStart) && inView(clusterEnd) && (
-              <rect
-                x={Math.max(0, toX(clusterStart))}
-                y={PAD_T}
-                width={Math.min(plotW, toX(clusterEnd)) - Math.max(0, toX(clusterStart))}
-                height={plotH}
-                fill="rgba(37,99,235,0.06)"
-              />
-            )}
+            {/* ── Volume bars — gradient, rounded tops ── */}
+            {bins.map((b, i) => {
+              const bx = toX(b.s) + 0.9;
+              const bw = Math.max(1.5, toX(b.e) - toX(b.s) - 1.8);
+              const by = toY(b.count);
+              const bh = baseline - by;
+              const d  = roundedTopRect(bx, by, bw, bh, 2.5);
+              if (!d || bh <= 0) return null;
+              const isCore  = (b.s + b.e) / 2 >= clusterStart && (b.s + b.e) / 2 <= clusterEnd;
+              const opacity = 0.22 + 0.60 * (b.count / maxBucket);
+              return (
+                <path key={i} d={d}
+                  fill={isCore ? "url(#pdBarCore)" : "url(#pdBarOuter)"}
+                  opacity={opacity}
+                />
+              );
+            })}
 
-            {/* ── HERO: Density curve ── */}
-            <path d={areaPath} fill="url(#pdFill5)" />
-            {/* Bloom/glow behind line */}
-            <path d={linePath} fill="none" stroke="#3b82f6" strokeWidth={10} opacity={0.10} vectorEffect="non-scaling-stroke" />
+            {/* ── Density curve — hero visual ── */}
+            <path d={areaPath} fill="url(#pdFill6)" />
+            {/* Wide bloom */}
+            <path d={linePath} fill="none" stroke="#3b82f6" strokeWidth={16} opacity={0.07} vectorEffect="non-scaling-stroke" />
+            {/* Mid glow */}
+            <path d={linePath} fill="none" stroke="#60a5fa" strokeWidth={6}  opacity={0.14} vectorEffect="non-scaling-stroke" />
             {/* Crisp line */}
-            <path d={linePath} fill="none" stroke="#7dd3fc" strokeWidth={2.2} opacity={0.88} vectorEffect="non-scaling-stroke" />
+            <path d={linePath} fill="none" stroke="#93c5fd" strokeWidth={2.6} opacity={0.92} vectorEffect="non-scaling-stroke" />
 
             {/* Baseline */}
             <line x1={0} y1={baseline} x2={plotW} y2={baseline}
-              stroke="rgba(255,255,255,0.08)" strokeWidth={1}
+              stroke="rgba(255,255,255,0.10)" strokeWidth={1}
               vectorEffect="non-scaling-stroke" />
 
-            {/* ── Market marker guide lines — TRUE price position ── */}
-            {markers.filter(m => !m.outside).map(m => (
-              <line key={m.key}
-                x1={toX(m.v)} y1={0} x2={toX(m.v)} y2={baseline}
-                stroke={m.col}
-                strokeWidth={m.hero ? 1.8 : 1}
-                strokeDasharray={m.hero ? "3,3" : "3,5"}
-                opacity={m.hero ? 0.90 : 0.42}
-                vectorEffect="non-scaling-stroke"
-              />
-            ))}
+            {/* ── Market guide lines — TRUE price position ── */}
+            {markers.filter(m => !m.outside && !m.hero).map(m => {
+              const isMajor = m.key === "med" || m.key === "avg";
+              return (
+                <g key={m.key}>
+                  {/* Glow layer */}
+                  <line x1={toX(m.v)} y1={PAD_T} x2={toX(m.v)} y2={baseline}
+                    stroke={m.col} strokeWidth={5} opacity={0.12}
+                    strokeDasharray={isMajor ? "4,4" : "3,7"}
+                    vectorEffect="non-scaling-stroke" />
+                  {/* Main line */}
+                  <line x1={toX(m.v)} y1={PAD_T} x2={toX(m.v)} y2={baseline}
+                    stroke={m.col}
+                    strokeWidth={isMajor ? 1.8 : 1.4}
+                    strokeDasharray={isMajor ? "4,4" : "3,7"}
+                    opacity={isMajor ? 0.78 : 0.55}
+                    vectorEffect="non-scaling-stroke" />
+                </g>
+              );
+            })}
+
+            {/* ── User price beam — focal point ── */}
+            {hasPrice && inView(price) && (() => {
+              const ux = toX(price);
+              return (
+                <g>
+                  {/* Wide ambient glow */}
+                  <line x1={ux} y1={PAD_T} x2={ux} y2={baseline}
+                    stroke="#00e5ff" strokeWidth={12} opacity={0.08}
+                    vectorEffect="non-scaling-stroke" />
+                  {/* Mid glow */}
+                  <line x1={ux} y1={PAD_T} x2={ux} y2={baseline}
+                    stroke="#00e5ff" strokeWidth={4} opacity={0.22}
+                    strokeDasharray="5,3"
+                    vectorEffect="non-scaling-stroke" />
+                  {/* Core line */}
+                  <line x1={ux} y1={PAD_T} x2={ux} y2={baseline}
+                    stroke="#00e5ff" strokeWidth={2.0}
+                    strokeDasharray="5,3"
+                    opacity={0.97}
+                    vectorEffect="non-scaling-stroke" />
+                  {/* Baseline anchor ring */}
+                  <circle cx={ux} cy={baseline} r={5} fill="#00e5ff" opacity={0.90} />
+                  <circle cx={ux} cy={baseline} r={10} fill="none" stroke="#00e5ff" strokeWidth={1} opacity={0.30} />
+                </g>
+              );
+            })()}
 
             {/* ── Listing price dots — on curve, stacked downward ── */}
             {dotMarkers.map((d, i) => {
@@ -847,16 +953,16 @@ function PriceDistribution({ data, listings, price }) {
                   onMouseEnter={() => setHoveredDot({ ...d, i })}
                   onMouseLeave={() => setHoveredDot(null)}
                 >
-                  {d.isUser   && <circle cx={d.sx} cy={d.sy} r={DOT_R + 8}  fill="url(#pdUserGlow5)" />}
-                  {d.inIqr && !d.isUser && <circle cx={d.sx} cy={d.sy} r={DOT_R + 5} fill="url(#pdIqrGlow5)" />}
-                  {isH && <circle cx={d.sx} cy={d.sy} r={DOT_R + 2.5} fill="none"
+                  {d.isUser   && <circle cx={d.sx} cy={d.sy} r={DOT_R + 10} fill="url(#pdUserGlow6)" />}
+                  {d.inIqr && !d.isUser && <circle cx={d.sx} cy={d.sy} r={DOT_R + 6} fill="url(#pdIqrGlow6)" />}
+                  {isH && <circle cx={d.sx} cy={d.sy} r={DOT_R + 2.8} fill="none"
                     stroke={d.isUser ? "#00e5ff" : d.inIqr ? "#60a5fa" : "#64748b"}
-                    strokeWidth={1} opacity={0.65} />}
+                    strokeWidth={1.2} opacity={0.70} />}
                   <circle
                     cx={d.sx} cy={d.sy}
-                    r={d.isUser ? DOT_R + 1 : isH ? DOT_R + 0.6 : DOT_R}
-                    fill={d.isUser ? "#00e5ff" : d.inIqr ? "#60a5fa" : "#334155"}
-                    opacity={d.isUser ? 1.0 : d.inIqr ? 0.82 : 0.52}
+                    r={d.isUser ? DOT_R + 1.5 : isH ? DOT_R + 0.7 : DOT_R}
+                    fill={d.isUser ? "#00e5ff" : d.inIqr ? "#60a5fa" : "#3b5268"}
+                    opacity={d.isUser ? 1.0 : d.inIqr ? 0.85 : 0.55}
                   />
                 </g>
               );
@@ -864,19 +970,19 @@ function PriceDistribution({ data, listings, price }) {
 
             {/* ── Hover tooltip ── */}
             {hoveredDot && (() => {
-              const tx  = Math.min(Math.max(hoveredDot.sx, 30), plotW - 30);
-              const ty  = Math.max(hoveredDot.sy - DOT_R - 7, PAD_T + 18);
+              const tx  = Math.min(Math.max(hoveredDot.sx, 32), plotW - 32);
+              const ty  = Math.max(hoveredDot.sy - DOT_R - 8, PAD_T + 20);
               const col = hoveredDot.isUser ? "#00e5ff" : hoveredDot.inIqr ? "#60a5fa" : "#94a3b8";
               return (
                 <g style={{ pointerEvents: "none" }}>
                   <line x1={hoveredDot.sx} y1={hoveredDot.sy - DOT_R}
                     x2={tx} y2={ty + 1}
-                    stroke={col} strokeWidth={0.8} opacity={0.40}
+                    stroke={col} strokeWidth={0.8} opacity={0.45}
                     vectorEffect="non-scaling-stroke" />
-                  <rect x={tx - 27} y={ty - 14} width={54} height={16}
-                    rx={4} fill="#030d1c" stroke={col} strokeWidth={0.8} opacity={0.96} />
+                  <rect x={tx - 29} y={ty - 15} width={58} height={18}
+                    rx={5} fill="#020c1a" stroke={col} strokeWidth={1} opacity={0.97} />
                   <text x={tx} y={ty - 2}
-                    textAnchor="middle" fontSize={9.5} fontWeight="700" fill={col}>
+                    textAnchor="middle" fontSize={10} fontWeight="800" fill={col}>
                     {fmtGBP(hoveredDot.p)}
                   </text>
                 </g>
@@ -885,13 +991,13 @@ function PriceDistribution({ data, listings, price }) {
           </svg>
 
           {/* ── X-axis labels ── */}
-          <div style={{ position: "relative", height: 30, marginTop: 1 }}>
+          <div style={{ position: "relative", height: 30, marginTop: 2 }}>
             {xTicks.map(v => (
-              <div key={v} style={{ position: "absolute", left: `${clamp(toPct(v), 2, 96)}%`, top: 4, transform: "translateX(-50%)", fontSize: 9, color: "#3d5268", whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums", userSelect: "none" }}>
+              <div key={v} style={{ position: "absolute", left: `${clamp(toPct(v), 2, 96)}%`, top: 4, transform: "translateX(-50%)", fontSize: 9, color: "#5a7fa0", whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums", userSelect: "none", fontWeight: 600 }}>
                 {fmtX(v)}
               </div>
             ))}
-            <div style={{ textAlign: "center", paddingTop: 18, fontSize: 7, color: "#243040", textTransform: "uppercase", letterSpacing: 1.6, userSelect: "none" }}>
+            <div style={{ textAlign: "center", paddingTop: 18, fontSize: 7, color: "#2d4a65", textTransform: "uppercase", letterSpacing: 1.8, userSelect: "none", fontWeight: 700 }}>
               PRICE (£)
             </div>
           </div>
@@ -899,73 +1005,67 @@ function PriceDistribution({ data, listings, price }) {
       </div>
 
       {/* ── Bottom insight panel ── */}
-      <div style={{ margin: "10px 14px 14px", display: "grid", gridTemplateColumns: hasPrice ? "1fr 1fr 1fr" : "1fr", gap: 8 }}>
+      <div style={{ margin: "12px 14px 14px", display: "grid", gridTemplateColumns: hasPrice ? "1fr 1fr 1fr 1fr" : "1fr 1fr", gap: 8 }}>
 
-        {/* Most Common Range */}
-        <div style={{ background: "rgba(0,5,18,0.75)", border: "1px solid rgba(37,99,235,0.2)", borderRadius: 10, padding: "14px 16px", display: "flex", alignItems: "flex-start", gap: 12 }}>
-          <div style={{ width: 36, height: 36, borderRadius: "50%", background: "rgba(37,99,235,0.13)", border: "1px solid rgba(37,99,235,0.28)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 17 }}>
-            📊
+        {/* Core Price Range */}
+        {(() => {
+          const pct = Math.round(clusterCount / n * 100);
+          return (
+            <div style={{ background: "rgba(2,8,24,0.80)", border: "1px solid rgba(6,182,212,0.22)", borderRadius: 11, padding: "13px 14px" }}>
+              <div style={{ fontSize: 9, fontWeight: 700, color: "#4b7a96", textTransform: "uppercase", letterSpacing: 1, marginBottom: 7 }}>Core Range</div>
+              <div style={{ fontSize: 16, fontWeight: 900, color: "#06b6d4", letterSpacing: -0.5, lineHeight: 1.1, marginBottom: 5, fontVariantNumeric: "tabular-nums" }}>
+                £{Math.round(clusterStart)} – £{Math.round(clusterEnd)}
+              </div>
+              <div style={{ fontSize: 10, color: "#3d6070", lineHeight: 1.45 }}>
+                {pct}% of listings ({clusterCount} of {n})
+                {inCluster ? <span style={{ color: "#06b6d4", marginLeft: 4 }}>· You're here</span> : null}
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* Market Spread */}
+        <div style={{ background: "rgba(2,8,24,0.80)", border: "1px solid rgba(99,102,241,0.22)", borderRadius: 11, padding: "13px 14px" }}>
+          <div style={{ fontSize: 9, fontWeight: 700, color: "#4a4f8a", textTransform: "uppercase", letterSpacing: 1, marginBottom: 7 }}>Market Spread</div>
+          <div style={{ fontSize: 16, fontWeight: 900, color: "#818cf8", letterSpacing: -0.5, lineHeight: 1.1, marginBottom: 5, fontVariantNumeric: "tabular-nums" }}>
+            £{Math.round(high - low)}
           </div>
-          <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 10, color: "#4b5563", marginBottom: 5, lineHeight: 1.4 }}>
-              Most sellers are priced between
-            </div>
-            <div style={{ fontSize: 17, fontWeight: 900, color: "#00e5ff", letterSpacing: -0.5, lineHeight: 1.1, marginBottom: 6, fontVariantNumeric: "tabular-nums" }}>
-              £{Math.round(clusterStart)} – £{Math.round(clusterEnd)}
-            </div>
-            <div style={{ fontSize: 10, color: "#4b5563", lineHeight: 1.4 }}>
-              {inCluster
-                ? "You are within the most competitive range."
-                : hasPrice
-                  ? price < clusterStart
-                    ? "Your price is below the main cluster."
-                    : "Your price is above the main cluster."
-                  : `${clusterCount} of ${n} listings in this range.`}
-            </div>
+          <div style={{ fontSize: 10, color: "#3d406a", lineHeight: 1.45 }}>
+            {fmtGBP(low)} low · {fmtGBP(high)} high
           </div>
         </div>
 
         {/* Competition */}
         {hasPrice && (
-          <div style={{ background: "rgba(0,5,18,0.75)", border: `1px solid ${compBd}`, borderRadius: 10, padding: "14px 16px", display: "flex", alignItems: "flex-start", gap: 12 }}>
-            <div style={{ width: 36, height: 36, borderRadius: "50%", background: `${compColor}13`, border: `1px solid ${compColor}40`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 17 }}>
-              🎯
+          <div style={{ background: "rgba(2,8,24,0.80)", border: `1px solid ${compBd}`, borderRadius: 11, padding: "13px 14px" }}>
+            <div style={{ fontSize: 9, fontWeight: 700, color: "#4b5a3a", textTransform: "uppercase", letterSpacing: 1, marginBottom: 7 }}>Competition</div>
+            <div style={{ fontSize: 16, fontWeight: 900, color: compColor, letterSpacing: -0.3, lineHeight: 1.1, marginBottom: 5 }}>
+              {compLevel}
             </div>
-            <div>
-              <div style={{ fontSize: 10, color: "#4b5563", marginBottom: 5 }}>Competition</div>
-              <div style={{ fontSize: 17, fontWeight: 900, color: compColor, letterSpacing: -0.5, lineHeight: 1.1, marginBottom: 6 }}>
-                {compLevel}
-              </div>
-              <div style={{ fontSize: 10, color: "#4b5563", lineHeight: 1.4 }}>
-                {compCount} listings within ±10% of your price
-              </div>
+            <div style={{ fontSize: 10, color: "#3d4a30", lineHeight: 1.45 }}>
+              {compCount} listings within ±10%
             </div>
           </div>
         )}
 
-        {/* Price Ranking */}
+        {/* Price Rank */}
         {hasPrice && priceRank !== null && (
-          <div style={{ background: "rgba(0,5,18,0.75)", border: "1px solid rgba(245,158,11,0.2)", borderRadius: 10, padding: "14px 16px", display: "flex", alignItems: "flex-start", gap: 12 }}>
-            <div style={{ width: 36, height: 36, borderRadius: "50%", background: "rgba(245,158,11,0.13)", border: "1px solid rgba(245,158,11,0.32)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 17 }}>
-              🏆
+          <div style={{ background: "rgba(2,8,24,0.80)", border: "1px solid rgba(245,158,11,0.22)", borderRadius: 11, padding: "13px 14px" }}>
+            <div style={{ fontSize: 9, fontWeight: 700, color: "#5a4520", textTransform: "uppercase", letterSpacing: 1, marginBottom: 7 }}>Price Rank</div>
+            <div style={{ fontSize: 16, fontWeight: 900, color: "#f59e0b", letterSpacing: -0.5, lineHeight: 1.1, marginBottom: 5, fontVariantNumeric: "tabular-nums" }}>
+              #{priceRank} <span style={{ fontSize: 11, fontWeight: 600, color: "#78350f" }}>of {n}</span>
             </div>
-            <div>
-              <div style={{ fontSize: 10, color: "#4b5563", marginBottom: 5 }}>Price Ranking</div>
-              <div style={{ fontSize: 17, fontWeight: 900, color: "#f59e0b", letterSpacing: -0.5, lineHeight: 1.1, marginBottom: 6, fontVariantNumeric: "tabular-nums" }}>
-                #{priceRank} <span style={{ fontSize: 12, fontWeight: 600, color: "#78350f" }}>of {n}</span>
-              </div>
-              <div style={{ fontSize: 10, color: "#4b5563", lineHeight: 1.4 }}>
-                Cheaper than {cheaperThan} listing{cheaperThan !== 1 ? "s" : ""}
-              </div>
+            <div style={{ fontSize: 10, color: "#4a3818", lineHeight: 1.45 }}>
+              Cheaper than {cheaperThan} listing{cheaperThan !== 1 ? "s" : ""}
             </div>
           </div>
         )}
       </div>
 
       {/* ── Footer ── */}
-      <div style={{ padding: "10px 20px 14px", borderTop: "1px solid rgba(255,255,255,0.03)", fontSize: 10, color: "#1a2e45", display: "flex", alignItems: "center", gap: 7 }}>
-        <span style={{ fontSize: 13, opacity: 0.4 }}>ⓘ</span>
-        Prices analysed from active listings only. Data updates every 24 hours.
+      <div style={{ padding: "10px 20px 14px", borderTop: "1px solid rgba(255,255,255,0.04)", fontSize: 10, color: "#2d4a65", display: "flex", alignItems: "center", gap: 7 }}>
+        <span style={{ fontSize: 13, opacity: 0.5 }}>ⓘ</span>
+        Prices analysed from active eBay UK listings only. Data updates every 24 hours.
       </div>
 
     </div>
