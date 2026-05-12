@@ -477,11 +477,9 @@ function PriceDistribution({ data, listings, price }) {
   const viewMax = coreMax + viewPad;
   const viewRange = viewMax - viewMin;
 
-  // ── Adaptive binning ────────────────────────────────────────────────────────
-  // Bin width scales with view range so bars are always readable
-  const targetBins = Math.max(8, Math.min(14, Math.round(corePrices.length * 1.1)));
-  const rawBinW = viewRange / targetBins;
-  const binW = ([5, 10, 20, 25, 50, 75, 100, 150, 200, 250, 500, 1000]
+  // ── Binning: bucket size = 5% of full market range (high − low) ─────────────
+  const rawBinW = Math.max(1, (high - low) * 0.05);
+  const binW = ([1, 2, 5, 10, 20, 25, 50, 75, 100, 150, 200, 250, 500, 1000]
     .find(s => s >= rawBinW)) ?? 1000;
 
   const bsStart = Math.floor(viewMin / binW) * binW;
