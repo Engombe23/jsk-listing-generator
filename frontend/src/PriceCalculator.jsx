@@ -701,12 +701,33 @@ function PriceDistribution({ data, listings, price }) {
       </div>
 
       {(viewMode === "volume" || viewMode === "cumulative") && <>
+
+      {/* ── Market stats bar — LOW / MEDIAN / YOUR PRICE / HIGH ── */}
+      <div style={{ display: "grid", gridTemplateColumns: `repeat(${markers.length}, 1fr)`, borderTop: "1px solid rgba(255,255,255,0.05)", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+        {markers.map((m, i) => (
+          <div key={m.key} style={{
+            padding: "11px 14px", textAlign: "center",
+            borderLeft: i > 0 ? "1px solid rgba(255,255,255,0.05)" : "none",
+            background: m.hero ? "rgba(0,229,255,0.03)" : "transparent",
+          }}>
+            <div style={{ fontSize: 9, fontWeight: 700, color: m.col, textTransform: "uppercase", letterSpacing: 1, marginBottom: 5, opacity: 0.8 }}>
+              {m.label}
+            </div>
+            <div style={{ fontSize: 20, fontWeight: 900, color: m.col, letterSpacing: -0.5, lineHeight: 1, fontVariantNumeric: "tabular-nums",
+              textShadow: m.hero ? `0 0 18px ${m.col}66` : "none",
+            }}>
+              {fmtGBP(m.v)}
+              {m.outside && <span style={{ fontSize: 10, marginLeft: 5, opacity: 0.5 }}>{m.v < viewMin ? "◀" : "▶"}</span>}
+            </div>
+          </div>
+        ))}
+      </div>
+
       {/* ── Chart wrapper: Y-axis col + chart col ── */}
       <div style={{ display: "flex", paddingRight: 10, paddingBottom: 2 }}>
 
         {/* Y-axis column */}
         <div style={{ width: 44, flexShrink: 0 }}>
-          <div style={{ height: CARD_H }} />
           <div style={{ position: "relative", height: CHART_H }}>
             {/* Rotated axis title */}
             <div style={{ position: "absolute", left: 1, top: 0, width: 14, height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -725,61 +746,6 @@ function PriceDistribution({ data, listings, price }) {
 
         {/* Chart content */}
         <div style={{ flex: 1, position: "relative", minWidth: 0 }}>
-
-          {/* ── Marker cards ── */}
-          <div style={{ position: "relative", height: CARD_H }}>
-            {!hasPrice && (
-              <div style={{ position: "absolute", left: "50%", top: "50%", transform: "translate(-50%,-50%)", fontSize: 10, color: "#1a3050", fontStyle: "italic", whiteSpace: "nowrap" }}>
-                Enter a selling price to see live market position
-              </div>
-            )}
-            {markers.map(m => (
-              <div key={m.key} style={{ position: "absolute", left: `${m.pct}%`, top: 2, transform: "translateX(-50%)", display: "flex", flexDirection: "column", alignItems: "center", pointerEvents: "none", zIndex: 10 }}>
-                <div style={{ fontSize: 7, fontWeight: 800, color: m.col, textTransform: "uppercase", letterSpacing: 1.4, marginBottom: 3, whiteSpace: "nowrap", opacity: 0.9 }}>
-                  {m.label}
-                </div>
-                <div style={{
-                  background: m.bg, border: `1px solid ${m.bd}`, borderRadius: 7,
-                  padding: m.hero ? "5px 14px" : "4px 10px",
-                  fontSize: m.hero ? 14 : 12, fontWeight: 900, color: m.col,
-                  whiteSpace: "nowrap", letterSpacing: -0.3, lineHeight: 1.4,
-                  boxShadow: m.hero
-                    ? `0 0 22px ${m.col}55, 0 0 44px ${m.col}18, 0 3px 12px rgba(0,0,0,0.55)`
-                    : `0 0 10px ${m.col}25, 0 2px 8px rgba(0,0,0,0.45)`,
-                }}>
-                  {fmtGBP(m.v)}
-                  {m.outside && <span style={{ fontSize: 8, marginLeft: 4, opacity: 0.55 }}>{m.v < viewMin ? "◀" : "▶"}</span>}
-                </div>
-                {!m.outside && (
-                  <div style={{ width: 1, height: 9, background: `linear-gradient(to bottom, ${m.col}88, transparent)`, marginTop: 2 }} />
-                )}
-              </div>
-            ))}
-          </div>
-
-          {/* ── Legend row ── */}
-          <div style={{ display: "flex", alignItems: "center", gap: 16, paddingLeft: 4, paddingBottom: 5, flexWrap: "wrap" }}>
-            {hasPrice && (
-              <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                <svg width="22" height="8" style={{ flexShrink: 0 }}>
-                  <line x1="0" y1="4" x2="22" y2="4" stroke="#00e5ff" strokeWidth="1.5" strokeDasharray="4,3" />
-                </svg>
-                <span style={{ fontSize: 9, color: "#4a7090", whiteSpace: "nowrap" }}>Your price</span>
-              </div>
-            )}
-            <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-              <svg width="22" height="8" style={{ flexShrink: 0 }}>
-                <line x1="0" y1="4" x2="22" y2="4" stroke="#a855f7" strokeWidth="1.5" strokeDasharray="4,3" />
-              </svg>
-              <span style={{ fontSize: 9, color: "#4a7090", whiteSpace: "nowrap" }}>Median price</span>
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-              <svg width="22" height="8" style={{ flexShrink: 0 }}>
-                <line x1="0" y1="4" x2="22" y2="4" stroke="#ef4444" strokeWidth="1.5" strokeDasharray="4,3" />
-              </svg>
-              <span style={{ fontSize: 9, color: "#4a7090", whiteSpace: "nowrap" }}>High price</span>
-            </div>
-          </div>
 
           {/* ── SVG ── */}
           <svg
