@@ -767,10 +767,11 @@ function PriceDistribution({ data, listings, price }) {
                   <path d={path} fill="url(#pdBar)"
                     opacity={isHov || isSel ? 1.0 : 0.30 + 0.55 * ir}
                     style={{ pointerEvents: "none" }} />
-                  {/* Selected indicator — top highlight */}
+                  {/* Selected indicator — white outline */}
                   {isSel && (
-                    <path d={roundedTopRect(barX, barY, barW, 2, 1)}
-                      fill="#38bdf8" opacity={0.9} style={{ pointerEvents: "none" }} />
+                    <path d={roundedTopRect(barX, barY, barW, barH, 3)}
+                      fill="none" stroke="rgba(255,255,255,0.85)" strokeWidth={1.5}
+                      vectorEffect="non-scaling-stroke" style={{ pointerEvents: "none" }} />
                   )}
                 </g>
               );
@@ -957,10 +958,11 @@ function PriceDistribution({ data, listings, price }) {
                         <path d={roundedTopRect(barX, barY, barW, barH, 3)}
                           fill={isUserBin ? "url(#pdBar)" : "url(#zBarGrad)"}
                           opacity={isSel ? 1.0 : 0.28 + 0.68 * ir} style={{ pointerEvents: "none" }} />
-                        {/* Selected top highlight */}
+                        {/* Selected indicator — white outline */}
                         {isSel && (
-                          <path d={roundedTopRect(barX, barY, barW, 2, 1)}
-                            fill="#38bdf8" opacity={0.9} style={{ pointerEvents: "none" }} />
+                          <path d={roundedTopRect(barX, barY, barW, barH, 3)}
+                            fill="none" stroke="rgba(255,255,255,0.85)" strokeWidth={1.5}
+                            vectorEffect="non-scaling-stroke" style={{ pointerEvents: "none" }} />
                         )}
                       </g>
                     );
