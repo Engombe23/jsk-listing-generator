@@ -153,6 +153,98 @@ function BR({ label, value, color, strong, note }) {
   );
 }
 
+// ─── Market Group Selector ────────────────────────────────────────────────────
+// Shown when the keyword pipeline finds multiple distinct price clusters.
+// Each card shows label, listing count and price range; clicking selects the group.
+function MarketGroupSelector({ groups, onSelect, onBack }) {
+  return (
+    <div style={{
+      background: "linear-gradient(180deg, #020e1f 0%, #010c1a 100%)",
+      border: "1px solid rgba(30,58,138,0.35)",
+      borderRadius: 16,
+      padding: "22px 20px 18px",
+      marginTop: 2,
+      animation: "pdIn 0.35s ease",
+    }}>
+      {/* Header */}
+      <div style={{ marginBottom: 16 }}>
+        <div style={{ fontSize: 9, fontWeight: 800, color: "#2563eb", textTransform: "uppercase", letterSpacing: 2.5, marginBottom: 5 }}>
+          Market Intelligence
+        </div>
+        <div style={{ fontSize: 16, fontWeight: 800, color: "#e2e8f0", letterSpacing: -0.3, marginBottom: 6 }}>
+          Multiple product types detected
+        </div>
+        <div style={{ fontSize: 11.5, color: "#5a7fa0", lineHeight: 1.55 }}>
+          The search returned listings from <strong style={{ color: "#7dd3fc" }}>{groups.length}</strong> distinct price groups.
+          Select the market you want to analyse — the graph and stats will reflect only that group.
+        </div>
+      </div>
+
+      {/* Group cards */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {groups.map((g, i) => (
+          <button
+            key={g.id}
+            onClick={() => onSelect(i)}
+            style={{
+              display: "flex", alignItems: "center", justifyContent: "space-between",
+              background: "rgba(2,10,30,0.85)",
+              border: "1px solid rgba(56,189,248,0.15)",
+              borderRadius: 11,
+              padding: "13px 16px",
+              cursor: "pointer",
+              textAlign: "left",
+              transition: "border-color 0.15s, background 0.15s",
+              outline: "none",
+            }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(56,189,248,0.45)"; e.currentTarget.style.background = "rgba(5,20,50,0.90)"; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(56,189,248,0.15)"; e.currentTarget.style.background = "rgba(2,10,30,0.85)"; }}
+          >
+            {/* Left: label + count */}
+            <div style={{ minWidth: 0, flex: 1, marginRight: 16 }}>
+              <div style={{ fontSize: 13, fontWeight: 800, color: "#e2e8f0", letterSpacing: -0.2, marginBottom: 3 }}>
+                {g.label}
+              </div>
+              <div style={{ fontSize: 11, color: "#4a7090" }}>
+                <strong style={{ color: "#7dd3fc", fontVariantNumeric: "tabular-nums" }}>{g.count}</strong>
+                {" "}listing{g.count !== 1 ? "s" : ""}
+                {g.rawCount && g.rawCount !== g.count ? (
+                  <span style={{ color: "#2d5070", marginLeft: 4 }}>({g.rawCount} raw)</span>
+                ) : null}
+              </div>
+            </div>
+            {/* Right: price range + arrow */}
+            <div style={{ flexShrink: 0, textAlign: "right", display: "flex", alignItems: "center", gap: 12 }}>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 800, color: "#38bdf8", fontVariantNumeric: "tabular-nums" }}>
+                  £{Math.round(g.minPrice)} – £{Math.round(g.maxPrice)}
+                </div>
+                {g.medianPrice != null && (
+                  <div style={{ fontSize: 10, color: "#2d5070", marginTop: 1 }}>
+                    median £{Math.round(g.medianPrice)}
+                  </div>
+                )}
+              </div>
+              <div style={{ fontSize: 14, color: "#38bdf8", opacity: 0.7 }}>›</div>
+            </div>
+          </button>
+        ))}
+      </div>
+
+      {/* Back / cancel */}
+      <div style={{ marginTop: 12, textAlign: "right" }}>
+        <button onClick={onBack} style={{
+          background: "none", border: "none", cursor: "pointer",
+          fontSize: 10, color: "#2d5070", fontWeight: 600, letterSpacing: 0.5,
+          padding: "4px 8px",
+        }}>
+          ← back to search
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ─── Source Listings (internal transparency panel) ────────────────────────────
 function SourceListings({ listings, excludedListings, show, onToggle, tab, onTab }) {
   // listings === undefined → stale cached data (no listings field yet)
@@ -570,27 +662,19 @@ function PriceDistribution({ data, listings, price }) {
     : '';
 
 
-  // ── Y-axis ticks — finer resolution for readability ────────────────────────
-  const yStep  = maxBucket <= 4 ? 1 : maxBucket <= 10 ? 2 : maxBucket <= 20 ? 2 : maxBucket <= 40 ? 4 : 5;
-  const yTicks = Array.from({ length: Math.floor(maxBucket / yStep) + 1 }, (_, i) => i * yStep);
-
-  // ── X-axis ticks — guaranteed minimum 8 divisions ──────────────────────────
-  // Strategy: find the LARGEST nice step that still fits ≥8 ticks across the view.
-  // (old approach snapped UP to nearest nice number, silently collapsing to 5-6 ticks)
-  const maxXStep   = viewRange / 8; // maximum step size that guarantees ≥8 divisions
+  // ── X-axis ticks — target ~5-6 labels ────────────────────────────────────
+  const maxXStep   = viewRange / 5; // step that gives ~5 ticks across the view
   const xMag       = Math.pow(10, Math.floor(Math.log10(Math.max(maxXStep, 1))));
   const niceXStep  = ([1, 2, 2.5, 5, 10].map(f => f * xMag)).filter(s => s <= maxXStep).pop() ?? xMag;
   const xTickStart = Math.floor(viewMin / niceXStep) * niceXStep;
   const xTicks = [];
   for (let v = xTickStart; v <= viewMax - niceXStep * 0.1; v += niceXStep) xTicks.push(Math.round(v));
 
-  // ── Price marker cards (5 equal-style cards with collision resolution) ───────
+  // ── Price marker cards (3 key markers only) ─────────────────────────────────
   const MARKERS_DEF = [
-    { key: "low",  v: low,     label: "LOW PRICE",    col: "#3b82f6", bg: "rgba(8,20,65,0.97)",   bd: "rgba(59,130,246,0.6)"   },
-    { key: "med",  v: median,  label: "MEDIAN PRICE", col: "#a855f7", bg: "rgba(32,10,58,0.97)",  bd: "rgba(168,85,247,0.6)"   },
+    { key: "med",  v: median, label: "MEDIAN",     col: "#a855f7", bg: "rgba(32,10,58,0.97)",  bd: "rgba(168,85,247,0.6)"  },
     ...(hasPrice ? [{ key: "usr", v: price, label: "YOUR PRICE", col: "#00e5ff", bg: "rgba(0,35,55,0.98)", bd: "rgba(0,229,255,0.8)", hero: true }] : []),
-    { key: "avg",  v: average, label: "AVG PRICE",    col: "#f59e0b", bg: "rgba(52,28,2,0.97)",   bd: "rgba(245,158,11,0.6)"   },
-    { key: "high", v: high,    label: "HIGH PRICE",   col: "#ef4444", bg: "rgba(52,8,8,0.97)",    bd: "rgba(239,68,68,0.6)"    },
+    { key: "high", v: high,   label: "HIGH",       col: "#ef4444", bg: "rgba(52,8,8,0.97)",    bd: "rgba(239,68,68,0.6)"   },
   ].filter(m => m.v != null && !isNaN(m.v));
 
   // Assign initial positions (clamped to card edges)
@@ -617,26 +701,19 @@ function PriceDistribution({ data, listings, price }) {
   const CARD_H = 72;
   const fmtX   = v => v >= 1000 ? `£${+(v / 1000).toFixed(1)}k` : `£${Math.round(v)}`;
 
-  // ── Listing pulse visualization ──────────────────────────────────────────────
-  // Local density kernel: count listings within bandwidth around each price
-  const pulseBandwidth = Math.max(range * 0.035, binW * 0.6, 5);
-  const localDensity = prices.map(p =>
-    prices.reduce((acc, q) => acc + (Math.abs(q - p) <= pulseBandwidth ? 1 : 0), 0)
-  );
-  const maxLocalDensity = Math.max(...localDensity, 1);
-
-  // Deterministic pseudo-random jitter — stable across renders, organic feel
-  const pulseJitter = i => {
-    const x = Math.sin(i * 127.1 + 311.7) * 43758.5453;
-    return x - Math.floor(x); // 0..1
+  // ── Rounded-top bar path helper ──────────────────────────────────────────────
+  const roundedTopRect = (x, y, w, h, r) => {
+    const cr = Math.min(r, w / 2, Math.max(h, 0.01) / 2);
+    if (h <= cr) return `M ${x},${y + h} L ${x},${y + cr} Q ${x},${y} ${x + cr},${y} L ${x + w - cr},${y} Q ${x + w},${y} ${x + w},${y + cr} L ${x + w},${y + h} Z`;
+    return `M ${x},${y + h} L ${x},${y + cr} Q ${x},${y} ${x + cr},${y} L ${x + w - cr},${y} Q ${x + w},${y} ${x + w},${y + cr} L ${x + w},${y + h} Z`;
   };
 
-  // ── Zone boundary X coords ───────────────────────────────────────────────────
-  const zoneClampX   = v => Math.max(0, Math.min(plotW, toX(v)));
-  const lowerZoneX2  = clusterStart >= viewMin && clusterStart <= viewMax ? zoneClampX(clusterStart) : (clusterStart < viewMin ? 0 : plotW);
-  const coreZoneX1   = lowerZoneX2;
-  const coreZoneX2   = clusterEnd   >= viewMin && clusterEnd   <= viewMax ? zoneClampX(clusterEnd)   : (clusterEnd   < viewMin ? 0 : plotW);
-  const upperZoneX1  = coreZoneX2;
+  // ── Highest-concentration band ───────────────────────────────────────────────
+  // Find bins whose count is >= 55% of the peak; the span of those bins is the band.
+  const concThreshold = maxBucket * 0.55;
+  const concBins = bins.filter(b => b.count >= concThreshold);
+  const concStart = concBins.length > 0 ? concBins[0].s        : clusterStart;
+  const concEnd   = concBins.length > 0 ? concBins[concBins.length - 1].e : clusterEnd;
 
   // ── User price label helper ──────────────────────────────────────────────────
   const userPosLabel = !hasPrice ? '' :
@@ -715,12 +792,6 @@ function PriceDistribution({ data, listings, price }) {
                 Listing Volume
               </span>
             </div>
-            {/* Tick numbers */}
-            {yTicks.map(t => (
-              <div key={t} style={{ position: "absolute", right: 5, top: toY(t), transform: "translateY(-50%)", fontSize: 9, color: t === 0 ? "#2d4a65" : "#5a7fa0", lineHeight: 1, fontVariantNumeric: "tabular-nums", userSelect: "none", fontWeight: 600 }}>
-                {t}
-              </div>
-            ))}
           </div>
         </div>
 
@@ -814,91 +885,72 @@ function PriceDistribution({ data, listings, price }) {
               </filter>
             </defs>
 
-            {/* ── Zone backgrounds — very soft tints ── */}
-            <rect x={0}           y={0} width={lowerZoneX2}                          height={CHART_H} fill="rgba(30,58,138,0.05)" />
-            <rect x={coreZoneX1}  y={0} width={Math.max(0, coreZoneX2 - coreZoneX1)} height={CHART_H} fill="rgba(6,182,212,0.05)" />
-            <rect x={upperZoneX1} y={0} width={Math.max(0, plotW - upperZoneX1)}      height={CHART_H} fill="rgba(148,100,50,0.05)" />
+            {/* ── Highest concentration band ── */}
+            {concBins.length > 0 && (() => {
+              const cx1    = Math.max(0, toX(concStart));
+              const cx2    = Math.min(plotW, toX(concEnd));
+              const cw     = Math.max(0, cx2 - cx1);
+              const midX   = (cx1 + cx2) / 2;
+              const lbl    = `${fmtX(concStart)} – ${fmtX(concEnd)}`;
+              return (
+                <g>
+                  {/* Soft fill */}
+                  <rect x={cx1} y={PAD_T} width={cw} height={plotH}
+                    fill="rgba(56,189,248,0.045)" />
+                  {/* Border lines — left + right only */}
+                  <line x1={cx1} y1={PAD_T} x2={cx1} y2={baseline}
+                    stroke="rgba(56,189,248,0.22)" strokeWidth={1} strokeDasharray="3,4"
+                    vectorEffect="non-scaling-stroke" />
+                  <line x1={cx2} y1={PAD_T} x2={cx2} y2={baseline}
+                    stroke="rgba(56,189,248,0.22)" strokeWidth={1} strokeDasharray="3,4"
+                    vectorEffect="non-scaling-stroke" />
+                  {/* Label at top */}
+                  {cw > 60 && <>
+                    <text x={midX} y={PAD_T + 9}
+                      textAnchor="middle" fontSize={7} fill="#38bdf8" fillOpacity={0.55}
+                      fontWeight="800" letterSpacing="1">HIGHEST SELLER CONCENTRATION</text>
+                    <text x={midX} y={PAD_T + 18}
+                      textAnchor="middle" fontSize={8} fill="#7dd3fc" fillOpacity={0.45}
+                      fontWeight="700">{lbl}</text>
+                  </>}
+                </g>
+              );
+            })()}
 
-            {/* Zone boundary lines — subtle */}
-            {lowerZoneX2 > 0 && lowerZoneX2 < plotW && (
-              <line x1={lowerZoneX2} y1={0} x2={lowerZoneX2} y2={CHART_H}
-                stroke="rgba(148,163,184,0.15)" strokeWidth={1}
-                vectorEffect="non-scaling-stroke" />
-            )}
-            {upperZoneX1 > 0 && upperZoneX1 < plotW && (
-              <line x1={upperZoneX1} y1={0} x2={upperZoneX1} y2={CHART_H}
-                stroke="rgba(148,163,184,0.15)" strokeWidth={1}
-                vectorEffect="non-scaling-stroke" />
-            )}
-
-            {/* Zone labels — subtle watermark style */}
-            {lowerZoneX2 > 30 && (
-              <text x={lowerZoneX2 / 2} y={PAD_T + plotH * 0.30}
-                textAnchor="middle" fontSize={8.5} fill="#60a5fa" fillOpacity={0.30}
-                fontWeight="700" letterSpacing="0.8">Lower Market Range</text>
-            )}
-            {(coreZoneX2 - coreZoneX1) > 50 && (
-              <text x={(coreZoneX1 + coreZoneX2) / 2} y={PAD_T + plotH * 0.24}
-                textAnchor="middle" fontSize={8.5} fill="#67e8f9" fillOpacity={0.35}
-                fontWeight="700" letterSpacing="0.8">Core Market Range</text>
-            )}
-            {(plotW - upperZoneX1) > 30 && (
-              <text x={(upperZoneX1 + plotW) / 2} y={PAD_T + plotH * 0.24}
-                textAnchor="middle" fontSize={8.5} fill="#94a3b8" fillOpacity={0.30}
-                fontWeight="700" letterSpacing="0.8">Upper Market Range</text>
-            )}
-
-            {/* ── Grid lines at every Y tick ── */}
-            {yTicks.filter(t => t > 0).map(t => (
-              <line key={t}
-                x1={0} y1={toY(t)} x2={plotW} y2={toY(t)}
-                stroke="rgba(148,163,184,0.07)" strokeWidth={1} strokeDasharray="2,9"
-                vectorEffect="non-scaling-stroke"
-              />
-            ))}
-
-
-            {/* ── PRIMARY: Listing pulses — individual price signal lines ── */}
-            {prices.map((p, i) => {
-              if (!inView(p)) return null;
-              const dr = localDensity[i] / maxLocalDensity; // 0..1 density ratio
-              const jt = pulseJitter(i);                    // 0..1 deterministic
-              const sx = toX(p) + (jt - 0.5) * 1.4;       // ±0.7px x-jitter for organic overlap
-              // Denser clusters → taller pulses; jitter adds natural height variation
-              const baseH  = plotH * (0.11 + 0.70 * dr);
-              const finalH = Math.min(baseH * (0.76 + 0.48 * jt), plotH * 0.93);
-              const ty          = baseline - finalH;
-              const opacity     = 0.22 + 0.58 * dr;
-              const glowOpacity = 0.04 + 0.22 * dr;
+            {/* ── PRIMARY: Histogram bars ── */}
+            {bins.map((b, i) => {
+              if (b.count === 0) return null;
+              const barH = (b.count / maxBucket) * plotH;
+              const barX = Math.max(0, toX(b.s));
+              const barW = Math.max(1, toX(b.e) - toX(b.s) - 2);
+              const barY = baseline - barH;
+              const ir   = b.count / maxBucket; // intensity ratio 0..1
+              const path = roundedTopRect(barX, barY, barW, barH, 3);
               return (
                 <g key={i}>
-                  {/* Soft glow halo — stacks naturally in dense zones */}
-                  <line x1={sx} y1={ty} x2={sx} y2={baseline}
-                    stroke="#38bdf8" strokeWidth={4} opacity={glowOpacity}
-                    vectorEffect="non-scaling-stroke" />
-                  {/* Crisp signal line */}
-                  <line x1={sx} y1={ty} x2={sx} y2={baseline}
-                    stroke="#7dd3fc" strokeWidth={1} opacity={opacity}
-                    vectorEffect="non-scaling-stroke" />
+                  {/* Subtle glow behind bar */}
+                  <path d={path} fill="#38bdf8" opacity={ir * 0.10} />
+                  {/* Main bar */}
+                  <path d={path} fill="url(#pdBar)" opacity={0.28 + 0.52 * ir} />
                 </g>
               );
             })}
 
-            {/* ── SECONDARY: Smoothed density curve — market shape envelope ── */}
-            <path d={areaPath} fill="url(#pdFill6)" opacity={0.30} />
+            {/* ── SECONDARY: Smoothed density curve — shape envelope ── */}
+            <path d={areaPath} fill="url(#pdFill6)" opacity={0.15} />
             {/* Glow pass */}
-            <path d={linePath} fill="none" stroke="#7dd3fc" strokeWidth={5} opacity={0.08} vectorEffect="non-scaling-stroke" />
+            <path d={linePath} fill="none" stroke="#7dd3fc" strokeWidth={3} opacity={0.06} vectorEffect="non-scaling-stroke" />
             {/* Crisp envelope line */}
-            <path d={linePath} fill="none" stroke="#bae6fd" strokeWidth={1.4} opacity={0.55} vectorEffect="non-scaling-stroke" />
+            <path d={linePath} fill="none" stroke="#bae6fd" strokeWidth={1.0} opacity={0.35} vectorEffect="non-scaling-stroke" />
 
             {/* Baseline */}
             <line x1={0} y1={baseline} x2={plotW} y2={baseline}
               stroke="rgba(255,255,255,0.10)" strokeWidth={1}
               vectorEffect="non-scaling-stroke" />
 
-            {/* ── Market guide lines — anchored, labelled ── */}
+            {/* ── Market guide lines — median + high only ── */}
             {markers.filter(m => !m.outside && !m.hero).map(m => {
-              const isMajor = m.key === "med" || m.key === "avg";
+              const isMajor = m.key === "med";
               const mx = toX(m.v);
               return (
                 <g key={m.key}>
@@ -1337,6 +1389,7 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
   const [smData,         setSmData]         = useSessionState("jsk_calc_sm_data",      null);
   const [smLoading,      setSmLoading]      = useState(false);
   const [smError,        setSmError]        = useState("");
+  const [smPendingGroups, setSmPendingGroups] = useState(null); // non-null when group selection needed
   const [showListings,   setShowListings]   = useState(false);
   const [listingsTab,    setListingsTab]    = useState("used"); // "used" | "excluded"
 
@@ -1394,14 +1447,24 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
 
   const handleFetch = async () => {
     if (!smQuery.trim()) return;
-    setSmLoading(true); setSmError(""); setShowListings(false); setListingsTab("used");
+    setSmLoading(true); setSmError(""); setSmData(null); setSmPendingGroups(null);
+    setShowListings(false); setListingsTab("used");
     try {
       const res  = await fetch(`${API_URL}/api/ebay/search-prices`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ query: smQuery.trim(), condition: smCondition }) });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Failed to fetch prices.");
+
+      // Keyword search with multiple product groups — show selection UI
+      if (json.requiresGroupSelection) {
+        if (!json.groups?.length) throw new Error("No listings found — try changing the condition or search term.");
+        setSmPendingGroups(json.groups);
+        return;
+      }
+
+      // Normal result (OEM or auto-selected keyword group)
       if (json.priceCount === 0) throw new Error(json.zeroResultsMsg || "No listings found — try changing the condition or search term.");
       setSmData(json);
-    } catch (err) { setSmError(err.message); setSmData(null); }
+    } catch (err) { setSmError(err.message); setSmData(null); setSmPendingGroups(null); }
     finally       { setSmLoading(false); }
   };
 
@@ -1715,6 +1778,20 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
                           Search a part number above to<br />load live eBay UK pricing.
                         </div>
                       </div>
+                    )}
+
+                    {/* ── Group selector (keyword multi-group) ── */}
+                    {!smLoading && smPendingGroups && !smData && (
+                      <MarketGroupSelector
+                        groups={smPendingGroups}
+                        onSelect={idx => {
+                          const g = smPendingGroups[idx];
+                          if (!g?.stats) return;
+                          setSmData(g.stats);
+                          setSmPendingGroups(null);
+                        }}
+                        onBack={() => { setSmPendingGroups(null); }}
+                      />
                     )}
 
                     {!smLoading && smData && (
