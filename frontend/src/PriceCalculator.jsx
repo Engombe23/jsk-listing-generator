@@ -530,13 +530,10 @@ function PriceDistribution({ data, listings, price }) {
   const yStep  = yAxisMax <= 10 ? 2 : yAxisMax <= 20 ? 4 : yAxisMax <= 40 ? 5 : 10;
   const yTicks = Array.from({ length: Math.floor(yAxisMax / yStep) + 1 }, (_, i) => i * yStep);
 
-  // ── X-axis ticks — target ~5–6 labels, skip ticks inside gap regions ─────────
-  const maxXStep   = viewRange / 5;
-  const xMag       = Math.pow(10, Math.floor(Math.log10(Math.max(maxXStep, 1))));
-  const niceXStep  = ([1, 2, 2.5, 5, 10].map(f => f * xMag)).filter(s => s <= maxXStep).pop() ?? xMag;
-  const xTickStart = Math.floor(viewMin / niceXStep) * niceXStep;
-  const xTicks = [];
-  for (let v = xTickStart; v <= viewMax - niceXStep * 0.1; v += niceXStep) xTicks.push(Math.round(v));
+  // ── X-axis ticks — one per non-empty bin, centred under each bar ────────────
+  const xTicks = bins
+    .filter(b => b.count > 0)
+    .map(b => ({ v: b.s, mid: (b.s + b.e) / 2 }));
 
   // ── Price marker cards — Low, Median, Avg, Your Price, High ─────────────────
   const MARKERS_DEF = [
@@ -889,9 +886,9 @@ function PriceDistribution({ data, listings, price }) {
 
           {/* ── X-axis labels ── */}
           <div style={{ position: "relative", height: 30, marginTop: 2 }}>
-            {xTicks.map(v => (
-              <div key={v} style={{ position: "absolute", left: `${clamp(toPct(v), 2, 96)}%`, top: 4, transform: "translateX(-50%)", fontSize: 9, color: "#5a7fa0", whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums", userSelect: "none", fontWeight: 600 }}>
-                {fmtX(v)}
+            {xTicks.map(tick => (
+              <div key={tick.v} style={{ position: "absolute", left: `${clamp(toPct(tick.mid), 2, 96)}%`, top: 4, transform: "translateX(-50%)", fontSize: 9, color: "#5a7fa0", whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums", userSelect: "none", fontWeight: 600 }}>
+                {fmtX(tick.v)}
               </div>
             ))}
             <div style={{ textAlign: "center", paddingTop: 18, fontSize: 7, color: "#2d4a65", textTransform: "uppercase", letterSpacing: 1.8, userSelect: "none", fontWeight: 700 }}>
@@ -980,9 +977,9 @@ function PriceDistribution({ data, listings, price }) {
                 )}
               </svg>
               <div style={{ position: "relative", height: 30, marginTop: 2 }}>
-                {xTicks.map(v => (
-                  <div key={v} style={{ position: "absolute", left: `${clamp(toPct(v), 2, 96)}%`, top: 4, transform: "translateX(-50%)", fontSize: 9, color: "#5a7fa0", whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums", userSelect: "none", fontWeight: 600 }}>
-                    {fmtX(v)}
+                {xTicks.map(tick => (
+                  <div key={tick.v} style={{ position: "absolute", left: `${clamp(toPct(tick.mid), 2, 96)}%`, top: 4, transform: "translateX(-50%)", fontSize: 9, color: "#5a7fa0", whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums", userSelect: "none", fontWeight: 600 }}>
+                    {fmtX(tick.v)}
                   </div>
                 ))}
                 <div style={{ textAlign: "center", paddingTop: 18, fontSize: 7, color: "#2d4a65", textTransform: "uppercase", letterSpacing: 1.8, userSelect: "none", fontWeight: 700 }}>
