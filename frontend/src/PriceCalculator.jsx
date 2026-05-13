@@ -598,10 +598,11 @@ function PriceDistribution({ data, listings, price }) {
   const inGap = v => gapRegions.some(g => v > g.s && v < g.e);
   const xTicks = xTicksRaw.filter(v => !inGap(v));
 
-  // ── Price marker cards — Low, Median, Your Price, High ──────────────────────
+  // ── Price marker cards — Low, Median, Avg, Your Price, High ─────────────────
   const MARKERS_DEF = [
     { key: "low",  v: low,     label: "LOW",        col: "#3b82f6", bg: "rgba(8,20,65,0.97)",   bd: "rgba(59,130,246,0.55)"  },
     { key: "med",  v: median,  label: "MEDIAN",     col: "#a855f7", bg: "rgba(32,10,58,0.97)",  bd: "rgba(168,85,247,0.55)"  },
+    { key: "avg",  v: average, label: "AVG",        col: "#f59e0b", bg: "rgba(52,28,2,0.97)",   bd: "rgba(245,158,11,0.55)"  },
     ...(hasPrice ? [{ key: "usr", v: price, label: "YOUR PRICE", col: "#00e5ff", bg: "rgba(0,35,55,0.98)", bd: "rgba(0,229,255,0.8)", hero: true }] : []),
     { key: "high", v: high,    label: "HIGH",       col: "#ef4444", bg: "rgba(52,8,8,0.97)",    bd: "rgba(239,68,68,0.55)"   },
   ].filter(m => m.v != null && !isNaN(m.v));
@@ -893,7 +894,7 @@ function PriceDistribution({ data, listings, price }) {
 
             {/* ── Market guide lines — all non-hero markers ── */}
             {markers.filter(m => !m.outside && !m.hero).map(m => {
-              const isMajor = m.key === "med";
+              const isMajor = m.key === "med" || m.key === "avg";
               const mx = toX(m.v);
               return (
                 <g key={m.key}>
