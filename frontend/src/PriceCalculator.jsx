@@ -894,8 +894,28 @@ function PriceDistribution({ data, listings, price }) {
 
             {/* Zoom chart body */}
             <div style={{ display: "flex", paddingRight: 10, paddingBottom: 0 }}>
-              {/* Y-axis label column (matches main chart width) */}
-              <div style={{ width: 44, flexShrink: 0 }} />
+              {/* Y-axis column */}
+              <div style={{ width: 44, flexShrink: 0 }}>
+                <div style={{ position: "relative", height: ZCH }}>
+                  <div style={{ position: "absolute", left: 1, top: 0, width: 14, height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <span style={{ fontSize: 7, fontWeight: 600, color: "#2d3f55", textTransform: "uppercase", letterSpacing: 1.8, writingMode: "vertical-rl", transform: "rotate(180deg)", whiteSpace: "nowrap", userSelect: "none" }}>
+                      Listings
+                    </span>
+                  </div>
+                  {Array.from({ length: zYMax + 1 }, (_, t) => t).map(t => (
+                    <div key={t} style={{
+                      position: "absolute", right: 5,
+                      top: ZPADT + zPlotH - (t / zYMax) * zPlotH,
+                      transform: "translateY(-50%)",
+                      fontSize: 9, color: t === 0 ? "#2d4a65" : "#5a7fa0",
+                      lineHeight: 1, fontVariantNumeric: "tabular-nums",
+                      userSelect: "none", fontWeight: 600,
+                    }}>
+                      {t}
+                    </div>
+                  ))}
+                </div>
+              </div>
               {/* Chart */}
               <div style={{ flex: 1, minWidth: 0, position: "relative" }}>
                 <svg viewBox={`0 0 ${ZCW} ${ZCH}`} preserveAspectRatio="none"
@@ -1164,7 +1184,8 @@ function PriceDistribution({ data, listings, price }) {
             borderLeft: "1px solid rgba(56,189,248,0.14)",
             background: "rgba(1,7,18,0.98)",
             display: "flex", flexDirection: "column",
-            maxHeight: "100%",
+            maxHeight: "100vh",
+            overflow: "hidden",
           }}>
             {/* Panel header */}
             <div style={{ padding: "18px 16px 14px", borderBottom: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
