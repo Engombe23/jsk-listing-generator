@@ -757,11 +757,11 @@ function PriceDistribution({ data, listings, price }) {
               return (
                 <g key={i}
                   onMouseEnter={() => setHoveredBin(i)}
-                  onClick={() => setClickedBin(isSel ? null : i)}
+                  onClick={() => { if (b.count >= 5) setClickedBin(isSel ? null : i); }}
                 >
                   {/* Full-height transparent hit zone */}
                   <rect x={colX} y={PAD_T} width={colW} height={plotH}
-                    fill="transparent" style={{ cursor: "pointer" }} />
+                    fill="transparent" style={{ cursor: b.count >= 5 ? "pointer" : "default" }} />
                   {/* Main bar */}
                   <path d={path} fill="url(#pdBar)"
                     opacity={isHov || isSel ? 1.0 : 0.30 + 0.55 * ir}
