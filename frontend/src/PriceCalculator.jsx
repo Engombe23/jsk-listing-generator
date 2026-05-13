@@ -877,11 +877,6 @@ function PriceDistribution({ data, listings, price }) {
               );
             })}
 
-            {/* ── SECONDARY: Smoothed density curve — shape envelope ── */}
-            <path d={areaPath} fill="url(#pdFill6)" opacity={0.15} />
-            <path d={linePath} fill="none" stroke="#7dd3fc" strokeWidth={3} opacity={0.06} vectorEffect="non-scaling-stroke" />
-            <path d={linePath} fill="none" stroke="#bae6fd" strokeWidth={1.0} opacity={0.40} vectorEffect="non-scaling-stroke" />
-
             {/* Baseline */}
             <line x1={0} y1={baseline} x2={plotW} y2={baseline}
               stroke="rgba(255,255,255,0.10)" strokeWidth={1}
