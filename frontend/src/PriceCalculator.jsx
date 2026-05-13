@@ -785,7 +785,18 @@ function PriceDistribution({ data, listings, price }) {
 
             {/* ── User price beam — focal point ── */}
             {hasPrice && inView(price) && (() => {
-              const ux = toX(price);
+              // Snap to the centre of the bin that contains the price so the
+              // beam always sits visually inside the bar rather than at a raw
+              // x-coordinate that can fall in the empty padding beside it.
+              const priceBin = bins.find(b => price >= b.s && price < b.e)
+                            ?? bins.find(b => price === b.e); // last-bin edge case
+              const ux = priceBin
+                ? (() => {
+                    const bColX = Math.max(0, toX(priceBin.s));
+                    const bColW = Math.max(2, Math.min(plotW, toX(priceBin.e)) - bColX);
+                    return bColX + bColW / 2;
+                  })()
+                : toX(price);
               return (
                 <g>
                   {/* Wide ambient glow */}
@@ -970,7 +981,15 @@ function PriceDistribution({ data, listings, price }) {
 
                   {/* User price beam */}
                   {hasPrice && price >= zMin && price <= zMax && (() => {
-                    const ux = zToX(price);
+                    const priceBin = zBins.find(b => price >= b.s && price < b.e)
+                                  ?? zBins.find(b => price === b.e);
+                    const ux = priceBin
+                      ? (() => {
+                          const bColX = Math.max(0, zToX(priceBin.s));
+                          const bColW = Math.max(2, Math.min(zPlotW, zToX(priceBin.e)) - bColX);
+                          return bColX + bColW / 2;
+                        })()
+                      : zToX(price);
                     return (
                       <g>
                         <line x1={ux} y1={ZPADT} x2={ux} y2={zBaseline}
