@@ -842,21 +842,23 @@ function PriceDistribution({ data, listings, price }) {
             {/* ── PRIMARY: Histogram bars ── */}
             {bins.map((b, i) => {
               if (b.count === 0) return null;
+              const colX    = Math.max(0, toX(b.s));
+              const colW    = Math.max(2, toX(b.e) - toX(b.s));  // full column width
+              const barW    = Math.max(1, colW - 2);               // visible bar slightly narrower
               const barH    = (b.count / maxBucket) * plotH;
-              const barX    = Math.max(0, toX(b.s));
-              const barW    = Math.max(1, toX(b.e) - toX(b.s) - 2);
               const barY    = baseline - barH;
               const ir      = b.count / maxBucket;
               const isHov   = hoveredBin === i;
-              const path    = roundedTopRect(barX, barY, barW, barH, 3);
+              const path    = roundedTopRect(colX, barY, barW, barH, 3);
               return (
-                <g key={i} style={{ cursor: "pointer" }}
-                  onMouseEnter={() => setHoveredBin(i)}
-                  onMouseLeave={() => setHoveredBin(null)}>
+                <g key={i} onMouseEnter={() => setHoveredBin(i)}>
+                  {/* Full-height transparent hit zone — every pixel in the column is hoverable */}
+                  <rect x={colX} y={PAD_T} width={colW} height={plotH}
+                    fill="transparent" style={{ cursor: "pointer" }} />
                   {/* Glow behind bar */}
-                  <path d={path} fill="#38bdf8" opacity={isHov ? ir * 0.22 : ir * 0.10} />
+                  <path d={path} fill="#38bdf8" opacity={isHov ? ir * 0.22 : ir * 0.10} style={{ pointerEvents: "none" }} />
                   {/* Main bar */}
-                  <path d={path} fill="url(#pdBar)" opacity={isHov ? 0.95 : 0.28 + 0.52 * ir} />
+                  <path d={path} fill="url(#pdBar)" opacity={isHov ? 0.95 : 0.28 + 0.52 * ir} style={{ pointerEvents: "none" }} />
                 </g>
               );
             })}
