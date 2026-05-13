@@ -1541,7 +1541,7 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
 
   const handleFetch = async () => {
     if (!smQuery.trim()) return;
-    setSmLoading(true); setSmError(""); setShowListings(false); setListingsTab("used");
+    setSmLoading(true); setSmError("");
     try {
       const res  = await fetch(`${API_URL}/api/ebay/search-prices`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ query: smQuery.trim(), condition: smCondition }) });
       const json = await res.json();
