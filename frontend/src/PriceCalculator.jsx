@@ -829,6 +829,151 @@ function PriceDistribution({ data, listings, price }) {
 
       </>}
 
+      {/* ── Zoom chart — finer increments for clicked bin ── */}
+      {clickedBin !== null && viewMode === "volume" && (() => {
+        const zb = bins[clickedBin];
+        if (!zb) return null;
+        const zMin = zb.s, zMax = zb.e, zRange = zMax - zMin;
+        if (zRange <= 0) return null;
+
+        // Finer bin width: target ~10 buckets within the zoomed range
+        const ZOOM_BUCKETS = 10;
+        const rawZBinW = zRange / ZOOM_BUCKETS;
+        const zBinW    = NICE_STEPS.find(s => s >= rawZBinW) ?? 1;
+        const zbStart  = Math.floor(zMin / zBinW) * zBinW;
+        const zbEnd    = Math.ceil(zMax  / zBinW) * zBinW;
+        const zbCount  = Math.round((zbEnd - zbStart) / zBinW);
+
+        const zBins = Array.from({ length: zbCount }, (_, i) => {
+          const s = zbStart + i * zBinW;
+          const e = s + zBinW;
+          const isLast = i === zbCount - 1;
+          const count = prices.filter(p => p >= zMin && p <= zMax && p >= s && (isLast ? p <= e : p < e)).length;
+          return { s, e, count };
+        }).filter(b => b.s < zMax && b.e > zMin);
+
+        const zMaxBucket = Math.max(...zBins.map(b => b.count), 1);
+        const zYMax      = Math.max(zMaxBucket, 3);
+        const ZCW = 500, ZCH = 160, ZPADT = 12, ZPADB = 6, ZPADR = 8;
+        const zPlotW    = ZCW - ZPADR;
+        const zPlotH    = ZCH - ZPADT - ZPADB;
+        const zBaseline = ZPADT + zPlotH;
+        const zToX      = v => ((v - zMin) / zRange) * zPlotW;
+        const zToPct    = v => (zToX(v) / ZCW) * 100;
+        const zTicks    = zBins.filter(b => b.count > 0).map(b => ({ v: b.s, e: b.e, mid: (b.s + b.e) / 2 }));
+        const totalInRange = zBins.reduce((s, b) => s + b.count, 0);
+
+        return (
+          <div style={{ borderTop: "1px solid rgba(56,189,248,0.12)", background: "rgba(0,10,25,0.45)" }}>
+            {/* Zoom header */}
+            <div style={{ padding: "12px 22px 4px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <span style={{ fontSize: 9, fontWeight: 800, color: "#38bdf8", textTransform: "uppercase", letterSpacing: 1.4, background: "rgba(56,189,248,0.10)", border: "1px solid rgba(56,189,248,0.22)", borderRadius: 4, padding: "2px 8px" }}>
+                  Zoomed
+                </span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: "#e2e8f0" }}>
+                  {fmtX(zMin)} – {fmtX(zMax)}
+                </span>
+                <span style={{ fontSize: 10, color: "#4a7090" }}>
+                  {totalInRange} listings · £{zBinW} steps
+                </span>
+              </div>
+              <button onClick={() => setClickedBin(null)} style={{
+                background: "none", border: "1px solid rgba(255,255,255,0.08)",
+                borderRadius: 5, color: "#4a7090", cursor: "pointer",
+                fontSize: 10, fontWeight: 600, padding: "3px 10px", letterSpacing: 0.3,
+              }}>
+                ← Back
+              </button>
+            </div>
+
+            {/* Zoom chart body */}
+            <div style={{ display: "flex", paddingRight: 10, paddingBottom: 0 }}>
+              {/* Y-axis label column (matches main chart width) */}
+              <div style={{ width: 44, flexShrink: 0 }} />
+              {/* Chart */}
+              <div style={{ flex: 1, minWidth: 0, position: "relative" }}>
+                <svg viewBox={`0 0 ${ZCW} ${ZCH}`} preserveAspectRatio="none"
+                  width="100%" height={ZCH} style={{ display: "block" }}>
+                  <defs>
+                    <linearGradient id="zBarGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#38bdf8" stopOpacity="0.85" />
+                      <stop offset="100%" stopColor="#1d6fa4" stopOpacity="0.60" />
+                    </linearGradient>
+                  </defs>
+
+                  {/* Faint gridlines */}
+                  {[0.25, 0.5, 0.75, 1].map(f => (
+                    <line key={f}
+                      x1={0} y1={ZPADT + zPlotH * (1 - f)} x2={zPlotW} y2={ZPADT + zPlotH * (1 - f)}
+                      stroke="rgba(255,255,255,0.04)" strokeWidth={1} vectorEffect="non-scaling-stroke" />
+                  ))}
+
+                  {/* Bars */}
+                  {zBins.map((b, i) => {
+                    if (b.count === 0) return null;
+                    const colX = Math.max(0, zToX(b.s));
+                    const colW = Math.max(2, Math.min(zPlotW, zToX(b.e)) - colX);
+                    const barW = Math.max(1, colW * 0.55);
+                    const barH = (b.count / zYMax) * zPlotH;
+                    const barY = zBaseline - barH;
+                    const barX = colX + (colW - barW) / 2;
+                    const ir   = b.count / zMaxBucket;
+                    const isUserBin = hasPrice && price >= b.s && price < b.e;
+                    return (
+                      <g key={i}>
+                        {/* Hit zone */}
+                        <rect x={colX} y={ZPADT} width={colW} height={zPlotH} fill="transparent" />
+                        <path d={roundedTopRect(barX, barY, barW, barH, 3)}
+                          fill={isUserBin ? "url(#pdBar)" : "url(#zBarGrad)"}
+                          opacity={0.28 + 0.68 * ir} style={{ pointerEvents: "none" }} />
+                      </g>
+                    );
+                  })}
+
+                  {/* User price beam */}
+                  {hasPrice && price >= zMin && price <= zMax && (() => {
+                    const ux = zToX(price);
+                    return (
+                      <g>
+                        <line x1={ux} y1={ZPADT} x2={ux} y2={zBaseline}
+                          stroke="#00e5ff" strokeWidth={10} opacity={0.07} vectorEffect="non-scaling-stroke" />
+                        <line x1={ux} y1={ZPADT} x2={ux} y2={zBaseline}
+                          stroke="#00e5ff" strokeWidth={1.8} strokeDasharray="4,3"
+                          opacity={0.90} vectorEffect="non-scaling-stroke" />
+                        <circle cx={ux} cy={zBaseline} r={4} fill="#00e5ff" opacity={0.85} />
+                      </g>
+                    );
+                  })()}
+
+                  {/* Baseline */}
+                  <line x1={0} y1={zBaseline} x2={zPlotW} y2={zBaseline}
+                    stroke="rgba(255,255,255,0.10)" strokeWidth={1} vectorEffect="non-scaling-stroke" />
+                </svg>
+
+                {/* X-axis labels */}
+                <div style={{ position: "relative", height: 28, marginTop: 2 }}>
+                  {zTicks.map(tick => (
+                    <div key={tick.v} style={{
+                      position: "absolute",
+                      left: `${Math.min(96, Math.max(2, zToPct(tick.mid)))}%`,
+                      top: 4, transform: "translateX(-50%)",
+                      fontSize: 9, color: "#5a7fa0", whiteSpace: "nowrap",
+                      fontVariantNumeric: "tabular-nums", userSelect: "none", fontWeight: 600,
+                    }}>
+                      {fmtX(tick.v)}–{Math.round(tick.e)}
+                    </div>
+                  ))}
+                  <div style={{ textAlign: "center", paddingTop: 16, fontSize: 7, color: "#2d4a65", textTransform: "uppercase", letterSpacing: 1.8, userSelect: "none", fontWeight: 700 }}>
+                    PRICE (£)
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
 
       {/* ── Table view ── */}
       {viewMode === "table" && (() => {
