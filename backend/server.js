@@ -990,13 +990,6 @@ app.post("/api/ebay/search-prices", async (req, res) => {
         ? `No relevant ${rule.productType} ${condLabel.toLowerCase()} listings found after filtering ${totalFetched} results. Try a different search term.`
         : `No ${condLabel.toLowerCase()} listings found for this search — try a different search term.`;
 
-      const allExcluded = [
-        ...titleExcluded,
-        ...unitExcluded,
-        ...highExcluded,
-        ...lowExcluded,
-      ].map(i => ({ title: i.title, price: i.price, url: i.url, exclusionReason: i.exclusionReason }));
-
       return res.json({
         low: null, high: null, average: null, median: null,
         currency,
