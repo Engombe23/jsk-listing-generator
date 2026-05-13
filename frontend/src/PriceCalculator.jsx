@@ -854,10 +854,6 @@ function PriceDistribution({ data, listings, price }) {
                   {/* Full-height transparent hit zone */}
                   <rect x={colX} y={PAD_T} width={colW} height={plotH}
                     fill="transparent" style={{ cursor: "pointer" }} />
-                  {/* Glow behind bar */}
-                  <path d={path} fill="#38bdf8"
-                    opacity={isHov || isSel ? ir * 0.28 : ir * 0.10}
-                    style={{ pointerEvents: "none" }} />
                   {/* Main bar */}
                   <path d={path} fill="url(#pdBar)"
                     opacity={isHov || isSel ? 1.0 : 0.30 + 0.55 * ir}
