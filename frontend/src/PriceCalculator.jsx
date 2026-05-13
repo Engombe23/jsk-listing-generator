@@ -446,7 +446,6 @@ function PriceDistribution({ data, listings, price }) {
   const [crosshairX,  setCrosshairX]  = useState(null);
   const [hoveredBin,  setHoveredBin]  = useState(null);
   const [clickedBin,  setClickedBin]  = useState(null); // index of clicked bar → opens right panel
-  const [hoveredGap,  setHoveredGap]  = useState(null); // index into gapRegions[]
   const [viewMode,    setViewMode]    = useState("volume"); // "volume" | "cumulative" | "table"
   const [tableSort,   setTableSort]   = useState("price");
   const [panelSort,   setPanelSort]   = useState("asc");
@@ -516,65 +515,8 @@ function PriceDistribution({ data, listings, price }) {
   const plotW = CHART_W - PAD_R;
   const plotH = CHART_H - PAD_T - PAD_B;
 
-  // ── Gap detection — interior runs of empty bins ──────────────────────────────
-  // Only interior gaps (between two populated bins) are compressed.
-  // Trailing empty space at the right edge is not a "gap" — that's just the view margin.
-  const MIN_GAP_RANGE = Math.max(binW * 2, (high - low) * 0.06);
-  const gapRegions = (() => {
-    const gaps = [];
-    let gapS = null;
-    for (let i = 0; i < bins.length; i++) {
-      if (bins[i].count === 0) {
-        if (gapS === null) gapS = bins[i].s;
-      } else if (gapS !== null) {
-        if (bins[i].s - gapS >= MIN_GAP_RANGE) gaps.push({ s: gapS, e: bins[i].s });
-        gapS = null;
-      }
-    }
-    return gaps; // deliberately ignore trailing gaps
-  })();
-
-  // ── Piecewise x-axis: gaps compressed to ~14% of natural width ──────────────
-  const GAP_COMPRESSION = 0.14;
-  const pxSegments = (() => {
-    const segs = [];
-    let cur = viewMin;
-    for (const g of gapRegions) {
-      if (g.s > cur) segs.push({ type: 'data', s: cur,  e: g.s  });
-      segs.push(          { type: 'gap',  s: g.s,  e: g.e  });
-      cur = g.e;
-    }
-    if (cur < viewMax) segs.push({ type: 'data', s: cur, e: viewMax });
-
-    const withNat = segs.map(seg => ({ ...seg, natPx: (seg.e - seg.s) / viewRange * plotW }));
-    const gapPxArr = withNat.map(s => s.type === 'gap' ? Math.max(32, s.natPx * GAP_COMPRESSION) : 0);
-    const totalGapPx  = gapPxArr.reduce((a, b) => a + b, 0);
-    const dataAvail   = plotW - totalGapPx;
-    const totalDataRng = segs.filter(s => s.type === 'data').reduce((sum, s) => sum + (s.e - s.s), 0) || 1;
-
-    let x = 0;
-    return withNat.map((seg, i) => {
-      const px = seg.type === 'gap'
-        ? gapPxArr[i]
-        : (seg.e - seg.s) / totalDataRng * dataAvail;
-      const out = { ...seg, px, x0: x, x1: x + px };
-      x += px;
-      return out;
-    });
-  })();
-
-  // Piecewise toX: price → SVG x coordinate
-  const toX = v => {
-    if (v <= viewMin) return 0;
-    if (v >= viewMax) return plotW;
-    for (const seg of pxSegments) {
-      if (v >= seg.s && v <= seg.e) {
-        const t = seg.e > seg.s ? (v - seg.s) / (seg.e - seg.s) : 0;
-        return seg.x0 + t * seg.px;
-      }
-    }
-    return plotW;
-  };
+  // ── Linear x-axis ───────────────────────────────────────────────────────────
+  const toX = v => ((v - viewMin) / viewRange) * plotW;
 
   const toY   = cnt => (PAD_T + plotH) - (cnt / yAxisMax) * plotH;
   const toPct = v   => (toX(v) / CHART_W) * 100;
@@ -593,10 +535,8 @@ function PriceDistribution({ data, listings, price }) {
   const xMag       = Math.pow(10, Math.floor(Math.log10(Math.max(maxXStep, 1))));
   const niceXStep  = ([1, 2, 2.5, 5, 10].map(f => f * xMag)).filter(s => s <= maxXStep).pop() ?? xMag;
   const xTickStart = Math.floor(viewMin / niceXStep) * niceXStep;
-  const xTicksRaw  = [];
-  for (let v = xTickStart; v <= viewMax - niceXStep * 0.1; v += niceXStep) xTicksRaw.push(Math.round(v));
-  const inGap = v => gapRegions.some(g => v > g.s && v < g.e);
-  const xTicks = xTicksRaw.filter(v => !inGap(v));
+  const xTicks = [];
+  for (let v = xTickStart; v <= viewMax - niceXStep * 0.1; v += niceXStep) xTicks.push(Math.round(v));
 
   // ── Price marker cards — Low, Median, Avg, Your Price, High ─────────────────
   const MARKERS_DEF = [
@@ -763,7 +703,7 @@ function PriceDistribution({ data, listings, price }) {
               const sx = ((e.clientX - rect.left) / rect.width) * CHART_W;
               setCrosshairX(Math.max(0, Math.min(CHART_W, sx)));
             }}
-            onMouseLeave={() => { setCrosshairX(null); setHoveredBin(null); setHoveredGap(null); }}
+            onMouseLeave={() => { setCrosshairX(null); setHoveredBin(null); }}
           >
             <defs>
               {/* Curve fill */}
@@ -802,46 +742,6 @@ function PriceDistribution({ data, listings, price }) {
                 vectorEffect="non-scaling-stroke" />
             ))}
 
-            {/* ── Compressed gap regions ── */}
-            {pxSegments.filter(s => s.type === 'gap').map((seg, gi) => {
-              const isHov = hoveredGap === gi;
-              return (
-                <g key={gi}
-                  onMouseEnter={() => setHoveredGap(gi)}
-                  onMouseLeave={() => setHoveredGap(null)}
-                  style={{ cursor: 'default' }}
-                >
-                  {/* Faded background fill */}
-                  <rect x={seg.x0} y={PAD_T} width={seg.px} height={plotH}
-                    fill={isHov ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.015)"} />
-                  {/* Dashed connector line through mid-height */}
-                  <line x1={seg.x0} y1={PAD_T + plotH * 0.5} x2={seg.x1} y2={PAD_T + plotH * 0.5}
-                    stroke="rgba(255,255,255,0.10)" strokeWidth={1} strokeDasharray="2,3"
-                    vectorEffect="non-scaling-stroke" />
-                  {/* Left edge border */}
-                  <line x1={seg.x0} y1={PAD_T} x2={seg.x0} y2={baseline}
-                    stroke="rgba(255,255,255,0.12)" strokeWidth={0.75} strokeDasharray="3,3"
-                    vectorEffect="non-scaling-stroke" />
-                  {/* Right edge border */}
-                  <line x1={seg.x1} y1={PAD_T} x2={seg.x1} y2={baseline}
-                    stroke="rgba(255,255,255,0.12)" strokeWidth={0.75} strokeDasharray="3,3"
-                    vectorEffect="non-scaling-stroke" />
-                  {/* // break marks on baseline — left side */}
-                  <line x1={seg.x0 - 4} y1={baseline + 5} x2={seg.x0 + 3} y2={baseline - 2}
-                    stroke="rgba(255,255,255,0.35)" strokeWidth={1.2} vectorEffect="non-scaling-stroke" />
-                  <line x1={seg.x0 - 1} y1={baseline + 5} x2={seg.x0 + 6} y2={baseline - 2}
-                    stroke="rgba(255,255,255,0.35)" strokeWidth={1.2} vectorEffect="non-scaling-stroke" />
-                  {/* // break marks on baseline — right side */}
-                  <line x1={seg.x1 - 4} y1={baseline + 5} x2={seg.x1 + 3} y2={baseline - 2}
-                    stroke="rgba(255,255,255,0.35)" strokeWidth={1.2} vectorEffect="non-scaling-stroke" />
-                  <line x1={seg.x1 - 1} y1={baseline + 5} x2={seg.x1 + 6} y2={baseline - 2}
-                    stroke="rgba(255,255,255,0.35)" strokeWidth={1.2} vectorEffect="non-scaling-stroke" />
-                  {/* Full-height invisible hit zone for hover */}
-                  <rect x={seg.x0} y={PAD_T} width={seg.px} height={plotH + 8}
-                    fill="transparent" />
-                </g>
-              );
-            })}
 
             {/* ── Core-market concentration band (subtle fill only) ── */}
             {concBins.length > 0 && (() => {
@@ -892,31 +792,6 @@ function PriceDistribution({ data, listings, price }) {
               stroke="rgba(255,255,255,0.10)" strokeWidth={1}
               vectorEffect="non-scaling-stroke" />
 
-            {/* ── Market guide lines — all non-hero markers ── */}
-            {markers.filter(m => !m.outside && !m.hero).map(m => {
-              const isMajor = m.key === "med" || m.key === "avg";
-              const mx = toX(m.v);
-              return (
-                <g key={m.key}>
-                  {/* Glow pass */}
-                  <line x1={mx} y1={PAD_T} x2={mx} y2={baseline}
-                    stroke={m.col} strokeWidth={isMajor ? 6 : 4} opacity={0.14}
-                    strokeDasharray={isMajor ? "none" : "3,6"}
-                    vectorEffect="non-scaling-stroke" />
-                  {/* Main line */}
-                  <line x1={mx} y1={PAD_T} x2={mx} y2={baseline}
-                    stroke={m.col}
-                    strokeWidth={isMajor ? 1.8 : 1.3}
-                    strokeDasharray={isMajor ? "none" : "3,6"}
-                    opacity={isMajor ? 0.88 : 0.60}
-                    vectorEffect="non-scaling-stroke" />
-                  {/* Baseline tick anchor */}
-                  <line x1={mx} y1={baseline} x2={mx} y2={baseline + 4}
-                    stroke={m.col} strokeWidth={2} opacity={0.75}
-                    vectorEffect="non-scaling-stroke" />
-                </g>
-              );
-            })}
 
             {/* ── User price beam — focal point ── */}
             {hasPrice && inView(price) && (() => {
@@ -1011,36 +886,6 @@ function PriceDistribution({ data, listings, price }) {
 
           </svg>
 
-          {/* ── Gap hover tooltip ── */}
-          {hoveredGap !== null && (() => {
-            const gapSegs = pxSegments.filter(s => s.type === 'gap');
-            const seg = gapSegs[hoveredGap];
-            if (!seg) return null;
-            const midPct = clamp(((seg.x0 + seg.x1) / 2 / CHART_W) * 100, 8, 82);
-            const flipLeft = midPct > 55;
-            return (
-              <div style={{
-                position: "absolute",
-                top: 4, left: `${midPct}%`,
-                transform: flipLeft ? "translateX(-92%)" : "translateX(-8%)",
-                zIndex: 40, pointerEvents: "none",
-                background: "rgba(2,8,22,0.97)",
-                border: "1px solid rgba(255,255,255,0.12)",
-                borderRadius: 8, padding: "8px 12px",
-                boxShadow: "0 6px 24px rgba(0,0,0,0.65)",
-                maxWidth: 240,
-              }}>
-                <div style={{ fontSize: 9, fontWeight: 800, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 1.2, marginBottom: 4 }}>
-                  Compressed region
-                </div>
-                <div style={{ fontSize: 11, color: "#64748b", lineHeight: 1.5 }}>
-                  No active listings between{" "}
-                  <span style={{ color: "#e2e8f0", fontWeight: 700 }}>{fmtX(seg.s)} – {fmtX(seg.e)}</span>.
-                  Range compressed for readability.
-                </div>
-              </div>
-            );
-          })()}
 
           {/* ── X-axis labels ── */}
           <div style={{ position: "relative", height: 30, marginTop: 2 }}>
