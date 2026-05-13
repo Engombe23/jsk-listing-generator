@@ -747,13 +747,6 @@ function PriceDistribution({ data, listings, price }) {
 
           {/* ── Legend row ── */}
           <div style={{ display: "flex", alignItems: "center", gap: 16, paddingLeft: 4, paddingBottom: 5, flexWrap: "wrap" }}>
-            {/* Core market solid line */}
-            <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-              <svg width="22" height="8" style={{ flexShrink: 0 }}>
-                <line x1="0" y1="4" x2="22" y2="4" stroke="#38bdf8" strokeWidth="1.5" />
-              </svg>
-              <span style={{ fontSize: 9, color: "#4a7090", whiteSpace: "nowrap" }}>Core market ({concPct}%)</span>
-            </div>
             {hasPrice && (
               <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
                 <svg width="22" height="8" style={{ flexShrink: 0 }}>
@@ -1015,25 +1008,6 @@ function PriceDistribution({ data, listings, price }) {
         </div>
       </div>
 
-      {/* ── Bottom: Core market cluster card ── */}
-      {concBins.length > 0 && (
-        <div style={{ margin: "8px 22px 18px", display: "flex", alignItems: "flex-start", gap: 13 }}>
-          <div style={{ width: 28, height: 28, borderRadius: "50%", border: "1.5px solid rgba(56,189,248,0.55)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1 }}>
-            <div style={{ width: 8, height: 8, borderRadius: "50%", background: "rgba(56,189,248,0.7)" }} />
-          </div>
-          <div>
-            <div style={{ fontSize: 9, fontWeight: 800, color: "#38bdf8", textTransform: "uppercase", letterSpacing: 1.3, marginBottom: 5, opacity: 0.85 }}>
-              Core market
-            </div>
-            <div style={{ fontSize: 13, fontWeight: 700, color: "#e2e8f0", lineHeight: 1.4, letterSpacing: -0.1 }}>
-              Most sellers cluster between <span style={{ color: "#7dd3fc" }}>{fmtX(concStart)} – {fmtX(concEnd)}</span>.
-            </div>
-            <div style={{ fontSize: 11, color: "#4a7090", marginTop: 3 }}>
-              {concCount} of {n} listings ({concPct}%) sit within this range.
-            </div>
-          </div>
-        </div>
-      )}
 
       </>}
 
