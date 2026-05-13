@@ -816,132 +816,6 @@ Respond with valid JSON only, no markdown:
   }
 });
 
-// ─── OEM query detection ──────────────────────────────────────────────────────
-// A query is treated as OEM/part-number if it contains NO descriptive English
-// word (≥5 consecutive letters with no digits).  Matches:
-//   LR110501R  95517856  BK3Q6A270  03L103373
-// Does NOT match:
-//   "M274 Cylinder Head"  "N47 Timing Chain Kit"  "Jaguar Oil Pump"
-function isOemQuery(query) {
-  const tokens = query.trim().split(/\s+/);
-  const hasDescriptiveWord = tokens.some(t => /^[a-zA-Z]{5,}$/.test(t));
-  if (hasDescriptiveWord) return false;
-  const stripped = query.replace(/[\s\-\.]/g, '');
-  return stripped.length >= 4 && /^[A-Z0-9]+$/i.test(stripped);
-}
-
-// ─── Market-group clustering helpers ─────────────────────────────────────────
-
-const GROUP_STOP_WORDS = new Set([
-  'for','and','the','with','new','used','oem','ref','fits','compatible','genuine',
-  'aftermarket','free','delivery','shipping','quality','part','parts','number',
-  'pair','assy','original','brand','stock','item','great','fast','high','from',
-  'this','that','also','only','have','been','will','your','sale',
-]);
-
-// Tokenise a listing title into normalised searchable tokens
-function titleTokens(title) {
-  return title
-    .toLowerCase()
-    .replace(/[^a-z0-9\s]/g, ' ')
-    .split(/\s+/)
-    .filter(t => t.length >= 3 && !GROUP_STOP_WORDS.has(t));
-}
-
-// Derive a human-readable label for a cluster from its most common title tokens
-function extractGroupLabel(items) {
-  const freq = {};
-  for (const item of items) {
-    const seen = new Set(titleTokens(item.title));
-    for (const t of seen) freq[t] = (freq[t] || 0) + 1;
-  }
-  const n = items.length;
-  const top = Object.entries(freq)
-    .filter(([, c]) => c >= Math.max(1, n * 0.35))
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 4)
-    .map(([t]) => t.charAt(0).toUpperCase() + t.slice(1));
-  if (top.length > 0) return top.join(' / ');
-  // Fallback: price range
-  const prices = items.map(i => i.price).sort((a, b) => a - b);
-  return `£${Math.round(prices[0])} – £${Math.round(prices[prices.length - 1])}`;
-}
-
-// Split a list of enriched items (must have .price) into price-gap clusters.
-// A cluster boundary forms wherever the price ratio between adjacent sorted items ≥ 2.0
-// (i.e. the next item costs at least twice as much as the previous one).
-function clusterByPrice(items) {
-  if (items.length === 0) return [];
-  const sorted = [...items].sort((a, b) => a.price - b.price);
-  const prices = sorted.map(i => i.price);
-  const clusters = [];
-  let start = 0;
-  for (let i = 1; i < prices.length; i++) {
-    if (prices[i] / prices[i - 1] >= 2.0) {
-      clusters.push(sorted.slice(start, i));
-      start = i;
-    }
-  }
-  clusters.push(sorted.slice(start));
-  return clusters;
-}
-
-// Build the full stats + listings object for one cluster.
-// Applies IQR filtering within the cluster; if IQR removes everything, falls back
-// to the unfiltered cluster so the group is never empty.
-function computeGroupStats(items, currency, condition, condLabel, totalFetched) {
-  if (!items || items.length === 0) return null;
-
-  const prices = items.map(i => i.price).sort((a, b) => a - b);
-  const iqrMedian = calcMedian(prices);
-  const iqrQ1     = calcPercentile(prices, 0.25);
-  const iqrQ3     = calcPercentile(prices, 0.75);
-  const iqrVal    = iqrQ3 - iqrQ1;
-  const lowerBound = iqrQ1 - 1.0 * iqrVal;
-  const upperBound = Math.min(iqrQ3 + 1.0 * iqrVal, iqrMedian * 2.2);
-
-  let relevant = items.filter(i => i.price >= lowerBound && i.price <= upperBound);
-  const iqrOutlierCount = items.length - relevant.length;
-  if (relevant.length === 0) relevant = items; // safety: never empty
-
-  const fp = relevant.map(i => i.price).sort((a, b) => a - b);
-  const n  = fp.length;
-  const confidence = getConfidence(n);
-
-  const listingShape = i => ({
-    title: i.title, price: i.price, url: i.url, image: i.image,
-    condition: i.condition, sellerName: i.sellerName,
-    sellerFeedback: i.sellerFeedback, sellerFeedbackPct: i.sellerFeedbackPct,
-    shippingCost: i.shippingCost, shippingType: i.shippingType,
-    itemDate: i.itemDate,
-  });
-
-  return {
-    low:     +fp[0].toFixed(2),
-    high:    +fp[n - 1].toFixed(2),
-    average: +(fp.reduce((s, v) => s + v, 0) / n).toFixed(2),
-    median:  +calcMedian(fp).toFixed(2),
-    currency, condition, conditionLabel: condLabel,
-    priceCount:       n,
-    relevantCount:    n,
-    totalFetched,
-    excludedByFilter: 0, excludedAsSetKit: 0,
-    excludedHighOutlier: 0, excludedLowOutlier: 0,
-    totalExcluded:    iqrOutlierCount,
-    detectedType:     null,
-    filterApplied:    false,
-    unitSensitive:    false,
-    confidenceLevel:  confidence.level,
-    confidenceLabel:  confidence.label,
-    confidenceColor:  confidence.color,
-    iqrLowerBound:    +lowerBound.toFixed(2),
-    iqrUpperBound:    +upperBound.toFixed(2),
-    iqrOutlierCount,
-    listings:         relevant.map(listingShape),
-    excludedListings: [],
-  };
-}
-
 // ─── Median helper ────────────────────────────────────────────────────────────
 function calcMedian(sortedArr) {
   const n = sortedArr.length;
@@ -1038,11 +912,13 @@ app.post("/api/ebay/search-prices", async (req, res) => {
     const condLabel  = condOpt?.label      || condition;
 
     // ── Step 2: Detect product type + build filtered eBay query ───────────────
-    const rule       = detectProductType(query.trim());
-    const ebayQuery  = buildEbayQuery(query.trim(), rule);
-    const searchIsOem = isOemQuery(query.trim());
+    const rule      = detectProductType(query.trim());
+    const ebayQuery = buildEbayQuery(query.trim(), rule);
 
     // ── Step 3: Fetch top 60 listings ─────────────────────────────────────────
+    // URL built manually — eBay requires literal { } in filter strings; encoding breaks it.
+    // fieldgroups=EXTENDED requests seller, image, and shipping data that are
+    // omitted from the default response subset.
     const token = await getEbayAccessToken();
     let url = `https://api.ebay.com/buy/browse/v1/item_summary/search?q=${encodeURIComponent(ebayQuery)}&limit=60&offset=0&fieldgroups=EXTENDED`;
     if (condFilter) url += `&filter=${condFilter}`;
@@ -1065,7 +941,17 @@ app.post("/api/ebay/search-prices", async (req, res) => {
     const totalFetched = rawItems.length;
     const currency     = rawItems.find(i => i.price?.currency)?.price?.currency || "GBP";
 
-    // ── Step 4: Enrich items ──────────────────────────────────────────────────
+    // Debug: log the first item's raw shape so we can verify field availability
+    if (rawItems[0]) {
+      const s = rawItems[0];
+      console.log("[eBay debug] first item keys:", Object.keys(s));
+      console.log("[eBay debug] image:", s.image);
+      console.log("[eBay debug] seller:", s.seller);
+      console.log("[eBay debug] shippingOptions:", JSON.stringify(s.shippingOptions));
+      console.log("[eBay debug] condition:", s.condition, "conditionId:", s.conditionId);
+    }
+
+    // Enrich each item — capture all fields needed for table view
     const enriched = rawItems.map(item => {
       const v           = parseFloat(item.price?.value);
       const shippingOpt = item.shippingOptions?.[0];
@@ -1077,179 +963,147 @@ app.post("/api/ebay/search-prices", async (req, res) => {
         image:             item.image?.imageUrl || null,
         condition:         item.condition || "",
         sellerName:        item.seller?.username || "",
-        sellerFeedback:    item.seller?.feedbackScore      != null ? Number(item.seller.feedbackScore)            : null,
-        sellerFeedbackPct: item.seller?.feedbackPercentage != null ? parseFloat(item.seller.feedbackPercentage)   : null,
+        sellerFeedback:    item.seller?.feedbackScore    != null ? Number(item.seller.feedbackScore)          : null,
+        sellerFeedbackPct: item.seller?.feedbackPercentage != null ? parseFloat(item.seller.feedbackPercentage) : null,
         shippingCost:      Number.isFinite(shippingVal) ? shippingVal : null,
         shippingType:      shippingOpt?.shippingType || null,
         itemDate:          item.itemCreationDate || null,
       };
     });
 
-    const priceValid = enriched.filter(i => i.price !== null);
+    // ── IQR outlier filtering — tighter bounds to exclude kits / bundles ──────────
+    const priceValid   = enriched.filter(i => i.price !== null);
+    const allSorted    = priceValid.map(i => i.price).sort((a, b) => a - b);
 
-    // ── Shared empty-result helper ────────────────────────────────────────────
-    const emptyResult = (extraMsg) => {
-      const zeroResultsMsg = extraMsg
-        || (rule
-          ? `No relevant ${rule.productType} ${condLabel.toLowerCase()} listings found after filtering ${totalFetched} results. Try a different search term.`
-          : `No ${condLabel.toLowerCase()} listings found for this search — try a different search term.`);
-      return {
-        low: null, high: null, average: null, median: null,
-        currency, condition, conditionLabel: condLabel,
-        priceCount: 0, totalFetched, relevantCount: 0,
-        excludedByFilter: 0, excludedAsSetKit: 0,
-        excludedHighOutlier: 0, excludedLowOutlier: 0, totalExcluded: 0,
-        detectedType:    rule?.productType || null,
-        filterApplied:   rule !== null,
-        unitSensitive:   rule?.unitSensitive ?? false,
-        confidenceLevel: "low", confidenceLabel: "Low", confidenceColor: "#ef4444",
-        zeroResultsMsg,
-        iqrLowerBound: null, iqrUpperBound: null, iqrOutlierCount: 0,
-        listings: [], excludedListings: [],
-      };
-    };
+    const iqrMedian  = calcMedian(allSorted);
+    const iqrQ1      = calcPercentile(allSorted, 0.25);
+    const iqrQ3      = calcPercentile(allSorted, 0.75);
+    const iqrVal     = iqrQ3 - iqrQ1;
 
-    // ═════════════════════════════════════════════════════════════════════════
-    // OEM FLOW — fast path, light IQR only, no grouping
-    // ═════════════════════════════════════════════════════════════════════════
-    if (searchIsOem) {
-      if (priceValid.length === 0) {
-        return res.json({ ...emptyResult(), searchType: "oem" });
-      }
+    // 1.0×IQR (tighter than the classic 1.5) + hard cap at median×2.2.
+    // The median×2.2 cap specifically targets forged kits, rebuild packages
+    // and bundle listings that clear the IQR fence but still distort scale.
+    const lowerBound = iqrQ1 - 1.0 * iqrVal;
+    const upperBound = Math.min(iqrQ3 + 1.0 * iqrVal, iqrMedian * 2.2);
 
-      const allSorted  = priceValid.map(i => i.price).sort((a, b) => a - b);
-      const iqrMedian  = calcMedian(allSorted);
-      const iqrQ1      = calcPercentile(allSorted, 0.25);
-      const iqrQ3      = calcPercentile(allSorted, 0.75);
-      const iqrVal     = iqrQ3 - iqrQ1;
-      const lowerBound = iqrQ1 - 1.0 * iqrVal;
-      const upperBound = Math.min(iqrQ3 + 1.0 * iqrVal, iqrMedian * 2.2);
+    const relevantItems = priceValid.filter(i => i.price >= lowerBound && i.price <= upperBound);
+    const iqrOutliers   = priceValid.filter(i => i.price < lowerBound || i.price > upperBound)
+      .map(i => ({ ...i, exclusionReason: i.price < lowerBound ? "IQR lower outlier" : "IQR upper outlier" }));
 
-      const relevantItems   = priceValid.filter(i => i.price >= lowerBound && i.price <= upperBound);
-      const highExcluded    = priceValid.filter(i => i.price > upperBound);
-      const lowExcluded     = priceValid.filter(i => i.price < lowerBound);
-      const totalExcluded   = highExcluded.length + lowExcluded.length;
+    // Legacy exclusion arrays (kept for response shape compatibility)
+    const titleExcluded = [];
+    const unitExcluded  = [];
+    const highExcluded  = iqrOutliers.filter(i => i.exclusionReason === "IQR upper outlier");
+    const lowExcluded   = iqrOutliers.filter(i => i.exclusionReason === "IQR lower outlier");
 
-      if (relevantItems.length === 0) {
-        return res.json({ ...emptyResult(), searchType: "oem" });
-      }
+    // ── Final stats ───────────────────────────────────────────────────────────
+    const finalPrices = relevantItems.map(i => i.price).sort((a, b) => a - b);
+    const confidence  = getConfidence(finalPrices.length);
 
-      const fp  = relevantItems.map(i => i.price).sort((a, b) => a - b);
-      const n   = fp.length;
-      const conf = getConfidence(n);
+    const excludedByFilter    = 0;
+    const excludedAsSetKit    = 0;
+    const excludedHighOutlier = highExcluded.length;
+    const excludedLowOutlier  = lowExcluded.length;
+    const totalExcluded       = iqrOutliers.length;
 
-      console.log(`[eBay OEM] "${query}" | ${condLabel} | fetched=${totalFetched} used=${n} outliers=${totalExcluded}`);
+    if (finalPrices.length === 0) {
+      const zeroResultsMsg = rule
+        ? `No relevant ${rule.productType} ${condLabel.toLowerCase()} listings found after filtering ${totalFetched} results. Try a different search term.`
+        : `No ${condLabel.toLowerCase()} listings found for this search — try a different search term.`;
+
+      const allExcluded = [
+        ...titleExcluded,
+        ...unitExcluded,
+        ...highExcluded,
+        ...lowExcluded,
+      ].map(i => ({ title: i.title, price: i.price, url: i.url, exclusionReason: i.exclusionReason }));
 
       return res.json({
-        searchType: "oem",
-        low:     +fp[0].toFixed(2),
-        high:    +fp[n - 1].toFixed(2),
-        average: +(fp.reduce((s, v) => s + v, 0) / n).toFixed(2),
-        median:  +calcMedian(fp).toFixed(2),
-        currency, condition, conditionLabel: condLabel,
-        priceCount: n, totalFetched, relevantCount: n,
-        excludedByFilter: 0, excludedAsSetKit: 0,
-        excludedHighOutlier: highExcluded.length,
-        excludedLowOutlier:  lowExcluded.length,
+        low: null, high: null, average: null, median: null,
+        currency,
+        condition,
+        conditionLabel: condLabel,
+        priceCount:          0,
+        totalFetched,
+        relevantCount:       0,
+        excludedByFilter,
+        excludedAsSetKit,
+        excludedHighOutlier,
+        excludedLowOutlier,
         totalExcluded,
         detectedType:    rule?.productType || null,
         filterApplied:   rule !== null,
         unitSensitive:   rule?.unitSensitive ?? false,
-        confidenceLevel: conf.level, confidenceLabel: conf.label, confidenceColor: conf.color,
-        iqrLowerBound:   +lowerBound.toFixed(2),
-        iqrUpperBound:   +upperBound.toFixed(2),
-        iqrOutlierCount: totalExcluded,
-        listings: relevantItems.map(i => ({
-          title: i.title, price: i.price, url: i.url, image: i.image,
-          condition: i.condition, sellerName: i.sellerName,
-          sellerFeedback: i.sellerFeedback, sellerFeedbackPct: i.sellerFeedbackPct,
-          shippingCost: i.shippingCost, shippingType: i.shippingType, itemDate: i.itemDate,
-        })),
-        excludedListings: [
-          ...highExcluded.map(i => ({ title: i.title, price: i.price, url: i.url, exclusionReason: "IQR upper outlier" })),
-          ...lowExcluded.map(i  => ({ title: i.title, price: i.price, url: i.url, exclusionReason: "IQR lower outlier" })),
-        ],
+        confidenceLevel: confidence.level,
+        confidenceLabel: confidence.label,
+        confidenceColor: confidence.color,
+        zeroResultsMsg,
+        iqrLowerBound:   null,
+        iqrUpperBound:   null,
+        iqrOutlierCount: 0,
+        listings:         [],
+        excludedListings: allExcluded,
       });
     }
 
-    // ═════════════════════════════════════════════════════════════════════════
-    // KEYWORD FLOW — cluster by price, then auto-select or prompt user
-    // ═════════════════════════════════════════════════════════════════════════
-    if (priceValid.length === 0) {
-      return res.json({ ...emptyResult(), searchType: "keyword" });
-    }
-
-    const clusters    = clusterByPrice(priceValid);
-    const totalValid  = priceValid.length;
-
-    // Find a dominant cluster (≥85% of all listings, or only 1 cluster)
-    const dominantIdx = clusters.length === 1
-      ? 0
-      : clusters.findIndex(c => c.length / totalValid >= 0.85);
-
-    if (dominantIdx !== -1) {
-      // ── Auto-select: IQR on dominant cluster, return normal response ─────
-      const stats = computeGroupStats(
-        clusters[dominantIdx], currency, condition, condLabel, totalFetched
-      );
-
-      if (!stats || stats.priceCount === 0) {
-        return res.json({ ...emptyResult(), searchType: "keyword" });
-      }
-
-      const groups = clusters.map((c, idx) => ({
-        id:           idx,
-        label:        extractGroupLabel(c),
-        count:        c.length,
-        minPrice:     +Math.min(...c.map(i => i.price)).toFixed(2),
-        maxPrice:     +Math.max(...c.map(i => i.price)).toFixed(2),
-        autoSelected: idx === dominantIdx,
-      }));
-
-      console.log(
-        `[eBay keyword] "${query}" | ${clusters.length} cluster(s), auto-selected #${dominantIdx} ` +
-        `(${clusters[dominantIdx].length}/${totalValid} items)`
-      );
-
-      return res.json({
-        ...stats,
-        searchType:             "keyword",
-        requiresGroupSelection: false,
-        autoSelectedGroupIndex: dominantIdx,
-        groups,
-      });
-    }
-
-    // ── Multiple significant groups → return for user selection ─────────────
-    const groups = clusters.map((c, idx) => {
-      const s = computeGroupStats(c, currency, condition, condLabel, totalFetched);
-      return {
-        id:          idx,
-        label:       extractGroupLabel(c),
-        rawCount:    c.length,
-        count:       s ? s.priceCount  : c.length,
-        minPrice:    s ? s.low         : +Math.min(...c.map(i => i.price)).toFixed(2),
-        maxPrice:    s ? s.high        : +Math.max(...c.map(i => i.price)).toFixed(2),
-        medianPrice: s ? s.median      : null,
-        stats:       s || null,   // full stats object for immediate use after selection
-      };
-    }).sort((a, b) => b.count - a.count); // largest group first
+    const n       = finalPrices.length;
+    const low     = finalPrices[0];
+    const high    = finalPrices[n - 1];
+    const average = finalPrices.reduce((s, v) => s + v, 0) / n;
+    const median  = calcMedian(finalPrices);
 
     console.log(
-      `[eBay keyword] "${query}" | ${groups.length} groups detected: ` +
-      groups.map(g => `"${g.label}" (${g.count} @ £${g.minPrice}–£${g.maxPrice})`).join(' | ')
+      `[eBay] "${query}" | ${condLabel} | fetched=${totalFetched} used=${n} ` +
+      `outliers=${totalExcluded} (lo:${excludedLowOutlier} hi:${excludedHighOutlier}) ` +
+      `bounds=[£${lowerBound.toFixed(2)}, £${upperBound.toFixed(2)}]`
     );
 
-    return res.json({
-      searchType:             "keyword",
-      requiresGroupSelection: true,
-      autoSelectedGroupIndex: null,
-      groups,
-      // Minimal envelope — frontend checks requiresGroupSelection before priceCount
-      low: null, high: null, average: null, median: null,
-      currency, condition, conditionLabel: condLabel,
-      priceCount: 0, totalFetched,
-      listings: [], excludedListings: [],
+    const allExcluded = [
+      ...titleExcluded,
+      ...unitExcluded,
+      ...highExcluded,
+      ...lowExcluded,
+    ].map(i => ({ title: i.title, price: i.price, url: i.url, exclusionReason: i.exclusionReason }));
+
+    res.json({
+      low:     +low.toFixed(2),
+      high:    +high.toFixed(2),
+      average: +average.toFixed(2),
+      median:  +median.toFixed(2),
+      currency,
+      condition,
+      conditionLabel: condLabel,
+      priceCount:          n,
+      totalFetched,
+      relevantCount:       n,
+      excludedByFilter,
+      excludedAsSetKit,
+      excludedHighOutlier,
+      excludedLowOutlier,
+      totalExcluded,
+      detectedType:    rule?.productType || null,
+      filterApplied:   rule !== null,
+      unitSensitive:   rule?.unitSensitive ?? false,
+      confidenceLevel: confidence.level,
+      confidenceLabel: confidence.label,
+      confidenceColor: confidence.color,
+      iqrLowerBound:   +lowerBound.toFixed(2),
+      iqrUpperBound:   +upperBound.toFixed(2),
+      iqrOutlierCount: totalExcluded,
+      listings: relevantItems.map(i => ({
+        title:             i.title,
+        price:             i.price,
+        url:               i.url,
+        image:             i.image,
+        condition:         i.condition,
+        sellerName:        i.sellerName,
+        sellerFeedback:    i.sellerFeedback,
+        sellerFeedbackPct: i.sellerFeedbackPct,
+        shippingCost:      i.shippingCost,
+        shippingType:      i.shippingType,
+        itemDate:          i.itemDate,
+      })),
+      excludedListings: allExcluded,
     });
 
   } catch (err) {
