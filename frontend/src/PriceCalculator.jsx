@@ -838,13 +838,14 @@ function PriceDistribution({ data, listings, price }) {
               if (b.count === 0) return null;
               const colX  = Math.max(0, toX(b.s));
               const colW  = Math.max(2, Math.min(plotW, toX(b.e)) - colX);
-              const barW  = Math.max(1, colW - 2);          // full-width with 1px gap each side
+              const barW  = Math.max(1, colW * 0.65);        // 65% width, centred in column
               const barH  = (b.count / yAxisMax) * plotH;
               const barY  = baseline - barH;
               const ir    = b.count / maxBucket;
               const isHov = hoveredBin === i;
               const isSel = clickedBin === i;
-              const path  = roundedTopRect(colX + 1, barY, barW, barH, 3);
+              const barX  = colX + (colW - barW) / 2;
+              const path  = roundedTopRect(barX, barY, barW, barH, 3);
               return (
                 <g key={i}
                   onMouseEnter={() => setHoveredBin(i)}
@@ -863,7 +864,7 @@ function PriceDistribution({ data, listings, price }) {
                     style={{ pointerEvents: "none" }} />
                   {/* Selected indicator — top highlight */}
                   {isSel && (
-                    <path d={roundedTopRect(colX + 1, barY, barW, 2, 1)}
+                    <path d={roundedTopRect(barX, barY, barW, 2, 1)}
                       fill="#38bdf8" opacity={0.9} style={{ pointerEvents: "none" }} />
                   )}
                 </g>
