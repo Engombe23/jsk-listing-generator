@@ -444,9 +444,11 @@ function PricingBand({ data, price }) {
 function PriceDistribution({ data, listings, price }) {
   const svgRef       = useRef(null);
   const [crosshairX,  setCrosshairX]  = useState(null);
-  const [hoveredBin,  setHoveredBin]  = useState(null); // index into bins[]
-  const [viewMode,    setViewMode]    = useState("chart"); // "chart" | "table"
-  const [tableSort,   setTableSort]   = useState("price"); // "price"|"closest"|"newest"|"feedback"
+  const [hoveredBin,  setHoveredBin]  = useState(null);
+  const [clickedBin,  setClickedBin]  = useState(null); // index of clicked bar → opens right panel
+  const [viewMode,    setViewMode]    = useState("volume"); // "volume" | "cumulative" | "table"
+  const [tableSort,   setTableSort]   = useState("price");
+  const [panelSort,   setPanelSort]   = useState("asc");
 
   const prices = (listings || [])
     .map(l => l.price)
@@ -584,13 +586,12 @@ function PriceDistribution({ data, listings, price }) {
   const xTicks = [];
   for (let v = xTickStart; v <= viewMax - niceXStep * 0.1; v += niceXStep) xTicks.push(Math.round(v));
 
-  // ── Price marker cards — Low, Median, Avg, High + optional Your Price ────────
+  // ── Price marker cards — Low, Median, Your Price, High ──────────────────────
   const MARKERS_DEF = [
-    { key: "low",  v: low,     label: "LOW",     col: "#3b82f6", bg: "rgba(8,20,65,0.97)",   bd: "rgba(59,130,246,0.55)"  },
-    { key: "med",  v: median,  label: "MEDIAN",  col: "#a855f7", bg: "rgba(32,10,58,0.97)",  bd: "rgba(168,85,247,0.55)"  },
+    { key: "low",  v: low,     label: "LOW",        col: "#3b82f6", bg: "rgba(8,20,65,0.97)",   bd: "rgba(59,130,246,0.55)"  },
+    { key: "med",  v: median,  label: "MEDIAN",     col: "#a855f7", bg: "rgba(32,10,58,0.97)",  bd: "rgba(168,85,247,0.55)"  },
     ...(hasPrice ? [{ key: "usr", v: price, label: "YOUR PRICE", col: "#00e5ff", bg: "rgba(0,35,55,0.98)", bd: "rgba(0,229,255,0.8)", hero: true }] : []),
-    { key: "avg",  v: average, label: "AVG",     col: "#f59e0b", bg: "rgba(52,28,2,0.97)",   bd: "rgba(245,158,11,0.55)"  },
-    { key: "high", v: high,    label: "HIGH",    col: "#ef4444", bg: "rgba(52,8,8,0.97)",    bd: "rgba(239,68,68,0.55)"   },
+    { key: "high", v: high,    label: "HIGH",       col: "#ef4444", bg: "rgba(52,8,8,0.97)",    bd: "rgba(239,68,68,0.55)"   },
   ].filter(m => m.v != null && !isNaN(m.v));
 
   // Assign initial positions (clamped to card edges)
@@ -637,11 +638,12 @@ function PriceDistribution({ data, listings, price }) {
     );
   });
 
-  // ── User price label helper ──────────────────────────────────────────────────
-  const userPosLabel = !hasPrice ? '' :
-    price < clusterStart ? 'Below core range' :
-    price > clusterEnd   ? 'Above core range' :
-    'Inside core range';
+  // ── Concentration stats for bottom card ─────────────────────────────────────
+  const concCount = concBins.reduce((s, b) => s + b.count, 0);
+  const concPct   = n > 0 ? Math.round(concCount / n * 100) : 0;
+
+  // ── Cumulative distribution points ───────────────────────────────────────────
+  const cumPts = prices.map((p, i) => ({ price: p, pct: ((i + 1) / n) * 100 }));
 
   return (
     <div style={{
@@ -652,14 +654,15 @@ function PriceDistribution({ data, listings, price }) {
       boxShadow: "0 8px 48px rgba(0,0,0,0.65), inset 0 1px 0 rgba(255,255,255,0.04)",
       marginTop: 2,
       animation: "pdIn 0.4s ease",
+      display: "flex",         // flex row: chart | right panel
     }}>
+
+      {/* ── Main chart column ── */}
+      <div style={{ flex: 1, minWidth: 0 }}>
 
       {/* ── Header ── */}
       <div style={{ padding: "18px 22px 12px", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 9, fontWeight: 800, color: "#2563eb", textTransform: "uppercase", letterSpacing: 2.5, marginBottom: 5 }}>
-            Market Intelligence
-          </div>
           <div style={{ fontSize: 18, fontWeight: 800, color: "#e2e8f0", letterSpacing: -0.4, lineHeight: 1.2 }}>
             Price Distribution
           </div>
@@ -667,35 +670,25 @@ function PriceDistribution({ data, listings, price }) {
             <strong style={{ color: "#7dd3fc" }}>{n}</strong> listings analysed
           </div>
         </div>
-
-        {/* Chart / Table toggle + YOUR PRICE */}
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8, flexShrink: 0 }}>
-          <div style={{ display: "flex", gap: 3 }}>
-            {[["chart", "Chart"], ["table", "Table"]].map(([mode, label]) => (
-              <button key={mode} onClick={() => setViewMode(mode)} style={{
-                padding: "4px 13px", fontSize: 10, fontWeight: 700,
-                letterSpacing: 0.8, textTransform: "uppercase",
-                background: viewMode === mode ? "rgba(19,93,255,0.22)" : "transparent",
-                border: viewMode === mode ? "1px solid rgba(56,189,248,0.40)" : "1px solid rgba(255,255,255,0.07)",
-                borderRadius: 6,
-                color: viewMode === mode ? "#7dd3fc" : "#3d5a72",
-                cursor: "pointer",
-              }}>
-                {label}
-              </button>
-            ))}
-          </div>
-          {hasPrice && (
-            <div style={{ textAlign: "right" }}>
-              <div style={{ fontSize: 9, fontWeight: 700, color: "#00e5ff", textTransform: "uppercase", letterSpacing: 1.4, marginBottom: 3, opacity: 0.8 }}>Your Price</div>
-              <div style={{ fontSize: 16, fontWeight: 900, color: "#00e5ff", letterSpacing: -0.5, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>{fmtGBP(price)}</div>
-              <div style={{ fontSize: 10, color: "#2d748a", marginTop: 3 }}>{userPosLabel}</div>
-            </div>
-          )}
+        {/* Volume / Cumulative % / Table tabs */}
+        <div style={{ display: "flex", gap: 2, background: "rgba(0,0,0,0.25)", borderRadius: 8, padding: "3px", flexShrink: 0 }}>
+          {[["volume", "Volume"], ["cumulative", "Cumulative %"], ["table", "Table"]].map(([mode, label]) => (
+            <button key={mode} onClick={() => setViewMode(mode)} style={{
+              padding: "5px 13px", fontSize: 10, fontWeight: 700,
+              letterSpacing: 0.5,
+              background: viewMode === mode ? "rgba(56,189,248,0.16)" : "transparent",
+              border: viewMode === mode ? "1px solid rgba(56,189,248,0.35)" : "1px solid transparent",
+              borderRadius: 6,
+              color: viewMode === mode ? "#7dd3fc" : "#3d5a72",
+              cursor: "pointer", transition: "all 0.15s",
+            }}>
+              {label}
+            </button>
+          ))}
         </div>
       </div>
 
-      {viewMode === "chart" && <>
+      {(viewMode === "volume" || viewMode === "cumulative") && <>
       {/* ── Chart wrapper: Y-axis col + chart col ── */}
       <div style={{ display: "flex", paddingRight: 10, paddingBottom: 2 }}>
 
@@ -706,7 +699,7 @@ function PriceDistribution({ data, listings, price }) {
             {/* Rotated axis title */}
             <div style={{ position: "absolute", left: 1, top: 0, width: 14, height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <span style={{ fontSize: 7, fontWeight: 600, color: "#2d3f55", textTransform: "uppercase", letterSpacing: 1.8, writingMode: "vertical-rl", transform: "rotate(180deg)", whiteSpace: "nowrap", userSelect: "none" }}>
-                Listing Volume
+                Listings
               </span>
             </div>
             {/* Tick numbers */}
@@ -730,22 +723,14 @@ function PriceDistribution({ data, listings, price }) {
             )}
             {markers.map(m => (
               <div key={m.key} style={{ position: "absolute", left: `${m.pct}%`, top: 2, transform: "translateX(-50%)", display: "flex", flexDirection: "column", alignItems: "center", pointerEvents: "none", zIndex: 10 }}>
-                {/* Label */}
                 <div style={{ fontSize: 7, fontWeight: 800, color: m.col, textTransform: "uppercase", letterSpacing: 1.4, marginBottom: 3, whiteSpace: "nowrap", opacity: 0.9 }}>
                   {m.label}
                 </div>
-                {/* Price card */}
                 <div style={{
-                  background: m.bg,
-                  border: `1px solid ${m.bd}`,
-                  borderRadius: 7,
+                  background: m.bg, border: `1px solid ${m.bd}`, borderRadius: 7,
                   padding: m.hero ? "5px 14px" : "4px 10px",
-                  fontSize: m.hero ? 14 : 12,
-                  fontWeight: 900,
-                  color: m.col,
-                  whiteSpace: "nowrap",
-                  letterSpacing: -0.3,
-                  lineHeight: 1.4,
+                  fontSize: m.hero ? 14 : 12, fontWeight: 900, color: m.col,
+                  whiteSpace: "nowrap", letterSpacing: -0.3, lineHeight: 1.4,
                   boxShadow: m.hero
                     ? `0 0 22px ${m.col}55, 0 0 44px ${m.col}18, 0 3px 12px rgba(0,0,0,0.55)`
                     : `0 0 10px ${m.col}25, 0 2px 8px rgba(0,0,0,0.45)`,
@@ -753,12 +738,42 @@ function PriceDistribution({ data, listings, price }) {
                   {fmtGBP(m.v)}
                   {m.outside && <span style={{ fontSize: 8, marginLeft: 4, opacity: 0.55 }}>{m.v < viewMin ? "◀" : "▶"}</span>}
                 </div>
-                {/* Connector line to chart */}
                 {!m.outside && (
                   <div style={{ width: 1, height: 9, background: `linear-gradient(to bottom, ${m.col}88, transparent)`, marginTop: 2 }} />
                 )}
               </div>
             ))}
+          </div>
+
+          {/* ── Legend row ── */}
+          <div style={{ display: "flex", alignItems: "center", gap: 16, paddingLeft: 4, paddingBottom: 5, flexWrap: "wrap" }}>
+            {/* Core market solid line */}
+            <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+              <svg width="22" height="8" style={{ flexShrink: 0 }}>
+                <line x1="0" y1="4" x2="22" y2="4" stroke="#38bdf8" strokeWidth="1.5" />
+              </svg>
+              <span style={{ fontSize: 9, color: "#4a7090", whiteSpace: "nowrap" }}>Core market ({concPct}%)</span>
+            </div>
+            {hasPrice && (
+              <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                <svg width="22" height="8" style={{ flexShrink: 0 }}>
+                  <line x1="0" y1="4" x2="22" y2="4" stroke="#00e5ff" strokeWidth="1.5" strokeDasharray="4,3" />
+                </svg>
+                <span style={{ fontSize: 9, color: "#4a7090", whiteSpace: "nowrap" }}>Your price</span>
+              </div>
+            )}
+            <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+              <svg width="22" height="8" style={{ flexShrink: 0 }}>
+                <line x1="0" y1="4" x2="22" y2="4" stroke="#a855f7" strokeWidth="1.5" strokeDasharray="4,3" />
+              </svg>
+              <span style={{ fontSize: 9, color: "#4a7090", whiteSpace: "nowrap" }}>Median price</span>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+              <svg width="22" height="8" style={{ flexShrink: 0 }}>
+                <line x1="0" y1="4" x2="22" y2="4" stroke="#ef4444" strokeWidth="1.5" strokeDasharray="4,3" />
+              </svg>
+              <span style={{ fontSize: 9, color: "#4a7090", whiteSpace: "nowrap" }}>High price</span>
+            </div>
           </div>
 
           {/* ── SVG ── */}
@@ -808,56 +823,56 @@ function PriceDistribution({ data, listings, price }) {
               </filter>
             </defs>
 
-            {/* ── Highest-concentration band ── */}
+            {/* ── Gridlines ── */}
+            {yTicks.filter(t => t > 0).map(t => (
+              <line key={t} x1={0} y1={toY(t)} x2={plotW} y2={toY(t)}
+                stroke="rgba(255,255,255,0.055)" strokeWidth={1}
+                vectorEffect="non-scaling-stroke" />
+            ))}
+
+            {/* ── Core-market concentration band (subtle fill only) ── */}
             {concBins.length > 0 && (() => {
-              const cx1  = Math.max(0, toX(concStart));
-              const cx2  = Math.min(plotW, toX(concEnd));
-              const cw   = Math.max(0, cx2 - cx1);
-              const midX = (cx1 + cx2) / 2;
-              const lbl  = `${fmtX(concStart)} – ${fmtX(concEnd)}`;
+              const cx1 = Math.max(0, toX(concStart));
+              const cx2 = Math.min(plotW, toX(concEnd));
               return (
-                <g>
-                  <rect x={cx1} y={PAD_T} width={cw} height={plotH} fill="rgba(56,189,248,0.045)" />
-                  <line x1={cx1} y1={PAD_T} x2={cx1} y2={baseline}
-                    stroke="rgba(56,189,248,0.22)" strokeWidth={1} strokeDasharray="3,4"
-                    vectorEffect="non-scaling-stroke" />
-                  <line x1={cx2} y1={PAD_T} x2={cx2} y2={baseline}
-                    stroke="rgba(56,189,248,0.22)" strokeWidth={1} strokeDasharray="3,4"
-                    vectorEffect="non-scaling-stroke" />
-                  {cw > 55 && <>
-                    <text x={midX} y={PAD_T + 8} textAnchor="middle" fontSize={6.5}
-                      fill="#38bdf8" fillOpacity={0.55} fontWeight="800" letterSpacing="1">
-                      HIGHEST SELLER CONCENTRATION
-                    </text>
-                    <text x={midX} y={PAD_T + 17} textAnchor="middle" fontSize={7.5}
-                      fill="#7dd3fc" fillOpacity={0.45} fontWeight="700">{lbl}
-                    </text>
-                  </>}
-                </g>
+                <rect x={cx1} y={PAD_T} width={Math.max(0, cx2 - cx1)} height={plotH}
+                  fill="rgba(56,189,248,0.038)" />
               );
             })()}
 
             {/* ── PRIMARY: Histogram bars ── */}
             {bins.map((b, i) => {
               if (b.count === 0) return null;
-              const colX    = Math.max(0, toX(b.s));
-              const colW    = Math.max(2, toX(b.e) - toX(b.s));  // full column width for hit zone
-              const barW    = Math.max(1, colW * 0.60);            // bars at 60% width — thin look
-              const barH    = (b.count / yAxisMax) * plotH;
-              const barY    = baseline - barH;
-              const ir      = b.count / maxBucket;
-              const isHov   = hoveredBin === i;
-              const barX    = colX + (colW - barW) / 2;                 // centered in column
-              const path    = roundedTopRect(barX, barY, barW, barH, 3);
+              const colX  = Math.max(0, toX(b.s));
+              const colW  = Math.max(2, toX(b.e) - toX(b.s));
+              const barW  = Math.max(1, colW - 2);          // full-width with 1px gap each side
+              const barH  = (b.count / yAxisMax) * plotH;
+              const barY  = baseline - barH;
+              const ir    = b.count / maxBucket;
+              const isHov = hoveredBin === i;
+              const isSel = clickedBin === i;
+              const path  = roundedTopRect(colX + 1, barY, barW, barH, 3);
               return (
-                <g key={i} onMouseEnter={() => setHoveredBin(i)}>
-                  {/* Full-height transparent hit zone — every pixel in the column is hoverable */}
+                <g key={i}
+                  onMouseEnter={() => setHoveredBin(i)}
+                  onClick={() => setClickedBin(isSel ? null : i)}
+                >
+                  {/* Full-height transparent hit zone */}
                   <rect x={colX} y={PAD_T} width={colW} height={plotH}
                     fill="transparent" style={{ cursor: "pointer" }} />
                   {/* Glow behind bar */}
-                  <path d={path} fill="#38bdf8" opacity={isHov ? ir * 0.22 : ir * 0.10} style={{ pointerEvents: "none" }} />
+                  <path d={path} fill="#38bdf8"
+                    opacity={isHov || isSel ? ir * 0.28 : ir * 0.10}
+                    style={{ pointerEvents: "none" }} />
                   {/* Main bar */}
-                  <path d={path} fill="url(#pdBar)" opacity={isHov ? 0.95 : 0.28 + 0.52 * ir} style={{ pointerEvents: "none" }} />
+                  <path d={path} fill="url(#pdBar)"
+                    opacity={isHov || isSel ? 1.0 : 0.30 + 0.55 * ir}
+                    style={{ pointerEvents: "none" }} />
+                  {/* Selected indicator — top highlight */}
+                  {isSel && (
+                    <path d={roundedTopRect(colX + 1, barY, barW, 2, 1)}
+                      fill="#38bdf8" opacity={0.9} style={{ pointerEvents: "none" }} />
+                  )}
                 </g>
               );
             })}
@@ -874,7 +889,7 @@ function PriceDistribution({ data, listings, price }) {
 
             {/* ── Market guide lines — all non-hero markers ── */}
             {markers.filter(m => !m.outside && !m.hero).map(m => {
-              const isMajor = m.key === "med" || m.key === "avg";
+              const isMajor = m.key === "med";
               const mx = toX(m.v);
               return (
                 <g key={m.key}>
@@ -991,70 +1006,6 @@ function PriceDistribution({ data, listings, price }) {
 
           </svg>
 
-          {/* ── Bar hover tooltip ── */}
-          {hoveredBin !== null && (() => {
-            const b   = bins[hoveredBin];
-            if (!b) return null;
-            const bl      = binListings[hoveredBin] || [];
-            const shown   = bl.slice(0, 5);
-            const extra   = bl.length - shown.length;
-            const barCX   = toX((b.s + b.e) / 2);
-            const pct     = clamp((barCX / CHART_W) * 100, 5, 88);
-            const flipLeft = pct > 65;
-            return (
-              <div style={{
-                position: "absolute",
-                top: CARD_H + 4,
-                left: `${pct}%`,
-                transform: flipLeft ? "translateX(-90%)" : "translateX(-10%)",
-                zIndex: 30,
-                pointerEvents: "none",
-                minWidth: 220,
-                maxWidth: 280,
-                background: "rgba(2,10,28,0.97)",
-                border: "1px solid rgba(56,189,248,0.30)",
-                borderRadius: 10,
-                padding: "11px 13px",
-                boxShadow: "0 8px 32px rgba(0,0,0,0.70)",
-              }}>
-                {/* Header */}
-                <div style={{ fontSize: 11, fontWeight: 800, color: "#38bdf8", marginBottom: 2, fontVariantNumeric: "tabular-nums" }}>
-                  {fmtX(b.s)} – {fmtX(b.e)}
-                </div>
-                <div style={{ fontSize: 10, color: "#4a7090", marginBottom: bl.length ? 8 : 0 }}>
-                  {b.count} listing{b.count !== 1 ? "s" : ""}
-                </div>
-                {/* Listing rows */}
-                {shown.map((l, i) => (
-                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: i < shown.length - 1 ? 7 : 0 }}>
-                    {/* Thumbnail */}
-                    <div style={{ width: 36, height: 36, flexShrink: 0, borderRadius: 5, overflow: "hidden", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}>
-                      {l.image
-                        ? <img src={l.image} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                        : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, color: "#2d4a65" }}>□</div>
-                      }
-                    </div>
-                    {/* Details */}
-                    <div style={{ minWidth: 0, flex: 1 }}>
-                      <div style={{ fontSize: 10, color: "#94a3b8", lineHeight: 1.35, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", marginBottom: 2 }}>
-                        {l.title}
-                      </div>
-                      <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                        <span style={{ fontSize: 11, fontWeight: 800, color: "#e2e8f0", fontVariantNumeric: "tabular-nums" }}>{fmtGBP(l.price)}</span>
-                        {l.sellerName && <span style={{ fontSize: 9, color: "#3d5a72" }}>{l.sellerName}</span>}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-                {extra > 0 && (
-                  <div style={{ marginTop: 7, fontSize: 9.5, color: "#2d6080", fontWeight: 600 }}>
-                    +{extra} more — view in Table
-                  </div>
-                )}
-              </div>
-            );
-          })()}
-
           {/* ── X-axis labels ── */}
           <div style={{ position: "relative", height: 30, marginTop: 2 }}>
             {xTicks.map(v => (
@@ -1069,8 +1020,117 @@ function PriceDistribution({ data, listings, price }) {
         </div>
       </div>
 
+      {/* ── Bottom: Core market cluster card ── */}
+      {concBins.length > 0 && (
+        <div style={{ margin: "8px 22px 18px", display: "flex", alignItems: "flex-start", gap: 13 }}>
+          <div style={{ width: 28, height: 28, borderRadius: "50%", border: "1.5px solid rgba(56,189,248,0.55)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1 }}>
+            <div style={{ width: 8, height: 8, borderRadius: "50%", background: "rgba(56,189,248,0.7)" }} />
+          </div>
+          <div>
+            <div style={{ fontSize: 9, fontWeight: 800, color: "#38bdf8", textTransform: "uppercase", letterSpacing: 1.3, marginBottom: 5, opacity: 0.85 }}>
+              Core market
+            </div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "#e2e8f0", lineHeight: 1.4, letterSpacing: -0.1 }}>
+              Most sellers cluster between <span style={{ color: "#7dd3fc" }}>{fmtX(concStart)} – {fmtX(concEnd)}</span>.
+            </div>
+            <div style={{ fontSize: 11, color: "#4a7090", marginTop: 3 }}>
+              {concCount} of {n} listings ({concPct}%) sit within this range.
+            </div>
+          </div>
+        </div>
+      )}
 
       </>}
+
+      {/* ── Cumulative % view ── */}
+      {viewMode === "cumulative" && (() => {
+        const CW = CHART_W, CH = CHART_H;
+        const cToX = v => ((v - viewMin) / viewRange) * plotW;
+        const cToY = pct => (PAD_T + plotH) - (pct / 100) * plotH;
+        const cPts = cumPts
+          .filter(p => p.price >= viewMin && p.price <= viewMax)
+          .map(p => ({ sx: Math.max(0, Math.min(plotW, cToX(p.price))), sy: cToY(p.pct) }));
+
+        // Build smooth line through cumulative points
+        let cumPath = '';
+        if (cPts.length > 1) {
+          cumPath = `M ${cPts[0].sx.toFixed(1)},${cPts[0].sy.toFixed(1)}`;
+          for (let i = 0; i < cPts.length - 1; i++) {
+            const p0 = cPts[Math.max(0, i - 1)];
+            const p1 = cPts[i], p2 = cPts[i + 1];
+            const p3 = cPts[Math.min(cPts.length - 1, i + 2)];
+            const cp1x = p1.sx + (p2.sx - p0.sx) / 6;
+            const cp1y = p1.sy + (p2.sy - p0.sy) / 6;
+            const cp2x = p2.sx - (p3.sx - p1.sx) / 6;
+            const cp2y = p2.sy - (p3.sy - p1.sy) / 6;
+            cumPath += ` C ${cp1x.toFixed(1)},${cp1y.toFixed(1)} ${cp2x.toFixed(1)},${cp2y.toFixed(1)} ${p2.sx.toFixed(1)},${p2.sy.toFixed(1)}`;
+          }
+        }
+        const cumArea = cPts.length > 1
+          ? `${cumPath} L ${cPts[cPts.length-1].sx},${PAD_T+plotH} L ${cPts[0].sx},${PAD_T+plotH} Z`
+          : '';
+        const cumYTicks = [0, 25, 50, 75, 100];
+        return (
+          <div style={{ display: "flex", paddingRight: 10, paddingBottom: 2 }}>
+            {/* Y-axis */}
+            <div style={{ width: 44, flexShrink: 0 }}>
+              <div style={{ height: CARD_H + 28 }} />
+              <div style={{ position: "relative", height: CHART_H }}>
+                <div style={{ position: "absolute", left: 1, top: 0, width: 14, height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <span style={{ fontSize: 7, fontWeight: 600, color: "#2d3f55", textTransform: "uppercase", letterSpacing: 1.8, writingMode: "vertical-rl", transform: "rotate(180deg)", whiteSpace: "nowrap", userSelect: "none" }}>
+                    Cumulative %
+                  </span>
+                </div>
+                {cumYTicks.map(t => (
+                  <div key={t} style={{ position: "absolute", right: 5, top: cToY(t), transform: "translateY(-50%)", fontSize: 9, color: t === 0 ? "#2d4a65" : "#5a7fa0", lineHeight: 1, fontVariantNumeric: "tabular-nums", userSelect: "none", fontWeight: 600 }}>
+                    {t}%
+                  </div>
+                ))}
+              </div>
+            </div>
+            {/* Chart */}
+            <div style={{ flex: 1, position: "relative", minWidth: 0 }}>
+              <div style={{ height: CARD_H + 28 }} />
+              <svg viewBox={`0 0 ${CW} ${CH}`} preserveAspectRatio="none" width="100%" height={CH} style={{ display: "block" }}>
+                <defs>
+                  <linearGradient id="cumFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#38bdf8" stopOpacity="0.30" />
+                    <stop offset="100%" stopColor="#38bdf8" stopOpacity="0.03" />
+                  </linearGradient>
+                </defs>
+                {cumYTicks.filter(t => t > 0).map(t => (
+                  <line key={t} x1={0} y1={cToY(t)} x2={plotW} y2={cToY(t)}
+                    stroke="rgba(255,255,255,0.055)" strokeWidth={1} vectorEffect="non-scaling-stroke" />
+                ))}
+                <line x1={0} y1={PAD_T + plotH} x2={plotW} y2={PAD_T + plotH}
+                  stroke="rgba(255,255,255,0.10)" strokeWidth={1} vectorEffect="non-scaling-stroke" />
+                {cumArea && <path d={cumArea} fill="url(#cumFill)" />}
+                {cumPath && <path d={cumPath} fill="none" stroke="#38bdf8" strokeWidth={2} opacity={0.85} vectorEffect="non-scaling-stroke" />}
+                {/* Your price vertical */}
+                {hasPrice && inView(price) && (
+                  <line x1={cToX(price)} y1={PAD_T} x2={cToX(price)} y2={PAD_T+plotH}
+                    stroke="#00e5ff" strokeWidth={1.5} strokeDasharray="4,3" opacity={0.8} vectorEffect="non-scaling-stroke" />
+                )}
+                {/* Median vertical */}
+                {inView(median) && (
+                  <line x1={cToX(median)} y1={PAD_T} x2={cToX(median)} y2={PAD_T+plotH}
+                    stroke="#a855f7" strokeWidth={1.5} strokeDasharray="4,3" opacity={0.7} vectorEffect="non-scaling-stroke" />
+                )}
+              </svg>
+              <div style={{ position: "relative", height: 30, marginTop: 2 }}>
+                {xTicks.map(v => (
+                  <div key={v} style={{ position: "absolute", left: `${clamp(toPct(v), 2, 96)}%`, top: 4, transform: "translateX(-50%)", fontSize: 9, color: "#5a7fa0", whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums", userSelect: "none", fontWeight: 600 }}>
+                    {fmtX(v)}
+                  </div>
+                ))}
+                <div style={{ textAlign: "center", paddingTop: 18, fontSize: 7, color: "#2d4a65", textTransform: "uppercase", letterSpacing: 1.8, userSelect: "none", fontWeight: 700 }}>
+                  PRICE (£)
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ── Table view ── */}
       {viewMode === "table" && (() => {
@@ -1232,6 +1292,137 @@ function PriceDistribution({ data, listings, price }) {
         <span style={{ fontSize: 13, opacity: 0.5 }}>ⓘ</span>
         Prices analysed from active eBay UK listings only. Data updates every 24 hours.
       </div>
+
+      </div>{/* end main chart column */}
+
+      {/* ── Right listing panel — opens when a bar is clicked ── */}
+      {clickedBin !== null && (() => {
+        const b  = bins[clickedBin];
+        if (!b) return null;
+        const bl = binListings[clickedBin] || [];
+        const fmtShip = (cost, type) => {
+          if (type === "FREE" || cost === 0) return "Free delivery";
+          if (cost != null) return `+£${cost.toFixed(2)} postage`;
+          return "";
+        };
+        const sorted = [...bl].sort((a, z) => {
+          if (panelSort === "desc")     return z.price - a.price;
+          if (panelSort === "feedback") return (z.sellerFeedback || 0) - (a.sellerFeedback || 0);
+          return a.price - z.price; // asc
+        });
+        return (
+          <div style={{
+            width: 310, flexShrink: 0,
+            borderLeft: "1px solid rgba(56,189,248,0.14)",
+            background: "rgba(1,7,18,0.98)",
+            display: "flex", flexDirection: "column",
+            maxHeight: "100%",
+          }}>
+            {/* Panel header */}
+            <div style={{ padding: "18px 16px 14px", borderBottom: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
+              <div>
+                <div style={{ fontSize: 15, fontWeight: 800, color: "#e2e8f0", letterSpacing: -0.3 }}>
+                  {fmtX(b.s)} – {fmtX(b.e)} Range
+                </div>
+                <span style={{ display: "inline-block", marginTop: 5, fontSize: 10, fontWeight: 700, color: "#38bdf8", background: "rgba(56,189,248,0.10)", border: "1px solid rgba(56,189,248,0.22)", borderRadius: 5, padding: "2px 8px" }}>
+                  {b.count} listings
+                </span>
+              </div>
+              <button onClick={() => setClickedBin(null)} style={{ background: "none", border: "none", color: "#4a7090", cursor: "pointer", fontSize: 22, lineHeight: 1, padding: "0 2px", marginTop: -2, flexShrink: 0 }}>
+                ×
+              </button>
+            </div>
+
+            {/* Sort bar */}
+            <div style={{ padding: "8px 14px", borderBottom: "1px solid rgba(255,255,255,0.04)", display: "flex", alignItems: "center", gap: 7 }}>
+              <span style={{ fontSize: 10, color: "#3d5a72", whiteSpace: "nowrap" }}>Sort by:</span>
+              <select value={panelSort} onChange={e => setPanelSort(e.target.value)} style={{
+                background: "rgba(0,0,0,0.35)", border: "1px solid rgba(255,255,255,0.10)",
+                borderRadius: 5, color: "#94a3b8", fontSize: 10, padding: "3px 8px",
+                cursor: "pointer", flex: 1,
+              }}>
+                <option value="asc">Price: Low to High</option>
+                <option value="desc">Price: High to Low</option>
+                <option value="feedback">Most Feedback</option>
+              </select>
+            </div>
+
+            {/* Listings */}
+            <div style={{ flex: 1, overflowY: "auto" }}>
+              {sorted.map((l, i) => (
+                <a key={i} href={l.url} target="_blank" rel="noreferrer" style={{
+                  display: "flex", alignItems: "center", gap: 10, padding: "10px 14px",
+                  borderBottom: "1px solid rgba(255,255,255,0.04)",
+                  textDecoration: "none",
+                  background: "transparent",
+                  transition: "background 0.12s",
+                }}
+                  onMouseEnter={e => e.currentTarget.style.background = "rgba(56,189,248,0.04)"}
+                  onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+                >
+                  {/* Thumbnail */}
+                  <div style={{ width: 44, height: 44, flexShrink: 0, borderRadius: 6, overflow: "hidden", background: "#0a1520", border: "1px solid rgba(255,255,255,0.07)" }}>
+                    {l.image
+                      ? <img src={l.image} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, opacity: 0.2 }}>□</div>
+                    }
+                  </div>
+                  {/* Info */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 10.5, color: "#a8c8e8", lineHeight: 1.35, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", marginBottom: 3 }}>
+                      {l.title}
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                      <span style={{ fontSize: 13, fontWeight: 800, color: "#e2e8f0", fontVariantNumeric: "tabular-nums" }}>
+                        {fmtGBP(l.price)}
+                        <span style={{ fontSize: 9, marginLeft: 4, opacity: 0.5 }}>↗</span>
+                      </span>
+                    </div>
+                    <div style={{ display: "flex", gap: 6, marginTop: 2, alignItems: "center", flexWrap: "wrap" }}>
+                      {l.condition && (
+                        <span style={{ fontSize: 9, color: "#4a7090", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 3, padding: "1px 5px" }}>
+                          {l.condition}
+                        </span>
+                      )}
+                      {l.sellerFeedback != null && (
+                        <span style={{ fontSize: 9, color: "#3d5a72" }}>
+                          {l.sellerFeedback.toLocaleString()}
+                          {l.sellerFeedbackPct != null && <span style={{ color: "#4a9a6a", marginLeft: 2 }}>{l.sellerFeedbackPct.toFixed(1)}%</span>}
+                        </span>
+                      )}
+                      {(l.shippingCost != null || l.shippingType) && (
+                        <span style={{ fontSize: 9, color: l.shippingCost === 0 || l.shippingType === "FREE" ? "#34d399" : "#4a7090" }}>
+                          {fmtShip(l.shippingCost, l.shippingType)}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <span style={{ fontSize: 14, color: "#2d4a65", flexShrink: 0 }}>›</span>
+                </a>
+              ))}
+            </div>
+
+            {/* View all link */}
+            <div style={{ padding: "10px 14px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+              <button onClick={() => setViewMode("table")} style={{
+                width: "100%", padding: "8px", fontSize: 11, fontWeight: 700,
+                color: "#38bdf8", background: "rgba(56,189,248,0.07)",
+                border: "1px solid rgba(56,189,248,0.20)", borderRadius: 7,
+                cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+              }}>
+                View all {b.count} listings in this range
+                <span style={{ fontSize: 12 }}>↗</span>
+              </button>
+            </div>
+
+            {/* Tip */}
+            <div style={{ padding: "8px 14px 14px", display: "flex", alignItems: "flex-start", gap: 7 }}>
+              <span style={{ fontSize: 13, flexShrink: 0 }}>💡</span>
+              <span style={{ fontSize: 10, color: "#2d4a65", lineHeight: 1.4 }}>Tip: Click a bar to lock this range</span>
+            </div>
+          </div>
+        );
+      })()}
 
     </div>
   );
