@@ -866,17 +866,22 @@ function PriceDistribution({ data, listings, price }) {
         return (
           <div style={{ borderTop: "1px solid rgba(56,189,248,0.12)", background: "rgba(0,10,25,0.45)" }}>
             {/* Zoom header */}
-            <div style={{ padding: "12px 22px 4px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <span style={{ fontSize: 9, fontWeight: 800, color: "#38bdf8", textTransform: "uppercase", letterSpacing: 1.4, background: "rgba(56,189,248,0.10)", border: "1px solid rgba(56,189,248,0.22)", borderRadius: 4, padding: "2px 8px" }}>
-                  Zoomed
-                </span>
-                <span style={{ fontSize: 13, fontWeight: 700, color: "#e2e8f0" }}>
-                  {fmtX(zMin)} – {fmtX(zMax)}
-                </span>
-                <span style={{ fontSize: 10, color: "#4a7090" }}>
-                  {totalInRange} listings · £{zBinW} steps
-                </span>
+            <div style={{ padding: "12px 22px 4px", display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+              <div>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <span style={{ fontSize: 9, fontWeight: 800, color: "#38bdf8", textTransform: "uppercase", letterSpacing: 1.4, background: "rgba(56,189,248,0.10)", border: "1px solid rgba(56,189,248,0.22)", borderRadius: 4, padding: "2px 8px" }}>
+                    Zoomed
+                  </span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: "#e2e8f0" }}>
+                    {fmtX(zMin)} – {fmtX(zMax)}
+                  </span>
+                  <span style={{ fontSize: 10, color: "#4a7090" }}>
+                    £{zBinW} steps
+                  </span>
+                </div>
+                <div style={{ fontSize: 11, color: "#5a7fa0", marginTop: 4 }}>
+                  <strong style={{ color: "#7dd3fc" }}>{totalInRange}</strong> listings in range
+                </div>
               </div>
               <button onClick={() => setClickedBin(null)} style={{
                 background: "none", border: "1px solid rgba(255,255,255,0.08)",
