@@ -446,6 +446,7 @@ function PriceDistribution({ data, listings, price }) {
   const [crosshairX,  setCrosshairX]  = useState(null);
   const [hoveredBin,  setHoveredBin]  = useState(null);
   const [clickedBin,  setClickedBin]  = useState(null); // index of clicked bar → opens right panel
+  const [hoveredGap,  setHoveredGap]  = useState(null); // index into gapRegions[]
   const [viewMode,    setViewMode]    = useState("volume"); // "volume" | "cumulative" | "table"
   const [tableSort,   setTableSort]   = useState("price");
   const [panelSort,   setPanelSort]   = useState("asc");
@@ -515,76 +516,87 @@ function PriceDistribution({ data, listings, price }) {
   const plotW = CHART_W - PAD_R;
   const plotH = CHART_H - PAD_T - PAD_B;
 
-  const toX   = v   => ((v - viewMin) / viewRange) * plotW;
+  // ── Gap detection — interior runs of empty bins ──────────────────────────────
+  // Only interior gaps (between two populated bins) are compressed.
+  // Trailing empty space at the right edge is not a "gap" — that's just the view margin.
+  const MIN_GAP_RANGE = Math.max(binW * 2, (high - low) * 0.06);
+  const gapRegions = (() => {
+    const gaps = [];
+    let gapS = null;
+    for (let i = 0; i < bins.length; i++) {
+      if (bins[i].count === 0) {
+        if (gapS === null) gapS = bins[i].s;
+      } else if (gapS !== null) {
+        if (bins[i].s - gapS >= MIN_GAP_RANGE) gaps.push({ s: gapS, e: bins[i].s });
+        gapS = null;
+      }
+    }
+    return gaps; // deliberately ignore trailing gaps
+  })();
+
+  // ── Piecewise x-axis: gaps compressed to ~14% of natural width ──────────────
+  const GAP_COMPRESSION = 0.14;
+  const pxSegments = (() => {
+    const segs = [];
+    let cur = viewMin;
+    for (const g of gapRegions) {
+      if (g.s > cur) segs.push({ type: 'data', s: cur,  e: g.s  });
+      segs.push(          { type: 'gap',  s: g.s,  e: g.e  });
+      cur = g.e;
+    }
+    if (cur < viewMax) segs.push({ type: 'data', s: cur, e: viewMax });
+
+    const withNat = segs.map(seg => ({ ...seg, natPx: (seg.e - seg.s) / viewRange * plotW }));
+    const gapPxArr = withNat.map(s => s.type === 'gap' ? Math.max(32, s.natPx * GAP_COMPRESSION) : 0);
+    const totalGapPx  = gapPxArr.reduce((a, b) => a + b, 0);
+    const dataAvail   = plotW - totalGapPx;
+    const totalDataRng = segs.filter(s => s.type === 'data').reduce((sum, s) => sum + (s.e - s.s), 0) || 1;
+
+    let x = 0;
+    return withNat.map((seg, i) => {
+      const px = seg.type === 'gap'
+        ? gapPxArr[i]
+        : (seg.e - seg.s) / totalDataRng * dataAvail;
+      const out = { ...seg, px, x0: x, x1: x + px };
+      x += px;
+      return out;
+    });
+  })();
+
+  // Piecewise toX: price → SVG x coordinate
+  const toX = v => {
+    if (v <= viewMin) return 0;
+    if (v >= viewMax) return plotW;
+    for (const seg of pxSegments) {
+      if (v >= seg.s && v <= seg.e) {
+        const t = seg.e > seg.s ? (v - seg.s) / (seg.e - seg.s) : 0;
+        return seg.x0 + t * seg.px;
+      }
+    }
+    return plotW;
+  };
+
   const toY   = cnt => (PAD_T + plotH) - (cnt / yAxisMax) * plotH;
   const toPct = v   => (toX(v) / CHART_W) * 100;
   const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
   const inView = v => v >= viewMin && v <= viewMax;
 
-  // Bin midpoints + zero-height anchors outside view for natural curve taper
-  const halfBin  = binW * 0.5;
-  const binMids  = bins.map(b => ({ x: (b.s + b.e) / 2, y: b.count }));
-  const allMids  = [
-    { x: viewMin - halfBin, y: 0 },
-    ...binMids,
-    { x: viewMax + halfBin, y: 0 },
-  ];
-
-  // Single-pass 3-tap smooth — aggressive (0.10/0.80/0.10) so peaks react
-  // strongly to actual concentration. Catmull-Rom still provides organic curve.
-  const smoothed = allMids.map((p, i) => {
-    const prev = allMids[i - 1];
-    const next = allMids[i + 1];
-    const y = prev && next
-      ? prev.y * 0.10 + p.y * 0.80 + next.y * 0.10
-      : prev ? prev.y * 0.10 + p.y * 0.90
-      : next ? p.y * 0.90 + next.y * 0.10
-      : p.y;
-    return { x: p.x, y };
-  });
-
-  // Map to SVG space
-  const curvePts = smoothed.map(p => ({
-    sx: Math.max(0, Math.min(plotW, toX(p.x))),
-    sy: toY(p.y),
-  }));
-
-  // Catmull-Rom → cubic bezier — smooth organic curve through bar tops
-  const buildCRPath = pts => {
-    if (pts.length < 2) return '';
-    let d = `M ${pts[0].sx.toFixed(1)},${pts[0].sy.toFixed(1)}`;
-    for (let i = 0; i < pts.length - 1; i++) {
-      const p0 = pts[Math.max(0, i - 1)];
-      const p1 = pts[i];
-      const p2 = pts[i + 1];
-      const p3 = pts[Math.min(pts.length - 1, i + 2)];
-      const cp1x = p1.sx + (p2.sx - p0.sx) / 6;
-      const cp1y = p1.sy + (p2.sy - p0.sy) / 6;
-      const cp2x = p2.sx - (p3.sx - p1.sx) / 6;
-      const cp2y = p2.sy - (p3.sy - p1.sy) / 6;
-      d += ` C ${cp1x.toFixed(1)},${cp1y.toFixed(1)} ${cp2x.toFixed(1)},${cp2y.toFixed(1)} ${p2.sx.toFixed(1)},${p2.sy.toFixed(1)}`;
-    }
-    return d;
-  };
-
   const baseline = PAD_T + plotH;
-  const linePath = buildCRPath(curvePts);
-  const areaPath = curvePts.length > 1
-    ? `${linePath} L ${curvePts[curvePts.length - 1].sx.toFixed(1)},${baseline} L ${curvePts[0].sx.toFixed(1)},${baseline} Z`
-    : '';
 
 
   // ── Y-axis ticks — always 0–yAxisMax ─────────────────────────────────────────
   const yStep  = yAxisMax <= 10 ? 2 : yAxisMax <= 20 ? 4 : yAxisMax <= 40 ? 5 : 10;
   const yTicks = Array.from({ length: Math.floor(yAxisMax / yStep) + 1 }, (_, i) => i * yStep);
 
-  // ── X-axis ticks — target ~5–6 labels ────────────────────────────────────────
+  // ── X-axis ticks — target ~5–6 labels, skip ticks inside gap regions ─────────
   const maxXStep   = viewRange / 5;
   const xMag       = Math.pow(10, Math.floor(Math.log10(Math.max(maxXStep, 1))));
   const niceXStep  = ([1, 2, 2.5, 5, 10].map(f => f * xMag)).filter(s => s <= maxXStep).pop() ?? xMag;
   const xTickStart = Math.floor(viewMin / niceXStep) * niceXStep;
-  const xTicks = [];
-  for (let v = xTickStart; v <= viewMax - niceXStep * 0.1; v += niceXStep) xTicks.push(Math.round(v));
+  const xTicksRaw  = [];
+  for (let v = xTickStart; v <= viewMax - niceXStep * 0.1; v += niceXStep) xTicksRaw.push(Math.round(v));
+  const inGap = v => gapRegions.some(g => v > g.s && v < g.e);
+  const xTicks = xTicksRaw.filter(v => !inGap(v));
 
   // ── Price marker cards — Low, Median, Your Price, High ──────────────────────
   const MARKERS_DEF = [
@@ -784,7 +796,7 @@ function PriceDistribution({ data, listings, price }) {
               const sx = ((e.clientX - rect.left) / rect.width) * CHART_W;
               setCrosshairX(Math.max(0, Math.min(CHART_W, sx)));
             }}
-            onMouseLeave={() => { setCrosshairX(null); setHoveredBin(null); }}
+            onMouseLeave={() => { setCrosshairX(null); setHoveredBin(null); setHoveredGap(null); }}
           >
             <defs>
               {/* Curve fill */}
@@ -822,6 +834,47 @@ function PriceDistribution({ data, listings, price }) {
                 stroke="rgba(255,255,255,0.055)" strokeWidth={1}
                 vectorEffect="non-scaling-stroke" />
             ))}
+
+            {/* ── Compressed gap regions ── */}
+            {pxSegments.filter(s => s.type === 'gap').map((seg, gi) => {
+              const isHov = hoveredGap === gi;
+              return (
+                <g key={gi}
+                  onMouseEnter={() => setHoveredGap(gi)}
+                  onMouseLeave={() => setHoveredGap(null)}
+                  style={{ cursor: 'default' }}
+                >
+                  {/* Faded background fill */}
+                  <rect x={seg.x0} y={PAD_T} width={seg.px} height={plotH}
+                    fill={isHov ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.015)"} />
+                  {/* Dashed connector line through mid-height */}
+                  <line x1={seg.x0} y1={PAD_T + plotH * 0.5} x2={seg.x1} y2={PAD_T + plotH * 0.5}
+                    stroke="rgba(255,255,255,0.10)" strokeWidth={1} strokeDasharray="2,3"
+                    vectorEffect="non-scaling-stroke" />
+                  {/* Left edge border */}
+                  <line x1={seg.x0} y1={PAD_T} x2={seg.x0} y2={baseline}
+                    stroke="rgba(255,255,255,0.12)" strokeWidth={0.75} strokeDasharray="3,3"
+                    vectorEffect="non-scaling-stroke" />
+                  {/* Right edge border */}
+                  <line x1={seg.x1} y1={PAD_T} x2={seg.x1} y2={baseline}
+                    stroke="rgba(255,255,255,0.12)" strokeWidth={0.75} strokeDasharray="3,3"
+                    vectorEffect="non-scaling-stroke" />
+                  {/* // break marks on baseline — left side */}
+                  <line x1={seg.x0 - 4} y1={baseline + 5} x2={seg.x0 + 3} y2={baseline - 2}
+                    stroke="rgba(255,255,255,0.35)" strokeWidth={1.2} vectorEffect="non-scaling-stroke" />
+                  <line x1={seg.x0 - 1} y1={baseline + 5} x2={seg.x0 + 6} y2={baseline - 2}
+                    stroke="rgba(255,255,255,0.35)" strokeWidth={1.2} vectorEffect="non-scaling-stroke" />
+                  {/* // break marks on baseline — right side */}
+                  <line x1={seg.x1 - 4} y1={baseline + 5} x2={seg.x1 + 3} y2={baseline - 2}
+                    stroke="rgba(255,255,255,0.35)" strokeWidth={1.2} vectorEffect="non-scaling-stroke" />
+                  <line x1={seg.x1 - 1} y1={baseline + 5} x2={seg.x1 + 6} y2={baseline - 2}
+                    stroke="rgba(255,255,255,0.35)" strokeWidth={1.2} vectorEffect="non-scaling-stroke" />
+                  {/* Full-height invisible hit zone for hover */}
+                  <rect x={seg.x0} y={PAD_T} width={seg.px} height={plotH + 8}
+                    fill="transparent" />
+                </g>
+              );
+            })}
 
             {/* ── Core-market concentration band (subtle fill only) ── */}
             {concBins.length > 0 && (() => {
@@ -990,6 +1043,37 @@ function PriceDistribution({ data, listings, price }) {
             })()}
 
           </svg>
+
+          {/* ── Gap hover tooltip ── */}
+          {hoveredGap !== null && (() => {
+            const gapSegs = pxSegments.filter(s => s.type === 'gap');
+            const seg = gapSegs[hoveredGap];
+            if (!seg) return null;
+            const midPct = clamp(((seg.x0 + seg.x1) / 2 / CHART_W) * 100, 8, 82);
+            const flipLeft = midPct > 55;
+            return (
+              <div style={{
+                position: "absolute",
+                top: 4, left: `${midPct}%`,
+                transform: flipLeft ? "translateX(-92%)" : "translateX(-8%)",
+                zIndex: 40, pointerEvents: "none",
+                background: "rgba(2,8,22,0.97)",
+                border: "1px solid rgba(255,255,255,0.12)",
+                borderRadius: 8, padding: "8px 12px",
+                boxShadow: "0 6px 24px rgba(0,0,0,0.65)",
+                maxWidth: 240,
+              }}>
+                <div style={{ fontSize: 9, fontWeight: 800, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 1.2, marginBottom: 4 }}>
+                  Compressed region
+                </div>
+                <div style={{ fontSize: 11, color: "#64748b", lineHeight: 1.5 }}>
+                  No active listings between{" "}
+                  <span style={{ color: "#e2e8f0", fontWeight: 700 }}>{fmtX(seg.s)} – {fmtX(seg.e)}</span>.
+                  Range compressed for readability.
+                </div>
+              </div>
+            );
+          })()}
 
           {/* ── X-axis labels ── */}
           <div style={{ position: "relative", height: 30, marginTop: 2 }}>
