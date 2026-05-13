@@ -443,7 +443,6 @@ function PricingBand({ data, price }) {
 // ─── Price Distribution — Market Intelligence Chart ───────────────────────────
 function PriceDistribution({ data, listings, price }) {
   const svgRef       = useRef(null);
-  const [crosshairX,  setCrosshairX]  = useState(null);
   const [hoveredBin,  setHoveredBin]  = useState(null);
   const [clickedBin,  setClickedBin]  = useState(null); // index of clicked bar → opens right panel
   const [viewMode,    setViewMode]    = useState("volume"); // "volume" | "cumulative" | "table"
@@ -533,7 +532,7 @@ function PriceDistribution({ data, listings, price }) {
   // ── X-axis ticks — one per non-empty bin, centred under each bar ────────────
   const xTicks = bins
     .filter(b => b.count > 0)
-    .map(b => ({ v: b.s, mid: (b.s + b.e) / 2 }));
+    .map(b => ({ v: b.s, e: b.e, mid: (b.s + b.e) / 2 }));
 
   // ── Price marker cards — Low, Median, Avg, Your Price, High ─────────────────
   const MARKERS_DEF = [
@@ -592,8 +591,7 @@ function PriceDistribution({ data, listings, price }) {
   const concCount = concBins.reduce((s, b) => s + b.count, 0);
   const concPct   = n > 0 ? Math.round(concCount / n * 100) : 0;
 
-  // ── Cumulative distribution points ───────────────────────────────────────────
-  const cumPts = prices.map((p, i) => ({ price: p, pct: ((i + 1) / n) * 100 }));
+
 
   return (
     <div style={{
@@ -622,7 +620,7 @@ function PriceDistribution({ data, listings, price }) {
         </div>
         {/* Volume / Cumulative % / Table tabs */}
         <div style={{ display: "flex", gap: 2, background: "rgba(0,0,0,0.25)", borderRadius: 8, padding: "3px", flexShrink: 0 }}>
-          {[["volume", "Volume"], ["cumulative", "Cumulative %"], ["table", "Table"]].map(([mode, label]) => (
+          {[["volume", "Volume"], ["table", "Table"]].map(([mode, label]) => (
             <button key={mode} onClick={() => setViewMode(mode)} style={{
               padding: "5px 13px", fontSize: 10, fontWeight: 700,
               letterSpacing: 0.5,
@@ -638,7 +636,7 @@ function PriceDistribution({ data, listings, price }) {
         </div>
       </div>
 
-      {(viewMode === "volume" || viewMode === "cumulative") && <>
+      {viewMode === "volume" && <>
 
       {/* ── Market stats bar — LOW / MEDIAN / YOUR PRICE / HIGH ── */}
       <div style={{ display: "grid", gridTemplateColumns: `repeat(${markers.length}, 1fr)`, borderTop: "1px solid rgba(255,255,255,0.05)", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
@@ -692,15 +690,8 @@ function PriceDistribution({ data, listings, price }) {
             preserveAspectRatio="none"
             width="100%"
             height={CHART_H}
-            style={{ display: "block", cursor: "crosshair" }}
-            onMouseMove={e => {
-              const rect = svgRef.current?.getBoundingClientRect();
-              if (!rect) return;
-              // Scale from rendered pixels → viewBox units
-              const sx = ((e.clientX - rect.left) / rect.width) * CHART_W;
-              setCrosshairX(Math.max(0, Math.min(CHART_W, sx)));
-            }}
-            onMouseLeave={() => { setCrosshairX(null); setHoveredBin(null); }}
+            style={{ display: "block", cursor: "default" }}
+            onMouseLeave={() => { setHoveredBin(null); }}
           >
             <defs>
               {/* Curve fill */}
@@ -817,69 +808,6 @@ function PriceDistribution({ data, listings, price }) {
               );
             })()}
 
-            {/* ── Crosshair ── */}
-            {crosshairX !== null && (() => {
-              const crossPrice = viewMin + (crosshairX / plotW) * viewRange;
-              if (crossPrice < viewMin || crossPrice > viewMax) return null;
-
-              // Label text + box sizing
-              const label    = fmtGBP(crossPrice);
-              const labelW   = label.length * 7.2 + 16;
-              const labelH   = 18;
-              // Flip label to left side when too close to right edge
-              const labelX   = crosshairX + labelW / 2 + 4 > plotW
-                ? crosshairX - labelW / 2 - 4
-                : crosshairX + labelW / 2 + 4;
-              const labelY   = PAD_T + 10;
-
-              // Don't overlap with user price beam label
-              const isUserPrice = hasPrice && Math.abs(crossPrice - price) < viewRange * 0.015;
-
-              return (
-                <g style={{ pointerEvents: "none" }}>
-                  {/* Vertical hair line */}
-                  <line
-                    x1={crosshairX} y1={PAD_T}
-                    x2={crosshairX} y2={baseline}
-                    stroke="rgba(255,255,255,0.55)" strokeWidth={1}
-                    strokeDasharray="3,3"
-                    vectorEffect="non-scaling-stroke"
-                  />
-                  {/* Horizontal hair line */}
-                  <line
-                    x1={0} y1={PAD_T + (baseline - PAD_T) / 2}
-                    x2={plotW} y2={PAD_T + (baseline - PAD_T) / 2}
-                    stroke="rgba(255,255,255,0.10)" strokeWidth={1}
-                    strokeDasharray="3,6"
-                    vectorEffect="non-scaling-stroke"
-                  />
-                  {/* Price label */}
-                  {!isUserPrice && (
-                    <g>
-                      <rect
-                        x={labelX - labelW / 2} y={labelY - labelH / 2}
-                        width={labelW} height={labelH} rx={4}
-                        fill="#020c1a" stroke="rgba(255,255,255,0.22)" strokeWidth={1}
-                      />
-                      <text
-                        x={labelX} y={labelY + 4.5}
-                        textAnchor="middle" fontSize={10.5} fontWeight="700"
-                        fill="#e2e8f0" fontVariantNumeric="tabular-nums"
-                      >
-                        {label}
-                      </text>
-                    </g>
-                  )}
-                  {/* Baseline tick */}
-                  <line
-                    x1={crosshairX} y1={baseline}
-                    x2={crosshairX} y2={baseline + 4}
-                    stroke="rgba(255,255,255,0.40)" strokeWidth={1.5}
-                    vectorEffect="non-scaling-stroke"
-                  />
-                </g>
-              );
-            })()}
 
           </svg>
 
@@ -888,7 +816,7 @@ function PriceDistribution({ data, listings, price }) {
           <div style={{ position: "relative", height: 30, marginTop: 2 }}>
             {xTicks.map(tick => (
               <div key={tick.v} style={{ position: "absolute", left: `${clamp(toPct(tick.mid), 2, 96)}%`, top: 4, transform: "translateX(-50%)", fontSize: 9, color: "#5a7fa0", whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums", userSelect: "none", fontWeight: 600 }}>
-                {fmtX(tick.v)}
+                {fmtX(tick.v)}–{Math.round(tick.e)}
               </div>
             ))}
             <div style={{ textAlign: "center", paddingTop: 18, fontSize: 7, color: "#2d4a65", textTransform: "uppercase", letterSpacing: 1.8, userSelect: "none", fontWeight: 700 }}>
@@ -901,95 +829,6 @@ function PriceDistribution({ data, listings, price }) {
 
       </>}
 
-      {/* ── Cumulative % view ── */}
-      {viewMode === "cumulative" && (() => {
-        const CW = CHART_W, CH = CHART_H;
-        const cToX = v => ((v - viewMin) / viewRange) * plotW;
-        const cToY = pct => (PAD_T + plotH) - (pct / 100) * plotH;
-        const cPts = cumPts
-          .filter(p => p.price >= viewMin && p.price <= viewMax)
-          .map(p => ({ sx: Math.max(0, Math.min(plotW, cToX(p.price))), sy: cToY(p.pct) }));
-
-        // Build smooth line through cumulative points
-        let cumPath = '';
-        if (cPts.length > 1) {
-          cumPath = `M ${cPts[0].sx.toFixed(1)},${cPts[0].sy.toFixed(1)}`;
-          for (let i = 0; i < cPts.length - 1; i++) {
-            const p0 = cPts[Math.max(0, i - 1)];
-            const p1 = cPts[i], p2 = cPts[i + 1];
-            const p3 = cPts[Math.min(cPts.length - 1, i + 2)];
-            const cp1x = p1.sx + (p2.sx - p0.sx) / 6;
-            const cp1y = p1.sy + (p2.sy - p0.sy) / 6;
-            const cp2x = p2.sx - (p3.sx - p1.sx) / 6;
-            const cp2y = p2.sy - (p3.sy - p1.sy) / 6;
-            cumPath += ` C ${cp1x.toFixed(1)},${cp1y.toFixed(1)} ${cp2x.toFixed(1)},${cp2y.toFixed(1)} ${p2.sx.toFixed(1)},${p2.sy.toFixed(1)}`;
-          }
-        }
-        const cumArea = cPts.length > 1
-          ? `${cumPath} L ${cPts[cPts.length-1].sx},${PAD_T+plotH} L ${cPts[0].sx},${PAD_T+plotH} Z`
-          : '';
-        const cumYTicks = [0, 25, 50, 75, 100];
-        return (
-          <div style={{ display: "flex", paddingRight: 10, paddingBottom: 2 }}>
-            {/* Y-axis */}
-            <div style={{ width: 44, flexShrink: 0 }}>
-              <div style={{ height: CARD_H + 28 }} />
-              <div style={{ position: "relative", height: CHART_H }}>
-                <div style={{ position: "absolute", left: 1, top: 0, width: 14, height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <span style={{ fontSize: 7, fontWeight: 600, color: "#2d3f55", textTransform: "uppercase", letterSpacing: 1.8, writingMode: "vertical-rl", transform: "rotate(180deg)", whiteSpace: "nowrap", userSelect: "none" }}>
-                    Cumulative %
-                  </span>
-                </div>
-                {cumYTicks.map(t => (
-                  <div key={t} style={{ position: "absolute", right: 5, top: cToY(t), transform: "translateY(-50%)", fontSize: 9, color: t === 0 ? "#2d4a65" : "#5a7fa0", lineHeight: 1, fontVariantNumeric: "tabular-nums", userSelect: "none", fontWeight: 600 }}>
-                    {t}%
-                  </div>
-                ))}
-              </div>
-            </div>
-            {/* Chart */}
-            <div style={{ flex: 1, position: "relative", minWidth: 0 }}>
-              <div style={{ height: CARD_H + 28 }} />
-              <svg viewBox={`0 0 ${CW} ${CH}`} preserveAspectRatio="none" width="100%" height={CH} style={{ display: "block" }}>
-                <defs>
-                  <linearGradient id="cumFill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#38bdf8" stopOpacity="0.30" />
-                    <stop offset="100%" stopColor="#38bdf8" stopOpacity="0.03" />
-                  </linearGradient>
-                </defs>
-                {cumYTicks.filter(t => t > 0).map(t => (
-                  <line key={t} x1={0} y1={cToY(t)} x2={plotW} y2={cToY(t)}
-                    stroke="rgba(255,255,255,0.055)" strokeWidth={1} vectorEffect="non-scaling-stroke" />
-                ))}
-                <line x1={0} y1={PAD_T + plotH} x2={plotW} y2={PAD_T + plotH}
-                  stroke="rgba(255,255,255,0.10)" strokeWidth={1} vectorEffect="non-scaling-stroke" />
-                {cumArea && <path d={cumArea} fill="url(#cumFill)" />}
-                {cumPath && <path d={cumPath} fill="none" stroke="#38bdf8" strokeWidth={2} opacity={0.85} vectorEffect="non-scaling-stroke" />}
-                {/* Your price vertical */}
-                {hasPrice && inView(price) && (
-                  <line x1={cToX(price)} y1={PAD_T} x2={cToX(price)} y2={PAD_T+plotH}
-                    stroke="#00e5ff" strokeWidth={1.5} strokeDasharray="4,3" opacity={0.8} vectorEffect="non-scaling-stroke" />
-                )}
-                {/* Median vertical */}
-                {inView(median) && (
-                  <line x1={cToX(median)} y1={PAD_T} x2={cToX(median)} y2={PAD_T+plotH}
-                    stroke="#a855f7" strokeWidth={1.5} strokeDasharray="4,3" opacity={0.7} vectorEffect="non-scaling-stroke" />
-                )}
-              </svg>
-              <div style={{ position: "relative", height: 30, marginTop: 2 }}>
-                {xTicks.map(tick => (
-                  <div key={tick.v} style={{ position: "absolute", left: `${clamp(toPct(tick.mid), 2, 96)}%`, top: 4, transform: "translateX(-50%)", fontSize: 9, color: "#5a7fa0", whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums", userSelect: "none", fontWeight: 600 }}>
-                    {fmtX(tick.v)}
-                  </div>
-                ))}
-                <div style={{ textAlign: "center", paddingTop: 18, fontSize: 7, color: "#2d4a65", textTransform: "uppercase", letterSpacing: 1.8, userSelect: "none", fontWeight: 700 }}>
-                  PRICE (£)
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-      })()}
 
       {/* ── Table view ── */}
       {viewMode === "table" && (() => {
