@@ -917,8 +917,10 @@ app.post("/api/ebay/search-prices", async (req, res) => {
 
     // ── Step 3: Fetch top 60 listings ─────────────────────────────────────────
     // URL built manually — eBay requires literal { } in filter strings; encoding breaks it.
+    // fieldgroups=EXTENDED requests seller, image, and shipping data that are
+    // omitted from the default response subset.
     const token = await getEbayAccessToken();
-    let url = `https://api.ebay.com/buy/browse/v1/item_summary/search?q=${encodeURIComponent(ebayQuery)}&limit=60&offset=0`;
+    let url = `https://api.ebay.com/buy/browse/v1/item_summary/search?q=${encodeURIComponent(ebayQuery)}&limit=60&offset=0&fieldgroups=EXTENDED`;
     if (condFilter) url += `&filter=${condFilter}`;
 
     const ebayRes = await fetch(url, {
@@ -938,6 +940,16 @@ app.post("/api/ebay/search-prices", async (req, res) => {
     const rawItems     = data.itemSummaries || [];
     const totalFetched = rawItems.length;
     const currency     = rawItems.find(i => i.price?.currency)?.price?.currency || "GBP";
+
+    // Debug: log the first item's raw shape so we can verify field availability
+    if (rawItems[0]) {
+      const s = rawItems[0];
+      console.log("[eBay debug] first item keys:", Object.keys(s));
+      console.log("[eBay debug] image:", s.image);
+      console.log("[eBay debug] seller:", s.seller);
+      console.log("[eBay debug] shippingOptions:", JSON.stringify(s.shippingOptions));
+      console.log("[eBay debug] condition:", s.condition, "conditionId:", s.conditionId);
+    }
 
     // Enrich each item — capture all fields needed for table view
     const enriched = rawItems.map(item => {
