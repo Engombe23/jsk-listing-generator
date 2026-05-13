@@ -971,30 +971,9 @@ app.post("/api/ebay/search-prices", async (req, res) => {
       };
     });
 
-    // ── IQR outlier filtering — tighter bounds to exclude kits / bundles ──────────
-    const priceValid   = enriched.filter(i => i.price !== null);
-    const allSorted    = priceValid.map(i => i.price).sort((a, b) => a - b);
-
-    const iqrMedian  = calcMedian(allSorted);
-    const iqrQ1      = calcPercentile(allSorted, 0.25);
-    const iqrQ3      = calcPercentile(allSorted, 0.75);
-    const iqrVal     = iqrQ3 - iqrQ1;
-
-    // 1.0×IQR (tighter than the classic 1.5) + hard cap at median×2.2.
-    // The median×2.2 cap specifically targets forged kits, rebuild packages
-    // and bundle listings that clear the IQR fence but still distort scale.
-    const lowerBound = iqrQ1 - 1.0 * iqrVal;
-    const upperBound = Math.min(iqrQ3 + 1.0 * iqrVal, iqrMedian * 2.2);
-
-    const relevantItems = priceValid.filter(i => i.price >= lowerBound && i.price <= upperBound);
-    const iqrOutliers   = priceValid.filter(i => i.price < lowerBound || i.price > upperBound)
-      .map(i => ({ ...i, exclusionReason: i.price < lowerBound ? "IQR lower outlier" : "IQR upper outlier" }));
-
-    // Legacy exclusion arrays (kept for response shape compatibility)
-    const titleExcluded = [];
-    const unitExcluded  = [];
-    const highExcluded  = iqrOutliers.filter(i => i.exclusionReason === "IQR upper outlier");
-    const lowExcluded   = iqrOutliers.filter(i => i.exclusionReason === "IQR lower outlier");
+    // ── No exclusions — use all price-valid listings ──────────────────────────
+    const priceValid    = enriched.filter(i => i.price !== null);
+    const relevantItems = priceValid;
 
     // ── Final stats ───────────────────────────────────────────────────────────
     const finalPrices = relevantItems.map(i => i.price).sort((a, b) => a - b);
@@ -1002,9 +981,9 @@ app.post("/api/ebay/search-prices", async (req, res) => {
 
     const excludedByFilter    = 0;
     const excludedAsSetKit    = 0;
-    const excludedHighOutlier = highExcluded.length;
-    const excludedLowOutlier  = lowExcluded.length;
-    const totalExcluded       = iqrOutliers.length;
+    const excludedHighOutlier = 0;
+    const excludedLowOutlier  = 0;
+    const totalExcluded       = 0;
 
     if (finalPrices.length === 0) {
       const zeroResultsMsg = rule
@@ -1038,11 +1017,8 @@ app.post("/api/ebay/search-prices", async (req, res) => {
         confidenceLabel: confidence.label,
         confidenceColor: confidence.color,
         zeroResultsMsg,
-        iqrLowerBound:   null,
-        iqrUpperBound:   null,
-        iqrOutlierCount: 0,
         listings:         [],
-        excludedListings: allExcluded,
+        excludedListings: [],
       });
     }
 
@@ -1053,17 +1029,10 @@ app.post("/api/ebay/search-prices", async (req, res) => {
     const median  = calcMedian(finalPrices);
 
     console.log(
-      `[eBay] "${query}" | ${condLabel} | fetched=${totalFetched} used=${n} ` +
-      `outliers=${totalExcluded} (lo:${excludedLowOutlier} hi:${excludedHighOutlier}) ` +
-      `bounds=[£${lowerBound.toFixed(2)}, £${upperBound.toFixed(2)}]`
+      `[eBay] "${query}" | ${condLabel} | fetched=${totalFetched} used=${n}`
     );
 
-    const allExcluded = [
-      ...titleExcluded,
-      ...unitExcluded,
-      ...highExcluded,
-      ...lowExcluded,
-    ].map(i => ({ title: i.title, price: i.price, url: i.url, exclusionReason: i.exclusionReason }));
+    const allExcluded = [];
 
     res.json({
       low:     +low.toFixed(2),
@@ -1087,9 +1056,6 @@ app.post("/api/ebay/search-prices", async (req, res) => {
       confidenceLevel: confidence.level,
       confidenceLabel: confidence.label,
       confidenceColor: confidence.color,
-      iqrLowerBound:   +lowerBound.toFixed(2),
-      iqrUpperBound:   +upperBound.toFixed(2),
-      iqrOutlierCount: totalExcluded,
       listings: relevantItems.map(i => ({
         title:             i.title,
         price:             i.price,
