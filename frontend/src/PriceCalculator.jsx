@@ -489,7 +489,8 @@ function PriceDistribution({ data, listings, price }) {
     return { s, e, count };
   }).filter(b => b.s < viewMax && b.e > viewMin);
 
-  const maxBucket = Math.max(...bins.map(b => b.count), 1);
+  const maxBucket  = Math.max(...bins.map(b => b.count), 1);
+  const yAxisMax   = Math.max(maxBucket, 10); // Y-axis always shows at least 0–10
 
   // ── Bar-height density curve (Catmull-Rom spline through bin tops) ──────────
   // Curve tracks actual histogram bars — no bell-curve floating artefact
@@ -513,7 +514,7 @@ function PriceDistribution({ data, listings, price }) {
   const plotH = CHART_H - PAD_T - PAD_B;
 
   const toX   = v   => ((v - viewMin) / viewRange) * plotW;
-  const toY   = cnt => (PAD_T + plotH) - (cnt / maxBucket) * plotH;
+  const toY   = cnt => (PAD_T + plotH) - (cnt / yAxisMax) * plotH;
   const toPct = v   => (toX(v) / CHART_W) * 100;
   const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
   const inView = v => v >= viewMin && v <= viewMax;
@@ -571,9 +572,9 @@ function PriceDistribution({ data, listings, price }) {
     : '';
 
 
-  // ── Y-axis ticks — finer resolution for readability ────────────────────────
-  const yStep  = maxBucket <= 4 ? 1 : maxBucket <= 10 ? 2 : maxBucket <= 20 ? 2 : maxBucket <= 40 ? 4 : 5;
-  const yTicks = Array.from({ length: Math.floor(maxBucket / yStep) + 1 }, (_, i) => i * yStep);
+  // ── Y-axis ticks — always 0–yAxisMax ─────────────────────────────────────────
+  const yStep  = yAxisMax <= 10 ? 2 : yAxisMax <= 20 ? 4 : yAxisMax <= 40 ? 5 : 10;
+  const yTicks = Array.from({ length: Math.floor(yAxisMax / yStep) + 1 }, (_, i) => i * yStep);
 
   // ── X-axis ticks — target ~5–6 labels ────────────────────────────────────────
   const maxXStep   = viewRange / 5;
@@ -583,11 +584,13 @@ function PriceDistribution({ data, listings, price }) {
   const xTicks = [];
   for (let v = xTickStart; v <= viewMax - niceXStep * 0.1; v += niceXStep) xTicks.push(Math.round(v));
 
-  // ── Price marker cards — 3 only: Median, Your Price, High ──────────────────
+  // ── Price marker cards — Low, Median, Avg, High + optional Your Price ────────
   const MARKERS_DEF = [
-    { key: "med",  v: median, label: "MEDIAN",     col: "#a855f7", bg: "rgba(32,10,58,0.97)",  bd: "rgba(168,85,247,0.6)"  },
+    { key: "low",  v: low,     label: "LOW",     col: "#3b82f6", bg: "rgba(8,20,65,0.97)",   bd: "rgba(59,130,246,0.55)"  },
+    { key: "med",  v: median,  label: "MEDIAN",  col: "#a855f7", bg: "rgba(32,10,58,0.97)",  bd: "rgba(168,85,247,0.55)"  },
     ...(hasPrice ? [{ key: "usr", v: price, label: "YOUR PRICE", col: "#00e5ff", bg: "rgba(0,35,55,0.98)", bd: "rgba(0,229,255,0.8)", hero: true }] : []),
-    { key: "high", v: high,   label: "HIGH",       col: "#ef4444", bg: "rgba(52,8,8,0.97)",    bd: "rgba(239,68,68,0.6)"   },
+    { key: "avg",  v: average, label: "AVG",     col: "#f59e0b", bg: "rgba(52,28,2,0.97)",   bd: "rgba(245,158,11,0.55)"  },
+    { key: "high", v: high,    label: "HIGH",    col: "#ef4444", bg: "rgba(52,8,8,0.97)",    bd: "rgba(239,68,68,0.55)"   },
   ].filter(m => m.v != null && !isNaN(m.v));
 
   // Assign initial positions (clamped to card edges)
@@ -621,7 +624,7 @@ function PriceDistribution({ data, listings, price }) {
   };
 
   // ── Highest-concentration band ───────────────────────────────────────────────
-  const concThreshold = maxBucket * 0.55;
+  const concThreshold = maxBucket * 0.55; // relative to actual data peak, not yAxisMax
   const concBins      = bins.filter(b => b.count >= concThreshold);
   const concStart     = concBins.length > 0 ? concBins[0].s                        : clusterStart;
   const concEnd       = concBins.length > 0 ? concBins[concBins.length - 1].e      : clusterEnd;
@@ -660,13 +663,8 @@ function PriceDistribution({ data, listings, price }) {
           <div style={{ fontSize: 18, fontWeight: 800, color: "#e2e8f0", letterSpacing: -0.4, lineHeight: 1.2 }}>
             Price Distribution
           </div>
-          <div style={{ fontSize: 11, color: "#5a7fa0", marginTop: 4, display: "flex", alignItems: "center", gap: 6 }}>
-            <span><strong style={{ color: "#7dd3fc" }}>{n}</strong> listings analysed</span>
-            {outlierCount > 0 && (
-              <span style={{ color: "#3d5a72", fontSize: 10 }}>
-                · <strong style={{ color: "#60869e" }}>{outlierCount}</strong> outlier{outlierCount > 1 ? "s" : ""} excluded (IQR)
-              </span>
-            )}
+          <div style={{ fontSize: 11, color: "#5a7fa0", marginTop: 4 }}>
+            <strong style={{ color: "#7dd3fc" }}>{n}</strong> listings analysed
           </div>
         </div>
 
@@ -843,13 +841,14 @@ function PriceDistribution({ data, listings, price }) {
             {bins.map((b, i) => {
               if (b.count === 0) return null;
               const colX    = Math.max(0, toX(b.s));
-              const colW    = Math.max(2, toX(b.e) - toX(b.s));  // full column width
-              const barW    = Math.max(1, colW - 2);               // visible bar slightly narrower
-              const barH    = (b.count / maxBucket) * plotH;
+              const colW    = Math.max(2, toX(b.e) - toX(b.s));  // full column width for hit zone
+              const barW    = Math.max(1, colW * 0.60);            // bars at 60% width — thin look
+              const barH    = (b.count / yAxisMax) * plotH;
               const barY    = baseline - barH;
               const ir      = b.count / maxBucket;
               const isHov   = hoveredBin === i;
-              const path    = roundedTopRect(colX, barY, barW, barH, 3);
+              const barX    = colX + (colW - barW) / 2;                 // centered in column
+              const path    = roundedTopRect(barX, barY, barW, barH, 3);
               return (
                 <g key={i} onMouseEnter={() => setHoveredBin(i)}>
                   {/* Full-height transparent hit zone — every pixel in the column is hoverable */}
@@ -873,9 +872,9 @@ function PriceDistribution({ data, listings, price }) {
               stroke="rgba(255,255,255,0.10)" strokeWidth={1}
               vectorEffect="non-scaling-stroke" />
 
-            {/* ── Market guide lines — median + high ── */}
+            {/* ── Market guide lines — all non-hero markers ── */}
             {markers.filter(m => !m.outside && !m.hero).map(m => {
-              const isMajor = m.key === "med";
+              const isMajor = m.key === "med" || m.key === "avg";
               const mx = toX(m.v);
               return (
                 <g key={m.key}>
@@ -1070,88 +1069,6 @@ function PriceDistribution({ data, listings, price }) {
         </div>
       </div>
 
-      {/* ── Bottom insight panel — 3 grounded text cards ── */}
-      {(() => {
-        const band      = `£${Math.round(clusterStart)} – £${Math.round(clusterEnd)}`;
-        const clusterPct = Math.round(clusterCount / n * 100);
-        const abovePct  = Math.round(prices.filter(p => p > clusterEnd).length / n * 100);
-        const spreadGBP = Math.round(high - low);
-
-        // Position description — neutral language, no cheap/expensive framing
-        const posDesc = !hasPrice ? null :
-          price < clusterStart
-            ? `Your price of ${fmtGBP(price)} sits below the main cluster. ${Math.round(prices.filter(p => p < price).length / n * 100)}% of active listings are priced lower.`
-          : price > clusterEnd
-            ? `Your price of ${fmtGBP(price)} sits above the main cluster. ${abovePct}% of active listings are priced higher.`
-            : `Your price of ${fmtGBP(price)} sits within the core cluster where ${clusterPct}% of listings concentrate.`;
-
-        // Density insight
-        const densityLine = compCount > 0 && hasPrice
-          ? `${compCount} listing${compCount !== 1 ? "s" : ""} within ±10% of your price.`
-          : hasPrice ? "No nearby competition within ±10% of your price." : null;
-
-        // Outlier / spread insight
-        const topOutliers = prices.filter(p => p > clusterEnd * 1.4).length;
-        const spreadNote  = topOutliers >= 2
-          ? `${topOutliers} listings are priced well above the cluster — possible premium or bundle listings.`
-          : `Very little activity above £${Math.round(clusterEnd * 1.4)} — the market is concentrated.`;
-
-        return (
-          <div style={{ margin: "12px 14px 14px", display: "grid", gridTemplateColumns: hasPrice ? "1.4fr 1fr 1fr" : "1fr 1fr", gap: 8 }}>
-
-            {/* Card 1 — Cluster insight */}
-            <div style={{ background: "rgba(2,8,24,0.82)", border: "1px solid rgba(56,189,248,0.18)", borderRadius: 12, padding: "14px 16px" }}>
-              <div style={{ fontSize: 9, fontWeight: 800, color: "#38bdf8", textTransform: "uppercase", letterSpacing: 1.4, marginBottom: 9, opacity: 0.85 }}>
-                Market Insight
-              </div>
-              <div style={{ fontSize: 13, fontWeight: 800, color: "#e2e8f0", lineHeight: 1.35, marginBottom: 7, letterSpacing: -0.2 }}>
-                Most sellers cluster between <span style={{ color: "#7dd3fc" }}>{band}</span>
-              </div>
-              <div style={{ fontSize: 11, color: "#4a7090", lineHeight: 1.55 }}>
-                {clusterCount} of {n} listings ({clusterPct}%) sit within this range.
-                {hasPrice && posDesc && (
-                  <span style={{ display: "block", marginTop: 5, color: "#5a8aa8" }}>{posDesc}</span>
-                )}
-              </div>
-            </div>
-
-            {/* Card 2 — Listing density at price */}
-            {hasPrice && (
-              <div style={{ background: "rgba(2,8,24,0.82)", border: "1px solid rgba(148,163,184,0.12)", borderRadius: 12, padding: "14px 16px" }}>
-                <div style={{ fontSize: 9, fontWeight: 800, color: "#7dd3fc", textTransform: "uppercase", letterSpacing: 1.4, marginBottom: 9, opacity: 0.85 }}>
-                  Listing Density
-                </div>
-                <div style={{ fontSize: 13, fontWeight: 800, color: "#e2e8f0", lineHeight: 1.35, marginBottom: 7, letterSpacing: -0.2 }}>
-                  {compCount > 0 ? `${compCount} nearby listing${compCount !== 1 ? "s" : ""}` : "Sparse competition"}
-                </div>
-                <div style={{ fontSize: 11, color: "#4a7090", lineHeight: 1.55 }}>
-                  {densityLine}
-                  {priceRank !== null && (
-                    <span style={{ display: "block", marginTop: 5, color: "#5a8aa8" }}>
-                      Rank #{priceRank} of {n} listings by price.
-                    </span>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Card 3 — Market spread */}
-            <div style={{ background: "rgba(2,8,24,0.82)", border: "1px solid rgba(148,163,184,0.12)", borderRadius: 12, padding: "14px 16px" }}>
-              <div style={{ fontSize: 9, fontWeight: 800, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 1.4, marginBottom: 9, opacity: 0.85 }}>
-                Market Spread
-              </div>
-              <div style={{ fontSize: 13, fontWeight: 800, color: "#e2e8f0", lineHeight: 1.35, marginBottom: 7, letterSpacing: -0.2, fontVariantNumeric: "tabular-nums" }}>
-                £{spreadGBP} total range
-              </div>
-              <div style={{ fontSize: 11, color: "#4a7090", lineHeight: 1.55 }}>
-                {fmtGBP(low)} low · {fmtGBP(median)} median · {fmtGBP(high)} high
-                <span style={{ display: "block", marginTop: 5, color: "#5a8aa8" }}>{spreadNote}</span>
-              </div>
-            </div>
-
-          </div>
-        );
-      })()}
 
       </>}
 
@@ -1378,8 +1295,6 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
   const [smData,         setSmData]         = useSessionState("jsk_calc_sm_data",      null);
   const [smLoading,      setSmLoading]      = useState(false);
   const [smError,        setSmError]        = useState("");
-  const [showListings,   setShowListings]   = useState(false);
-  const [listingsTab,    setListingsTab]    = useState("used"); // "used" | "excluded"
 
   // ── Derived calculations ─────────────────────────────────────────────────────
   const cost        = parseFloat(itemCost)      || 0;
@@ -1760,16 +1675,6 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
 
                     {!smLoading && smData && (
                       <div style={{ animation: "pcIn 0.3s ease" }}>
-
-                        {/* ── Source listings (subtle toggle) ── */}
-                        <SourceListings
-                          listings={smData.listings}
-                          excludedListings={smData.excludedListings}
-                          show={showListings}
-                          onToggle={() => setShowListings(v => !v)}
-                          tab={listingsTab}
-                          onTab={setListingsTab}
-                        />
 
                         {/* ── Price Distribution — HERO ── */}
                         <PriceDistribution data={smData} listings={smData.listings} price={price} />
