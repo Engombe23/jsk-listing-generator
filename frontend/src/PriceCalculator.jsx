@@ -837,7 +837,7 @@ function PriceDistribution({ data, listings, price }) {
             {bins.map((b, i) => {
               if (b.count === 0) return null;
               const colX  = Math.max(0, toX(b.s));
-              const colW  = Math.max(2, toX(b.e) - toX(b.s));
+              const colW  = Math.max(2, Math.min(plotW, toX(b.e)) - colX);
               const barW  = Math.max(1, colW - 2);          // full-width with 1px gap each side
               const barH  = (b.count / yAxisMax) * plotH;
               const barY  = baseline - barH;
