@@ -871,7 +871,13 @@ function PriceDistribution({ data, listings, price }) {
         const zPlotW    = ZCW - ZPADR;
         const zPlotH    = ZCH - ZPADT - ZPADB;
         const zBaseline = ZPADT + zPlotH;
-        const zToX      = v => ((v - zMin) / zRange) * zPlotW;
+
+        // Trim the view to first→last non-empty bin so bars always start at x=0
+        const nonEmpty  = zBins.filter(b => b.count > 0);
+        const zViewMin  = nonEmpty.length > 0 ? nonEmpty[0].s : zMin;
+        const zViewMax  = nonEmpty.length > 0 ? nonEmpty[nonEmpty.length - 1].e : zMax;
+        const zViewRange = Math.max(zViewMax - zViewMin, 1);
+        const zToX      = v => ((v - zViewMin) / zViewRange) * zPlotW;
         const zToPct    = v => (zToX(v) / ZCW) * 100;
         const zTicks    = zBins.filter(b => b.count > 0).map(b => ({ v: b.s, e: b.e, mid: (b.s + b.e) / 2 }));
         const totalInRange = zBins.reduce((s, b) => s + b.count, 0);
