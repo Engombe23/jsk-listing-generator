@@ -444,8 +444,9 @@ function PricingBand({ data, price }) {
 function PriceDistribution({ data, listings, price }) {
   const svgRef       = useRef(null);
   const [hoveredBin,  setHoveredBin]  = useState(null);
-  const [clickedBin,  setClickedBin]  = useState(null); // index of clicked bar → opens right panel
-  const [viewMode,    setViewMode]    = useState("volume"); // "volume" | "cumulative" | "table"
+  const [clickedBin,  setClickedBin]  = useState(null); // index of clicked bar → opens zoom + right panel
+  const [zoomRange,   setZoomRange]   = useState(null); // {s,e} of clicked zoom bar, or null
+  const [viewMode,    setViewMode]    = useState("volume"); // "volume" | "table"
   const [tableSort,   setTableSort]   = useState("price");
   const [panelSort,   setPanelSort]   = useState("asc");
 
@@ -757,7 +758,7 @@ function PriceDistribution({ data, listings, price }) {
               return (
                 <g key={i}
                   onMouseEnter={() => setHoveredBin(i)}
-                  onClick={() => { if (b.count >= 5) setClickedBin(isSel ? null : i); }}
+                  onClick={() => { if (b.count >= 5) { setClickedBin(isSel ? null : i); setZoomRange(null); } }}
                 >
                   {/* Full-height transparent hit zone */}
                   <rect x={colX} y={PAD_T} width={colW} height={plotH}
@@ -883,7 +884,7 @@ function PriceDistribution({ data, listings, price }) {
                   <strong style={{ color: "#7dd3fc" }}>{totalInRange}</strong> listings in range
                 </div>
               </div>
-              <button onClick={() => setClickedBin(null)} style={{
+              <button onClick={() => { setClickedBin(null); setZoomRange(null); }} style={{
                 background: "none", border: "1px solid rgba(255,255,255,0.08)",
                 borderRadius: 5, color: "#4a7090", cursor: "pointer",
                 fontSize: 10, fontWeight: 600, padding: "3px 10px", letterSpacing: 0.3,
@@ -937,21 +938,30 @@ function PriceDistribution({ data, listings, price }) {
                   {/* Bars */}
                   {zBins.map((b, i) => {
                     if (b.count === 0) return null;
-                    const colX = Math.max(0, zToX(b.s));
-                    const colW = Math.max(2, Math.min(zPlotW, zToX(b.e)) - colX);
-                    const barW = Math.max(1, colW * 0.55);
-                    const barH = (b.count / zYMax) * zPlotH;
-                    const barY = zBaseline - barH;
-                    const barX = colX + (colW - barW) / 2;
-                    const ir   = b.count / zMaxBucket;
+                    const colX    = Math.max(0, zToX(b.s));
+                    const colW    = Math.max(2, Math.min(zPlotW, zToX(b.e)) - colX);
+                    const barW    = Math.max(1, colW * 0.55);
+                    const barH    = (b.count / zYMax) * zPlotH;
+                    const barY    = zBaseline - barH;
+                    const barX    = colX + (colW - barW) / 2;
+                    const ir      = b.count / zMaxBucket;
                     const isUserBin = hasPrice && price >= b.s && price < b.e;
+                    const isSel   = zoomRange && zoomRange.s === b.s;
                     return (
-                      <g key={i}>
+                      <g key={i}
+                        onClick={() => setZoomRange(isSel ? null : { s: b.s, e: b.e })}
+                        style={{ cursor: "pointer" }}
+                      >
                         {/* Hit zone */}
                         <rect x={colX} y={ZPADT} width={colW} height={zPlotH} fill="transparent" />
                         <path d={roundedTopRect(barX, barY, barW, barH, 3)}
                           fill={isUserBin ? "url(#pdBar)" : "url(#zBarGrad)"}
-                          opacity={0.28 + 0.68 * ir} style={{ pointerEvents: "none" }} />
+                          opacity={isSel ? 1.0 : 0.28 + 0.68 * ir} style={{ pointerEvents: "none" }} />
+                        {/* Selected top highlight */}
+                        {isSel && (
+                          <path d={roundedTopRect(barX, barY, barW, 2, 1)}
+                            fill="#38bdf8" opacity={0.9} style={{ pointerEvents: "none" }} />
+                        )}
                       </g>
                     );
                   })}
@@ -1167,7 +1177,12 @@ function PriceDistribution({ data, listings, price }) {
       {clickedBin !== null && (() => {
         const b  = bins[clickedBin];
         if (!b) return null;
-        const bl = binListings[clickedBin] || [];
+        // If a zoom bin is selected, filter down to that sub-range
+        const allBl = binListings[clickedBin] || [];
+        const bl = zoomRange
+          ? allBl.filter(l => l.price >= zoomRange.s && l.price <= zoomRange.e)
+          : allBl;
+        const displayRange = zoomRange ? zoomRange : b;
         const fmtShip = (cost, type) => {
           if (type === "FREE" || cost === 0) return "Free delivery";
           if (cost != null) return `+£${cost.toFixed(2)} postage`;
@@ -1190,14 +1205,26 @@ function PriceDistribution({ data, listings, price }) {
             {/* Panel header */}
             <div style={{ padding: "18px 16px 14px", borderBottom: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
               <div>
+                {/* Breadcrumb when zoomed in */}
+                {zoomRange && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 6 }}>
+                    <button onClick={() => setZoomRange(null)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontSize: 9, color: "#3d5a72", fontWeight: 600, letterSpacing: 0.3 }}>
+                      {fmtX(b.s)}–{fmtX(b.e)}
+                    </button>
+                    <span style={{ fontSize: 9, color: "#2d4a65" }}>›</span>
+                    <span style={{ fontSize: 9, color: "#38bdf8", fontWeight: 700 }}>
+                      {fmtX(zoomRange.s)}–{fmtX(zoomRange.e)}
+                    </span>
+                  </div>
+                )}
                 <div style={{ fontSize: 15, fontWeight: 800, color: "#e2e8f0", letterSpacing: -0.3 }}>
-                  {fmtX(b.s)} – {fmtX(b.e)} Range
+                  {fmtX(displayRange.s)} – {fmtX(displayRange.e)} Range
                 </div>
                 <span style={{ display: "inline-block", marginTop: 5, fontSize: 10, fontWeight: 700, color: "#38bdf8", background: "rgba(56,189,248,0.10)", border: "1px solid rgba(56,189,248,0.22)", borderRadius: 5, padding: "2px 8px" }}>
-                  {b.count} listings
+                  {bl.length} listings
                 </span>
               </div>
-              <button onClick={() => setClickedBin(null)} style={{ background: "none", border: "none", color: "#4a7090", cursor: "pointer", fontSize: 22, lineHeight: 1, padding: "0 2px", marginTop: -2, flexShrink: 0 }}>
+              <button onClick={() => { setClickedBin(null); setZoomRange(null); }} style={{ background: "none", border: "none", color: "#4a7090", cursor: "pointer", fontSize: 22, lineHeight: 1, padding: "0 2px", marginTop: -2, flexShrink: 0 }}>
                 ×
               </button>
             </div>
@@ -1279,7 +1306,7 @@ function PriceDistribution({ data, listings, price }) {
                 border: "1px solid rgba(56,189,248,0.20)", borderRadius: 7,
                 cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
               }}>
-                View all {b.count} listings in this range
+                View all {bl.length} listings in this range
                 <span style={{ fontSize: 12 }}>↗</span>
               </button>
             </div>
