@@ -473,8 +473,8 @@ function PriceDistribution({ data, listings, price }) {
   const viewRange = viewMax - viewMin;
 
   // ── Dynamic nice-number binning ──────────────────────────────────────────────
-  // Target ~12 buckets; snap to the nearest human-friendly step size
-  const TARGET_BUCKETS = 12;
+  // Target ~20 buckets; snap to the nearest human-friendly step size
+  const TARGET_BUCKETS = 20;
   const NICE_STEPS = [1, 2, 5, 10, 20, 25, 50, 100, 200, 250, 500, 1000];
   const rawBinW = range / TARGET_BUCKETS;
   const binW    = NICE_STEPS.find(s => s >= rawBinW) ?? 1000;
@@ -838,7 +838,7 @@ function PriceDistribution({ data, listings, price }) {
               if (b.count === 0) return null;
               const colX  = Math.max(0, toX(b.s));
               const colW  = Math.max(2, Math.min(plotW, toX(b.e)) - colX);
-              const barW  = Math.max(1, colW * 0.65);        // 65% width, centred in column
+              const barW  = Math.max(1, colW * 0.45);        // 45% width, centred in column
               const barH  = (b.count / yAxisMax) * plotH;
               const barY  = baseline - barH;
               const ir    = b.count / maxBucket;
