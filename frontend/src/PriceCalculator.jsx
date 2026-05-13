@@ -1174,11 +1174,12 @@ function PriceDistribution({ data, listings, price }) {
             </div>
 
             {/* Header row */}
-            <div style={{ display: "flex", borderBottom: "1px solid rgba(255,255,255,0.06)", paddingBottom: 4, marginBottom: 2 }}>
+            <div style={{ display: "flex", borderBottom: "1px solid rgba(255,255,255,0.06)", paddingBottom: 4, marginBottom: 2, paddingLeft: 8 }}>
+              <div style={{ width: 52, flexShrink: 0 }} />
               <TH w="auto">Title</TH>
               <TH w={62}>Price</TH>
               <TH w={56}>Cond.</TH>
-              <TH w={100}>Seller</TH>
+              <TH w={104}>Seller</TH>
               <TH w={68}>Delivery</TH>
               <TH w={62}>Position</TH>
             </div>
@@ -1192,11 +1193,26 @@ function PriceDistribution({ data, listings, price }) {
                 return (
                   <div key={i} style={{
                     display: "flex", alignItems: "center",
-                    padding: "6px 0", borderBottom: "1px solid rgba(255,255,255,0.04)",
+                    padding: "5px 0", borderBottom: "1px solid rgba(255,255,255,0.04)",
                     background: rowBg,
                     borderLeft: isUser ? "2px solid #00e5ff" : "2px solid transparent",
                     paddingLeft: isUser ? 6 : 8,
                   }}>
+                    {/* Thumbnail */}
+                    <div style={{ width: 44, flexShrink: 0, marginRight: 8 }}>
+                      {item.image ? (
+                        <img src={item.image} alt="" style={{
+                          width: 44, height: 44, objectFit: "contain",
+                          borderRadius: 5, background: "#0b1929",
+                          border: "1px solid rgba(255,255,255,0.07)",
+                          display: "block",
+                        }} />
+                      ) : (
+                        <div style={{ width: 44, height: 44, borderRadius: 5, background: "#0a1520", border: "1px solid rgba(255,255,255,0.05)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                          <span style={{ fontSize: 16, opacity: 0.2 }}>□</span>
+                        </div>
+                      )}
+                    </div>
                     {/* Title */}
                     <div style={{ flex: 1, minWidth: 0, paddingRight: 8 }}>
                       <a href={item.url} target="_blank" rel="noreferrer" style={{
@@ -1214,23 +1230,23 @@ function PriceDistribution({ data, listings, price }) {
                       {fmtGBP(item.price)}
                     </div>
                     {/* Condition */}
-                    <div style={{ width: 56, flexShrink: 0, fontSize: 10, color: "#5a7fa0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    <div style={{ width: 56, flexShrink: 0, fontSize: 10, color: "#7a9cc0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {item.condition || "—"}
                     </div>
                     {/* Seller */}
-                    <div style={{ width: 100, flexShrink: 0, overflow: "hidden" }}>
-                      <div style={{ fontSize: 10, color: "#5a7fa0", textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>
+                    <div style={{ width: 104, flexShrink: 0, overflow: "hidden", paddingRight: 4 }}>
+                      <div style={{ fontSize: 10, fontWeight: 600, color: "#9ab8d0", textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>
                         {item.sellerName || "—"}
                       </div>
                       {item.sellerFeedback != null && (
-                        <div style={{ fontSize: 9, color: "#2d4a65", marginTop: 1 }}>
+                        <div style={{ fontSize: 9, color: "#5a7fa0", marginTop: 2 }}>
                           {item.sellerFeedback.toLocaleString()}
-                          {item.sellerFeedbackPct != null && ` · ${item.sellerFeedbackPct.toFixed(1)}%`}
+                          {item.sellerFeedbackPct != null && <span style={{ color: "#4a9a6a", marginLeft: 3 }}>{item.sellerFeedbackPct.toFixed(1)}%</span>}
                         </div>
                       )}
                     </div>
                     {/* Delivery */}
-                    <div style={{ width: 68, flexShrink: 0, fontSize: 10, color: item.shippingCost === 0 || item.shippingType === "FREE" ? "#34d399" : "#5a7fa0" }}>
+                    <div style={{ width: 68, flexShrink: 0, fontSize: 10, color: item.shippingCost === 0 || item.shippingType === "FREE" ? "#34d399" : "#7a9cc0" }}>
                       {fmtShipping(item.shippingCost, item.shippingType)}
                     </div>
                     {/* Position badge */}

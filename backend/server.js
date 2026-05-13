@@ -1082,6 +1082,7 @@ app.post("/api/ebay/search-prices", async (req, res) => {
         title:             i.title,
         price:             i.price,
         url:               i.url,
+        image:             i.image,
         condition:         i.condition,
         sellerName:        i.sellerName,
         sellerFeedback:    i.sellerFeedback,
