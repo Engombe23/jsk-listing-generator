@@ -330,6 +330,7 @@ export default function App() {
           <Account
             listings={generatedListings}
             initialPage={accountSubPage}
+            onAppNavigate={navigateTo}
           />
         )}
       </div>
