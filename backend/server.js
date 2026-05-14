@@ -46,7 +46,7 @@ function sleep(ms) {
 }
 
 // Wrap fetch with a hard timeout so a hung external API call never blocks forever.
-function fetchWithTimeout(url, options = {}, ms = 9000) {
+function fetchWithTimeout(url, options = {}, ms = 25000) {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), ms);
   return fetch(url, { ...options, signal: ctrl.signal })
@@ -881,7 +881,7 @@ async function getEbayAccessToken() {
       "Content-Type": "application/x-www-form-urlencoded"
     },
     body: "grant_type=client_credentials&scope=https%3A%2F%2Fapi.ebay.com%2Foauth%2Fapi_scope"
-  }, 8000);
+  }, 15000);
 
   if (!res.ok) {
     const text = await res.text();
@@ -950,7 +950,7 @@ app.post("/api/ebay/search-prices", async (req, res) => {
         "X-EBAY-C-MARKETPLACE-ID": "EBAY_GB",
         "Content-Type":            "application/json",
       },
-    }, 12000);
+    }, 20000);
 
     if (!ebayRes.ok) {
       const text = await ebayRes.text();
