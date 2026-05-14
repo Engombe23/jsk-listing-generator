@@ -449,6 +449,7 @@ function PriceDistribution({ data, listings, price }) {
   const [viewMode,    setViewMode]    = useState("volume"); // "volume" | "table"
   const [tableSort,   setTableSort]   = useState("price");
   const [panelSort,   setPanelSort]   = useState("asc");
+  const [lightboxImg, setLightboxImg] = useState(null); // URL of expanded image, null = closed
 
   const prices = (listings || [])
     .map(l => l.price)
@@ -1145,11 +1146,11 @@ function PriceDistribution({ data, listings, price }) {
                     {/* Thumbnail */}
                     <div style={{ width: 44, flexShrink: 0, marginRight: 8 }}>
                       {item.image ? (
-                        <img src={item.image} alt="" style={{
+                        <img src={item.image} alt="" onClick={() => setLightboxImg(item.image)} style={{
                           width: 44, height: 44, objectFit: "contain",
                           borderRadius: 5, background: "#0b1929",
                           border: "1px solid rgba(255,255,255,0.07)",
-                          display: "block",
+                          display: "block", cursor: "zoom-in",
                         }} />
                       ) : (
                         <div style={{ width: 44, height: 44, borderRadius: 5, background: "#0a1520", border: "1px solid rgba(255,255,255,0.05)", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -1307,7 +1308,7 @@ function PriceDistribution({ data, listings, price }) {
                   {/* Thumbnail */}
                   <div style={{ width: 44, height: 44, flexShrink: 0, borderRadius: 6, overflow: "hidden", background: "#0a1520", border: "1px solid rgba(255,255,255,0.07)" }}>
                     {l.image
-                      ? <img src={l.image} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      ? <img src={l.image} alt="" onClick={() => setLightboxImg(l.image)} style={{ width: "100%", height: "100%", objectFit: "cover", cursor: "zoom-in" }} />
                       : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, opacity: 0.2 }}>□</div>
                     }
                   </div>
@@ -1367,6 +1368,38 @@ function PriceDistribution({ data, listings, price }) {
           </div>
         );
       })()}
+
+    {/* ── Lightbox overlay ── */}
+    {lightboxImg && (
+      <div
+        onClick={() => setLightboxImg(null)}
+        onKeyDown={e => e.key === "Escape" && setLightboxImg(null)}
+        tabIndex={-1}
+        style={{
+          position: "fixed", inset: 0, zIndex: 9999,
+          background: "rgba(0,0,0,0.85)", backdropFilter: "blur(6px)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          cursor: "zoom-out",
+        }}
+      >
+        <img
+          src={lightboxImg}
+          alt=""
+          style={{
+            maxWidth: "min(90vw, 600px)", maxHeight: "min(90vh, 600px)",
+            objectFit: "contain",
+            borderRadius: 12,
+            boxShadow: "0 0 60px rgba(0,0,0,0.8)",
+            border: "1px solid rgba(255,255,255,0.12)",
+          }}
+        />
+        <div style={{
+          position: "absolute", top: 18, right: 22,
+          fontSize: 22, color: "rgba(255,255,255,0.5)",
+          cursor: "pointer", lineHeight: 1,
+        }}>✕</div>
+      </div>
+    )}
 
     </div>
   );
