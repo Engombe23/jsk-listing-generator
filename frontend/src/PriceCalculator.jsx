@@ -492,7 +492,9 @@ function PriceDistribution({ data, listings, price }) {
   }).filter(b => b.s < viewMax && b.e > viewMin);
 
   const maxBucket  = Math.max(...bins.map(b => b.count), 1);
-  const yAxisMax   = Math.max(maxBucket, 10); // Y-axis always shows at least 0–10
+  // Dynamic Y-axis: scale to market density so sparse markets look full
+  const dynYMax  = m => m <= 3 ? 3 : m <= 5 ? 5 : m <= 10 ? 10 : m <= 20 ? 20 : m <= 30 ? 30 : m <= 40 ? 40 : 60;
+  const yAxisMax = dynYMax(maxBucket);
 
   // ── Bar-height density curve (Catmull-Rom spline through bin tops) ──────────
   // Curve tracks actual histogram bars — no bell-curve floating artefact
@@ -526,9 +528,11 @@ function PriceDistribution({ data, listings, price }) {
   const baseline = PAD_T + plotH;
 
 
-  // ── Y-axis ticks — always 0–yAxisMax ─────────────────────────────────────────
-  const yStep  = yAxisMax <= 10 ? 2 : yAxisMax <= 20 ? 4 : yAxisMax <= 40 ? 5 : 10;
+  // ── Y-axis ticks — dynamic step matching tier ────────────────────────────────
+  const yStep  = yAxisMax <= 5 ? 1 : yAxisMax <= 10 ? 2 : yAxisMax <= 30 ? 5 : 10;
   const yTicks = Array.from({ length: Math.floor(yAxisMax / yStep) + 1 }, (_, i) => i * yStep);
+  // Minimum pixel height so 1-count bars are always visible and clickable
+  const MIN_BAR_PX = 4;
 
   // ── X-axis ticks — one per non-empty bin, centred under each bar ────────────
   const xTicks = bins
@@ -748,7 +752,7 @@ function PriceDistribution({ data, listings, price }) {
               const colX  = Math.max(0, toX(b.s));
               const colW  = Math.max(2, Math.min(plotW, toX(b.e)) - colX);
               const barW  = Math.max(1, colW * 0.45);        // 45% width, centred in column
-              const barH  = (b.count / yAxisMax) * plotH;
+              const barH  = Math.max(MIN_BAR_PX, (b.count / yAxisMax) * plotH);
               const barY  = baseline - barH;
               const ir    = b.count / maxBucket;
               const isHov = hoveredBin === i;
@@ -871,7 +875,7 @@ function PriceDistribution({ data, listings, price }) {
         }).filter(b => b.s < zMax && b.e > zMin);
 
         const zMaxBucket = Math.max(...zBins.map(b => b.count), 1);
-        const zYMax      = Math.max(zMaxBucket, 3);
+        const zYMax      = dynYMax(zMaxBucket);
         const ZCW = 500, ZCH = 160, ZPADT = 12, ZPADB = 6, ZPADR = 8;
         const zPlotW    = ZCW - ZPADR;
         const zPlotH    = ZCH - ZPADT - ZPADB;
@@ -978,7 +982,7 @@ function PriceDistribution({ data, listings, price }) {
                     if (b.count === 0) return null;
                     const cX    = zBinColX(i);
                     const bW    = Math.max(1, colW * zBarFrac);
-                    const barH  = (b.count / zYMax) * zPlotH;
+                    const barH  = Math.max(MIN_BAR_PX, (b.count / zYMax) * zPlotH);
                     const barY  = zBaseline - barH;
                     const bX    = cX + (colW - bW) / 2;
                     const ir    = b.count / zMaxBucket;
