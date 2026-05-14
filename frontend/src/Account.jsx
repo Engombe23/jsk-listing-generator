@@ -242,17 +242,10 @@ function BillingPage() {
 // ─── PAGE: Usage ──────────────────────────────────────────────────────────────
 function UsagePage() {
   const cards = [
-    { label: "Listings Generated",     value: "312", sub: "of 500 this month",   accent: C.blue },
-    { label: "Smart Pricing Searches", value: "48",  sub: "of 100 this month",   accent: "#0ea5e9" },
-    { label: "Compatibility Checks",   value: "27",  sub: "of 200 this month",   accent: "#8b5cf6" },
-    { label: "CSV Exports",            value: "9",   sub: "of 50 this month",    accent: C.green },
-  ];
-
-  const details = [
-    { label: "Listings Generated",     used: 312, total: 500 },
-    { label: "Smart Pricing Searches", used: 48,  total: 100 },
-    { label: "Compatibility Checks",   used: 27,  total: 200 },
-    { label: "CSV Exports",            used: 9,   total: 50  },
+    { label: "Listings Generated",     value: "312", sub: "of 500 this month", accent: C.blue },
+    { label: "Smart Pricing Searches", value: "48",  sub: "Unlimited",         accent: "#0ea5e9" },
+    { label: "Compatibility Checks",   value: "27",  sub: "Unlimited",         accent: "#8b5cf6" },
+    { label: "CSV Exports",            value: "9",   sub: "Unlimited",         accent: C.green },
   ];
 
   return (
@@ -267,10 +260,29 @@ function UsagePage() {
       <div style={{ background: C.card2, border: `1px solid ${C.border}`, borderRadius: 14, padding: "22px 24px" }}>
         <SectionLabel>Usage Breakdown</SectionLabel>
         <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-          {details.map((d, i) => (
-            <div key={i}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: C.text, marginBottom: 8 }}>{d.label}</div>
-              <UsageBar used={d.used} total={d.total} />
+
+          {/* Listings Generated — has a cap */}
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: C.text, marginBottom: 8 }}>Listings Generated</div>
+            <UsageBar used={312} total={500} />
+          </div>
+
+          {/* Unlimited items */}
+          {[
+            { label: "Smart Pricing Searches", value: "48",  accent: "#0ea5e9" },
+            { label: "Compatibility Checks",   value: "27",  accent: "#8b5cf6" },
+            { label: "CSV Exports",            value: "9",   accent: C.green },
+          ].map((item, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: C.text }}>{item.label}</div>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <span style={{ fontSize: 13, fontWeight: 800, color: item.accent }}>{item.value}</span>
+                <span style={{
+                  fontSize: 9, fontWeight: 800, color: C.green, textTransform: "uppercase", letterSpacing: 0.8,
+                  background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.2)",
+                  borderRadius: 5, padding: "2px 8px",
+                }}>Unlimited</span>
+              </div>
             </div>
           ))}
         </div>
@@ -278,7 +290,7 @@ function UsagePage() {
 
       {/* Reset note */}
       <div style={{ fontSize: 11, color: C.muted, textAlign: "center" }}>
-        Usage resets on the 1st of each month · Next reset: 1 June 2026
+        Listing generation resets on the 1st of each month · Next reset: 1 June 2026
       </div>
 
     </div>
