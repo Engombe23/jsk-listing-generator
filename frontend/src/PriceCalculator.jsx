@@ -1386,7 +1386,7 @@ function PriceDistribution({ data, listings, price }) {
           src={lightboxImg}
           alt=""
           style={{
-            maxWidth: "min(92vw, 1000px)", maxHeight: "85vh",
+            width: "min(80vw, 800px)", height: "min(80vh, 800px)",
             objectFit: "contain",
             borderRadius: 12,
             boxShadow: "0 0 60px rgba(0,0,0,0.8)",
