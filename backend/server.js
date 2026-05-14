@@ -45,6 +45,14 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+// Wrap fetch with a hard timeout so a hung external API call never blocks forever.
+function fetchWithTimeout(url, options = {}, ms = 9000) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), ms);
+  return fetch(url, { ...options, signal: ctrl.signal })
+    .finally(() => clearTimeout(timer));
+}
+
 function formatYearRange(start, end) {
   const fmt = (v) => (v ? String(v).slice(0, 7) : "Onwards");
   return `${fmt(start)} to ${end ? fmt(end) : "Onwards"}`;
@@ -83,7 +91,7 @@ async function fetchArticleDetails(articleNumber) {
   params.append("langId", LANG_ID);
   params.append("countryFilterId", COUNTRY_FILTER_ID);
   params.append("articleNo", articleNumber);
-  const res = await fetch(url, {
+  const res = await fetchWithTimeout(url, {
     method: "POST",
     headers: apiHeaders(true),
     body: params.toString()
@@ -99,7 +107,7 @@ async function fetchArticleMedia(articleId) {
   params.append("langId", LANG_ID);
   params.append("articleId", String(articleId));
   try {
-    const res = await fetch(url, { method: "POST", headers: apiHeaders(true), body: params.toString() });
+    const res = await fetchWithTimeout(url, { method: "POST", headers: apiHeaders(true), body: params.toString() });
     if (!res.ok) return null;
     return res.json();
   } catch { return null; }
@@ -115,7 +123,7 @@ async function searchArticleByOem(oemNumber) {
   params.append("langId", LANG_ID);
   params.append("articleOemNo", oemNumber);
   try {
-    const res = await fetch(url, { method: "POST", headers: apiHeaders(true), body: params.toString() });
+    const res = await fetchWithTimeout(url, { method: "POST", headers: apiHeaders(true), body: params.toString() });
     if (!res.ok) return null;
     return res.json();
   } catch { return null; }
@@ -128,7 +136,7 @@ async function artlookupByOem(oemNumber) {
   params.append("articleType", "OENumber");
   const url = `https://${RAPIDAPI_HOST}/api/artlookup/search-articles-by-article-no?${params.toString()}`;
   try {
-    const res = await fetch(url, { method: "GET", headers: apiHeaders() });
+    const res = await fetchWithTimeout(url, { method: "GET", headers: apiHeaders() });
     if (!res.ok) return null;
     return res.json();
   } catch { return null; }
@@ -192,7 +200,7 @@ async function resolveArticleResponse(input) {
 async function fetchEngineTypesByModel(modelId) {
   const url = `https://${RAPIDAPI_HOST}/api/types/type-id/${TYPE_ID}/list-vehicles-types/${modelId}/lang-id/${LANG_ID}/country-filter-id/${COUNTRY_FILTER_ID}`;
   try {
-    const res = await fetch(url, { method: "GET", headers: apiHeaders() });
+    const res = await fetchWithTimeout(url, { method: "GET", headers: apiHeaders() });
     if (!res.ok) return [];
     const data = await res.json();
     const rows = data?.modelTypes || data?.vehicleTypes || data?.vehicles || data?.data || [];
@@ -229,19 +237,32 @@ function findEngineMatch(car, engineRows) {
 
 // Fetch engine data for all unique modelIds in a compatible-cars list.
 // Results are cached in modelEngineCache (persists across requests).
+// Runs in parallel batches of 4 with 200ms between batches to respect rate limits.
+// Capped at MAX_MODEL_LOOKUPS uncached fetches — the full compatibility list is still
+// built from the article response; only engine-code enrichment is limited.
+const MAX_MODEL_LOOKUPS = 20;
+
 async function fetchEngineDataByModelIds(cars) {
   const uniqueModelIds = uniq(cars.map(c => String(c.modelId)).filter(Boolean));
   const result = {};
 
-  for (const modelId of uniqueModelIds) {
-    if (modelEngineCache.has(modelId)) {
-      result[modelId] = modelEngineCache.get(modelId);
-    } else {
+  // Split into cached vs uncached
+  const cached   = uniqueModelIds.filter(id => modelEngineCache.has(id));
+  const uncached = uniqueModelIds.filter(id => !modelEngineCache.has(id)).slice(0, MAX_MODEL_LOOKUPS);
+
+  // Fill cached results immediately
+  for (const id of cached) result[id] = modelEngineCache.get(id);
+
+  // Fetch uncached in parallel batches of 4
+  const BATCH = 4;
+  for (let i = 0; i < uncached.length; i += BATCH) {
+    const batch = uncached.slice(i, i + BATCH);
+    await Promise.all(batch.map(async (modelId) => {
       const rows = await fetchEngineTypesByModel(modelId);
       modelEngineCache.set(modelId, rows);
       result[modelId] = rows;
-      await sleep(300); // respect rate limits
-    }
+    }));
+    if (i + BATCH < uncached.length) await sleep(200); // brief pause between batches
   }
 
   return result;
@@ -853,14 +874,14 @@ async function getEbayAccessToken() {
 
   const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
 
-  const res = await fetch("https://api.ebay.com/identity/v1/oauth2/token", {
+  const res = await fetchWithTimeout("https://api.ebay.com/identity/v1/oauth2/token", {
     method: "POST",
     headers: {
       Authorization:  `Basic ${credentials}`,
       "Content-Type": "application/x-www-form-urlencoded"
     },
     body: "grant_type=client_credentials&scope=https%3A%2F%2Fapi.ebay.com%2Foauth%2Fapi_scope"
-  });
+  }, 8000);
 
   if (!res.ok) {
     const text = await res.text();
@@ -923,13 +944,13 @@ app.post("/api/ebay/search-prices", async (req, res) => {
     let url = `https://api.ebay.com/buy/browse/v1/item_summary/search?q=${encodeURIComponent(ebayQuery)}&limit=60&offset=0&fieldgroups=EXTENDED`;
     if (condFilter) url += `&filter=${condFilter}`;
 
-    const ebayRes = await fetch(url, {
+    const ebayRes = await fetchWithTimeout(url, {
       headers: {
         Authorization:             `Bearer ${token}`,
         "X-EBAY-C-MARKETPLACE-ID": "EBAY_GB",
         "Content-Type":            "application/json",
       },
-    });
+    }, 12000);
 
     if (!ebayRes.ok) {
       const text = await ebayRes.text();
