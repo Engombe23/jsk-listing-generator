@@ -314,31 +314,31 @@ function PricingBand({ data, price }) {
       background: "#030b17",
       border: "1px solid rgba(19,93,255,0.45)",
       borderRadius: 14,
-      padding: "18px 20px 16px",
+      padding: "22px 24px 20px",
       boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04), 0 4px 24px rgba(0,0,0,0.4)",
     }}>
       {/* Header */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: C.dim, textTransform: "uppercase", letterSpacing: 0.8 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 22 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: C.dim, textTransform: "uppercase", letterSpacing: 0.8 }}>
           Market Pricing Band
         </div>
         {pos ? (
           <div style={{
-            display: "inline-flex", alignItems: "center", gap: 7,
+            display: "inline-flex", alignItems: "center", gap: 8,
             background: `${pos.color}15`, border: `1px solid ${pos.color}45`,
-            borderRadius: 20, padding: "5px 14px",
+            borderRadius: 20, padding: "6px 17px",
           }}>
-            <span style={{ width: 8, height: 8, borderRadius: "50%", background: pos.color, display: "inline-block", boxShadow: `0 0 8px ${pos.color}` }} />
-            <span style={{ fontSize: 13, fontWeight: 800, color: pos.color }}>{pos.label}</span>
+            <span style={{ width: 10, height: 10, borderRadius: "50%", background: pos.color, display: "inline-block", boxShadow: `0 0 8px ${pos.color}` }} />
+            <span style={{ fontSize: 16, fontWeight: 800, color: pos.color }}>{pos.label}</span>
           </div>
         ) : (
-          <div style={{ fontSize: 12, color: C.dim, fontStyle: "italic" }}>Enter a price to see position</div>
+          <div style={{ fontSize: 13, color: C.dim, fontStyle: "italic" }}>Enter a price to see position</div>
         )}
       </div>
 
       <div style={{ position: "relative" }}>
         {/* Floating label space */}
-        <div style={{ position: "relative", height: 48 }}>
+        <div style={{ position: "relative", height: 58 }}>
           {userPctLabel !== null && (
             <div style={{
               position: "absolute", left: `${userPctLabel}%`, bottom: 0,
@@ -348,91 +348,91 @@ function PricingBand({ data, price }) {
             }}>
               <div style={{
                 background: MARKER, color: "#001520",
-                fontSize: 14, fontWeight: 900,
-                padding: "4px 12px", borderRadius: 20,
+                fontSize: 17, fontWeight: 900,
+                padding: "5px 14px", borderRadius: 20,
                 whiteSpace: "nowrap",
                 boxShadow: `0 0 16px ${MARKER}99, 0 2px 8px rgba(0,0,0,0.5)`,
                 letterSpacing: -0.2,
               }}>
                 {fmtGBP(price)}
               </div>
-              <div style={{ width: 2, height: 14, background: `linear-gradient(to bottom, ${MARKER}cc, transparent)` }} />
+              <div style={{ width: 2, height: 17, background: `linear-gradient(to bottom, ${MARKER}cc, transparent)` }} />
             </div>
           )}
         </div>
 
         {/* Bar */}
         <div style={{
-          height: 24, borderRadius: 12,
+          height: 29, borderRadius: 14,
           background: "linear-gradient(90deg, #0c2d4a 0%, #0369a1 22%, #0ea5e9 42%, #2563eb 62%, #4338ca 82%, #312e81 100%)",
           position: "relative",
           boxShadow: "inset 0 2px 4px rgba(0,0,0,0.4)",
         }}>
-          <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "50%", borderRadius: "12px 12px 0 0", background: "linear-gradient(180deg, rgba(255,255,255,0.2) 0%, transparent 100%)", pointerEvents: "none" }} />
+          <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "50%", borderRadius: "14px 14px 0 0", background: "linear-gradient(180deg, rgba(255,255,255,0.2) 0%, transparent 100%)", pointerEvents: "none" }} />
           {/* Median tick */}
-          <div style={{ position: "absolute", left: `${medPct}%`, top: -5, bottom: -5, width: 2, background: "rgba(255,255,255,0.75)", transform: "translateX(-50%)", borderRadius: 1 }} />
+          <div style={{ position: "absolute", left: `${medPct}%`, top: -6, bottom: -6, width: 2, background: "rgba(255,255,255,0.75)", transform: "translateX(-50%)", borderRadius: 1 }} />
           {/* Average tick */}
-          {!close && <div style={{ position: "absolute", left: `${avgPct}%`, top: -5, bottom: -5, width: 2, background: "rgba(255,255,255,0.45)", transform: "translateX(-50%)", borderRadius: 1 }} />}
+          {!close && <div style={{ position: "absolute", left: `${avgPct}%`, top: -6, bottom: -6, width: 2, background: "rgba(255,255,255,0.45)", transform: "translateX(-50%)", borderRadius: 1 }} />}
           {/* User marker */}
           {userPctBar !== null && (
             <>
-              <div style={{ position: "absolute", left: `${userPctBar}%`, top: -8, bottom: -8, width: 3, background: MARKER, transform: "translateX(-50%)", borderRadius: 2, boxShadow: `0 0 10px ${MARKER}, 0 0 22px ${MARKER}70`, animation: "pcGlow 2.2s ease-in-out infinite" }} />
-              <div style={{ position: "absolute", left: `${userPctBar}%`, bottom: -16, transform: "translateX(-50%)", width: 10, height: 10, borderRadius: "50%", background: MARKER, boxShadow: `0 0 10px ${MARKER}, 0 0 20px ${MARKER}80` }} />
+              <div style={{ position: "absolute", left: `${userPctBar}%`, top: -10, bottom: -10, width: 3, background: MARKER, transform: "translateX(-50%)", borderRadius: 2, boxShadow: `0 0 10px ${MARKER}, 0 0 22px ${MARKER}70`, animation: "pcGlow 2.2s ease-in-out infinite" }} />
+              <div style={{ position: "absolute", left: `${userPctBar}%`, bottom: -19, transform: "translateX(-50%)", width: 12, height: 12, borderRadius: "50%", background: MARKER, boxShadow: `0 0 10px ${MARKER}, 0 0 20px ${MARKER}80` }} />
             </>
           )}
         </div>
 
         {/* Labels */}
-        <div style={{ position: "relative", height: 44, marginTop: 14 }}>
+        <div style={{ position: "relative", height: 53, marginTop: 17 }}>
 
           {/* LOW — always shown */}
           <div style={{ position: "absolute", left: 0 }}>
-            <div style={{ fontSize: 13, fontWeight: 800, color: "#7dd3fc", lineHeight: 1 }}>{fmtGBP(data.low)}</div>
-            <div style={{ fontSize: 11, color: C.muted, marginTop: 3 }}>Low</div>
+            <div style={{ fontSize: 16, fontWeight: 800, color: "#7dd3fc", lineHeight: 1 }}>{fmtGBP(data.low)}</div>
+            <div style={{ fontSize: 13, color: C.muted, marginTop: 3 }}>Low</div>
           </div>
 
           {/* MERGED Avg / Med */}
           {showMergedLabel && (
             <div style={{ position: "absolute", left: `${mergedMidPct}%`, transform: "translateX(-50%)", textAlign: "center", whiteSpace: "nowrap" }}>
-              <div style={{ fontSize: 13, fontWeight: 800, color: "#c4d4e8", lineHeight: 1 }}>
+              <div style={{ fontSize: 16, fontWeight: 800, color: "#c4d4e8", lineHeight: 1 }}>
                 {fmtGBP(data.average)} / {fmtGBP(data.median)}
               </div>
-              <div style={{ fontSize: 11, color: C.muted, marginTop: 3 }}>Avg / Med</div>
+              <div style={{ fontSize: 13, color: C.muted, marginTop: 3 }}>Avg / Med</div>
             </div>
           )}
 
           {/* MEDIAN (only when not merged and not too close to Low or High) */}
           {showMedLabel && (
             <div style={{ position: "absolute", left: `${medPct}%`, transform: "translateX(-50%)", textAlign: "center", whiteSpace: "nowrap" }}>
-              <div style={{ fontSize: 13, fontWeight: 800, color: "#c4d4e8", lineHeight: 1 }}>{fmtGBP(data.median)}</div>
-              <div style={{ fontSize: 11, color: C.muted, marginTop: 3 }}>Median</div>
+              <div style={{ fontSize: 16, fontWeight: 800, color: "#c4d4e8", lineHeight: 1 }}>{fmtGBP(data.median)}</div>
+              <div style={{ fontSize: 13, color: C.muted, marginTop: 3 }}>Median</div>
             </div>
           )}
 
           {/* AVERAGE (only when not merged and not too close to Low or High) */}
           {showAvgLabel && (
             <div style={{ position: "absolute", left: `${avgPct}%`, transform: "translateX(-50%)", textAlign: "center", whiteSpace: "nowrap" }}>
-              <div style={{ fontSize: 13, fontWeight: 800, color: "#c4d4e8", lineHeight: 1 }}>{fmtGBP(data.average)}</div>
-              <div style={{ fontSize: 11, color: C.muted, marginTop: 3 }}>Average</div>
+              <div style={{ fontSize: 16, fontWeight: 800, color: "#c4d4e8", lineHeight: 1 }}>{fmtGBP(data.average)}</div>
+              <div style={{ fontSize: 13, color: C.muted, marginTop: 3 }}>Average</div>
             </div>
           )}
 
           {/* HIGH — always shown */}
           <div style={{ position: "absolute", right: 0, textAlign: "right" }}>
-            <div style={{ fontSize: 13, fontWeight: 800, color: "#7dd3fc", lineHeight: 1 }}>{fmtGBP(data.high)}</div>
-            <div style={{ fontSize: 11, color: C.muted, marginTop: 3 }}>High</div>
+            <div style={{ fontSize: 16, fontWeight: 800, color: "#7dd3fc", lineHeight: 1 }}>{fmtGBP(data.high)}</div>
+            <div style={{ fontSize: 13, color: C.muted, marginTop: 3 }}>High</div>
           </div>
         </div>
       </div>
 
       {/* Interpretation */}
       {verdict && (
-        <div style={{ marginTop: 18, padding: "10px 14px", background: "rgba(14,165,233,0.07)", border: "1px solid rgba(14,165,233,0.2)", borderRadius: 10, fontSize: 13, color: "#93c5fd", lineHeight: 1.55 }}>
+        <div style={{ marginTop: 22, padding: "12px 17px", background: "rgba(14,165,233,0.07)", border: "1px solid rgba(14,165,233,0.2)", borderRadius: 10, fontSize: 14, color: "#93c5fd", lineHeight: 1.55 }}>
           💡 {verdict}
         </div>
       )}
       {!verdict && hasPrice && (
-        <div style={{ marginTop: 18, fontSize: 12, color: C.dim, textAlign: "center" }}>
+        <div style={{ marginTop: 22, fontSize: 13, color: C.dim, textAlign: "center" }}>
           Add market data above to see position analysis.
         </div>
       )}
@@ -441,12 +441,13 @@ function PricingBand({ data, price }) {
 }
 
 // ─── Price Distribution — Market Intelligence Chart ───────────────────────────
-function PriceDistribution({ data, listings, price }) {
+function PriceDistribution({ data, listings, price, soldData, soldListings, soldLoading, soldError, dataMode, onDataModeChange }) {
   const svgRef       = useRef(null);
-  const [hoveredBin,  setHoveredBin]  = useState(null);
-  const [clickedBin,  setClickedBin]  = useState(null); // index of clicked bar → opens zoom + right panel
-  const [zoomRange,   setZoomRange]   = useState(null); // {s,e} of clicked zoom bar, or null
-  const [viewMode,    setViewMode]    = useState("volume"); // "volume" | "table"
+  const [hoveredBin,   setHoveredBin]   = useState(null);
+  const [clickedBin,   setClickedBin]   = useState(null); // index of clicked bar → opens zoom + right panel
+  const [zoomRange,    setZoomRange]    = useState(null); // {s,e} of clicked zoom bar, or null
+  const [viewMode,     setViewMode]     = useState("volume"); // "volume" | "table"
+  const [compareView,  setCompareView]  = useState("active"); // "active" | "sold" (compare panel toggle)
   const [tableSort,   setTableSort]   = useState("price");
   const [panelSort,   setPanelSort]   = useState("asc");
 
@@ -461,6 +462,31 @@ function PriceDistribution({ data, listings, price }) {
   if (range <= 0) return <PricingBand data={data} price={price} />;
   const n = prices.length;
   const hasPrice = price > 0;
+
+  // ── Mode helpers ──────────────────────────────────────────────────────────────
+  const isSold    = dataMode === "sold";
+  const isCompare = dataMode === "compare";
+  const SOLD_ACC  = "#10b981"; // emerald accent for sold mode
+
+  // Sold price array (used in sold + compare modes)
+  const soldPricesArr = (soldListings || [])
+    .map(l => l.price).filter(p => p != null && p > 0).sort((a, b) => a - b);
+
+  // Effective stats (active or sold depending on mode)
+  const effData   = isSold && soldData ? soldData : data;
+  const effLow    = effData.low;
+  const effHigh   = effData.high;
+  const effMedian = effData.median;
+  const effAvg    = effData.average;
+
+  // Compare mode aggregate metrics
+  const cmpSellThrough = isCompare && prices.length > 0
+    ? (soldPricesArr.length / prices.length * 100) : null;
+  const cmpAvgActive   = isCompare ? average : null;
+  const cmpAvgSold     = isCompare && soldPricesArr.length > 0
+    ? soldPricesArr.reduce((s, v) => s + v, 0) / soldPricesArr.length : null;
+  const cmpMarketGap   = isCompare && cmpAvgActive && cmpAvgSold
+    ? ((cmpAvgSold - cmpAvgActive) / cmpAvgActive * 100) : null;
 
   // ── IQR for cluster markers only (no listings excluded from view) ────────────
   const q1 = prices[Math.max(0, Math.floor((n - 1) * 0.25))];
@@ -487,12 +513,14 @@ function PriceDistribution({ data, listings, price }) {
     const s = bsStart + i * binW;
     const e = s + binW;
     const isLast = i === numBins - 1;
-    const count = prices.filter(p => p >= s && (isLast ? p <= e : p < e)).length;
-    return { s, e, count };
+    const count     = prices.filter(p => p >= s && (isLast ? p <= e : p < e)).length;
+    const soldCount = soldPricesArr.filter(p => p >= s && (isLast ? p <= e : p < e)).length;
+    return { s, e, count, soldCount };
   }).filter(b => b.s < viewMax && b.e > viewMin);
 
-  const maxBucket  = Math.max(...bins.map(b => b.count), 1);
-  const yAxisMax   = Math.max(maxBucket, 10); // Y-axis always shows at least 0–10
+  const maxBucket    = Math.max(...bins.map(b => b.count), 1);
+  const maxSoldBucket = Math.max(...bins.map(b => b.soldCount), 1);
+  const yAxisMax     = Math.max(maxBucket, isCompare ? maxSoldBucket : 0, 10);
 
   // ── Bar-height density curve (Catmull-Rom spline through bin tops) ──────────
   // Curve tracks actual histogram bars — no bell-curve floating artefact
@@ -511,7 +539,7 @@ function PriceDistribution({ data, listings, price }) {
   const cheaperThan = hasPrice ? n - priceRank : 0;
 
   // ── SVG coordinate system ───────────────────────────────────────────────────
-  const CHART_W = 500, CHART_H = 220, PAD_T = 18, PAD_B = 6, PAD_R = 8;
+  const CHART_W = 500, CHART_H = 155, PAD_T = 14, PAD_B = 6, PAD_R = 8;
   const plotW = CHART_W - PAD_R;
   const plotH = CHART_H - PAD_T - PAD_B;
 
@@ -580,10 +608,16 @@ function PriceDistribution({ data, listings, price }) {
   const concStart     = concBins.length > 0 ? concBins[0].s                        : clusterStart;
   const concEnd       = concBins.length > 0 ? concBins[concBins.length - 1].e      : clusterEnd;
 
-  // ── Per-bin listings for hover tooltip ───────────────────────────────────────
+  // ── Per-bin listings for right panel ─────────────────────────────────────────
   const binListings = bins.map((b, i) => {
     const isLast = i === bins.length - 1;
     return (listings || []).filter(l =>
+      l.price != null && l.price >= b.s && (isLast ? l.price <= b.e : l.price < b.e)
+    );
+  });
+  const soldBinListings = bins.map((b, i) => {
+    const isLast = i === bins.length - 1;
+    return (soldListings || []).filter(l =>
       l.price != null && l.price >= b.s && (isLast ? l.price <= b.e : l.price < b.e)
     );
   });
@@ -607,58 +641,106 @@ function PriceDistribution({ data, listings, price }) {
     }}>
 
       {/* ── Main chart column ── */}
-      <div style={{ flex: 1, minWidth: 0 }}>
+      <div style={{ width: "38%", flexShrink: 0, minWidth: 0 }}>
 
       {/* ── Header ── */}
-      <div style={{ padding: "18px 22px 12px", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+      <div style={{ padding: "12px 18px 8px", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 18, fontWeight: 800, color: "#e2e8f0", letterSpacing: -0.4, lineHeight: 1.2 }}>
+          <div style={{ fontSize: 14, fontWeight: 800, color: "#e2e8f0", letterSpacing: -0.3, lineHeight: 1.2 }}>
             Price Distribution
           </div>
-          <div style={{ fontSize: 11, color: "#5a7fa0", marginTop: 4 }}>
+          <div style={{ fontSize: 10, color: "#5a7fa0", marginTop: 3 }}>
             <strong style={{ color: "#7dd3fc" }}>{n}</strong> listings analysed
           </div>
         </div>
-        {/* Volume / Cumulative % / Table tabs */}
-        <div style={{ display: "flex", gap: 2, background: "rgba(0,0,0,0.25)", borderRadius: 8, padding: "3px", flexShrink: 0 }}>
-          {[["volume", "Volume"], ["table", "Table"]].map(([mode, label]) => (
-            <button key={mode} onClick={() => setViewMode(mode)} style={{
-              padding: "5px 13px", fontSize: 10, fontWeight: 700,
-              letterSpacing: 0.5,
-              background: viewMode === mode ? "rgba(56,189,248,0.16)" : "transparent",
-              border: viewMode === mode ? "1px solid rgba(56,189,248,0.35)" : "1px solid transparent",
-              borderRadius: 6,
-              color: viewMode === mode ? "#7dd3fc" : "#3d5a72",
-              cursor: "pointer", transition: "all 0.15s",
-            }}>
-              {label}
-            </button>
-          ))}
+        {/* Dataset mode tabs */}
+        <div style={{ display: "flex", gap: 2, background: "rgba(0,0,0,0.3)", borderRadius: 8, padding: "3px", flexShrink: 0 }}>
+          {[
+            { key: "active",  label: "Active",  col: "#38bdf8" },
+            { key: "sold",    label: "Sold",    col: "#10b981" },
+            { key: "compare", label: "Compare", col: "#a78bfa" },
+          ].map(({ key, label, col }) => {
+            const active = dataMode === key;
+            return (
+              <button key={key} onClick={() => onDataModeChange(key)} style={{
+                padding: "4px 11px", fontSize: 10, fontWeight: 700, letterSpacing: 0.4,
+                background: active ? `${col}1a` : "transparent",
+                border: active ? `1px solid ${col}50` : "1px solid transparent",
+                borderRadius: 6, color: active ? col : "#3d5a72",
+                cursor: "pointer", transition: "all 0.15s",
+              }}>
+                {label}
+              </button>
+            );
+          })}
         </div>
       </div>
 
+      {/* ── Sold / Compare loading / error overlay ── */}
+      {(isSold || isCompare) && soldLoading && (
+        <div style={{ padding: "18px", textAlign: "center", fontSize: 11, color: "#5a7fa0", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+          ⏳ Fetching sold listings…
+        </div>
+      )}
+      {(isSold || isCompare) && soldError && !soldLoading && (
+        <div style={{ margin: "8px 14px", padding: "6px 10px", background: "#0d1428", color: "#fca5a5", border: "1px solid rgba(220,38,38,0.22)", borderRadius: 7, fontSize: 11 }}>
+          ⚠ {soldError}
+        </div>
+      )}
+
       {viewMode === "volume" && <>
 
-      {/* ── Market stats bar — LOW / MEDIAN / YOUR PRICE / HIGH ── */}
-      <div style={{ display: "grid", gridTemplateColumns: `repeat(${markers.length}, 1fr)`, borderTop: "1px solid rgba(255,255,255,0.05)", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-        {markers.map((m, i) => (
-          <div key={m.key} style={{
-            padding: "11px 14px", textAlign: "center",
-            borderLeft: i > 0 ? "1px solid rgba(255,255,255,0.05)" : "none",
-            background: m.hero ? "rgba(0,229,255,0.03)" : "transparent",
-          }}>
-            <div style={{ fontSize: 9, fontWeight: 700, color: m.col, textTransform: "uppercase", letterSpacing: 1, marginBottom: 5, opacity: 0.8 }}>
-              {m.label}
+      {/* ── Main histogram — hidden while a bin is zoomed ── */}
+      {clickedBin === null && <>
+
+      {/* ── Market stats bar — varies by mode ── */}
+      {isCompare ? (
+        /* Compare mode: sell-through metrics */
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", borderTop: "1px solid rgba(255,255,255,0.05)", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+          {[
+            { label: "SELL-THROUGH", value: cmpSellThrough != null ? `${cmpSellThrough.toFixed(0)}%` : "—",
+              col: cmpSellThrough == null ? "#4a6a8a" : cmpSellThrough >= 70 ? "#4ade80" : cmpSellThrough >= 40 ? "#fbbf24" : "#f87171" },
+            { label: "AVG ACTIVE",   value: cmpAvgActive != null ? fmtGBP(cmpAvgActive) : "—",   col: "#38bdf8" },
+            { label: "AVG SOLD",     value: cmpAvgSold   != null ? fmtGBP(cmpAvgSold)   : "—",   col: "#10b981" },
+            { label: "MARKET GAP",   value: cmpMarketGap != null ? `${cmpMarketGap > 0 ? "+" : ""}${cmpMarketGap.toFixed(1)}%` : "—",
+              col: cmpMarketGap == null ? "#4a6a8a" : cmpMarketGap > 2 ? "#4ade80" : cmpMarketGap < -2 ? "#f87171" : "#fbbf24" },
+          ].map(({ label, value, col }, i) => (
+            <div key={label} style={{ padding: "7px 10px", textAlign: "center", borderLeft: i > 0 ? "1px solid rgba(255,255,255,0.05)" : "none" }}>
+              <div style={{ fontSize: 8, fontWeight: 700, color: col, textTransform: "uppercase", letterSpacing: 0.9, marginBottom: 4, opacity: 0.8 }}>{label}</div>
+              <div style={{ fontSize: 16, fontWeight: 900, color: col, letterSpacing: -0.5, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>{value}</div>
             </div>
-            <div style={{ fontSize: 20, fontWeight: 900, color: m.col, letterSpacing: -0.5, lineHeight: 1, fontVariantNumeric: "tabular-nums",
-              textShadow: m.hero ? `0 0 18px ${m.col}66` : "none",
-            }}>
-              {fmtGBP(m.v)}
-              {m.outside && <span style={{ fontSize: 10, marginLeft: 5, opacity: 0.5 }}>{m.v < viewMin ? "◀" : "▶"}</span>}
-            </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      ) : (
+        /* Active / Sold mode: low / median / avg / high (+ your price) */
+        <div style={{ display: "grid", gridTemplateColumns: `repeat(${markers.length}, 1fr)`, borderTop: "1px solid rgba(255,255,255,0.05)", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+          {markers.map((m, i) => {
+            const col = isSold && !m.hero
+              ? (m.key === "low" || m.key === "high" ? "#34d399" : "#6ee7b7")
+              : m.col;
+            const label = isSold && !m.hero
+              ? { low: "LOWEST SOLD", med: "MEDIAN SOLD", avg: "AVG SOLD", high: "HIGHEST SOLD" }[m.key] ?? m.label
+              : m.label;
+            return (
+              <div key={m.key} style={{
+                padding: "7px 10px", textAlign: "center",
+                borderLeft: i > 0 ? "1px solid rgba(255,255,255,0.05)" : "none",
+                background: m.hero ? "rgba(0,229,255,0.03)" : "transparent",
+              }}>
+                <div style={{ fontSize: 8, fontWeight: 700, color: col, textTransform: "uppercase", letterSpacing: 0.9, marginBottom: 4, opacity: 0.8 }}>
+                  {label}
+                </div>
+                <div style={{ fontSize: 16, fontWeight: 900, color: col, letterSpacing: -0.5, lineHeight: 1, fontVariantNumeric: "tabular-nums",
+                  textShadow: m.hero ? `0 0 14px ${m.col}66` : "none",
+                }}>
+                  {fmtGBP(isSold && !m.hero ? effData[{ low: "low", med: "median", avg: "average", high: "high" }[m.key] ?? m.key] ?? m.v : m.v)}
+                  {m.outside && <span style={{ fontSize: 10, marginLeft: 5, opacity: 0.5 }}>{m.v < viewMin ? "◀" : "▶"}</span>}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* ── Chart wrapper: Y-axis col + chart col ── */}
       <div style={{ display: "flex", paddingRight: 10, paddingBottom: 2 }}>
@@ -707,6 +789,12 @@ function PriceDistribution({ data, listings, price }) {
                 <stop offset="55%"  stopColor="#0ea5e9" stopOpacity="0.90" />
                 <stop offset="100%" stopColor="#0369a1" stopOpacity="0.60" />
               </linearGradient>
+              {/* Sold bar gradient — teal/emerald */}
+              <linearGradient id="pdBarSold" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%"   stopColor="#10b981" stopOpacity="1.00" />
+                <stop offset="55%"  stopColor="#059669" stopOpacity="0.90" />
+                <stop offset="100%" stopColor="#047857" stopOpacity="0.60" />
+              </linearGradient>
               {/* User dot glow */}
               <radialGradient id="pdUserGlow6" cx="50%" cy="50%" r="50%">
                 <stop offset="0%"   stopColor="#00e5ff" stopOpacity="0.55" />
@@ -744,15 +832,64 @@ function PriceDistribution({ data, listings, price }) {
 
             {/* ── PRIMARY: Histogram bars ── */}
             {bins.map((b, i) => {
-              if (b.count === 0) return null;
               const colX  = Math.max(0, toX(b.s));
               const colW  = Math.max(2, Math.min(plotW, toX(b.e)) - colX);
-              const barW  = Math.max(1, colW * 0.45);        // 45% width, centred in column
-              const barH  = (b.count / yAxisMax) * plotH;
-              const barY  = baseline - barH;
-              const ir    = b.count / maxBucket;
               const isHov = hoveredBin === i;
               const isSel = clickedBin === i;
+
+              if (isCompare) {
+                // Dual bars: active (left, blue) + sold (right, teal)
+                const dualW  = Math.max(1, colW * 0.40); // each bar ~40% of col
+                const gap    = Math.max(1, colW * 0.04);
+                const totalDualW = dualW * 2 + gap;
+                const dualStartX = colX + (colW - totalDualW) / 2;
+
+                const aH = (b.count     / yAxisMax) * plotH;
+                const sH = (b.soldCount / yAxisMax) * plotH;
+                const aY = baseline - aH;
+                const sY = baseline - sH;
+                const aX = dualStartX;
+                const sX = dualStartX + dualW + gap;
+
+                const hasAny = b.count > 0 || b.soldCount > 0;
+                if (!hasAny) return null;
+                return (
+                  <g key={i}
+                    onMouseEnter={() => setHoveredBin(i)}
+                    onClick={() => { setClickedBin(isSel ? null : i); setZoomRange(null); }}
+                  >
+                    <rect x={colX} y={PAD_T} width={colW} height={plotH}
+                      fill="transparent" style={{ cursor: "pointer" }} />
+                    {b.count > 0 && (
+                      <path d={roundedTopRect(aX, aY, dualW, aH, 2)}
+                        fill="url(#pdBar)"
+                        opacity={isHov || isSel ? 1.0 : 0.35 + 0.50 * (b.count / maxBucket)}
+                        style={{ pointerEvents: "none" }} />
+                    )}
+                    {b.soldCount > 0 && (
+                      <path d={roundedTopRect(sX, sY, dualW, sH, 2)}
+                        fill="url(#pdBarSold)"
+                        opacity={isHov || isSel ? 1.0 : 0.35 + 0.50 * (b.soldCount / maxSoldBucket)}
+                        style={{ pointerEvents: "none" }} />
+                    )}
+                    {isSel && (
+                      <>
+                        {b.count > 0 && <path d={roundedTopRect(aX, aY, dualW, aH, 2)} fill="none" stroke="rgba(255,255,255,0.85)" strokeWidth={1.5} vectorEffect="non-scaling-stroke" style={{ pointerEvents: "none" }} />}
+                        {b.soldCount > 0 && <path d={roundedTopRect(sX, sY, dualW, sH, 2)} fill="none" stroke="rgba(255,255,255,0.85)" strokeWidth={1.5} vectorEffect="non-scaling-stroke" style={{ pointerEvents: "none" }} />}
+                      </>
+                    )}
+                  </g>
+                );
+              }
+
+              // Single bar (active or sold mode)
+              const cnt   = isSold ? b.soldCount : b.count;
+              const mxBkt = isSold ? maxSoldBucket : maxBucket;
+              if (cnt === 0) return null;
+              const barW  = Math.max(1, colW * 0.45);
+              const barH  = (cnt / yAxisMax) * plotH;
+              const barY  = baseline - barH;
+              const ir    = cnt / mxBkt;
               const barX  = colX + (colW - barW) / 2;
               const path  = roundedTopRect(barX, barY, barW, barH, 3);
               return (
@@ -760,14 +897,12 @@ function PriceDistribution({ data, listings, price }) {
                   onMouseEnter={() => setHoveredBin(i)}
                   onClick={() => { setClickedBin(isSel ? null : i); setZoomRange(null); }}
                 >
-                  {/* Full-height transparent hit zone */}
                   <rect x={colX} y={PAD_T} width={colW} height={plotH}
                     fill="transparent" style={{ cursor: "pointer" }} />
-                  {/* Main bar */}
-                  <path d={path} fill="url(#pdBar)"
+                  <path d={path}
+                    fill={isSold ? "url(#pdBarSold)" : "url(#pdBar)"}
                     opacity={isHov || isSel ? 1.0 : 0.30 + 0.55 * ir}
                     style={{ pointerEvents: "none" }} />
-                  {/* Selected indicator — white outline */}
                   {isSel && (
                     <path d={roundedTopRect(barX, barY, barW, barH, 3)}
                       fill="none" stroke="rgba(255,255,255,0.85)" strokeWidth={1.5}
@@ -830,6 +965,18 @@ function PriceDistribution({ data, listings, price }) {
           </svg>
 
 
+          {/* Compare mode legend */}
+          {isCompare && (
+            <div style={{ display: "flex", gap: 14, padding: "4px 0 0", justifyContent: "center" }}>
+              {[["url(#pdBar)", "#38bdf8", "Active listings"], ["url(#pdBarSold)", "#10b981", "Sold listings"]].map(([, col, label]) => (
+                <div key={label} style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                  <div style={{ width: 10, height: 10, borderRadius: 2, background: col, opacity: 0.85 }} />
+                  <span style={{ fontSize: 9, color: "#4a6a8a", fontWeight: 600 }}>{label}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* ── X-axis labels ── */}
           <div style={{ position: "relative", height: 30, marginTop: 2 }}>
             {xTicks.map(tick => (
@@ -844,8 +991,9 @@ function PriceDistribution({ data, listings, price }) {
         </div>
       </div>
 
+      </>}{/* end main histogram */}
 
-      </>}
+      </>}{/* end volume view */}
 
       {/* ── Zoom chart — finer increments for clicked bin ── */}
       {clickedBin !== null && viewMode === "volume" && (() => {
@@ -866,12 +1014,14 @@ function PriceDistribution({ data, listings, price }) {
           const s = zbStart + i * zBinW;
           const e = s + zBinW;
           const isLast = i === zbCount - 1;
-          const count = prices.filter(p => p >= zMin && p <= zMax && p >= s && (isLast ? p <= e : p < e)).length;
-          return { s, e, count };
+          const count     = prices.filter(p => p >= zMin && p <= zMax && p >= s && (isLast ? p <= e : p < e)).length;
+          const soldCount = soldPricesArr.filter(p => p >= zMin && p <= zMax && p >= s && (isLast ? p <= e : p < e)).length;
+          return { s, e, count, soldCount };
         }).filter(b => b.s < zMax && b.e > zMin);
 
-        const zMaxBucket = Math.max(...zBins.map(b => b.count), 1);
-        const zYMax      = Math.max(zMaxBucket, 3);
+        const zMaxBucket     = Math.max(...zBins.map(b => b.count), 1);
+        const zMaxSoldBucket = Math.max(...zBins.map(b => b.soldCount), 1);
+        const zYMax          = Math.max(zMaxBucket, isCompare ? zMaxSoldBucket : 0, 3);
         const ZCW = 500, ZCH = 160, ZPADT = 12, ZPADB = 6, ZPADR = 8;
         const zPlotW    = ZCW - ZPADR;
         const zPlotH    = ZCH - ZPADT - ZPADB;
@@ -919,7 +1069,7 @@ function PriceDistribution({ data, listings, price }) {
                 borderRadius: 5, color: "#4a7090", cursor: "pointer",
                 fontSize: 10, fontWeight: 600, padding: "3px 10px", letterSpacing: 0.3,
               }}>
-                ← Back
+                ← Overview
               </button>
             </div>
 
@@ -956,6 +1106,10 @@ function PriceDistribution({ data, listings, price }) {
                       <stop offset="0%" stopColor="#38bdf8" stopOpacity="0.85" />
                       <stop offset="100%" stopColor="#1d6fa4" stopOpacity="0.60" />
                     </linearGradient>
+                    <linearGradient id="zBarGradSold" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#10b981" stopOpacity="0.85" />
+                      <stop offset="100%" stopColor="#047857" stopOpacity="0.60" />
+                    </linearGradient>
                   </defs>
 
                   {/* Faint gridlines */}
@@ -965,8 +1119,8 @@ function PriceDistribution({ data, listings, price }) {
                       stroke="rgba(255,255,255,0.04)" strokeWidth={1} vectorEffect="non-scaling-stroke" />
                   ))}
 
-                  {/* Ghost slots for empty bins — preserve spacing rhythm */}
-                  {zBins.map((b, i) => b.count > 0 ? null : (
+                  {/* Ghost slots for empty bins */}
+                  {zBins.map((b, i) => (b.count > 0 || b.soldCount > 0) ? null : (
                     <line key={`gap-${i}`}
                       x1={zBinMidX(i)} y1={zBaseline} x2={zBinMidX(i)} y2={zBaseline - 4}
                       stroke="rgba(255,255,255,0.07)" strokeWidth={1}
@@ -975,15 +1129,40 @@ function PriceDistribution({ data, listings, price }) {
 
                   {/* Bars */}
                   {zBins.map((b, i) => {
-                    if (b.count === 0) return null;
+                    const isSel = zoomRange && zoomRange.s === b.s;
                     const cX    = zBinColX(i);
+
+                    if (isCompare) {
+                      const dualW = Math.max(1, colW * 0.40);
+                      const gap   = Math.max(1, colW * 0.04);
+                      const dualStartX = cX + (colW - (dualW * 2 + gap)) / 2;
+                      const aH = (b.count / zYMax) * zPlotH;
+                      const sH = (b.soldCount / zYMax) * zPlotH;
+                      const aY = zBaseline - aH, sY = zBaseline - sH;
+                      const aX = dualStartX, sX = dualStartX + dualW + gap;
+                      const hasAny = b.count > 0 || b.soldCount > 0;
+                      if (!hasAny) return null;
+                      return (
+                        <g key={i} onClick={() => setZoomRange(isSel ? null : { s: b.s, e: b.e })} style={{ cursor: "pointer" }}>
+                          <rect x={cX} y={ZPADT} width={colW} height={zPlotH} fill="transparent" />
+                          {b.count > 0 && <path d={roundedTopRect(aX, aY, dualW, aH, 2)} fill="url(#zBarGrad)" opacity={isSel ? 1.0 : 0.32 + 0.60 * (b.count / zMaxBucket)} style={{ pointerEvents: "none" }} />}
+                          {b.soldCount > 0 && <path d={roundedTopRect(sX, sY, dualW, sH, 2)} fill="url(#zBarGradSold)" opacity={isSel ? 1.0 : 0.32 + 0.60 * (b.soldCount / zMaxSoldBucket)} style={{ pointerEvents: "none" }} />}
+                          {isSel && <>
+                            {b.count > 0 && <path d={roundedTopRect(aX, aY, dualW, aH, 2)} fill="none" stroke="rgba(255,255,255,0.85)" strokeWidth={1.5} vectorEffect="non-scaling-stroke" style={{ pointerEvents: "none" }} />}
+                            {b.soldCount > 0 && <path d={roundedTopRect(sX, sY, dualW, sH, 2)} fill="none" stroke="rgba(255,255,255,0.85)" strokeWidth={1.5} vectorEffect="non-scaling-stroke" style={{ pointerEvents: "none" }} />}
+                          </>}
+                        </g>
+                      );
+                    }
+
+                    const zCnt  = isSold ? b.soldCount : b.count;
+                    const zMxBk = isSold ? zMaxSoldBucket : zMaxBucket;
+                    if (zCnt === 0) return null;
                     const bW    = Math.max(1, colW * zBarFrac);
-                    const barH  = (b.count / zYMax) * zPlotH;
+                    const barH  = (zCnt / zYMax) * zPlotH;
                     const barY  = zBaseline - barH;
                     const bX    = cX + (colW - bW) / 2;
-                    const ir    = b.count / zMaxBucket;
-                    const isUserBin = hasPrice && price >= b.s && price < b.e;
-                    const isSel = zoomRange && zoomRange.s === b.s;
+                    const ir    = zCnt / zMxBk;
                     return (
                       <g key={i}
                         onClick={() => setZoomRange(isSel ? null : { s: b.s, e: b.e })}
@@ -991,7 +1170,7 @@ function PriceDistribution({ data, listings, price }) {
                       >
                         <rect x={cX} y={ZPADT} width={colW} height={zPlotH} fill="transparent" />
                         <path d={roundedTopRect(bX, barY, bW, barH, 3)}
-                          fill={isUserBin ? "url(#pdBar)" : "url(#zBarGrad)"}
+                          fill={isSold ? "url(#zBarGradSold)" : "url(#zBarGrad)"}
                           opacity={isSel ? 1.0 : 0.28 + 0.68 * ir} style={{ pointerEvents: "none" }} />
                         {isSel && (
                           <path d={roundedTopRect(bX, barY, bW, barH, 3)}
@@ -1053,8 +1232,7 @@ function PriceDistribution({ data, listings, price }) {
         );
       })()}
 
-
-      {/* ── Table view ── */}
+      {/* ── Table view (kept for legacy; tab removed from UI) ── */}
       {viewMode === "table" && (() => {
         const SORTS = [
           { key: "price",    label: "Price" },
@@ -1217,12 +1395,14 @@ function PriceDistribution({ data, listings, price }) {
 
       </div>{/* end main chart column */}
 
-      {/* ── Right listing panel — opens when a bar is clicked ── */}
-      {clickedBin !== null && (() => {
-        const b  = bins[clickedBin];
-        if (!b) return null;
-        // If a zoom bin is selected, filter down to that sub-range
-        const allBl = binListings[clickedBin] || [];
+      {/* ── Right listing panel — always visible ── */}
+      {(() => {
+        const b  = clickedBin !== null ? bins[clickedBin] : null;
+        // Which listing pool to use depends on mode
+        const panelIsSold = isSold || (isCompare && compareView === "sold");
+        const baseLists   = panelIsSold ? (soldListings || []) : (listings || []);
+        const baseBlByBin = panelIsSold ? soldBinListings      : binListings;
+        const allBl = b ? (baseBlByBin[clickedBin] || []) : baseLists;
         const bl = zoomRange
           ? allBl.filter(l => l.price >= zoomRange.s && l.price <= zoomRange.e)
           : allBl;
@@ -1239,7 +1419,7 @@ function PriceDistribution({ data, listings, price }) {
         });
         return (
           <div style={{
-            width: 310, flexShrink: 0,
+            flex: 1, minWidth: 0,
             borderLeft: "1px solid rgba(56,189,248,0.14)",
             background: "rgba(1,7,18,0.98)",
             display: "flex", flexDirection: "column",
@@ -1247,30 +1427,63 @@ function PriceDistribution({ data, listings, price }) {
             overflow: "hidden",
           }}>
             {/* Panel header */}
-            <div style={{ padding: "18px 16px 14px", borderBottom: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
-              <div>
-                {/* Breadcrumb when zoomed in */}
-                {zoomRange && (
-                  <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 6 }}>
-                    <button onClick={() => setZoomRange(null)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontSize: 9, color: "#3d5a72", fontWeight: 600, letterSpacing: 0.3 }}>
-                      {fmtX(b.s)}–{fmtX(b.e)}
+            <div style={{ padding: "14px 16px 12px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+              {b ? (
+                <>
+                  {/* Breadcrumb when a sub-range is selected */}
+                  {zoomRange && (
+                    <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 6 }}>
+                      <button onClick={() => setZoomRange(null)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontSize: 9, color: "#3d5a72", fontWeight: 600, letterSpacing: 0.3 }}>
+                        {fmtX(b.s)}–{fmtX(b.e)}
+                      </button>
+                      <span style={{ fontSize: 9, color: "#2d4a65" }}>›</span>
+                      <span style={{ fontSize: 9, color: "#38bdf8", fontWeight: 700 }}>
+                        {fmtX(zoomRange.s)}–{fmtX(zoomRange.e)}
+                      </span>
+                    </div>
+                  )}
+                  <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
+                    <div>
+                      <div style={{ fontSize: 14, fontWeight: 800, color: "#e2e8f0", letterSpacing: -0.2 }}>
+                        {fmtX(displayRange.s)}–{fmtX(displayRange.e)}
+                        <span style={{ fontSize: 10, fontWeight: 500, color: "#5a7fa0", marginLeft: 6 }}>range</span>
+                      </div>
+                      <span style={{ display: "inline-block", marginTop: 5, fontSize: 10, fontWeight: 700, color: panelIsSold ? "#10b981" : "#38bdf8", background: panelIsSold ? "rgba(16,185,129,0.10)" : "rgba(56,189,248,0.10)", border: `1px solid ${panelIsSold ? "rgba(16,185,129,0.25)" : "rgba(56,189,248,0.22)"}`, borderRadius: 5, padding: "2px 8px" }}>
+                        {bl.length} listings
+                      </span>
+                    </div>
+                    <button onClick={() => { setClickedBin(null); setZoomRange(null); }} style={{ background: "none", border: "1px solid rgba(255,255,255,0.09)", borderRadius: 5, color: "#4a7090", cursor: "pointer", fontSize: 10, fontWeight: 600, padding: "4px 10px", flexShrink: 0, letterSpacing: 0.3, marginTop: 1 }}>
+                      ← All
                     </button>
-                    <span style={{ fontSize: 9, color: "#2d4a65" }}>›</span>
-                    <span style={{ fontSize: 9, color: "#38bdf8", fontWeight: 700 }}>
-                      {fmtX(zoomRange.s)}–{fmtX(zoomRange.e)}
+                  </div>
+                </>
+              ) : (
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <div>
+                    <div style={{ fontSize: 14, fontWeight: 800, color: "#e2e8f0" }}>
+                      {isSold ? "Sold Listings" : "Market Listings"}
+                    </div>
+                    <span style={{ display: "inline-block", marginTop: 5, fontSize: 10, fontWeight: 700, color: isSold ? "#10b981" : "#38bdf8", background: isSold ? "rgba(16,185,129,0.10)" : "rgba(56,189,248,0.10)", border: `1px solid ${isSold ? "rgba(16,185,129,0.25)" : "rgba(56,189,248,0.22)"}`, borderRadius: 5, padding: "2px 8px" }}>
+                      {bl.length} listings
                     </span>
                   </div>
-                )}
-                <div style={{ fontSize: 15, fontWeight: 800, color: "#e2e8f0", letterSpacing: -0.3 }}>
-                  {fmtX(displayRange.s)} – {fmtX(displayRange.e)} Range
+                  {isCompare ? (
+                    <div style={{ display: "flex", gap: 2, background: "rgba(0,0,0,0.25)", borderRadius: 6, padding: 2 }}>
+                      {[["active", "Active", "#38bdf8"], ["sold", "Sold", "#10b981"]].map(([v, lbl, col]) => (
+                        <button key={v} onClick={() => setCompareView(v)} style={{
+                          padding: "3px 9px", fontSize: 9, fontWeight: 700,
+                          background: compareView === v ? `${col}1a` : "transparent",
+                          border: compareView === v ? `1px solid ${col}40` : "1px solid transparent",
+                          borderRadius: 4, color: compareView === v ? col : "#3d5a72",
+                          cursor: "pointer",
+                        }}>{lbl}</button>
+                      ))}
+                    </div>
+                  ) : (
+                    <span style={{ fontSize: 9, color: "#2d4a65", fontStyle: "italic" }}>Click a bar to filter</span>
+                  )}
                 </div>
-                <span style={{ display: "inline-block", marginTop: 5, fontSize: 10, fontWeight: 700, color: "#38bdf8", background: "rgba(56,189,248,0.10)", border: "1px solid rgba(56,189,248,0.22)", borderRadius: 5, padding: "2px 8px" }}>
-                  {bl.length} listings
-                </span>
-              </div>
-              <button onClick={() => { setClickedBin(null); setZoomRange(null); }} style={{ background: "none", border: "none", color: "#4a7090", cursor: "pointer", fontSize: 22, lineHeight: 1, padding: "0 2px", marginTop: -2, flexShrink: 0 }}>
-                ×
-              </button>
+              )}
             </div>
 
             {/* Sort bar */}
@@ -1291,7 +1504,7 @@ function PriceDistribution({ data, listings, price }) {
             <div style={{ flex: 1, overflowY: "auto" }}>
               {sorted.map((l, i) => (
                 <a key={i} href={l.url} target="_blank" rel="noreferrer" style={{
-                  display: "flex", alignItems: "center", gap: 10, padding: "10px 14px",
+                  display: "flex", alignItems: "flex-start", gap: 10, padding: "12px 14px",
                   borderBottom: "1px solid rgba(255,255,255,0.04)",
                   textDecoration: "none",
                   background: "transparent",
@@ -1301,33 +1514,33 @@ function PriceDistribution({ data, listings, price }) {
                   onMouseLeave={e => e.currentTarget.style.background = "transparent"}
                 >
                   {/* Thumbnail */}
-                  <div style={{ width: 44, height: 44, flexShrink: 0, borderRadius: 6, overflow: "hidden", background: "#0a1520", border: "1px solid rgba(255,255,255,0.07)" }}>
+                  <div style={{ width: 64, height: 64, flexShrink: 0, borderRadius: 8, overflow: "hidden", background: "#0a1520", border: "1px solid rgba(255,255,255,0.07)" }}>
                     {l.image
                       ? <img src={l.image} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                      : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, opacity: 0.2 }}>□</div>
+                      : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, opacity: 0.2 }}>□</div>
                     }
                   </div>
                   {/* Info */}
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 10.5, color: "#a8c8e8", lineHeight: 1.35, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", marginBottom: 3 }}>
+                    {/* Price — most prominent */}
+                    <div style={{ fontSize: 15, fontWeight: 900, color: "#e2e8f0", fontVariantNumeric: "tabular-nums", lineHeight: 1, marginBottom: 5 }}>
+                      {fmtGBP(l.price)}
+                      <span style={{ fontSize: 9, marginLeft: 5, opacity: 0.35 }}>↗</span>
+                    </div>
+                    {/* Title */}
+                    <div style={{ fontSize: 10.5, color: "#8ab0cc", lineHeight: 1.35, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", marginBottom: 5 }}>
                       {l.title}
                     </div>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                      <span style={{ fontSize: 13, fontWeight: 800, color: "#e2e8f0", fontVariantNumeric: "tabular-nums" }}>
-                        {fmtGBP(l.price)}
-                        <span style={{ fontSize: 9, marginLeft: 4, opacity: 0.5 }}>↗</span>
-                      </span>
-                    </div>
-                    <div style={{ display: "flex", gap: 6, marginTop: 2, alignItems: "center", flexWrap: "wrap" }}>
+                    {/* Meta row */}
+                    <div style={{ display: "flex", gap: 5, alignItems: "center", flexWrap: "wrap" }}>
                       {l.condition && (
-                        <span style={{ fontSize: 9, color: "#4a7090", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 3, padding: "1px 5px" }}>
+                        <span style={{ fontSize: 9, color: "#4a7090", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 3, padding: "1px 5px" }}>
                           {l.condition}
                         </span>
                       )}
                       {l.sellerFeedback != null && (
                         <span style={{ fontSize: 9, color: "#3d5a72" }}>
-                          {l.sellerFeedback.toLocaleString()}
-                          {l.sellerFeedbackPct != null && <span style={{ color: "#4a9a6a", marginLeft: 2 }}>{l.sellerFeedbackPct.toFixed(1)}%</span>}
+                          ★ {l.sellerFeedback.toLocaleString()}{l.sellerFeedbackPct != null && <span style={{ color: "#4a9a6a" }}> {l.sellerFeedbackPct.toFixed(1)}%</span>}
                         </span>
                       )}
                       {(l.shippingCost != null || l.shippingType) && (
@@ -1337,29 +1550,10 @@ function PriceDistribution({ data, listings, price }) {
                       )}
                     </div>
                   </div>
-                  <span style={{ fontSize: 14, color: "#2d4a65", flexShrink: 0 }}>›</span>
                 </a>
               ))}
             </div>
 
-            {/* View all link */}
-            <div style={{ padding: "10px 14px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-              <button onClick={() => setViewMode("table")} style={{
-                width: "100%", padding: "8px", fontSize: 11, fontWeight: 700,
-                color: "#38bdf8", background: "rgba(56,189,248,0.07)",
-                border: "1px solid rgba(56,189,248,0.20)", borderRadius: 7,
-                cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-              }}>
-                View all {bl.length} listings in this range
-                <span style={{ fontSize: 12 }}>↗</span>
-              </button>
-            </div>
-
-            {/* Tip */}
-            <div style={{ padding: "8px 14px 14px", display: "flex", alignItems: "flex-start", gap: 7 }}>
-              <span style={{ fontSize: 13, flexShrink: 0 }}>💡</span>
-              <span style={{ fontSize: 10, color: "#2d4a65", lineHeight: 1.4 }}>Tip: Click a bar to lock this range</span>
-            </div>
           </div>
         );
       })()}
@@ -1426,6 +1620,10 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
   const [smData,         setSmData]         = useSessionState("jsk_calc_sm_data",      null);
   const [smLoading,      setSmLoading]      = useState(false);
   const [smError,        setSmError]        = useState("");
+  const [smSoldData,     setSmSoldData]     = useState(null);
+  const [smSoldLoading,  setSmSoldLoading]  = useState(false);
+  const [smSoldError,    setSmSoldError]    = useState("");
+  const [dataMode,       setDataMode]       = useState("active"); // "active" | "sold" | "compare"
 
   // ── Derived calculations ─────────────────────────────────────────────────────
   const cost        = parseFloat(itemCost)      || 0;
@@ -1482,6 +1680,8 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
   const handleFetch = async () => {
     if (!smQuery.trim()) return;
     setSmLoading(true); setSmError("");
+    // Reset sold data so it re-fetches on next mode switch
+    setSmSoldData(null); setSmSoldError("");
     try {
       const res  = await fetch(`${API_URL}/api/ebay/search-prices`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ query: smQuery.trim(), condition: smCondition }) });
       const json = await res.json();
@@ -1492,10 +1692,30 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
     finally       { setSmLoading(false); }
   };
 
+  const handleFetchSold = async () => {
+    if (!smQuery.trim()) return;
+    setSmSoldLoading(true); setSmSoldError("");
+    try {
+      const res  = await fetch(`${API_URL}/api/ebay/search-prices-sold`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ query: smQuery.trim(), condition: smCondition }) });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Failed to fetch sold prices.");
+      if (json.priceCount === 0) throw new Error("No recent sold listings found — try a broader search term.");
+      setSmSoldData(json);
+    } catch (err) { setSmSoldError(err.message); setSmSoldData(null); }
+    finally       { setSmSoldLoading(false); }
+  };
+
   // Reset legacy "any" condition (removed in favour of explicit condition-first flow)
   useEffect(() => {
     if (!["new", "used", "remanufactured"].includes(smCondition)) setSmCondition("new");
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-fetch sold data when switching to sold/compare mode (lazy load)
+  useEffect(() => {
+    if ((dataMode === "sold" || dataMode === "compare") && smData && !smSoldData && !smSoldLoading && !smSoldError) {
+      handleFetchSold();
+    }
+  }, [dataMode, smData]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Sync target fields when calculated values change
   useEffect(() => { if (!editingMarkup && !isNaN(markup) && price > 0) setTargetMarkup(markup.toFixed(1)); }, [markup, editingMarkup, price]);
@@ -1567,7 +1787,7 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
                       {[{ key: "new", label: "New" }, { key: "used", label: "Used" }, { key: "remanufactured", label: "Remanufactured" }].map(({ key, label }) => {
                         const active = smCondition === key;
                         return (
-                          <button key={key} onClick={() => { setSmCondition(key); if (smData) setSmData(null); }}
+                          <button key={key} onClick={() => { setSmCondition(key); if (smData) setSmData(null); setSmSoldData(null); setSmSoldError(""); setDataMode("active"); }}
                             style={{ padding: "4px 16px", borderRadius: 6, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, background: active ? C.blue : "transparent", color: active ? "#fff" : C.muted, boxShadow: active ? "0 0 10px rgba(19,93,255,0.35)" : "none", transition: "all 0.15s" }}>
                             {label}
                           </button>
@@ -1808,7 +2028,17 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
                       <div style={{ animation: "pcIn 0.3s ease" }}>
 
                         {/* ── Price Distribution — HERO ── */}
-                        <PriceDistribution data={smData} listings={smData.listings} price={price} />
+                        <PriceDistribution
+                          data={smData}
+                          listings={smData.listings}
+                          price={price}
+                          soldData={smSoldData}
+                          soldListings={smSoldData?.listings || []}
+                          soldLoading={smSoldLoading}
+                          soldError={smSoldError}
+                          dataMode={dataMode}
+                          onDataModeChange={setDataMode}
+                        />
 
                       </div>
                     )}
