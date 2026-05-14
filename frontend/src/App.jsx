@@ -17,6 +17,7 @@ import TabbedListingPreview, { USE_TABBED_PREVIEW } from "./TabbedListingPreview
 import PriceCalculator from "./PriceCalculator.jsx";
 import SavedProducts from "./SavedProducts.jsx";
 import CompatibilityChecker from "./CompatibilityChecker.jsx";
+import Account, { ProfileDropdown } from "./Account.jsx";
 import { useSavedProducts } from "./useSavedProducts.js";
 import { useGeneratedListings } from "./useGeneratedListings.js";
 import { useSessionState } from "./useSessionState.js";
@@ -147,6 +148,8 @@ export default function App() {
   const [page, setPage] = useState(
     () => sessionStorage.getItem("jsk_active_page") || "listing"
   );
+  const [profileOpen,    setProfileOpen]    = useState(false);
+  const [accountSubPage, setAccountSubPage] = useState("account");
 
   // Session-state key prefixes per page — used to wipe state on navigation away
   const PAGE_SS_PREFIXES = {
@@ -157,8 +160,6 @@ export default function App() {
 
   const navigateTo = (key) => {
     if (key !== page) {
-      // Clear all session-state keys for the page we're leaving so it
-      // starts fresh the next time the user visits it.
       const prefix = PAGE_SS_PREFIXES[page];
       if (prefix) {
         Object.keys(sessionStorage)
@@ -168,6 +169,13 @@ export default function App() {
     }
     sessionStorage.setItem("jsk_active_page", key);
     setPage(key);
+  };
+
+  // Navigate from profile dropdown — account sub-pages or logout
+  const handleProfileNav = (subPage) => {
+    if (subPage === "logout") { /* handle logout */ return; }
+    setAccountSubPage(subPage);
+    navigateTo("account");
   };
   const { products, save, remove } = useSavedProducts();
   const {
@@ -213,8 +221,38 @@ export default function App() {
           }}
         >
           <img src="/logo.png" alt="PartLister" style={{ height: 32, width: "auto" }} />
-          <div style={{ fontSize: 13, color: "rgba(255,255,255,0.45)", fontWeight: 500 }}>
-            Listing Tool
+          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+            <div style={{ fontSize: 13, color: "rgba(255,255,255,0.45)", fontWeight: 500 }}>
+              Listing Tool
+            </div>
+            {/* Profile button */}
+            <div style={{ position: "relative" }}>
+              <button
+                onClick={() => setProfileOpen(o => !o)}
+                style={{
+                  display: "flex", alignItems: "center", gap: 8,
+                  padding: "6px 12px 6px 7px",
+                  background: profileOpen ? "rgba(19,93,255,0.14)" : "rgba(255,255,255,0.05)",
+                  border: profileOpen ? "1px solid rgba(19,93,255,0.35)" : "1px solid rgba(255,255,255,0.10)",
+                  borderRadius: 99, cursor: "pointer", transition: "all 0.15s ease",
+                }}
+              >
+                <div style={{
+                  width: 26, height: 26, borderRadius: "50%",
+                  background: "linear-gradient(135deg, #135DFF, #0ea5e9)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: 10, fontWeight: 900, color: "#fff", flexShrink: 0,
+                }}>AB</div>
+                <span style={{ fontSize: 12, fontWeight: 700, color: "#e2e8f0" }}>Aaron</span>
+                <span style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", marginLeft: 2 }}>{profileOpen ? "▲" : "▼"}</span>
+              </button>
+              {profileOpen && (
+                <ProfileDropdown
+                  onNavigate={handleProfileNav}
+                  onClose={() => setProfileOpen(false)}
+                />
+              )}
+            </div>
           </div>
         </div>
 
@@ -234,6 +272,7 @@ export default function App() {
             { key: "listing",       label: "Listing Generator" },
             { key: "calculator",    label: "Price Calculator" },
             { key: "compatibility", label: "Compatibility Checker" },
+            { key: "account",       label: "Account" },
           ].map(({ key, label }) => (
             <button
               key={key}
@@ -285,6 +324,12 @@ export default function App() {
               setPrefilledArticle(articleNumber || "");
               navigateTo("listing");
             }}
+          />
+        )}
+        {page === "account" && (
+          <Account
+            listings={generatedListings}
+            initialPage={accountSubPage}
           />
         )}
       </div>
