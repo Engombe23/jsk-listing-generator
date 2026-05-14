@@ -877,14 +877,21 @@ function PriceDistribution({ data, listings, price }) {
         const zPlotH    = ZCH - ZPADT - ZPADB;
         const zBaseline = ZPADT + zPlotH;
 
-        // Trim the view to first→last non-empty bin so bars always start at x=0
-        const nonEmpty  = zBins.filter(b => b.count > 0);
-        const zViewMin  = nonEmpty.length > 0 ? nonEmpty[0].s : zMin;
-        const zViewMax  = nonEmpty.length > 0 ? nonEmpty[nonEmpty.length - 1].e : zMax;
-        const zViewRange = Math.max(zViewMax - zViewMin, 1);
-        const zToX      = v => ((v - zViewMin) / zViewRange) * zPlotW;
-        const zToPct    = v => (zToX(v) / ZCW) * 100;
-        const zTicks    = zBins.filter(b => b.count > 0).map(b => ({ v: b.s, e: b.e, mid: (b.s + b.e) / 2 }));
+        // ── Fixed column geometry ─────────────────────────────────────────────
+        // Bars are positioned by index at a constant column width so the chart
+        // never stretches or collapses regardless of how many bins have data.
+        // Reference density = ZOOM_BUCKETS columns filling the full plot width.
+        const nCols      = Math.max(zBins.length, 1);
+        const colW       = Math.min(zPlotW / ZOOM_BUCKETS, zPlotW / nCols);
+        const totalW     = nCols * colW;
+        const groupX     = (zPlotW - totalW) / 2; // centre the bar group
+        const zBinColX   = i => groupX + i * colW;
+        const zBinMidX   = i => groupX + i * colW + colW / 2;
+        const zBarFrac   = 0.55; // matches main chart bar width fraction
+
+        const zTicks = zBins
+          .map((b, i) => ({ v: b.s, e: b.e, midX: zBinMidX(i) }))
+          .filter((_, i) => zBins[i].count > 0);
         const totalInRange = zBins.reduce((s, b) => s + b.count, 0);
 
         return (
@@ -958,31 +965,36 @@ function PriceDistribution({ data, listings, price }) {
                       stroke="rgba(255,255,255,0.04)" strokeWidth={1} vectorEffect="non-scaling-stroke" />
                   ))}
 
+                  {/* Ghost slots for empty bins — preserve spacing rhythm */}
+                  {zBins.map((b, i) => b.count > 0 ? null : (
+                    <line key={`gap-${i}`}
+                      x1={zBinMidX(i)} y1={zBaseline} x2={zBinMidX(i)} y2={zBaseline - 4}
+                      stroke="rgba(255,255,255,0.07)" strokeWidth={1}
+                      vectorEffect="non-scaling-stroke" />
+                  ))}
+
                   {/* Bars */}
                   {zBins.map((b, i) => {
                     if (b.count === 0) return null;
-                    const colX    = Math.max(0, zToX(b.s));
-                    const colW    = Math.max(2, Math.min(zPlotW, zToX(b.e)) - colX);
-                    const barW    = Math.max(1, colW * 0.55);
-                    const barH    = (b.count / zYMax) * zPlotH;
-                    const barY    = zBaseline - barH;
-                    const barX    = colX + (colW - barW) / 2;
-                    const ir      = b.count / zMaxBucket;
+                    const cX    = zBinColX(i);
+                    const bW    = Math.max(1, colW * zBarFrac);
+                    const barH  = (b.count / zYMax) * zPlotH;
+                    const barY  = zBaseline - barH;
+                    const bX    = cX + (colW - bW) / 2;
+                    const ir    = b.count / zMaxBucket;
                     const isUserBin = hasPrice && price >= b.s && price < b.e;
-                    const isSel   = zoomRange && zoomRange.s === b.s;
+                    const isSel = zoomRange && zoomRange.s === b.s;
                     return (
                       <g key={i}
                         onClick={() => setZoomRange(isSel ? null : { s: b.s, e: b.e })}
                         style={{ cursor: "pointer" }}
                       >
-                        {/* Hit zone */}
-                        <rect x={colX} y={ZPADT} width={colW} height={zPlotH} fill="transparent" />
-                        <path d={roundedTopRect(barX, barY, barW, barH, 3)}
+                        <rect x={cX} y={ZPADT} width={colW} height={zPlotH} fill="transparent" />
+                        <path d={roundedTopRect(bX, barY, bW, barH, 3)}
                           fill={isUserBin ? "url(#pdBar)" : "url(#zBarGrad)"}
                           opacity={isSel ? 1.0 : 0.28 + 0.68 * ir} style={{ pointerEvents: "none" }} />
-                        {/* Selected indicator — white outline */}
                         {isSel && (
-                          <path d={roundedTopRect(barX, barY, barW, barH, 3)}
+                          <path d={roundedTopRect(bX, barY, bW, barH, 3)}
                             fill="none" stroke="rgba(255,255,255,0.85)" strokeWidth={1.5}
                             vectorEffect="non-scaling-stroke" style={{ pointerEvents: "none" }} />
                         )}
@@ -999,13 +1011,8 @@ function PriceDistribution({ data, listings, price }) {
                       ? zActiveBins.reduce((a, b) =>
                           Math.abs(price - (a.s + a.e) / 2) <= Math.abs(price - (b.s + b.e) / 2) ? a : b)
                       : null);
-                    const ux = zPriceBin
-                      ? (() => {
-                          const bColX = Math.max(0, zToX(zPriceBin.s));
-                          const bColW = Math.max(2, Math.min(zPlotW, zToX(zPriceBin.e)) - bColX);
-                          return bColX + bColW / 2;
-                        })()
-                      : zToX(price);
+                    const zPriceBinIdx = zPriceBin ? zBins.findIndex(b => b.s === zPriceBin.s) : -1;
+                    const ux = zPriceBinIdx >= 0 ? zBinMidX(zPriceBinIdx) : zPlotW / 2;
                     return (
                       <g>
                         <line x1={ux} y1={ZPADT} x2={ux} y2={zBaseline}
@@ -1028,7 +1035,7 @@ function PriceDistribution({ data, listings, price }) {
                   {zTicks.map(tick => (
                     <div key={tick.v} style={{
                       position: "absolute",
-                      left: `${Math.min(96, Math.max(2, zToPct(tick.mid)))}%`,
+                      left: `${Math.min(96, Math.max(2, (tick.midX / ZCW) * 100))}%`,
                       top: 4, transform: "translateX(-50%)",
                       fontSize: 9, color: "#5a7fa0", whiteSpace: "nowrap",
                       fontVariantNumeric: "tabular-nums", userSelect: "none", fontWeight: 600,
