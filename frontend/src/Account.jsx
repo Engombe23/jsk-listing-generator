@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { BUTTON_BASE, primaryButtonStyle } from "./shared.jsx";
+import ListingTemplates from "./ListingTemplates.jsx";
 
 // ─── Colour tokens (mirror App / PriceCalculator) ────────────────────────────
 const C = {
@@ -455,10 +456,11 @@ function ActionRow({ label, note, action }) {
 
 // ─── Sidebar nav ──────────────────────────────────────────────────────────────
 const NAV_ITEMS = [
-  { key: "account",       label: "Account",          icon: "○" },
-  { key: "billing",       label: "Billing",          icon: "◈" },
-  { key: "usage",         label: "Usage",            icon: "◫" },
-  { key: "savedlistings", label: "Saved Listings",   icon: "≡" },
+  { key: "account",       label: "Account",            icon: "○" },
+  { key: "billing",       label: "Billing",            icon: "◈" },
+  { key: "usage",         label: "Usage",              icon: "◫" },
+  { key: "savedlistings", label: "Saved Listings",     icon: "≡" },
+  { key: "templates",     label: "Listing Templates",  icon: "⬚" },
   { key: "api",           label: "API / Integrations", icon: "⌥", disabled: true },
 ];
 
@@ -515,6 +517,7 @@ export default function Account({ listings = [], initialPage = "account" }) {
     billing:       "Billing",
     usage:         "Usage",
     savedlistings: "Saved Listings",
+    templates:     "Listing Templates",
   };
 
   return (
@@ -535,6 +538,7 @@ export default function Account({ listings = [], initialPage = "account" }) {
         {activePage === "billing"       && <BillingPage />}
         {activePage === "usage"         && <UsagePage />}
         {activePage === "savedlistings" && <SavedListingsPage listings={listings} />}
+        {activePage === "templates"     && <ListingTemplates />}
       </div>
 
     </div>
