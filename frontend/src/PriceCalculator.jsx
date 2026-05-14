@@ -1146,7 +1146,7 @@ function PriceDistribution({ data, listings, price }) {
                     {/* Thumbnail */}
                     <div style={{ width: 44, flexShrink: 0, marginRight: 8 }}>
                       {item.image ? (
-                        <img src={item.image} alt="" onClick={() => setLightboxImg(item.image)} style={{
+                        <img src={item.image} alt="" onClick={e => { e.stopPropagation(); e.preventDefault(); setLightboxImg(item.image); }} style={{
                           width: 44, height: 44, objectFit: "contain",
                           borderRadius: 5, background: "#0b1929",
                           border: "1px solid rgba(255,255,255,0.07)",
@@ -1308,7 +1308,7 @@ function PriceDistribution({ data, listings, price }) {
                   {/* Thumbnail */}
                   <div style={{ width: 44, height: 44, flexShrink: 0, borderRadius: 6, overflow: "hidden", background: "#0a1520", border: "1px solid rgba(255,255,255,0.07)" }}>
                     {l.image
-                      ? <img src={l.image} alt="" onClick={() => setLightboxImg(l.image)} style={{ width: "100%", height: "100%", objectFit: "cover", cursor: "zoom-in" }} />
+                      ? <img src={l.image} alt="" onClick={e => { e.stopPropagation(); e.preventDefault(); setLightboxImg(l.image); }} style={{ width: "100%", height: "100%", objectFit: "cover", cursor: "zoom-in" }} />
                       : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, opacity: 0.2 }}>□</div>
                     }
                   </div>
