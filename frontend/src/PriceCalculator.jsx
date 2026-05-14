@@ -1093,8 +1093,8 @@ function PriceDistribution({ data, listings, price }) {
           return               { label: "Above",    col: "#ef4444" };
         };
 
-        const TH = ({ children, w }) => (
-          <div style={{ width: w, fontSize: 8, fontWeight: 800, color: "#2d4a65", textTransform: "uppercase", letterSpacing: 1.2, padding: "0 8px 8px", flexShrink: 0 }}>
+        const TH = ({ children, w, flex1 }) => (
+          <div style={{ ...(flex1 ? { flex: 1, minWidth: 0 } : { width: w, flexShrink: 0 }), fontSize: 8, fontWeight: 800, color: "#2d4a65", textTransform: "uppercase", letterSpacing: 1.2, paddingBottom: 8 }}>
             {children}
           </div>
         );
@@ -1117,10 +1117,10 @@ function PriceDistribution({ data, listings, price }) {
               ))}
             </div>
 
-            {/* Header row */}
+            {/* Header row — widths must exactly mirror data row cell widths */}
             <div style={{ display: "flex", borderBottom: "1px solid rgba(255,255,255,0.06)", paddingBottom: 4, marginBottom: 2, paddingLeft: 8 }}>
-              <div style={{ width: 52, flexShrink: 0 }} />
-              <TH w="auto">Title</TH>
+              <div style={{ width: 52, flexShrink: 0 }} /> {/* thumbnail spacer: 44px img + 8px marginRight */}
+              <TH flex1>Title</TH>
               <TH w={62}>Price</TH>
               <TH w={56}>Cond.</TH>
               <TH w={104}>Seller</TH>
