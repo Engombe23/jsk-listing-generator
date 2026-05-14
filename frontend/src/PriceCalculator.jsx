@@ -785,11 +785,16 @@ function PriceDistribution({ data, listings, price }) {
 
             {/* ── User price beam — focal point ── */}
             {hasPrice && inView(price) && (() => {
-              // Snap to the centre of the bin that contains the price so the
-              // beam always sits visually inside the bar rather than at a raw
-              // x-coordinate that can fall in the empty padding beside it.
-              const priceBin = bins.find(b => price >= b.s && price < b.e)
-                            ?? bins.find(b => price === b.e); // last-bin edge case
+              // Only snap to a bin that actually has a bar (count > 0).
+              // If the exact bin is empty, fall back to the nearest non-empty bin
+              // by midpoint distance so the beam always lands inside a visible bar.
+              const activeBins = bins.filter(b => b.count > 0);
+              const exactBin   = activeBins.find(b => price >= b.s && price < b.e)
+                              ?? activeBins.find(b => price === b.e);
+              const priceBin   = exactBin ?? (activeBins.length
+                ? activeBins.reduce((a, b) =>
+                    Math.abs(price - (a.s + a.e) / 2) <= Math.abs(price - (b.s + b.e) / 2) ? a : b)
+                : null);
               const ux = priceBin
                 ? (() => {
                     const bColX = Math.max(0, toX(priceBin.s));
@@ -987,12 +992,17 @@ function PriceDistribution({ data, listings, price }) {
 
                   {/* User price beam */}
                   {hasPrice && price >= zMin && price <= zMax && (() => {
-                    const priceBin = zBins.find(b => price >= b.s && price < b.e)
-                                  ?? zBins.find(b => price === b.e);
-                    const ux = priceBin
+                    const zActiveBins = zBins.filter(b => b.count > 0);
+                    const zExactBin   = zActiveBins.find(b => price >= b.s && price < b.e)
+                                     ?? zActiveBins.find(b => price === b.e);
+                    const zPriceBin   = zExactBin ?? (zActiveBins.length
+                      ? zActiveBins.reduce((a, b) =>
+                          Math.abs(price - (a.s + a.e) / 2) <= Math.abs(price - (b.s + b.e) / 2) ? a : b)
+                      : null);
+                    const ux = zPriceBin
                       ? (() => {
-                          const bColX = Math.max(0, zToX(priceBin.s));
-                          const bColW = Math.max(2, Math.min(zPlotW, zToX(priceBin.e)) - bColX);
+                          const bColX = Math.max(0, zToX(zPriceBin.s));
+                          const bColW = Math.max(2, Math.min(zPlotW, zToX(zPriceBin.e)) - bColX);
                           return bColX + bColW / 2;
                         })()
                       : zToX(price);
