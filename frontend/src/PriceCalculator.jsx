@@ -1370,7 +1370,10 @@ function PriceDistribution({ data, listings, price }) {
       })()}
 
     {/* ── Lightbox overlay ── */}
-    {lightboxImg && (
+    {lightboxImg && (() => {
+      // Swap eBay thumbnail size token to full-res (s-l140 / s-l300 / s-l500 → s-l1600)
+      const hiResImg = lightboxImg.replace(/s-l\d+(\.\w+)$/, "s-l1600$1");
+      return (
       <div
         onClick={() => setLightboxImg(null)}
         onKeyDown={e => e.key === "Escape" && setLightboxImg(null)}
@@ -1383,7 +1386,7 @@ function PriceDistribution({ data, listings, price }) {
         }}
       >
         <img
-          src={lightboxImg}
+          src={hiResImg}
           alt=""
           style={{
             width: "min(80vw, 800px)", height: "min(80vh, 800px)",
@@ -1399,7 +1402,8 @@ function PriceDistribution({ data, listings, price }) {
           cursor: "pointer", lineHeight: 1,
         }}>✕</div>
       </div>
-    )}
+      );
+    })()}
 
     </div>
   );
