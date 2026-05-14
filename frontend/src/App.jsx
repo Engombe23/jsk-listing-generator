@@ -327,10 +327,7 @@ export default function App() {
           />
         )}
         {page === "account" && (
-          <Account
-            listings={generatedListings}
-            initialPage={accountSubPage}
-          />
+          <Account initialPage={accountSubPage} />
         )}
       </div>
     </div>

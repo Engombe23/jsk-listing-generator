@@ -1,6 +1,6 @@
-// ─── Listing Preferences — shared hook ───────────────────────────────────────
-// Persists user-level defaults to localStorage.
-// Import anywhere to read or update preferences.
+// ─── Listing Preferences — shared module ─────────────────────────────────────
+// Persists user-level listing defaults to localStorage.
+// Import loadPreferences() anywhere to read current values.
 
 const LS_KEY = "jsk_listing_prefs_v1";
 
@@ -10,14 +10,11 @@ export const PREF_DEFAULTS = {
   warranty:          "",
   countryOfMfr:      "",
   condition:         "",
-  placement:         "",
-  quantity:          "",
   // Localisation
   language:          "English (UK)",
   currency:          "GBP",
   // Template defaults
   defaultTemplateId: "",
-  descriptionNote:   "",
   shippingText:      "",
   returnsText:       "",
 };

@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { BUTTON_BASE, primaryButtonStyle } from "./shared.jsx";
 import ListingTemplates from "./ListingTemplates.jsx";
 import { loadPreferences, savePreferences, PREF_DEFAULTS } from "./useListingPreferences.js";
 
-// ─── Colour tokens (mirror App / PriceCalculator) ────────────────────────────
+// ─── Colour tokens ────────────────────────────────────────────────────────────
 const C = {
   bg:      "#0A1628",
   card:    "#0F1E35",
@@ -12,442 +11,75 @@ const C = {
   border2: "rgba(255,255,255,0.05)",
   blue:    "#135DFF",
   text:    "#e2e8f0",
+  sub:     "#94a3b8",
   muted:   "#6b7280",
-  dim:     "#374151",
+  dim:     "#1e2d42",
   green:   "#10b981",
   amber:   "#f59e0b",
   red:     "#ef4444",
 };
 
-// ─── Shared primitives ────────────────────────────────────────────────────────
-const Divider = () => (
-  <div style={{ height: 1, background: C.border2, margin: "20px 0" }} />
-);
-
-function SectionLabel({ children }) {
+// ─── Primitives ───────────────────────────────────────────────────────────────
+function SL({ children }) {
   return (
-    <div style={{ fontSize: 10, fontWeight: 800, color: C.muted, textTransform: "uppercase", letterSpacing: 1.4, marginBottom: 14 }}>
+    <div style={{ fontSize: 9, fontWeight: 800, color: C.muted, textTransform: "uppercase",
+      letterSpacing: 1.5, marginBottom: 12 }}>
       {children}
     </div>
   );
 }
 
-function StatCard({ label, value, sub, accent }) {
+function Divider() {
+  return <div style={{ height: 1, background: C.border2, margin: "16px 0" }} />;
+}
+
+function Card({ children, style }) {
   return (
     <div style={{
-      background: C.card2,
-      border: `1px solid ${C.border}`,
-      borderRadius: 14,
-      padding: "18px 20px",
+      background: C.card2, border: `1px solid ${C.border}`,
+      borderRadius: 12, padding: "18px 20px", ...style,
     }}>
-      <div style={{ fontSize: 11, fontWeight: 700, color: C.muted, textTransform: "uppercase", letterSpacing: 1.1, marginBottom: 10 }}>{label}</div>
-      <div style={{ fontSize: 28, fontWeight: 900, color: accent || C.text, lineHeight: 1 }}>{value}</div>
-      {sub && <div style={{ fontSize: 11, color: C.muted, marginTop: 6 }}>{sub}</div>}
+      {children}
     </div>
   );
 }
 
-function ActionButton({ onClick, children, variant = "ghost", disabled }) {
+function Btn({ children, onClick, variant = "ghost", disabled }) {
   const [hov, setHov] = useState(false);
-  const styles = {
-    primary: { background: hov ? "#1a6bff" : C.blue, color: "#fff", border: `1px solid ${C.blue}` },
-    ghost:   { background: hov ? "rgba(255,255,255,0.06)" : "transparent", color: C.text, border: `1px solid ${C.border}` },
-    danger:  { background: hov ? "rgba(239,68,68,0.12)" : "transparent", color: C.red, border: "1px solid rgba(239,68,68,0.25)" },
-  };
+  const v = {
+    primary: { bg: hov ? "#1a6bff" : C.blue,   color: "#fff",   border: C.blue },
+    ghost:   { bg: hov ? "rgba(255,255,255,0.06)" : "transparent", color: C.text, border: C.border },
+    danger:  { bg: hov ? "rgba(239,68,68,0.1)"  : "transparent", color: C.red,  border: "rgba(239,68,68,0.25)" },
+  }[variant];
   return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      onMouseEnter={() => setHov(true)}
-      onMouseLeave={() => setHov(false)}
+    <button onClick={onClick} disabled={disabled}
+      onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}
       style={{
-        ...styles[variant],
-        padding: "8px 16px", borderRadius: 9, fontSize: 12, fontWeight: 700,
+        padding: "7px 14px", fontSize: 11, fontWeight: 700, borderRadius: 8,
+        background: v.bg, color: v.color, border: `1px solid ${v.border}`,
         cursor: disabled ? "not-allowed" : "pointer", opacity: disabled ? 0.4 : 1,
-        transition: "all 0.15s ease", outline: "none",
-      }}
-    >
+        transition: "all 0.13s", outline: "none",
+      }}>
       {children}
     </button>
   );
 }
 
-function Badge({ children, color = "#135DFF" }) {
+function Badge({ children, color = C.blue }) {
   return (
     <span style={{
-      fontSize: 9, fontWeight: 800, color, textTransform: "uppercase", letterSpacing: 0.9,
-      background: `${color}18`, border: `1px solid ${color}35`,
+      fontSize: 9, fontWeight: 800, color, textTransform: "uppercase", letterSpacing: 0.8,
+      background: `${color}18`, border: `1px solid ${color}30`,
       borderRadius: 5, padding: "2px 8px",
-    }}>
-      {children}
-    </span>
+    }}>{children}</span>
   );
 }
 
-// ─── Usage bar ────────────────────────────────────────────────────────────────
-function UsageBar({ used, total, color = C.blue }) {
-  const pct = Math.min(100, (used / total) * 100);
-  const barColor = pct > 85 ? C.red : pct > 65 ? C.amber : color;
+function InfoRow({ label, value }) {
   return (
-    <div>
-      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-        <span style={{ fontSize: 11, color: C.muted }}>{used.toLocaleString()} / {total.toLocaleString()}</span>
-        <span style={{ fontSize: 11, color: barColor, fontWeight: 700 }}>{pct.toFixed(0)}%</span>
-      </div>
-      <div style={{ height: 6, background: "rgba(255,255,255,0.07)", borderRadius: 99, overflow: "hidden" }}>
-        <div style={{ height: "100%", width: `${pct}%`, background: barColor, borderRadius: 99, transition: "width 0.4s ease" }} />
-      </div>
-    </div>
-  );
-}
-
-// ─── PAGE: Account ────────────────────────────────────────────────────────────
-function AccountPage() {
-  const user = { name: "Aaron Butler", email: "aaron@jskcommerce.co.uk", plan: "Pro", avatar: "AB" };
-  const usage = { listings: 312, listingsMax: 500, pricing: 48, pricingMax: 100 };
-
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-
-      {/* Usage banner */}
-      <div style={{
-        background: C.card2, border: `1px solid ${C.border}`, borderRadius: 14,
-        padding: "14px 20px", display: "flex", alignItems: "center", gap: 16,
-      }}>
-        <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 11, color: C.muted, marginBottom: 8, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1 }}>Monthly Usage</div>
-          <UsageBar used={usage.listings} total={usage.listingsMax} />
-        </div>
-        <div style={{ fontSize: 12, color: C.muted, flexShrink: 0, textAlign: "right" }}>
-          <div style={{ fontSize: 18, fontWeight: 900, color: C.text }}>{usage.listings}</div>
-          <div>/ {usage.listingsMax} listings</div>
-        </div>
-      </div>
-
-      {/* Profile card */}
-      <div style={{ background: C.card2, border: `1px solid ${C.border}`, borderRadius: 14, padding: "22px 24px" }}>
-        <SectionLabel>Profile</SectionLabel>
-        <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 20 }}>
-          <div style={{
-            width: 52, height: 52, borderRadius: "50%", flexShrink: 0,
-            background: "linear-gradient(135deg, #135DFF, #0ea5e9)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: 16, fontWeight: 900, color: "#fff",
-          }}>
-            {user.avatar}
-          </div>
-          <div>
-            <div style={{ fontSize: 16, fontWeight: 800, color: C.text }}>{user.name}</div>
-            <div style={{ fontSize: 12, color: C.muted, marginTop: 3 }}>{user.email}</div>
-          </div>
-          <div style={{ marginLeft: "auto" }}>
-            <Badge color={C.blue}>{user.plan} Plan</Badge>
-          </div>
-        </div>
-
-        <Divider />
-
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <Row label="Full name" value={user.name} />
-          <Row label="Email address" value={user.email} />
-          <Row label="Plan" value={<Badge color={C.blue}>{user.plan}</Badge>} />
-          <Row label="Member since" value="January 2025" />
-        </div>
-      </div>
-
-      {/* Actions */}
-      <div style={{ background: C.card2, border: `1px solid ${C.border}`, borderRadius: 14, padding: "22px 24px" }}>
-        <SectionLabel>Security</SectionLabel>
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <ActionRow
-            label="Password"
-            note="Change your account password"
-            action={<ActionButton>Change Password</ActionButton>}
-          />
-          <ActionRow
-            label="Google Account"
-            note="aaron@jskcommerce.co.uk"
-            action={<Badge color={C.green}>Connected</Badge>}
-          />
-        </div>
-      </div>
-
-    </div>
-  );
-}
-
-// ─── PAGE: Billing ────────────────────────────────────────────────────────────
-function BillingPage() {
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-
-      {/* Current plan */}
-      <div style={{ background: C.card2, border: `1px solid ${C.border}`, borderRadius: 14, padding: "22px 24px" }}>
-        <SectionLabel>Current Plan</SectionLabel>
-        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
-          <div style={{ fontSize: 20, fontWeight: 900, color: C.text }}>Pro Plan</div>
-          <Badge color={C.green}>Active</Badge>
-        </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 20 }}>
-          <Row label="Renewal date" value="15 June 2026" />
-          <Row label="Billing cycle" value="Monthly" />
-          <Row label="Payment method" value="Visa ending in 4242" />
-        </div>
-        <div style={{ display: "flex", gap: 10 }}>
-          <ActionButton variant="primary">Manage Billing →</ActionButton>
-          <ActionButton variant="ghost">View Invoices</ActionButton>
-        </div>
-      </div>
-
-      {/* Upgrade */}
-      <div style={{
-        background: "linear-gradient(135deg, rgba(19,93,255,0.12), rgba(14,165,233,0.08))",
-        border: "1px solid rgba(19,93,255,0.25)",
-        borderRadius: 14, padding: "22px 24px",
-      }}>
-        <div style={{ fontSize: 14, fontWeight: 800, color: C.text, marginBottom: 6 }}>Need more capacity?</div>
-        <div style={{ fontSize: 12, color: C.muted, marginBottom: 16, lineHeight: 1.6 }}>
-          Upgrade to Business for unlimited listings, priority support, and team access.
-        </div>
-        <ActionButton variant="primary">View Plans →</ActionButton>
-      </div>
-
-      {/* Billing history */}
-      <div style={{ background: C.card2, border: `1px solid ${C.border}`, borderRadius: 14, padding: "22px 24px" }}>
-        <SectionLabel>Billing History</SectionLabel>
-        {[
-          { date: "15 May 2026",  desc: "Pro Plan — Monthly", amount: "£19.99", status: "Paid" },
-          { date: "15 Apr 2026",  desc: "Pro Plan — Monthly", amount: "£19.99", status: "Paid" },
-          { date: "15 Mar 2026",  desc: "Pro Plan — Monthly", amount: "£19.99", status: "Paid" },
-        ].map((inv, i) => (
-          <div key={i} style={{
-            display: "flex", alignItems: "center", gap: 12,
-            padding: "11px 0",
-            borderBottom: i < 2 ? `1px solid ${C.border2}` : "none",
-          }}>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: C.text }}>{inv.desc}</div>
-              <div style={{ fontSize: 10, color: C.muted, marginTop: 2 }}>{inv.date}</div>
-            </div>
-            <div style={{ fontSize: 13, fontWeight: 800, color: C.text }}>{inv.amount}</div>
-            <Badge color={C.green}>{inv.status}</Badge>
-          </div>
-        ))}
-      </div>
-
-    </div>
-  );
-}
-
-// ─── PAGE: Usage ──────────────────────────────────────────────────────────────
-function UsagePage() {
-  const cards = [
-    { label: "Listings Generated",     value: "312", sub: "of 500 this month", accent: C.blue },
-    { label: "Smart Pricing Searches", value: "48",  sub: "Unlimited",         accent: "#0ea5e9" },
-    { label: "Compatibility Checks",   value: "27",  sub: "Unlimited",         accent: "#8b5cf6" },
-    { label: "CSV Exports",            value: "9",   sub: "Unlimited",         accent: C.green },
-  ];
-
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-
-      {/* Stat cards grid */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-        {cards.map((c, i) => <StatCard key={i} {...c} />)}
-      </div>
-
-      {/* Usage breakdown */}
-      <div style={{ background: C.card2, border: `1px solid ${C.border}`, borderRadius: 14, padding: "22px 24px" }}>
-        <SectionLabel>Usage Breakdown</SectionLabel>
-        <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-
-          {/* Listings Generated — has a cap */}
-          <div>
-            <div style={{ fontSize: 12, fontWeight: 700, color: C.text, marginBottom: 8 }}>Listings Generated</div>
-            <UsageBar used={312} total={500} />
-          </div>
-
-          {/* Unlimited items */}
-          {[
-            { label: "Smart Pricing Searches", value: "48",  accent: "#0ea5e9" },
-            { label: "Compatibility Checks",   value: "27",  accent: "#8b5cf6" },
-            { label: "CSV Exports",            value: "9",   accent: C.green },
-          ].map((item, i) => (
-            <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: C.text }}>{item.label}</div>
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <span style={{ fontSize: 13, fontWeight: 800, color: item.accent }}>{item.value}</span>
-                <span style={{
-                  fontSize: 9, fontWeight: 800, color: C.green, textTransform: "uppercase", letterSpacing: 0.8,
-                  background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.2)",
-                  borderRadius: 5, padding: "2px 8px",
-                }}>Unlimited</span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Reset note */}
-      <div style={{ fontSize: 11, color: C.muted, textAlign: "center" }}>
-        Listing generation resets on the 1st of each month · Next reset: 1 June 2026
-      </div>
-
-    </div>
-  );
-}
-
-// ─── PAGE: Saved Listings ─────────────────────────────────────────────────────
-function SavedListingsPage({ listings = [] }) {
-  const [search, setSearch] = useState("");
-  const [sortBy, setSortBy] = useState("date");
-
-  const filtered = listings
-    .filter(l => {
-      if (!search.trim()) return true;
-      const q = search.toLowerCase();
-      return (l.title || "").toLowerCase().includes(q) || (l.sku || "").toLowerCase().includes(q);
-    })
-    .sort((a, b) => {
-      if (sortBy === "date")  return new Date(b.savedAt || 0) - new Date(a.savedAt || 0);
-      if (sortBy === "title") return (a.title || "").localeCompare(b.title || "");
-      if (sortBy === "sku")   return (a.sku || "").localeCompare(b.sku || "");
-      return 0;
-    });
-
-  const fmtDate = (d) => {
-    if (!d) return "—";
-    try { return new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }); }
-    catch { return "—"; }
-  };
-
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-
-      {/* Controls */}
-      <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-        <input
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          placeholder="Search by SKU or title…"
-          style={{
-            flex: 1, padding: "9px 14px", borderRadius: 9, fontSize: 12,
-            background: C.card2, border: `1px solid ${C.border}`,
-            color: C.text, outline: "none",
-          }}
-        />
-        <select
-          value={sortBy}
-          onChange={e => setSortBy(e.target.value)}
-          style={{
-            padding: "9px 12px", borderRadius: 9, fontSize: 12,
-            background: C.card2, border: `1px solid ${C.border}`,
-            color: C.text, outline: "none", cursor: "pointer",
-          }}
-        >
-          <option value="date">Newest first</option>
-          <option value="title">Title A–Z</option>
-          <option value="sku">SKU A–Z</option>
-        </select>
-      </div>
-
-      {/* Table */}
-      <div style={{ background: C.card2, border: `1px solid ${C.border}`, borderRadius: 14, overflow: "hidden" }}>
-
-        {/* Header */}
-        <div style={{
-          display: "grid", gridTemplateColumns: "100px 1fr 110px 90px 100px",
-          padding: "10px 16px", borderBottom: `1px solid ${C.border}`,
-          fontSize: 9, fontWeight: 800, color: C.muted, textTransform: "uppercase", letterSpacing: 1.2,
-        }}>
-          <span>SKU</span>
-          <span>Title</span>
-          <span>Saved</span>
-          <span>Status</span>
-          <span></span>
-        </div>
-
-        {/* Rows */}
-        {filtered.length === 0 ? (
-          <div style={{ padding: "40px 20px", textAlign: "center", fontSize: 13, color: C.muted }}>
-            {listings.length === 0 ? "No saved listings yet." : "No results match your search."}
-          </div>
-        ) : (
-          filtered.map((l, i) => (
-            <ListingRow key={l.id || i} listing={l} fmtDate={fmtDate} isLast={i === filtered.length - 1} />
-          ))
-        )}
-      </div>
-
-      <div style={{ fontSize: 11, color: C.muted }}>
-        {filtered.length} listing{filtered.length !== 1 ? "s" : ""}
-        {search && ` matching "${search}"`}
-      </div>
-    </div>
-  );
-}
-
-function ListingRow({ listing: l, fmtDate, isLast }) {
-  const [hov, setHov] = useState(false);
-  const statusColor = l.status === "exported" ? C.green : l.status === "draft" ? C.amber : C.muted;
-
-  return (
-    <div
-      onMouseEnter={() => setHov(true)}
-      onMouseLeave={() => setHov(false)}
-      style={{
-        display: "grid", gridTemplateColumns: "100px 1fr 110px 90px 100px",
-        alignItems: "center", padding: "11px 16px",
-        borderBottom: isLast ? "none" : `1px solid ${C.border2}`,
-        background: hov ? "rgba(255,255,255,0.02)" : "transparent",
-        transition: "background 0.12s ease",
-      }}
-    >
-      <span style={{ fontSize: 11, fontWeight: 700, color: "#7dd3fc", fontFamily: "monospace" }}>
-        {l.sku || "—"}
-      </span>
-      <span style={{
-        fontSize: 11, color: C.text,
-        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", paddingRight: 12,
-      }}>
-        {l.title || "Untitled"}
-      </span>
-      <span style={{ fontSize: 10, color: C.muted }}>{fmtDate(l.savedAt)}</span>
-      <span>
-        <Badge color={statusColor}>{l.status || "saved"}</Badge>
-      </span>
-      <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
-        <RowBtn label="Open" />
-        <RowBtn label="⋯" />
-      </div>
-    </div>
-  );
-}
-
-function RowBtn({ label, onClick }) {
-  const [hov, setHov] = useState(false);
-  return (
-    <button
-      onClick={onClick}
-      onMouseEnter={() => setHov(true)}
-      onMouseLeave={() => setHov(false)}
-      style={{
-        padding: "4px 10px", fontSize: 10, fontWeight: 700, borderRadius: 6,
-        background: hov ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.04)",
-        border: `1px solid ${C.border}`, color: C.text,
-        cursor: "pointer", transition: "background 0.12s ease",
-      }}
-    >
-      {label}
-    </button>
-  );
-}
-
-// ─── Shared layout helpers ────────────────────────────────────────────────────
-function Row({ label, value }) {
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-      <span style={{ fontSize: 11, color: C.muted, width: 130, flexShrink: 0 }}>{label}</span>
+    <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "8px 0",
+      borderBottom: `1px solid ${C.border2}` }}>
+      <span style={{ fontSize: 11, color: C.muted, width: 140, flexShrink: 0 }}>{label}</span>
       <span style={{ fontSize: 12, fontWeight: 600, color: C.text }}>
         {typeof value === "string" ? value : value}
       </span>
@@ -457,31 +89,170 @@ function Row({ label, value }) {
 
 function ActionRow({ label, note, action }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0",
+      borderBottom: `1px solid ${C.border2}` }}>
       <div style={{ flex: 1 }}>
-        <div style={{ fontSize: 12, fontWeight: 700, color: C.text }}>{label}</div>
-        {note && <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>{note}</div>}
+        <div style={{ fontSize: 12, fontWeight: 600, color: C.text }}>{label}</div>
+        {note && <div style={{ fontSize: 10, color: C.muted, marginTop: 2 }}>{note}</div>}
       </div>
       {action}
     </div>
   );
 }
 
-// ─── PAGE: Listing Preferences ───────────────────────────────────────────────
-const CONDITIONS   = ["", "New", "New other (see details)", "Manufacturer refurbished", "Used", "Parts only"];
-const PLACEMENTS   = ["", "Front", "Rear", "Left", "Right", "Front Left", "Front Right", "Rear Left", "Rear Right", "Front & Rear", "Left & Right", "Universal"];
-const LANGUAGES    = ["English (UK)", "English (US)", "German", "French", "Spanish", "Italian", "Dutch", "Polish"];
-const CURRENCIES   = ["GBP", "USD", "EUR", "AUD", "CAD", "CHF", "SEK", "NOK", "DKK"];
-const COUNTRIES    = [
+function UsageBar({ used, total }) {
+  const pct = Math.min(100, (used / total) * 100);
+  const color = pct > 85 ? C.red : pct > 65 ? C.amber : C.blue;
+  return (
+    <div>
+      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5 }}>
+        <span style={{ fontSize: 11, color: C.sub }}>{used.toLocaleString()} / {total.toLocaleString()} listings</span>
+        <span style={{ fontSize: 11, color, fontWeight: 700 }}>{pct.toFixed(0)}%</span>
+      </div>
+      <div style={{ height: 4, background: "rgba(255,255,255,0.07)", borderRadius: 99, overflow: "hidden" }}>
+        <div style={{ height: "100%", width: `${pct}%`, background: color, borderRadius: 99, transition: "width 0.4s" }} />
+      </div>
+    </div>
+  );
+}
+
+// ─── PAGE: Account ────────────────────────────────────────────────────────────
+function AccountPage() {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+
+      {/* Profile */}
+      <Card>
+        <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 16 }}>
+          <div style={{
+            width: 44, height: 44, borderRadius: "50%", flexShrink: 0,
+            background: "linear-gradient(135deg, #135DFF, #0ea5e9)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: 14, fontWeight: 900, color: "#fff",
+          }}>AB</div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 14, fontWeight: 800, color: C.text }}>Aaron Butler</div>
+            <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>aaron@jskcommerce.co.uk</div>
+          </div>
+          <Badge color={C.blue}>Pro Plan</Badge>
+        </div>
+
+        <div style={{ marginBottom: 0 }}>
+          <InfoRow label="Member since" value="January 2025" />
+          <div style={{ borderBottom: "none" }}>
+            <InfoRow label="Monthly usage" value={
+              <div style={{ flex: 1, maxWidth: 260 }}>
+                <UsageBar used={312} total={500} />
+              </div>
+            } />
+          </div>
+        </div>
+      </Card>
+
+      {/* Security */}
+      <Card>
+        <SL>Security</SL>
+        <div>
+          <ActionRow
+            label="Password"
+            note="Update your account password"
+            action={<Btn>Change Password</Btn>}
+          />
+          <div style={{ borderBottom: "none" }}>
+            <ActionRow
+              label="Manage Subscription"
+              note="Billing, plan changes, and invoices"
+              action={<Btn variant="primary">Open Billing →</Btn>}
+            />
+          </div>
+        </div>
+      </Card>
+
+    </div>
+  );
+}
+
+// ─── PAGE: Billing ────────────────────────────────────────────────────────────
+function BillingPage() {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+
+      {/* Plan */}
+      <Card>
+        <SL>Current Plan</SL>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+          <span style={{ fontSize: 16, fontWeight: 900, color: C.text }}>Pro Plan</span>
+          <Badge color={C.green}>Active</Badge>
+        </div>
+        <div>
+          <InfoRow label="Renewal date"     value="15 June 2026" />
+          <InfoRow label="Billing cycle"    value="Monthly" />
+          <div style={{ borderBottom: "none" }}>
+            <InfoRow label="Payment method" value="Visa ending in 4242" />
+          </div>
+        </div>
+        <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
+          <Btn variant="primary">Manage Billing →</Btn>
+          <Btn>View Invoices</Btn>
+        </div>
+      </Card>
+
+      {/* Upgrade */}
+      <div style={{
+        background: "linear-gradient(135deg, rgba(19,93,255,0.10), rgba(14,165,233,0.06))",
+        border: "1px solid rgba(19,93,255,0.22)", borderRadius: 12, padding: "16px 20px",
+      }}>
+        <div style={{ fontSize: 13, fontWeight: 800, color: C.text, marginBottom: 4 }}>Need more capacity?</div>
+        <div style={{ fontSize: 11, color: C.muted, marginBottom: 14, lineHeight: 1.6 }}>
+          Upgrade to Business for unlimited listings, priority support, and team access.
+        </div>
+        <Btn variant="primary">View Plans →</Btn>
+      </div>
+
+      {/* Billing history */}
+      <Card>
+        <SL>Billing History</SL>
+        {[
+          { date: "15 May 2026", desc: "Pro Plan — Monthly", amount: "£19.99" },
+          { date: "15 Apr 2026", desc: "Pro Plan — Monthly", amount: "£19.99" },
+          { date: "15 Mar 2026", desc: "Pro Plan — Monthly", amount: "£19.99" },
+        ].map((inv, i, arr) => (
+          <div key={i} style={{
+            display: "flex", alignItems: "center", gap: 12,
+            padding: "9px 0",
+            borderBottom: i < arr.length - 1 ? `1px solid ${C.border2}` : "none",
+          }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: C.text }}>{inv.desc}</div>
+              <div style={{ fontSize: 10, color: C.muted, marginTop: 1 }}>{inv.date}</div>
+            </div>
+            <span style={{ fontSize: 12, fontWeight: 800, color: C.text }}>{inv.amount}</span>
+            <Badge color={C.green}>Paid</Badge>
+          </div>
+        ))}
+      </Card>
+
+    </div>
+  );
+}
+
+// ─── PAGE: Listing Preferences ────────────────────────────────────────────────
+const CONDITIONS = ["", "New", "New other (see details)", "Manufacturer refurbished", "Used", "Parts only"];
+const LANGUAGES  = ["English (UK)", "English (US)", "German", "French", "Spanish", "Italian", "Dutch", "Polish"];
+const CURRENCIES = ["GBP", "USD", "EUR", "AUD", "CAD", "CHF", "SEK", "NOK", "DKK"];
+const COUNTRIES  = [
   "", "United Kingdom", "Germany", "France", "Italy", "Spain", "China", "Japan",
   "United States", "Taiwan", "South Korea", "Netherlands", "Poland", "Czech Republic", "Turkey",
 ];
 
-function PrefField({ label, hint, children }) {
+function PrefRow({ label, hint, children }) {
   return (
-    <div style={{ display: "flex", alignItems: "flex-start", gap: 16, padding: "12px 0", borderBottom: `1px solid ${C.border2}` }}>
-      <div style={{ width: 200, flexShrink: 0, paddingTop: 2 }}>
-        <div style={{ fontSize: 12, fontWeight: 700, color: C.text }}>{label}</div>
+    <div style={{
+      display: "flex", alignItems: "flex-start", gap: 16,
+      padding: "11px 0", borderBottom: `1px solid ${C.border2}`,
+    }}>
+      <div style={{ width: 180, flexShrink: 0, paddingTop: 1 }}>
+        <div style={{ fontSize: 11, fontWeight: 600, color: C.text }}>{label}</div>
         {hint && <div style={{ fontSize: 10, color: C.muted, marginTop: 2, lineHeight: 1.5 }}>{hint}</div>}
       </div>
       <div style={{ flex: 1 }}>{children}</div>
@@ -489,34 +260,26 @@ function PrefField({ label, hint, children }) {
   );
 }
 
-function PrefInput({ value, onChange, placeholder, type = "text" }) {
+const inputBase = {
+  width: "100%", padding: "7px 10px", borderRadius: 7, fontSize: 11,
+  background: "#060e1a", border: `1px solid ${C.border}`,
+  color: C.text, outline: "none", boxSizing: "border-box",
+  caretColor: C.blue, fontFamily: "inherit",
+};
+
+function PrefInput({ value, onChange, placeholder }) {
   return (
-    <input
-      type={type}
-      value={value}
-      onChange={e => onChange(e.target.value)}
+    <input value={value} onChange={e => onChange(e.target.value)}
       placeholder={placeholder || "Leave blank to use generated value"}
-      style={{
-        width: "100%", padding: "8px 12px", borderRadius: 8, fontSize: 12,
-        background: "#060e1a", border: `1px solid ${C.border}`,
-        color: C.text, outline: "none", boxSizing: "border-box",
-        caretColor: "#135DFF",
-      }}
-    />
+      style={inputBase} />
   );
 }
 
-function PrefSelect({ value, onChange, options }) {
+function PrefSelect({ value, onChange, options, narrow }) {
   return (
-    <select
-      value={value}
-      onChange={e => onChange(e.target.value)}
-      style={{
-        width: "100%", padding: "8px 12px", borderRadius: 8, fontSize: 12,
-        background: "#060e1a", border: `1px solid ${C.border}`,
-        color: value ? C.text : C.muted, outline: "none", cursor: "pointer",
-      }}
-    >
+    <select value={value} onChange={e => onChange(e.target.value)}
+      style={{ ...inputBase, width: narrow ? "auto" : "100%", cursor: "pointer",
+        color: value ? C.text : C.muted }}>
       {options.map(o => (
         <option key={o.value ?? o} value={o.value ?? o} style={{ background: "#0a1628" }}>
           {o.label ?? (o === "" ? "— Not set —" : o)}
@@ -526,47 +289,36 @@ function PrefSelect({ value, onChange, options }) {
   );
 }
 
-function PrefTextarea({ value, onChange, placeholder, rows = 3 }) {
+function PrefTextarea({ value, onChange, placeholder }) {
   return (
-    <textarea
-      value={value}
-      onChange={e => onChange(e.target.value)}
+    <textarea value={value} onChange={e => onChange(e.target.value)}
       placeholder={placeholder || "Leave blank to use generated value"}
-      rows={rows}
-      style={{
-        width: "100%", padding: "8px 12px", borderRadius: 8, fontSize: 12,
-        background: "#060e1a", border: `1px solid ${C.border}`,
-        color: C.text, outline: "none", resize: "vertical", boxSizing: "border-box",
-        lineHeight: 1.6, fontFamily: "inherit", caretColor: "#135DFF",
-      }}
-    />
+      rows={3}
+      style={{ ...inputBase, resize: "vertical", lineHeight: 1.6 }} />
   );
 }
 
-function PrefSection({ title, children }) {
+function PrefGroup({ title, children }) {
+  const kids = React.Children.toArray(children);
   return (
-    <div style={{ background: C.card2, border: `1px solid ${C.border}`, borderRadius: 14, padding: "18px 24px", marginBottom: 16 }}>
-      <SectionLabel>{title}</SectionLabel>
+    <Card style={{ marginBottom: 14 }}>
+      <SL>{title}</SL>
       <div>
-        {React.Children.map(children, (child, i) => {
-          if (!child) return null;
-          // Remove border from last row
-          const isLast = i === React.Children.count(children) - 1;
-          return isLast
-            ? React.cloneElement(child, { style: { ...child.props?.style, borderBottom: "none" } })
-            : child;
-        })}
+        {kids.map((child, i) =>
+          i === kids.length - 1
+            ? React.cloneElement(child, { key: i, style: { ...child.props?.style, borderBottom: "none" } })
+            : React.cloneElement(child, { key: i })
+        )}
       </div>
-    </div>
+    </Card>
   );
 }
 
 function ListingPreferencesPage() {
-  const [prefs,   setPrefs]   = useState(loadPreferences);
-  const [saved,   setSaved]   = useState(false);
+  const [prefs,     setPrefs]     = useState(loadPreferences);
+  const [saved,     setSaved]     = useState(false);
   const [templates, setTemplates] = useState([]);
 
-  // Load saved listing templates for the default template selector
   useEffect(() => {
     try {
       const raw = localStorage.getItem("jsk_listing_templates_v1");
@@ -574,10 +326,7 @@ function ListingPreferencesPage() {
     } catch { setTemplates([]); }
   }, []);
 
-  const set = (key, val) => {
-    setPrefs(p => ({ ...p, [key]: val }));
-    setSaved(false);
-  };
+  const set = (key, val) => { setPrefs(p => ({ ...p, [key]: val })); setSaved(false); };
 
   const handleSave = () => {
     savePreferences(prefs);
@@ -585,90 +334,63 @@ function ListingPreferencesPage() {
     setTimeout(() => setSaved(false), 2500);
   };
 
-  const handleReset = () => {
-    setPrefs({ ...PREF_DEFAULTS });
-    setSaved(false);
-  };
-
   const templateOptions = [
-    { value: "", label: "— No default template —" },
+    { value: "", label: "— No default —" },
     ...templates.map(t => ({ value: t.id, label: t.name })),
   ];
 
   return (
-    <div style={{ display: "flex", flexDirection: "column" }}>
+    <div>
 
-      {/* General Listing Defaults */}
-      <PrefSection title="General Listing Defaults">
-        <PrefField label="Default Brand" hint="Applied to every listing's brand field">
-          <PrefInput value={prefs.brand} onChange={v => set("brand", v)} placeholder="e.g. Aftermarket, OEM, Genuine" />
-        </PrefField>
-        <PrefField label="Manufacturer Warranty" hint="Default warranty text for all listings">
+      <PrefGroup title="General Defaults">
+        <PrefRow label="Default Brand">
+          <PrefInput value={prefs.brand} onChange={v => set("brand", v)} placeholder="e.g. Aftermarket" />
+        </PrefRow>
+        <PrefRow label="Default Warranty">
           <PrefInput value={prefs.warranty} onChange={v => set("warranty", v)} placeholder="e.g. 12 Months" />
-        </PrefField>
-        <PrefField label="Country of Manufacture" hint="Country/Region where parts are made">
+        </PrefRow>
+        <PrefRow label="Country of Manufacture">
           <PrefSelect value={prefs.countryOfMfr} onChange={v => set("countryOfMfr", v)} options={COUNTRIES} />
-        </PrefField>
-        <PrefField label="Default Condition" hint="Pre-fills the item condition field">
+        </PrefRow>
+        <PrefRow label="Default Condition">
           <PrefSelect value={prefs.condition} onChange={v => set("condition", v)} options={CONDITIONS} />
-        </PrefField>
-        <PrefField label="Placement on Vehicle" hint="Default fitment position">
-          <PrefSelect value={prefs.placement} onChange={v => set("placement", v)} options={PLACEMENTS} />
-        </PrefField>
-        <PrefField label="Default Quantity" hint="Stock quantity pre-fill">
-          <div style={{ maxWidth: 120 }}>
-            <PrefInput value={prefs.quantity} onChange={v => set("quantity", v)} placeholder="e.g. 1" type="number" />
-          </div>
-        </PrefField>
-      </PrefSection>
+        </PrefRow>
+      </PrefGroup>
 
-      {/* Localisation */}
-      <PrefSection title="Localisation">
-        <PrefField label="Default Language" hint="Language for generated listing content">
-          <div style={{ maxWidth: 220 }}>
-            <PrefSelect value={prefs.language} onChange={v => set("language", v)} options={LANGUAGES} />
-          </div>
-        </PrefField>
-        <PrefField label="Default Currency" hint="Currency shown in pricing and exports">
-          <div style={{ maxWidth: 120 }}>
-            <PrefSelect value={prefs.currency} onChange={v => set("currency", v)} options={CURRENCIES} />
-          </div>
-        </PrefField>
-      </PrefSection>
+      <PrefGroup title="Localisation">
+        <PrefRow label="Language">
+          <PrefSelect value={prefs.language} onChange={v => set("language", v)} options={LANGUAGES} narrow />
+        </PrefRow>
+        <PrefRow label="Currency">
+          <PrefSelect value={prefs.currency} onChange={v => set("currency", v)} options={CURRENCIES} narrow />
+        </PrefRow>
+      </PrefGroup>
 
-      {/* Template Defaults */}
-      <PrefSection title="Template Defaults">
-        <PrefField label="Default Listing Template" hint="Applied automatically when generating listings">
+      <PrefGroup title="Template Defaults">
+        <PrefRow label="Default Template" hint="Applied when generating listings">
           <PrefSelect value={prefs.defaultTemplateId} onChange={v => set("defaultTemplateId", v)} options={templateOptions} />
-          {templates.length === 0 && (
-            <div style={{ fontSize: 10, color: C.muted, marginTop: 6 }}>
-              No templates saved yet — create one in Listing Templates.
-            </div>
-          )}
-        </PrefField>
-        <PrefField label="Description Note" hint="Warning or disclaimer appended to every description">
-          <PrefTextarea value={prefs.descriptionNote} onChange={v => set("descriptionNote", v)} placeholder="e.g. Please check compatibility before purchasing." rows={2} />
-        </PrefField>
-        <PrefField label="Default Shipping Text" hint="Pre-fills the shipping section of every listing">
-          <PrefTextarea value={prefs.shippingText} onChange={v => set("shippingText", v)} placeholder="e.g. Free UK delivery. Dispatched within 1 business day." />
-        </PrefField>
-        <PrefField label="Default Returns Text" hint="Pre-fills the returns section of every listing">
-          <PrefTextarea value={prefs.returnsText} onChange={v => set("returnsText", v)} placeholder="e.g. 30-day returns accepted. Buyer pays return postage." />
-        </PrefField>
-      </PrefSection>
+        </PrefRow>
+        <PrefRow label="Default Shipping">
+          <PrefTextarea value={prefs.shippingText} onChange={v => set("shippingText", v)}
+            placeholder="e.g. Free UK delivery. Dispatched within 1 business day." />
+        </PrefRow>
+        <PrefRow label="Default Returns">
+          <PrefTextarea value={prefs.returnsText} onChange={v => set("returnsText", v)}
+            placeholder="e.g. 30-day returns accepted. Buyer pays return postage." />
+        </PrefRow>
+      </PrefGroup>
 
       {/* Save bar */}
       <div style={{
         display: "flex", alignItems: "center", justifyContent: "space-between",
-        padding: "14px 20px", background: C.card2,
-        border: `1px solid ${C.border}`, borderRadius: 12,
+        padding: "12px 18px", background: C.card2, border: `1px solid ${C.border}`, borderRadius: 10,
       }}>
-        <div style={{ fontSize: 11, color: saved ? "#10b981" : C.muted }}>
-          {saved ? "✓ Preferences saved" : "Changes are not saved yet"}
-        </div>
-        <div style={{ display: "flex", gap: 10 }}>
-          <ActionButton variant="ghost" onClick={handleReset}>Reset to Defaults</ActionButton>
-          <ActionButton variant="primary" onClick={handleSave}>Save Preferences</ActionButton>
+        <span style={{ fontSize: 11, color: saved ? C.green : C.muted }}>
+          {saved ? "✓ Saved" : "Unsaved changes"}
+        </span>
+        <div style={{ display: "flex", gap: 8 }}>
+          <Btn onClick={() => { setPrefs({ ...PREF_DEFAULTS }); setSaved(false); }}>Reset</Btn>
+          <Btn variant="primary" onClick={handleSave}>Save Preferences</Btn>
         </div>
       </div>
 
@@ -676,54 +398,39 @@ function ListingPreferencesPage() {
   );
 }
 
-// ─── Sidebar nav ──────────────────────────────────────────────────────────────
+// ─── Sidebar ──────────────────────────────────────────────────────────────────
 const NAV_ITEMS = [
-  { key: "account",       label: "Account",              icon: "○" },
-  { key: "billing",       label: "Billing",              icon: "◈" },
-  { key: "usage",         label: "Usage",                icon: "◫" },
-  { key: "savedlistings", label: "Saved Listings",       icon: "≡" },
-  { key: "templates",     label: "Listing Templates",    icon: "⬚" },
-  { key: "preferences",   label: "Listing Preferences",  icon: "⚙" },
-  { key: "api",           label: "API / Integrations",   icon: "⌥", disabled: true },
+  { key: "account",     label: "Account",             icon: "○" },
+  { key: "billing",     label: "Billing",             icon: "◈" },
+  { key: "templates",   label: "Listing Templates",   icon: "⬚" },
+  { key: "preferences", label: "Listing Preferences", icon: "⚙" },
 ];
 
 function Sidebar({ active, onChange }) {
   return (
     <div style={{
-      width: 190, flexShrink: 0,
+      width: 180, flexShrink: 0,
       background: C.card2, border: `1px solid ${C.border}`,
-      borderRadius: 14, padding: "16px 10px",
-      display: "flex", flexDirection: "column", gap: 2,
+      borderRadius: 12, padding: "12px 8px",
       alignSelf: "flex-start", position: "sticky", top: 0,
     }}>
-      <div style={{ fontSize: 9, fontWeight: 800, color: C.muted, textTransform: "uppercase", letterSpacing: 1.4, padding: "4px 10px 10px" }}>
+      <div style={{ fontSize: 9, fontWeight: 800, color: C.muted, textTransform: "uppercase",
+        letterSpacing: 1.4, padding: "2px 10px 10px" }}>
         Account
       </div>
-      {NAV_ITEMS.map(({ key, label, icon, disabled }) => {
-        const isActive = active === key;
+      {NAV_ITEMS.map(({ key, label, icon }) => {
+        const active_ = active === key;
         return (
-          <button
-            key={key}
-            onClick={() => !disabled && onChange(key)}
-            disabled={disabled}
-            style={{
-              display: "flex", alignItems: "center", gap: 10,
-              padding: "9px 12px", borderRadius: 9,
-              background: isActive ? "rgba(19,93,255,0.14)" : "transparent",
-              border: isActive ? "1px solid rgba(19,93,255,0.28)" : "1px solid transparent",
-              color: disabled ? C.dim : isActive ? "#93c5fd" : C.muted,
-              fontSize: 12, fontWeight: isActive ? 700 : 500,
-              cursor: disabled ? "not-allowed" : "pointer",
-              textAlign: "left", width: "100%", transition: "all 0.12s ease",
-            }}
-          >
-            <span style={{ fontSize: 12, opacity: 0.7 }}>{icon}</span>
-            <span>{label}</span>
-            {disabled && (
-              <span style={{ marginLeft: "auto", fontSize: 8, fontWeight: 800, color: C.dim, textTransform: "uppercase", letterSpacing: 0.8 }}>
-                Soon
-              </span>
-            )}
+          <button key={key} onClick={() => onChange(key)} style={{
+            display: "flex", alignItems: "center", gap: 9, width: "100%",
+            padding: "8px 10px", borderRadius: 8, border: "none",
+            background: active_ ? "rgba(19,93,255,0.13)" : "transparent",
+            color: active_ ? "#93c5fd" : C.muted,
+            fontSize: 12, fontWeight: active_ ? 700 : 500,
+            cursor: "pointer", textAlign: "left", transition: "all 0.12s",
+          }}>
+            <span style={{ fontSize: 11, opacity: 0.65 }}>{icon}</span>
+            {label}
           </button>
         );
       })}
@@ -731,81 +438,69 @@ function Sidebar({ active, onChange }) {
   );
 }
 
-// ─── Main Account component ───────────────────────────────────────────────────
-export default function Account({ listings = [], initialPage = "account" }) {
-  const [activePage, setActivePage] = useState(initialPage);
+// ─── Main ─────────────────────────────────────────────────────────────────────
+const PAGE_TITLES = {
+  account:     "Account",
+  billing:     "Billing",
+  templates:   "Listing Templates",
+  preferences: "Listing Preferences",
+};
 
-  const PAGE_TITLES = {
-    account:       "Account",
-    billing:       "Billing",
-    usage:         "Usage",
-    savedlistings: "Saved Listings",
-    templates:     "Listing Templates",
-    preferences:   "Listing Preferences",
-  };
+const PAGE_SUBS = {
+  preferences: "Default values applied to every generated listing. Override per listing as needed.",
+  templates:   "Reusable listing templates with placeholder support.",
+};
+
+export default function Account({ initialPage = "account" }) {
+  const [page, setPage] = useState(initialPage);
 
   return (
-    <div style={{ display: "flex", gap: 20, alignItems: "flex-start" }}>
+    <div style={{ display: "flex", gap: 18, alignItems: "flex-start" }}>
+      <Sidebar active={page} onChange={setPage} />
 
-      {/* Sidebar */}
-      <Sidebar active={activePage} onChange={setActivePage} />
-
-      {/* Main content */}
       <div style={{ flex: 1, minWidth: 0 }}>
-
-        {/* Page header */}
-        <div style={{ marginBottom: 22 }}>
-          <div style={{ fontSize: 20, fontWeight: 900, color: C.text }}>{PAGE_TITLES[activePage]}</div>
-          {activePage === "preferences" && (
-            <div style={{ fontSize: 12, color: C.muted, marginTop: 4, lineHeight: 1.5 }}>
-              Default values automatically applied to every generated listing. Override per listing as needed.
-            </div>
+        <div style={{ marginBottom: 20 }}>
+          <div style={{ fontSize: 18, fontWeight: 900, color: C.text }}>{PAGE_TITLES[page]}</div>
+          {PAGE_SUBS[page] && (
+            <div style={{ fontSize: 11, color: C.muted, marginTop: 3 }}>{PAGE_SUBS[page]}</div>
           )}
         </div>
 
-        {activePage === "account"       && <AccountPage />}
-        {activePage === "billing"       && <BillingPage />}
-        {activePage === "usage"         && <UsagePage />}
-        {activePage === "savedlistings" && <SavedListingsPage listings={listings} />}
-        {activePage === "templates"     && <ListingTemplates />}
-        {activePage === "preferences"   && <ListingPreferencesPage />}
+        {page === "account"     && <AccountPage />}
+        {page === "billing"     && <BillingPage />}
+        {page === "templates"   && <ListingTemplates />}
+        {page === "preferences" && <ListingPreferencesPage />}
       </div>
-
     </div>
   );
 }
 
-// ─── Profile dropdown (rendered in navbar by App.jsx) ────────────────────────
+// ─── Profile dropdown (used in App.jsx navbar) ────────────────────────────────
 export function ProfileDropdown({ onNavigate, onClose }) {
   const items = [
-    { label: "Account",        icon: "○", page: "account" },
-    { label: "Billing",        icon: "◈", page: "billing" },
-    { label: "Saved Listings", icon: "≡", page: "savedlistings" },
-    { label: "Usage",          icon: "◫", page: "usage" },
-    null, // divider
-    { label: "Log out",        icon: "→", page: "logout", danger: true },
+    { label: "Account",              icon: "○", page: "account" },
+    { label: "Billing",              icon: "◈", page: "billing" },
+    { label: "Listing Templates",    icon: "⬚", page: "templates" },
+    { label: "Listing Preferences",  icon: "⚙", page: "preferences" },
+    null,
+    { label: "Log out", icon: "→", page: "logout", danger: true },
   ];
 
   return (
-    <div
-      style={{
-        position: "absolute", top: "calc(100% + 8px)", right: 0, zIndex: 200,
-        background: "#0d1d32", border: `1px solid ${C.border}`,
-        borderRadius: 12, padding: "6px", minWidth: 190,
-        boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
-      }}
-    >
-      {/* User summary */}
-      <div style={{ padding: "10px 12px 10px", borderBottom: `1px solid ${C.border2}`, marginBottom: 4 }}>
+    <div style={{
+      position: "absolute", top: "calc(100% + 8px)", right: 0, zIndex: 200,
+      background: "#0d1d32", border: `1px solid ${C.border}`,
+      borderRadius: 11, padding: "5px", minWidth: 185,
+      boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
+    }}>
+      <div style={{ padding: "9px 11px 9px", borderBottom: `1px solid ${C.border2}`, marginBottom: 4 }}>
         <div style={{ fontSize: 12, fontWeight: 800, color: C.text }}>Aaron Butler</div>
-        <div style={{ fontSize: 10, color: C.muted, marginTop: 2 }}>Pro Plan · 312 / 500 used</div>
+        <div style={{ fontSize: 10, color: C.muted, marginTop: 2 }}>Pro · 312 / 500 listings</div>
       </div>
 
       {items.map((item, i) => {
-        if (!item) return <div key={i} style={{ height: 1, background: C.border2, margin: "4px 0" }} />;
-        return (
-          <DropdownItem key={item.page} {...item} onClick={() => { onNavigate(item.page); onClose(); }} />
-        );
+        if (!item) return <div key={i} style={{ height: 1, background: C.border2, margin: "3px 0" }} />;
+        return <DropdownItem key={item.page} {...item} onClick={() => { onNavigate(item.page); onClose(); }} />;
       })}
     </div>
   );
@@ -814,20 +509,17 @@ export function ProfileDropdown({ onNavigate, onClose }) {
 function DropdownItem({ icon, label, danger, onClick }) {
   const [hov, setHov] = useState(false);
   return (
-    <button
-      onClick={onClick}
-      onMouseEnter={() => setHov(true)}
-      onMouseLeave={() => setHov(false)}
+    <button onClick={onClick}
+      onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}
       style={{
-        display: "flex", alignItems: "center", gap: 10, width: "100%",
-        padding: "8px 12px", borderRadius: 8, border: "none",
-        background: hov ? (danger ? "rgba(239,68,68,0.1)" : "rgba(255,255,255,0.05)") : "transparent",
+        display: "flex", alignItems: "center", gap: 9, width: "100%",
+        padding: "7px 11px", borderRadius: 7, border: "none",
+        background: hov ? (danger ? "rgba(239,68,68,0.09)" : "rgba(255,255,255,0.05)") : "transparent",
         color: danger ? C.red : C.text,
-        fontSize: 12, fontWeight: 600, cursor: "pointer", textAlign: "left",
-        transition: "background 0.12s ease",
-      }}
-    >
-      <span style={{ fontSize: 12, opacity: 0.65 }}>{icon}</span>
+        fontSize: 11, fontWeight: 600, cursor: "pointer", textAlign: "left",
+        transition: "background 0.1s",
+      }}>
+      <span style={{ fontSize: 11, opacity: 0.6 }}>{icon}</span>
       {label}
     </button>
   );
