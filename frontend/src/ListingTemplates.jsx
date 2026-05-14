@@ -124,7 +124,7 @@ function buildPreviewHtml(template) {
 }
 
 // ─── Primitives ───────────────────────────────────────────────────────────────
-function Btn({ children, onClick, variant = "ghost", size = "sm", disabled }) {
+function Btn({ children, onClick, variant = "ghost", size = "sm", disabled, full }) {
   const [hov, setHov] = useState(false);
   const pad = size === "sm" ? "6px 14px" : "9px 20px";
   const fs  = size === "sm" ? 11 : 13;
