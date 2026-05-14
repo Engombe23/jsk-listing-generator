@@ -1,6 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { BUTTON_BASE, primaryButtonStyle } from "./shared.jsx";
 import ListingTemplates from "./ListingTemplates.jsx";
+import { loadPreferences, savePreferences, PREF_DEFAULTS } from "./useListingPreferences.js";
 
 // ─── Colour tokens (mirror App / PriceCalculator) ────────────────────────────
 const C = {
@@ -454,14 +455,224 @@ function ActionRow({ label, note, action }) {
   );
 }
 
+// ─── PAGE: Listing Preferences ───────────────────────────────────────────────
+const CONDITIONS   = ["", "New", "New other (see details)", "Manufacturer refurbished", "Used", "Parts only"];
+const PLACEMENTS   = ["", "Front", "Rear", "Left", "Right", "Front Left", "Front Right", "Rear Left", "Rear Right", "Front & Rear", "Left & Right", "Universal"];
+const LANGUAGES    = ["English (UK)", "English (US)", "German", "French", "Spanish", "Italian", "Dutch", "Polish"];
+const CURRENCIES   = ["GBP", "USD", "EUR", "AUD", "CAD", "CHF", "SEK", "NOK", "DKK"];
+const COUNTRIES    = [
+  "", "United Kingdom", "Germany", "France", "Italy", "Spain", "China", "Japan",
+  "United States", "Taiwan", "South Korea", "Netherlands", "Poland", "Czech Republic", "Turkey",
+];
+
+function PrefField({ label, hint, children }) {
+  return (
+    <div style={{ display: "flex", alignItems: "flex-start", gap: 16, padding: "12px 0", borderBottom: `1px solid ${C.border2}` }}>
+      <div style={{ width: 200, flexShrink: 0, paddingTop: 2 }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: C.text }}>{label}</div>
+        {hint && <div style={{ fontSize: 10, color: C.muted, marginTop: 2, lineHeight: 1.5 }}>{hint}</div>}
+      </div>
+      <div style={{ flex: 1 }}>{children}</div>
+    </div>
+  );
+}
+
+function PrefInput({ value, onChange, placeholder, type = "text" }) {
+  return (
+    <input
+      type={type}
+      value={value}
+      onChange={e => onChange(e.target.value)}
+      placeholder={placeholder || "Leave blank to use generated value"}
+      style={{
+        width: "100%", padding: "8px 12px", borderRadius: 8, fontSize: 12,
+        background: "#060e1a", border: `1px solid ${C.border}`,
+        color: C.text, outline: "none", boxSizing: "border-box",
+        caretColor: "#135DFF",
+      }}
+    />
+  );
+}
+
+function PrefSelect({ value, onChange, options }) {
+  return (
+    <select
+      value={value}
+      onChange={e => onChange(e.target.value)}
+      style={{
+        width: "100%", padding: "8px 12px", borderRadius: 8, fontSize: 12,
+        background: "#060e1a", border: `1px solid ${C.border}`,
+        color: value ? C.text : C.muted, outline: "none", cursor: "pointer",
+      }}
+    >
+      {options.map(o => (
+        <option key={o.value ?? o} value={o.value ?? o} style={{ background: "#0a1628" }}>
+          {o.label ?? (o === "" ? "— Not set —" : o)}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+function PrefTextarea({ value, onChange, placeholder, rows = 3 }) {
+  return (
+    <textarea
+      value={value}
+      onChange={e => onChange(e.target.value)}
+      placeholder={placeholder || "Leave blank to use generated value"}
+      rows={rows}
+      style={{
+        width: "100%", padding: "8px 12px", borderRadius: 8, fontSize: 12,
+        background: "#060e1a", border: `1px solid ${C.border}`,
+        color: C.text, outline: "none", resize: "vertical", boxSizing: "border-box",
+        lineHeight: 1.6, fontFamily: "inherit", caretColor: "#135DFF",
+      }}
+    />
+  );
+}
+
+function PrefSection({ title, children }) {
+  return (
+    <div style={{ background: C.card2, border: `1px solid ${C.border}`, borderRadius: 14, padding: "18px 24px", marginBottom: 16 }}>
+      <SectionLabel>{title}</SectionLabel>
+      <div>
+        {React.Children.map(children, (child, i) => {
+          if (!child) return null;
+          // Remove border from last row
+          const isLast = i === React.Children.count(children) - 1;
+          return isLast
+            ? React.cloneElement(child, { style: { ...child.props?.style, borderBottom: "none" } })
+            : child;
+        })}
+      </div>
+    </div>
+  );
+}
+
+function ListingPreferencesPage() {
+  const [prefs,   setPrefs]   = useState(loadPreferences);
+  const [saved,   setSaved]   = useState(false);
+  const [templates, setTemplates] = useState([]);
+
+  // Load saved listing templates for the default template selector
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("jsk_listing_templates_v1");
+      setTemplates(raw ? JSON.parse(raw) : []);
+    } catch { setTemplates([]); }
+  }, []);
+
+  const set = (key, val) => {
+    setPrefs(p => ({ ...p, [key]: val }));
+    setSaved(false);
+  };
+
+  const handleSave = () => {
+    savePreferences(prefs);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2500);
+  };
+
+  const handleReset = () => {
+    setPrefs({ ...PREF_DEFAULTS });
+    setSaved(false);
+  };
+
+  const templateOptions = [
+    { value: "", label: "— No default template —" },
+    ...templates.map(t => ({ value: t.id, label: t.name })),
+  ];
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column" }}>
+
+      {/* General Listing Defaults */}
+      <PrefSection title="General Listing Defaults">
+        <PrefField label="Default Brand" hint="Applied to every listing's brand field">
+          <PrefInput value={prefs.brand} onChange={v => set("brand", v)} placeholder="e.g. Aftermarket, OEM, Genuine" />
+        </PrefField>
+        <PrefField label="Manufacturer Warranty" hint="Default warranty text for all listings">
+          <PrefInput value={prefs.warranty} onChange={v => set("warranty", v)} placeholder="e.g. 12 Months" />
+        </PrefField>
+        <PrefField label="Country of Manufacture" hint="Country/Region where parts are made">
+          <PrefSelect value={prefs.countryOfMfr} onChange={v => set("countryOfMfr", v)} options={COUNTRIES} />
+        </PrefField>
+        <PrefField label="Default Condition" hint="Pre-fills the item condition field">
+          <PrefSelect value={prefs.condition} onChange={v => set("condition", v)} options={CONDITIONS} />
+        </PrefField>
+        <PrefField label="Placement on Vehicle" hint="Default fitment position">
+          <PrefSelect value={prefs.placement} onChange={v => set("placement", v)} options={PLACEMENTS} />
+        </PrefField>
+        <PrefField label="Default Quantity" hint="Stock quantity pre-fill">
+          <div style={{ maxWidth: 120 }}>
+            <PrefInput value={prefs.quantity} onChange={v => set("quantity", v)} placeholder="e.g. 1" type="number" />
+          </div>
+        </PrefField>
+      </PrefSection>
+
+      {/* Localisation */}
+      <PrefSection title="Localisation">
+        <PrefField label="Default Language" hint="Language for generated listing content">
+          <div style={{ maxWidth: 220 }}>
+            <PrefSelect value={prefs.language} onChange={v => set("language", v)} options={LANGUAGES} />
+          </div>
+        </PrefField>
+        <PrefField label="Default Currency" hint="Currency shown in pricing and exports">
+          <div style={{ maxWidth: 120 }}>
+            <PrefSelect value={prefs.currency} onChange={v => set("currency", v)} options={CURRENCIES} />
+          </div>
+        </PrefField>
+      </PrefSection>
+
+      {/* Template Defaults */}
+      <PrefSection title="Template Defaults">
+        <PrefField label="Default Listing Template" hint="Applied automatically when generating listings">
+          <PrefSelect value={prefs.defaultTemplateId} onChange={v => set("defaultTemplateId", v)} options={templateOptions} />
+          {templates.length === 0 && (
+            <div style={{ fontSize: 10, color: C.muted, marginTop: 6 }}>
+              No templates saved yet — create one in Listing Templates.
+            </div>
+          )}
+        </PrefField>
+        <PrefField label="Description Note" hint="Warning or disclaimer appended to every description">
+          <PrefTextarea value={prefs.descriptionNote} onChange={v => set("descriptionNote", v)} placeholder="e.g. Please check compatibility before purchasing." rows={2} />
+        </PrefField>
+        <PrefField label="Default Shipping Text" hint="Pre-fills the shipping section of every listing">
+          <PrefTextarea value={prefs.shippingText} onChange={v => set("shippingText", v)} placeholder="e.g. Free UK delivery. Dispatched within 1 business day." />
+        </PrefField>
+        <PrefField label="Default Returns Text" hint="Pre-fills the returns section of every listing">
+          <PrefTextarea value={prefs.returnsText} onChange={v => set("returnsText", v)} placeholder="e.g. 30-day returns accepted. Buyer pays return postage." />
+        </PrefField>
+      </PrefSection>
+
+      {/* Save bar */}
+      <div style={{
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        padding: "14px 20px", background: C.card2,
+        border: `1px solid ${C.border}`, borderRadius: 12,
+      }}>
+        <div style={{ fontSize: 11, color: saved ? "#10b981" : C.muted }}>
+          {saved ? "✓ Preferences saved" : "Changes are not saved yet"}
+        </div>
+        <div style={{ display: "flex", gap: 10 }}>
+          <ActionButton variant="ghost" onClick={handleReset}>Reset to Defaults</ActionButton>
+          <ActionButton variant="primary" onClick={handleSave}>Save Preferences</ActionButton>
+        </div>
+      </div>
+
+    </div>
+  );
+}
+
 // ─── Sidebar nav ──────────────────────────────────────────────────────────────
 const NAV_ITEMS = [
-  { key: "account",       label: "Account",            icon: "○" },
-  { key: "billing",       label: "Billing",            icon: "◈" },
-  { key: "usage",         label: "Usage",              icon: "◫" },
-  { key: "savedlistings", label: "Saved Listings",     icon: "≡" },
-  { key: "templates",     label: "Listing Templates",  icon: "⬚" },
-  { key: "api",           label: "API / Integrations", icon: "⌥", disabled: true },
+  { key: "account",       label: "Account",              icon: "○" },
+  { key: "billing",       label: "Billing",              icon: "◈" },
+  { key: "usage",         label: "Usage",                icon: "◫" },
+  { key: "savedlistings", label: "Saved Listings",       icon: "≡" },
+  { key: "templates",     label: "Listing Templates",    icon: "⬚" },
+  { key: "preferences",   label: "Listing Preferences",  icon: "⚙" },
+  { key: "api",           label: "API / Integrations",   icon: "⌥", disabled: true },
 ];
 
 function Sidebar({ active, onChange }) {
@@ -518,6 +729,7 @@ export default function Account({ listings = [], initialPage = "account" }) {
     usage:         "Usage",
     savedlistings: "Saved Listings",
     templates:     "Listing Templates",
+    preferences:   "Listing Preferences",
   };
 
   return (
@@ -532,6 +744,11 @@ export default function Account({ listings = [], initialPage = "account" }) {
         {/* Page header */}
         <div style={{ marginBottom: 22 }}>
           <div style={{ fontSize: 20, fontWeight: 900, color: C.text }}>{PAGE_TITLES[activePage]}</div>
+          {activePage === "preferences" && (
+            <div style={{ fontSize: 12, color: C.muted, marginTop: 4, lineHeight: 1.5 }}>
+              Default values automatically applied to every generated listing. Override per listing as needed.
+            </div>
+          )}
         </div>
 
         {activePage === "account"       && <AccountPage />}
@@ -539,6 +756,7 @@ export default function Account({ listings = [], initialPage = "account" }) {
         {activePage === "usage"         && <UsagePage />}
         {activePage === "savedlistings" && <SavedListingsPage listings={listings} />}
         {activePage === "templates"     && <ListingTemplates />}
+        {activePage === "preferences"   && <ListingPreferencesPage />}
       </div>
 
     </div>
