@@ -588,13 +588,103 @@ export async function checkCompatibility({
     return result;
   }
 
-  console.log(`[STEP5] vehicleId ${vehicleId} not found in ${compatibleVehicles.length} vehicles — trying fuzzy match`);
+  console.log(`[STEP5] vehicleId ${vehicleId} not found in ${compatibleVehicles.length} vehicles — trying OEM equivalence`);
+
+  // ── Shared OEM normaliser ─────────────────────────────────────────────────
+  // Strip spaces, dashes, dots and normalise case so "03L 103 383 AF",
+  // "03L-103383AF" and "03L103383AF" all compare equal.
+  function normalizeOem(oem) {
+    return String(oem || "").replace(/[\s\-\.]/g, "").toUpperCase();
+  }
+  const normalizedUserOem = normalizeOem(oemNumber);
+
+  // ── Pre-fetch OEM parts for this vehicle (shared by Step 5a and Step 6) ──
+  // Fetch once here and reuse in both steps to avoid duplicate API calls.
+  const productTypeLower = (productType || "").toLowerCase();
+  const productWords = productTypeLower.split(/[\s,()]+/).filter(w => w.length > 3);
+
+  let cachedVehicleOemParts = [];
+  let cachedUsedTerm        = null;
+  {
+    const searchTerms = [];
+    if (productTypeLower) searchTerms.push(productTypeLower);
+    for (const w of productWords) { if (!searchTerms.includes(w)) searchTerms.push(w); }
+    searchTerms.push("filter"); // broad fallback
+
+    for (const term of searchTerms) {
+      const raw   = await searchPartsByVehicle(vehicleId, term);
+      const parts = extractPartsArray(raw);
+      console.log(`[preload] searchPartsByVehicle(${vehicleId}, "${term}") → ${parts.length}`);
+      if (parts.length > 0) { cachedVehicleOemParts = parts; cachedUsedTerm = term; break; }
+    }
+  }
+
+  // ── STEP 5a — OEM Equivalence Match ──────────────────────────────────────
+  // Check whether the user's OEM number appears inside the OEM cross-references
+  // of any part that IS known to fit this specific vehicle.
+  // This catches incomplete TecDoc mappings where one article's compat list
+  // omits a vehicle that another equivalent article correctly includes.
+  //
+  // Only checks parts fetched FOR this vehicle — never a global OEM scan —
+  // to avoid false positives from supersessions or shared part families.
+
+  if (normalizedUserOem && cachedVehicleOemParts.length > 0) {
+    let oemEquivMatch = null;
+
+    // Check each vehicle OEM part's articleOemNo directly
+    for (const part of cachedVehicleOemParts) {
+      const partOem = normalizeOem(part.articleOemNo || part.oemNo || part.oem || "");
+      if (partOem && partOem === normalizedUserOem) {
+        oemEquivMatch = { part, via: "directOemRef" };
+        break;
+      }
+    }
+
+    // If not found by direct field, fetch full OEM reference lists for the top parts
+    if (!oemEquivMatch) {
+      const TOP = 6;
+      const oemRefResults = await Promise.all(
+        cachedVehicleOemParts.slice(0, TOP).map(async p => {
+          const artId = p.articleId || p.id || null;
+          if (!artId) return [];
+          try {
+            const refs = extractOemStringsFromResponse(await getOemsByArticleIds([artId]));
+            return refs.map(normalizeOem);
+          } catch { return []; }
+        })
+      );
+      oemRefResults.forEach((refs, i) => {
+        if (!oemEquivMatch && refs.includes(normalizedUserOem)) {
+          oemEquivMatch = { part: cachedVehicleOemParts[i], via: "oemCrossRef" };
+        }
+      });
+    }
+
+    if (oemEquivMatch) {
+      console.log(`[STEP5a] OEM equivalence match via ${oemEquivMatch.via}: ${oemNumber} found in vehicle ${vehicleId} parts`);
+      result.status          = "compatible";
+      result.checkedPart     = { ...(result.checkedPart || {}), compatible: true };
+      result.matchReasoning  = {
+        matched: true, score: 92, matchedBy: "oemEquivalence",
+        matchedFields: ["oemNumber"],
+        conflictingFields: [],
+        notes: [
+          `OEM ${oemNumber} found in vehicle-specific part references (${oemEquivMatch.via})`,
+          "TecDoc compatibility confirmed via OEM cross-reference for this vehicle"
+        ]
+      };
+      result.confidenceScore = 92;
+      result.confidenceLabel = getConfidenceLabel(92);
+      return result;
+    }
+
+    console.log(`[STEP5a] OEM ${normalizedUserOem} not found in ${cachedVehicleOemParts.length} vehicle parts — trying fuzzy`);
+  }
 
   // ── STEP 5b — Fuzzy attribute match ──────────────────────────────────────
-  // Exact ID failed, but the part may still fit if the vehicle attributes align
-  // (make, model, year range, engine code, fuel type, engine size).
-  // A score ≥ 50 ("Possible Match") is enough to call it compatible at lower
-  // confidence rather than immediately hunting for an alternative part.
+  // Lower-priority fallback. Only runs when exact ID and OEM equivalence both
+  // failed. Infers compatibility from shared vehicle attributes (engine code,
+  // make, model, year, fuel type) across the part's known compatible vehicles.
 
   if (normalisedVehicle && compatibleVehicles.length > 0) {
     const fuzzy = compareVehicleToCompatibility(normalisedVehicle, compatibleVehicles);
@@ -614,38 +704,16 @@ export async function checkCompatibility({
   result.confidenceScore = 0;
   result.confidenceLabel = getConfidenceLabel(0);
 
-  // ── STEP 6 — Find compatible OEM parts via searchPartsByVehicle ─────────────
-  // The endpoint uses search-param as a product-group keyword filter.
-  // "filter" returns filter parts; passing the product type name should return
-  // OEM references of that type for this specific vehicle, which we then use
-  // to look up aftermarket articles.
+  // ── STEP 6 — Alternative compatible part search ───────────────────────────
+  // Final fallback: use the OEM parts we already fetched for this vehicle
+  // (cachedVehicleOemParts) to find an aftermarket alternative for the user.
+  // Reuses the preloaded result — no duplicate API call needed.
 
   try {
-    const productTypeLower = (productType || "").toLowerCase();
-    const words = productTypeLower.split(/[\s,()]+/).filter((w) => w.length > 3);
+    const words = productWords; // already computed above
 
-    // Build an ordered list of search terms to try against the OEM parts endpoint
-    const searchTerms = [];
-    if (productTypeLower) searchTerms.push(productTypeLower);
-    // Add each significant word as a standalone fallback (e.g. "water", "pump")
-    for (const w of words) {
-      if (!searchTerms.includes(w)) searchTerms.push(w);
-    }
-
-    let oemPartsForVehicle = [];
-    let usedTerm           = null;
-
-    for (const term of searchTerms) {
-      console.log(`[STEP6] searchPartsByVehicle(${vehicleId}, "${term}")`);
-      const raw   = await searchPartsByVehicle(vehicleId, term);
-      const parts = extractPartsArray(raw);
-      console.log(`[STEP6] term="${term}" → ${parts.length} OEM parts`);
-      if (parts.length > 0) {
-        oemPartsForVehicle = parts;
-        usedTerm = term;
-        break;
-      }
-    }
+    let oemPartsForVehicle = cachedVehicleOemParts;
+    let usedTerm           = cachedUsedTerm;
 
     if (oemPartsForVehicle.length === 0) {
       console.log(`[STEP6] no OEM parts found for vehicle ${vehicleId} with any search term`);
