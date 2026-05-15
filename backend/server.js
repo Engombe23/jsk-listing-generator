@@ -505,9 +505,27 @@ async function buildListingFromArticle(articleNumber, themeId = "clean-default")
     ""
   ).trim();
 
-  const articleImage        = extractFirstImageUrl(mediaResponse);
-  const interchangeableParts = parseCrossReferences(crossRefsRaw, normalized.oem_numbers, articleBrand);
-  console.log(`[Listing] ${articleNumber}: ${interchangeableParts.length} interchangeable cross-refs (article brand: "${articleBrand}")`);
+  const articleImage = extractFirstImageUrl(mediaResponse);
+
+  // The article's own brand + part number is always included first so it's
+  // visible in the listing regardless of what the cross-ref API returns.
+  const ownArticleNo = (
+    article.articleNo     ||
+    article.articleNumber ||
+    article.artNr         ||
+    resolvedNumber        ||
+    ""
+  ).trim();
+  const ownRef = (articleBrand && ownArticleNo)
+    ? [{ brand: articleBrand, articleNo: ownArticleNo }]
+    : [];
+
+  // parseCrossReferences still filters same-brand entries to prevent wrong
+  // same-brand cross-refs (e.g. MOTIVE: OP411 on a MOTIVE: OP8454 article).
+  const crossRefs = parseCrossReferences(crossRefsRaw, normalized.oem_numbers, articleBrand);
+
+  const interchangeableParts = [...ownRef, ...crossRefs];
+  console.log(`[Listing] ${articleNumber}: own=${ownRef.length} cross-refs=${crossRefs.length} brand="${articleBrand}"`);
 
   // ── Build HTML ────────────────────────────────────────────────────────────
   const html = buildHtml({ ...normalized, engine_codes: engineCodes, k_numbers: kNumbers, interchangeable_parts: interchangeableParts }, template);
