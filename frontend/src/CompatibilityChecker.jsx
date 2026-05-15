@@ -320,8 +320,7 @@ function PartCard({ part, strikethrough = false, recommended = false, onCopyArti
           {[
             ["Brand", part.brand],
             ["Article No", part.articleNumber],
-            ["Product Type", part.productType],
-            ["OEM Numbers", part.oemNumbers?.length ? part.oemNumbers.join(", ") : null]
+            ["Product Type", part.productType]
           ]
             .filter(([, v]) => v)
             .map(([label, value]) => (
@@ -351,6 +350,44 @@ function PartCard({ part, strikethrough = false, recommended = false, onCopyArti
                 </td>
               </tr>
             ))}
+          {part.oemNumbers?.length > 0 && (
+            <tr>
+              <td
+                style={{
+                  fontSize: 12,
+                  color: "#9ca3af",
+                  paddingBottom: 6,
+                  paddingRight: 12,
+                  whiteSpace: "nowrap",
+                  verticalAlign: "top",
+                  textDecoration: strikethrough ? "line-through" : "none"
+                }}
+              >
+                OEM Refs
+              </td>
+              <td style={{ paddingBottom: 6 }}>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                  {part.oemNumbers.map((oem) => (
+                    <span
+                      key={oem}
+                      style={{
+                        fontSize: 11,
+                        fontFamily: "monospace",
+                        background: strikethrough ? "#374151" : "#1e3a5f",
+                        color: strikethrough ? "#6b7280" : "#93c5fd",
+                        border: `1px solid ${strikethrough ? "#4b5563" : "#2563eb44"}`,
+                        borderRadius: 4,
+                        padding: "2px 6px",
+                        letterSpacing: "0.02em"
+                      }}
+                    >
+                      {oem}
+                    </span>
+                  ))}
+                </div>
+              </td>
+            </tr>
+          )}
         </tbody>
       </table>
       {(onCopyArticle || onSendToListing) && (

@@ -506,6 +506,26 @@ export async function checkCompatibility({
       if (imgUrl) articleInfo.imageUrl = imgUrl;
     } catch {}
 
+    // Fetch OEM cross-references for the checked part so they are available
+    // on all compatible exit paths (exact ID, OEM equivalence, fuzzy).
+    // Uses the same cache as Step 6 to avoid duplicate API calls.
+    if (!articleInfo.oemNumbers?.length && articleInfo.articleId) {
+      const _artIdStr = String(articleInfo.articleId);
+      const _cachedOems = _oemsByArticleCache.get(_artIdStr);
+      if (_cachedOems) {
+        articleInfo.oemNumbers = _cachedOems;
+      } else {
+        try {
+          const _fetched = extractOemStringsFromResponse(await getOemsByArticleIds([articleInfo.articleId]));
+          if (_fetched.length > 0) {
+            articleInfo.oemNumbers = _fetched;
+            _oemsByArticleCache.set(_artIdStr, _fetched);
+          }
+        } catch {}
+      }
+      console.log(`[STEP3] checked part OEM numbers (${(articleInfo.oemNumbers || []).length}): ${(articleInfo.oemNumbers || []).join(", ")}`);
+    }
+
     // ── STEP 4 — Fetch compatible vehicles ───────────────────────────────────
     // Strategy A: getVehiclesByOem — the most direct endpoint.
     // Asks TecDoc "which vehicles is this OEM number listed for?" and returns
