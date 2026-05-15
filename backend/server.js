@@ -129,19 +129,25 @@ async function fetchArticleCrossReferences(articleId) {
 // Parse the cross-references response into a clean array of { brand, articleNo } objects,
 // grouped and deduplicated. Handles both array and object wrapper responses.
 //
-// oemNumbers: the article's own OEM reference numbers — cross-refs that duplicate
-// these are excluded (TecDoc sometimes returns OEM vehicle numbers as cross-refs
-// with wrong brand attribution, e.g. a Jaguar OEM number labelled "Autopumps UK").
-function parseCrossReferences(raw, oemNumbers = []) {
+// oemNumbers:    the article's own OEM reference numbers — cross-refs whose articleNo
+//               duplicates one of these are excluded (TecDoc sometimes returns OEM
+//               vehicle-manufacturer numbers with wrong brand attribution).
+// articleBrand:  the brand of the article being listed (e.g. "Motive", "Autopumps UK").
+//               Cross-refs from this same brand are excluded — "interchangeable" means
+//               a DIFFERENT manufacturer making the same part. Same-brand refs are just
+//               a different (often wrong) part number from the same supplier.
+function parseCrossReferences(raw, oemNumbers = [], articleBrand = "") {
   if (!raw) return [];
   const list = Array.isArray(raw)
     ? raw
     : (raw.articles || raw.crossReferences || raw.data || raw.result || []);
   if (!Array.isArray(list)) return [];
 
-  // Normalise OEM numbers for quick lookup: strip spaces/dashes/dots, uppercase.
-  const normaliseNo = (s) => String(s || "").replace(/[\s\-\.]/g, "").toUpperCase();
-  const oemSet = new Set(oemNumbers.map(normaliseNo).filter(Boolean));
+  // Normalise for case-insensitive comparison.
+  const normaliseNo    = (s) => String(s || "").replace(/[\s\-\.]/g, "").toUpperCase();
+  const normaliseName  = (s) => String(s || "").toLowerCase().trim();
+  const oemSet         = new Set(oemNumbers.map(normaliseNo).filter(Boolean));
+  const ownBrand       = normaliseName(articleBrand);
 
   const seen = new Set();
   const refs = [];
@@ -168,8 +174,15 @@ function parseCrossReferences(raw, oemNumbers = []) {
 
     if (!brand || !articleNo) continue;
 
-    // Skip cross-refs whose number is already listed as an OEM reference —
-    // these are vehicle-manufacturer numbers, not interchangeable aftermarket parts.
+    // Skip cross-refs from the same brand as the article — these are not
+    // interchangeable parts, just different (often incorrect) numbers from
+    // the same supplier that TecDoc has incorrectly cross-linked.
+    if (ownBrand && normaliseName(brand) === ownBrand) {
+      console.log(`[CrossRef] Skipped ${brand} ${articleNo} — same brand as article`);
+      continue;
+    }
+
+    // Skip cross-refs whose number duplicates one of the article's OEM refs.
     if (oemSet.has(normaliseNo(articleNo))) {
       console.log(`[CrossRef] Skipped ${brand} ${articleNo} — duplicates an OEM number`);
       continue;
@@ -179,11 +192,10 @@ function parseCrossReferences(raw, oemNumbers = []) {
     if (seen.has(key)) continue;
     seen.add(key);
 
-    // Log for visibility (helps diagnose future data quality issues)
     const productName = (
       item.articleProductName || item.productName || item.productGroupName || ""
     ).trim();
-    if (productName) console.log(`[CrossRef] Accepted ${brand} ${articleNo} ("${productName}")`);
+    console.log(`[CrossRef] Accepted ${brand} ${articleNo}${productName ? ` ("${productName}")` : ""}`);
 
     refs.push({ brand, articleNo });
   }
@@ -484,9 +496,18 @@ async function buildListingFromArticle(articleNumber, themeId = "clean-default")
     fetchArticleMedia(articleId),
     fetchArticleCrossReferences(articleId)
   ]);
+  const articleBrand = (
+    article.supplierName     ||
+    article.brandName        ||
+    article.brand            ||
+    article.mfrName          ||
+    article.brandShortName   ||
+    ""
+  ).trim();
+
   const articleImage        = extractFirstImageUrl(mediaResponse);
-  const interchangeableParts = parseCrossReferences(crossRefsRaw, normalized.oem_numbers);
-  console.log(`[Listing] ${articleNumber}: ${interchangeableParts.length} interchangeable cross-refs`);
+  const interchangeableParts = parseCrossReferences(crossRefsRaw, normalized.oem_numbers, articleBrand);
+  console.log(`[Listing] ${articleNumber}: ${interchangeableParts.length} interchangeable cross-refs (article brand: "${articleBrand}")`);
 
   // ── Build HTML ────────────────────────────────────────────────────────────
   const html = buildHtml({ ...normalized, engine_codes: engineCodes, k_numbers: kNumbers, interchangeable_parts: interchangeableParts }, template);
