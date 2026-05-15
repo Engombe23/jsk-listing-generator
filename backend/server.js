@@ -491,11 +491,19 @@ async function buildListingFromArticle(articleNumber, themeId = "clean-default")
   const kNumbers    = uniq(normalized.compatibility_rows.map((r) => r.k_number));
   const engineCodes = uniq(normalized.compatibility_rows.flatMap((r) => r.engine_codes || []));
 
-  // ── Media + Cross-references (parallel) ──────────────────────────────────
-  const [mediaResponse, crossRefsRaw] = await Promise.all([
+  // ── Media + Cross-references + OEM search (all parallel) ────────────────
+  // Three sources run at the same time:
+  //   1. article-all-media-info        → article image
+  //   2. select-article-cross-refs     → article-ID specific cross-refs (varies by brand)
+  //   3. article-oem-search-no         → ALL aftermarket articles for this OEM number
+  //                                      (the real interchangeable list — brand-agnostic)
+  const firstOem = normalized.oem_numbers?.[0] || null;
+  const [mediaResponse, crossRefsRaw, oemSearchRaw] = await Promise.all([
     fetchArticleMedia(articleId),
-    fetchArticleCrossReferences(articleId)
+    fetchArticleCrossReferences(articleId),
+    firstOem ? searchArticleByOem(firstOem) : Promise.resolve(null)
   ]);
+
   const articleBrand = (
     article.supplierName     ||
     article.brandName        ||
@@ -507,25 +515,52 @@ async function buildListingFromArticle(articleNumber, themeId = "clean-default")
 
   const articleImage = extractFirstImageUrl(mediaResponse);
 
-  // The article's own brand + part number is always included first so it's
-  // visible in the listing regardless of what the cross-ref API returns.
+  // Normalise helpers (shared below)
+  const normaliseNo   = (s) => String(s || "").replace(/[\s\-\.]/g, "").toUpperCase();
+  const normaliseName = (s) => String(s || "").toLowerCase().trim();
+  const oemSet        = new Set(normalized.oem_numbers.map(normaliseNo).filter(Boolean));
+  const ownBrandKey   = normaliseName(articleBrand);
+
+  // ── 1. Article's own brand + number (always first) ───────────────────────
   const ownArticleNo = (
-    article.articleNo     ||
-    article.articleNumber ||
-    article.artNr         ||
-    resolvedNumber        ||
-    ""
+    article.articleNo || article.articleNumber || article.artNr || resolvedNumber || ""
   ).trim();
   const ownRef = (articleBrand && ownArticleNo)
     ? [{ brand: articleBrand, articleNo: ownArticleNo }]
     : [];
 
-  // parseCrossReferences still filters same-brand entries to prevent wrong
-  // same-brand cross-refs (e.g. MOTIVE: OP411 on a MOTIVE: OP8454 article).
+  // ── 2. OEM search results — every aftermarket article for the OEM number ─
+  // This is the primary interchangeable source: brand-agnostic, complete.
+  const oemSearchList = Array.isArray(oemSearchRaw)
+    ? oemSearchRaw
+    : (oemSearchRaw?.articles || oemSearchRaw?.data || []);
+
+  const fromOemSearch = oemSearchList
+    .map((a) => ({
+      brand:     (a.supplierName || a.brandName || a.brand || a.mfrName || "").trim(),
+      articleNo: (a.articleNo || a.articleNumber || a.artNr || "").trim()
+    }))
+    .filter((r) => {
+      if (!r.brand || !r.articleNo) return false;
+      if (oemSet.has(normaliseNo(r.articleNo))) return false;        // skip OEM numbers
+      if (normaliseName(r.brand) === ownBrandKey) return false;      // skip same brand (own ref already added above)
+      return true;
+    });
+
+  // ── 3. Dedicated cross-ref endpoint — supplements OEM search ─────────────
   const crossRefs = parseCrossReferences(crossRefsRaw, normalized.oem_numbers, articleBrand);
 
-  const interchangeableParts = [...ownRef, ...crossRefs];
-  console.log(`[Listing] ${articleNumber}: own=${ownRef.length} cross-refs=${crossRefs.length} brand="${articleBrand}"`);
+  // ── Merge and deduplicate all three sources ───────────────────────────────
+  const seen = new Set();
+  const interchangeableParts = [];
+  for (const ref of [...ownRef, ...fromOemSearch, ...crossRefs]) {
+    const key = `${normaliseName(ref.brand)}::${normaliseNo(ref.articleNo)}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    interchangeableParts.push(ref);
+  }
+
+  console.log(`[Listing] ${articleNumber}: own=${ownRef.length} oemSearch=${fromOemSearch.length} crossRefs=${crossRefs.length} total=${interchangeableParts.length} brand="${articleBrand}"`);
 
   // ── Build HTML ────────────────────────────────────────────────────────────
   const html = buildHtml({ ...normalized, engine_codes: engineCodes, k_numbers: kNumbers, interchangeable_parts: interchangeableParts }, template);
