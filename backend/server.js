@@ -126,32 +126,30 @@ async function fetchArticleCrossReferences(articleId) {
   } catch { return []; }
 }
 
-// Parse the cross-references response into a clean array of { brand, articleNo, productName }
-// objects, grouped and deduplicated. Handles both array and object wrapper responses.
-// Pass expectedProductType (e.g. "Oil Pump") to filter out mismatched cross-refs —
-// this guards against TecDoc returning wrong-product cross-links (e.g. an oil filter
-// cross-referenced against an oil pump article due to incorrect database entries).
-function parseCrossReferences(raw, expectedProductType = "") {
+// Parse the cross-references response into a clean array of { brand, articleNo } objects,
+// grouped and deduplicated. Handles both array and object wrapper responses.
+//
+// oemNumbers: the article's own OEM reference numbers — cross-refs that duplicate
+// these are excluded (TecDoc sometimes returns OEM vehicle numbers as cross-refs
+// with wrong brand attribution, e.g. a Jaguar OEM number labelled "Autopumps UK").
+function parseCrossReferences(raw, oemNumbers = []) {
   if (!raw) return [];
   const list = Array.isArray(raw)
     ? raw
     : (raw.articles || raw.crossReferences || raw.data || raw.result || []);
   if (!Array.isArray(list)) return [];
 
-  // Build keyword set from expected product type for loose matching.
-  // e.g. "Oil Pump" → ["oil", "pump"]
-  const expectedWords = expectedProductType
-    .toLowerCase()
-    .split(/[\s,/()\-]+/)
-    .filter((w) => w.length > 2);
+  // Normalise OEM numbers for quick lookup: strip spaces/dashes/dots, uppercase.
+  const normaliseNo = (s) => String(s || "").replace(/[\s\-\.]/g, "").toUpperCase();
+  const oemSet = new Set(oemNumbers.map(normaliseNo).filter(Boolean));
 
-  const seen  = new Set();
-  const refs  = [];
+  const seen = new Set();
+  const refs = [];
 
   for (const item of list) {
     if (!item || typeof item !== "object") continue;
 
-    const brand     = (
+    const brand = (
       item.brandName        ||
       item.supplierName     ||
       item.brand            ||
@@ -161,44 +159,31 @@ function parseCrossReferences(raw, expectedProductType = "") {
     ).trim();
 
     const articleNo = (
-      item.articleNo        ||
-      item.articleNumber    ||
-      item.artNr            ||
-      item.oemNo            ||
+      item.articleNo     ||
+      item.articleNumber ||
+      item.artNr         ||
+      item.oemNo         ||
       ""
     ).trim();
 
     if (!brand || !articleNo) continue;
 
-    // Extract product name if the API returns it — used for type filtering below.
-    const productName = (
-      item.articleProductName ||
-      item.productName        ||
-      item.productGroupName   ||
-      item.assemblyGroupName  ||
-      item.description        ||
-      ""
-    ).trim();
-
-    // ── Product-type filter ───────────────────────────────────────────────────
-    // If the cross-ref includes a product name AND we know what we're looking for,
-    // skip entries whose product name shares no keywords with the expected type.
-    // This prevents TecDoc's incorrect cross-links (e.g. oil filter → oil pump)
-    // from appearing in the listing.
-    // Only filter when BOTH sides have enough information — if either is missing,
-    // allow the ref through (fail open rather than silently dropping valid refs).
-    if (productName && expectedWords.length > 0) {
-      const refWords = productName.toLowerCase().split(/[\s,/()\-]+/).filter((w) => w.length > 2);
-      const hasOverlap = expectedWords.some((w) => refWords.includes(w));
-      if (!hasOverlap) {
-        console.log(`[CrossRef] Filtered out ${brand} ${articleNo} ("${productName}") — no keyword overlap with "${expectedProductType}"`);
-        continue;
-      }
+    // Skip cross-refs whose number is already listed as an OEM reference —
+    // these are vehicle-manufacturer numbers, not interchangeable aftermarket parts.
+    if (oemSet.has(normaliseNo(articleNo))) {
+      console.log(`[CrossRef] Skipped ${brand} ${articleNo} — duplicates an OEM number`);
+      continue;
     }
 
     const key = `${brand.toLowerCase()}::${articleNo.toLowerCase()}`;
     if (seen.has(key)) continue;
     seen.add(key);
+
+    // Log for visibility (helps diagnose future data quality issues)
+    const productName = (
+      item.articleProductName || item.productName || item.productGroupName || ""
+    ).trim();
+    if (productName) console.log(`[CrossRef] Accepted ${brand} ${articleNo} ("${productName}")`);
 
     refs.push({ brand, articleNo });
   }
@@ -500,8 +485,8 @@ async function buildListingFromArticle(articleNumber, themeId = "clean-default")
     fetchArticleCrossReferences(articleId)
   ]);
   const articleImage        = extractFirstImageUrl(mediaResponse);
-  const interchangeableParts = parseCrossReferences(crossRefsRaw, normalized.product_name);
-  console.log(`[Listing] ${articleNumber}: ${interchangeableParts.length} interchangeable cross-refs (product type: "${normalized.product_name}")`);
+  const interchangeableParts = parseCrossReferences(crossRefsRaw, normalized.oem_numbers);
+  console.log(`[Listing] ${articleNumber}: ${interchangeableParts.length} interchangeable cross-refs`);
 
   // ── Build HTML ────────────────────────────────────────────────────────────
   const html = buildHtml({ ...normalized, engine_codes: engineCodes, k_numbers: kNumbers, interchangeable_parts: interchangeableParts }, template);
