@@ -506,7 +506,26 @@ export async function checkCompatibility({
       if (imgUrl) articleInfo.imageUrl = imgUrl;
     } catch {}
 
-    // ── STEP 4 — Fetch compatible vehicles for this article ───────────────────
+    // ── STEP 4 — Fetch compatible vehicles ───────────────────────────────────
+    // Strategy A: getVehiclesByOem — the most direct endpoint.
+    // Asks TecDoc "which vehicles is this OEM number listed for?" and returns
+    // vehicleIds directly. Works for any OEM number regardless of supplierId.
+    try {
+      const oemVehicles = await getVehiclesByOem(oemNumber);
+      const oemVehicleList = Array.isArray(oemVehicles)
+        ? oemVehicles
+        : (oemVehicles?.vehicles || oemVehicles?.data || []);
+      if (oemVehicleList.length > 0) {
+        compatibleVehicles.push(...oemVehicleList);
+        console.log(`[OEM] getVehiclesByOem → ${oemVehicleList.length} vehicles`);
+      }
+    } catch (err) {
+      console.log(`[OEM] getVehiclesByOem failed: ${err.message}`);
+    }
+
+    // Strategy B: getCompatibleCarsByArticleNo — article-level compatible cars.
+    // Supplements Strategy A with any additional vehicles from the aftermarket
+    // article's compatibility list (catches cross-references not in OEM list).
     if (articleInfo.articleNo && articleInfo.supplierId) {
       try {
         const raw = await getCompatibleCarsByArticleNo(articleInfo.articleNo, articleInfo.supplierId);
@@ -514,12 +533,24 @@ export async function checkCompatibility({
           for (const art of raw.articles) {
             if (Array.isArray(art.compatibleCars)) compatibleVehicles.push(...art.compatibleCars);
           }
+        } else if (Array.isArray(raw)) {
+          compatibleVehicles.push(...raw);
         }
-        console.log(`[OEM] compatible vehicles → ${compatibleVehicles.length}`);
+        console.log(`[OEM] after getCompatibleCarsByArticleNo → ${compatibleVehicles.length} total vehicles`);
       } catch (err) {
         console.log(`[OEM] getCompatibleCarsByArticleNo failed: ${err.message}`);
       }
     }
+
+    // Deduplicate by vehicleId so we don't get false confidence from duplicates
+    const seenVids = new Set();
+    compatibleVehicles = compatibleVehicles.filter(v => {
+      const vid = String(v.vehicleId || v.typeId || v.kType || v.id || "").trim();
+      if (!vid || seenVids.has(vid)) return false;
+      seenVids.add(vid);
+      return true;
+    });
+    console.log(`[OEM] deduplicated compatible vehicles → ${compatibleVehicles.length}`);
 
     _oemArticleCache.set(oemNumber, { articleInfo, productType });
     _oemVehiclesCache.set(oemNumber, compatibleVehicles);
