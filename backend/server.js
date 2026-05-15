@@ -126,14 +126,24 @@ async function fetchArticleCrossReferences(articleId) {
   } catch { return []; }
 }
 
-// Parse the cross-references response into a clean array of { brand, articleNo } objects,
-// grouped and deduplicated. Handles both array and object wrapper responses.
-function parseCrossReferences(raw) {
+// Parse the cross-references response into a clean array of { brand, articleNo, productName }
+// objects, grouped and deduplicated. Handles both array and object wrapper responses.
+// Pass expectedProductType (e.g. "Oil Pump") to filter out mismatched cross-refs —
+// this guards against TecDoc returning wrong-product cross-links (e.g. an oil filter
+// cross-referenced against an oil pump article due to incorrect database entries).
+function parseCrossReferences(raw, expectedProductType = "") {
   if (!raw) return [];
   const list = Array.isArray(raw)
     ? raw
     : (raw.articles || raw.crossReferences || raw.data || raw.result || []);
   if (!Array.isArray(list)) return [];
+
+  // Build keyword set from expected product type for loose matching.
+  // e.g. "Oil Pump" → ["oil", "pump"]
+  const expectedWords = expectedProductType
+    .toLowerCase()
+    .split(/[\s,/()\-]+/)
+    .filter((w) => w.length > 2);
 
   const seen  = new Set();
   const refs  = [];
@@ -159,6 +169,32 @@ function parseCrossReferences(raw) {
     ).trim();
 
     if (!brand || !articleNo) continue;
+
+    // Extract product name if the API returns it — used for type filtering below.
+    const productName = (
+      item.articleProductName ||
+      item.productName        ||
+      item.productGroupName   ||
+      item.assemblyGroupName  ||
+      item.description        ||
+      ""
+    ).trim();
+
+    // ── Product-type filter ───────────────────────────────────────────────────
+    // If the cross-ref includes a product name AND we know what we're looking for,
+    // skip entries whose product name shares no keywords with the expected type.
+    // This prevents TecDoc's incorrect cross-links (e.g. oil filter → oil pump)
+    // from appearing in the listing.
+    // Only filter when BOTH sides have enough information — if either is missing,
+    // allow the ref through (fail open rather than silently dropping valid refs).
+    if (productName && expectedWords.length > 0) {
+      const refWords = productName.toLowerCase().split(/[\s,/()\-]+/).filter((w) => w.length > 2);
+      const hasOverlap = expectedWords.some((w) => refWords.includes(w));
+      if (!hasOverlap) {
+        console.log(`[CrossRef] Filtered out ${brand} ${articleNo} ("${productName}") — no keyword overlap with "${expectedProductType}"`);
+        continue;
+      }
+    }
 
     const key = `${brand.toLowerCase()}::${articleNo.toLowerCase()}`;
     if (seen.has(key)) continue;
@@ -464,8 +500,8 @@ async function buildListingFromArticle(articleNumber, themeId = "clean-default")
     fetchArticleCrossReferences(articleId)
   ]);
   const articleImage        = extractFirstImageUrl(mediaResponse);
-  const interchangeableParts = parseCrossReferences(crossRefsRaw);
-  console.log(`[Listing] ${articleNumber}: ${interchangeableParts.length} interchangeable cross-refs`);
+  const interchangeableParts = parseCrossReferences(crossRefsRaw, normalized.product_name);
+  console.log(`[Listing] ${articleNumber}: ${interchangeableParts.length} interchangeable cross-refs (product type: "${normalized.product_name}")`);
 
   // ── Build HTML ────────────────────────────────────────────────────────────
   const html = buildHtml({ ...normalized, engine_codes: engineCodes, k_numbers: kNumbers, interchangeable_parts: interchangeableParts }, template);
