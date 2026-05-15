@@ -113,6 +113,63 @@ async function fetchArticleMedia(articleId) {
   } catch { return null; }
 }
 
+// Fetch cross-reference (interchangeable) part numbers for an article.
+// These are aftermarket manufacturer numbers — Febi, FAI, Autopumps, SKF, etc.
+// Endpoint: GET /api/artlookup/select-article-cross-references/article-id/{id}/lang-id/4
+async function fetchArticleCrossReferences(articleId) {
+  if (!articleId) return [];
+  const url = `https://${RAPIDAPI_HOST}/api/artlookup/select-article-cross-references/article-id/${encodeURIComponent(String(articleId))}/lang-id/${LANG_ID}`;
+  try {
+    const res = await fetchWithTimeout(url, { method: "GET", headers: apiHeaders() });
+    if (!res.ok) return [];
+    return res.json();
+  } catch { return []; }
+}
+
+// Parse the cross-references response into a clean array of { brand, articleNo } objects,
+// grouped and deduplicated. Handles both array and object wrapper responses.
+function parseCrossReferences(raw) {
+  if (!raw) return [];
+  const list = Array.isArray(raw)
+    ? raw
+    : (raw.articles || raw.crossReferences || raw.data || raw.result || []);
+  if (!Array.isArray(list)) return [];
+
+  const seen  = new Set();
+  const refs  = [];
+
+  for (const item of list) {
+    if (!item || typeof item !== "object") continue;
+
+    const brand     = (
+      item.brandName        ||
+      item.supplierName     ||
+      item.brand            ||
+      item.mfrName          ||
+      item.manufacturerName ||
+      ""
+    ).trim();
+
+    const articleNo = (
+      item.articleNo        ||
+      item.articleNumber    ||
+      item.artNr            ||
+      item.oemNo            ||
+      ""
+    ).trim();
+
+    if (!brand || !articleNo) continue;
+
+    const key = `${brand.toLowerCase()}::${articleNo.toLowerCase()}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+
+    refs.push({ brand, articleNo });
+  }
+
+  return refs;
+}
+
 
 // ─── OEM search helpers ───────────────────────────────────────────────────────
 // Used when the user enters an OEM/reference number instead of a TecDoc article number.
@@ -401,12 +458,17 @@ async function buildListingFromArticle(articleNumber, themeId = "clean-default")
   const kNumbers    = uniq(normalized.compatibility_rows.map((r) => r.k_number));
   const engineCodes = uniq(normalized.compatibility_rows.flatMap((r) => r.engine_codes || []));
 
-  // ── Media ─────────────────────────────────────────────────────────────────
-  const mediaResponse = await fetchArticleMedia(articleId);
-  const articleImage  = extractFirstImageUrl(mediaResponse);
+  // ── Media + Cross-references (parallel) ──────────────────────────────────
+  const [mediaResponse, crossRefsRaw] = await Promise.all([
+    fetchArticleMedia(articleId),
+    fetchArticleCrossReferences(articleId)
+  ]);
+  const articleImage        = extractFirstImageUrl(mediaResponse);
+  const interchangeableParts = parseCrossReferences(crossRefsRaw);
+  console.log(`[Listing] ${articleNumber}: ${interchangeableParts.length} interchangeable cross-refs`);
 
   // ── Build HTML ────────────────────────────────────────────────────────────
-  const html = buildHtml({ ...normalized, engine_codes: engineCodes, k_numbers: kNumbers }, template);
+  const html = buildHtml({ ...normalized, engine_codes: engineCodes, k_numbers: kNumbers, interchangeable_parts: interchangeableParts }, template);
 
   // ── Derive summary fields for AI title generation ─────────────────────────
   const modelCounts = {};
@@ -446,26 +508,27 @@ async function buildListingFromArticle(articleNumber, themeId = "clean-default")
   const fuelType = Object.entries(fuelCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || "";
 
   const baseResult = {
-    article_number:      articleNumber,
-    article_id:          articleId,
-    article_image:       articleImage,
-    generated_title:     normalized.product_name,
-    k_number_list:       kNumbers,
-    oem_numbers:         normalized.oem_numbers,
-    engine_codes:        engineCodes,
-    specifications:      normalized.specifications,
-    item_specifics:      normalized.item_specifics,
-    compatibility_count: normalized.compatibility_rows.length,
-    compatibility_rows:  normalized.compatibility_rows,
-    product_type:        normalized.product_name,
-    top_models:          topModels,
-    year_range:          yearRange,
-    engine_sizes:        engineSizes,
-    fuel_type:           fuelType
+    article_number:       articleNumber,
+    article_id:           articleId,
+    article_image:        articleImage,
+    generated_title:      normalized.product_name,
+    k_number_list:        kNumbers,
+    oem_numbers:          normalized.oem_numbers,
+    interchangeable_parts: interchangeableParts,
+    engine_codes:         engineCodes,
+    specifications:       normalized.specifications,
+    item_specifics:       normalized.item_specifics,
+    compatibility_count:  normalized.compatibility_rows.length,
+    compatibility_rows:   normalized.compatibility_rows,
+    product_type:         normalized.product_name,
+    top_models:           topModels,
+    year_range:           yearRange,
+    engine_sizes:         engineSizes,
+    fuel_type:            fuelType
   };
 
   // Cache by both the input key and the resolved article number (OEM searches benefit from this)
-  const cachePayload = { normalized: { ...normalized, engine_codes: engineCodes, k_numbers: kNumbers }, baseResult, articleImage };
+  const cachePayload = { normalized: { ...normalized, engine_codes: engineCodes, k_numbers: kNumbers, interchangeable_parts: interchangeableParts }, baseResult, articleImage };
   articleNormCache.set(articleNumber, cachePayload);
   if (resolvedNumber !== articleNumber) articleNormCache.set(resolvedNumber, cachePayload);
 
