@@ -755,7 +755,7 @@ function ListingGenerator({
 
           {/* ── Right column: article info & actions ── */}
           {phase === "done" && result && (
-            <div style={{ display: "grid", gap: 12, position: "sticky", top: 16 }}>
+            <div style={{ display: "grid", gap: 12, position: "sticky", top: 16, maxHeight: "calc(100vh - 60px)", overflowY: "auto" }}>
 
               {/* Article chip */}
               <div style={{
@@ -1637,7 +1637,9 @@ function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate, n
             style={{
               background: "#ffffff",
               border: editMode ? "2px solid #135DFF" : "1px solid rgba(255,255,255,0.08)",
-              borderRadius: 18, padding: 18, overflowX: "auto",
+              borderRadius: 18, padding: 18,
+              overflowX: "auto", overflowY: "auto",
+              maxHeight: "calc(100vh - 230px)",
               boxShadow: editMode ? "0 0 0 4px rgba(19,93,255,0.12)" : "0 0 16px rgba(19,93,255,0.08)"
             }}
           >
@@ -1698,7 +1700,7 @@ function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate, n
 
       {/* ── Right: Info & Actions Panel (only when not in noRightPanel mode) ── */}
       {!noRightPanel && (
-        <div style={{ display: "grid", gap: 12, position: "sticky", top: 16 }}>
+        <div style={{ display: "grid", gap: 12, position: "sticky", top: 16, maxHeight: "calc(100vh - 60px)", overflowY: "auto" }}>
 
           {/* Article chip */}
           <div style={{
