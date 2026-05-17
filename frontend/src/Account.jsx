@@ -1,6 +1,32 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import ListingTemplates from "./ListingTemplates.jsx";
 import { loadPreferences, savePreferences, PREF_DEFAULTS } from "./useListingPreferences.js";
+import { useSession } from "./context/SessionContext";
+import { supabase } from "./lib/supabaseClient";
+
+function useAuthUser() {
+  const { session } = useSession();
+  return useMemo(() => {
+    const user = session?.user;
+    const email = user?.email ?? "";
+    const meta = user?.user_metadata ?? {};
+    const displayName =
+      meta.full_name ||
+      meta.name ||
+      (email ? email.split("@")[0].replace(/[._-]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()) : "User");
+    const initials = displayName
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((w) => w[0]?.toUpperCase() ?? "")
+      .join("") || (email[0]?.toUpperCase() ?? "?");
+    const memberSince = user?.created_at
+      ? new Date(user.created_at).toLocaleDateString("en-GB", { month: "long", year: "numeric" })
+      : "—";
+    return { user, email, displayName, initials, memberSince };
+  }, [session]);
+}
 
 // ─── Colour tokens ────────────────────────────────────────────────────────────
 const C = {
@@ -118,6 +144,14 @@ function UsageBar({ used, total }) {
 
 // ─── PAGE: Account ────────────────────────────────────────────────────────────
 function AccountPage() {
+  const navigate = useNavigate();
+  const { email, displayName, initials, memberSince, user } = useAuthUser();
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate("/auth/login", { replace: true });
+  };
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
 
@@ -129,16 +163,18 @@ function AccountPage() {
             background: "linear-gradient(135deg, #135DFF, #0ea5e9)",
             display: "flex", alignItems: "center", justifyContent: "center",
             fontSize: 14, fontWeight: 900, color: "#fff",
-          }}>AB</div>
+          }}>{initials}</div>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 14, fontWeight: 800, color: C.text }}>Aaron Butler</div>
-            <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>aaron@jskcommerce.co.uk</div>
+            <div style={{ fontSize: 14, fontWeight: 800, color: C.text }}>{displayName}</div>
+            <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>{email || "—"}</div>
           </div>
-          <Badge color={C.blue}>Pro Plan</Badge>
+          <Badge color={user?.email_confirmed_at ? C.green : C.amber}>
+            {user?.email_confirmed_at ? "Verified" : "Unverified"}
+          </Badge>
         </div>
 
         <div style={{ marginBottom: 0 }}>
-          <InfoRow label="Member since" value="January 2025" />
+          <InfoRow label="Member since" value={memberSince} />
           <div style={{ borderBottom: "none" }}>
             <InfoRow label="Monthly usage" value={
               <div style={{ flex: 1, maxWidth: 260 }}>
@@ -156,7 +192,16 @@ function AccountPage() {
           <ActionRow
             label="Password"
             note="Update your account password"
-            action={<Btn>Change Password</Btn>}
+            action={
+              <Link to="/auth/update-password" style={{ textDecoration: "none" }}>
+                <Btn>Change Password</Btn>
+              </Link>
+            }
+          />
+          <ActionRow
+            label="Sign out"
+            note="End your session on this device"
+            action={<Btn variant="danger" onClick={handleLogout}>Log out</Btn>}
           />
           <div style={{ borderBottom: "none" }}>
             <ActionRow
@@ -477,6 +522,19 @@ export default function Account({ initialPage = "account" }) {
 
 // ─── Profile dropdown (used in App.jsx navbar) ────────────────────────────────
 export function ProfileDropdown({ onNavigate, onClose }) {
+  const navigate = useNavigate();
+  const { email, displayName } = useAuthUser();
+
+  const handleItemClick = async (page) => {
+    if (page === "logout") {
+      await supabase.auth.signOut();
+      onClose();
+      navigate("/auth/login", { replace: true });
+      return;
+    }
+    onNavigate(page);
+    onClose();
+  };
   const items = [
     { label: "Account",              icon: "○", page: "account" },
     { label: "Billing",              icon: "◈", page: "billing" },
@@ -494,13 +552,13 @@ export function ProfileDropdown({ onNavigate, onClose }) {
       boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
     }}>
       <div style={{ padding: "9px 11px 9px", borderBottom: `1px solid ${C.border2}`, marginBottom: 4 }}>
-        <div style={{ fontSize: 12, fontWeight: 800, color: C.text }}>Aaron Butler</div>
-        <div style={{ fontSize: 10, color: C.muted, marginTop: 2 }}>Pro · 312 / 500 listings</div>
+        <div style={{ fontSize: 12, fontWeight: 800, color: C.text }}>{displayName}</div>
+        <div style={{ fontSize: 10, color: C.muted, marginTop: 2 }}>{email || "Signed in"}</div>
       </div>
 
       {items.map((item, i) => {
         if (!item) return <div key={i} style={{ height: 1, background: C.border2, margin: "3px 0" }} />;
-        return <DropdownItem key={item.page} {...item} onClick={() => { onNavigate(item.page); onClose(); }} />;
+        return <DropdownItem key={item.page} {...item} onClick={() => handleItemClick(item.page)} />;
       })}
     </div>
   );
