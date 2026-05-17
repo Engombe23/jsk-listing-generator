@@ -85,7 +85,7 @@ function Navbar() {
         <Link to="/about" style={navLinkStyle}>About</Link>
         <Link to="/pricing" style={navLinkStyle}>Pricing</Link>
         <Link
-          to="/login"
+          to="/auth/login"
           style={{
             padding: "9px 22px",
             borderRadius: 12,
