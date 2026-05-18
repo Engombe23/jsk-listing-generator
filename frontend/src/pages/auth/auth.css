@@ -1,0 +1,137 @@
+.auth-page .auth-card {
+  width: 100%;
+  max-width: 420px;
+  background: #0f1e35;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  padding: 32px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.28);
+}
+
+.auth-page .auth-back-link {
+  display: inline-block;
+  margin-bottom: 20px;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.55);
+  text-decoration: none;
+}
+
+.auth-page .auth-back-link:hover {
+  color: #fff;
+}
+
+.auth-page .auth-logo {
+  height: 32px;
+  width: auto;
+  margin-bottom: 20px;
+}
+
+.auth-page .auth-title {
+  margin: 0 0 8px;
+  font-size: 24px;
+  font-weight: 800;
+  color: #fff;
+}
+
+.auth-page .auth-subtitle {
+  margin: 0 0 24px;
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.auth-page form {
+  display: flex;
+  flex-direction: column;
+}
+
+.auth-page form .flex {
+  display: flex;
+}
+
+.auth-page form .flex-col {
+  flex-direction: column;
+}
+
+.auth-page form .gap-6 {
+  gap: 24px;
+}
+
+.auth-page form .grid {
+  display: grid;
+}
+
+.auth-page form .gap-2 {
+  gap: 8px;
+}
+
+.auth-page form .items-center {
+  align-items: center;
+}
+
+.auth-page form .ml-auto {
+  margin-left: auto;
+}
+
+.auth-page form label {
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.auth-page form input {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.25);
+  color: #fff;
+  font-size: 14px;
+}
+
+.auth-page form input:focus {
+  outline: none;
+  border-color: rgba(19, 93, 255, 0.6);
+}
+
+.auth-page form button[type="submit"] {
+  width: 100%;
+  padding: 12px 16px;
+  border: none;
+  border-radius: 12px;
+  background: #135dff;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.auth-page form button[type="submit"]:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.auth-page .text-sm {
+  font-size: 13px;
+}
+
+.auth-page .text-center {
+  text-align: center;
+}
+
+.auth-page .mt-4 {
+  margin-top: 16px;
+}
+
+.auth-page .text-red-500 {
+  color: #f87171;
+}
+
+.auth-page a {
+  color: #7eb4ff;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.auth-page a:hover {
+  color: #a8cdff;
+}

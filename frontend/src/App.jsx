@@ -1,4 +1,6 @@
 import React, { memo, useState, useRef, useEffect, useMemo } from "react";
+import { supabase } from "./lib/supabaseClient";
+import { useSession } from "./context/SessionContext";
 import {
   BUTTON_BASE,
   SMALL_BUTTON_STYLE,
@@ -145,10 +147,10 @@ function makeRowId() {
 // ─── App ──────────────────────────────────────────────────────────────────────
 
 export default function App() {
+  const { session } = useSession();
   const [page, setPage] = useState(
     () => sessionStorage.getItem("jsk_active_page") || "listing"
   );
-  const [profileOpen,    setProfileOpen]    = useState(false);
   const [accountSubPage, setAccountSubPage] = useState("account");
 
   // Session-state key prefixes per page — used to wipe state on navigation away
@@ -172,8 +174,12 @@ export default function App() {
   };
 
   // Navigate from profile dropdown — account sub-pages or logout
-  const handleProfileNav = (subPage) => {
-    if (subPage === "logout") { /* handle logout */ return; }
+  const handleProfileNav = async (subPage) => {
+    if (subPage === "logout") {
+      await supabase.auth.signOut();
+      window.location.href = "/auth/login";
+      return;
+    }
     setAccountSubPage(subPage);
     navigateTo("account");
   };
@@ -225,33 +231,25 @@ export default function App() {
             <div style={{ fontSize: 13, color: "rgba(255,255,255,0.45)", fontWeight: 500 }}>
               Listing Tool
             </div>
-            {/* Profile button */}
-            <div style={{ position: "relative" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              {session?.user?.email && (
+                <span style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", marginRight: 4 }}>
+                  {session.user.email}
+                </span>
+              )}
               <button
-                onClick={() => setProfileOpen(o => !o)}
+                type="button"
+                onClick={() => handleProfileNav("logout")}
                 style={{
                   display: "flex", alignItems: "center", gap: 8,
-                  padding: "6px 12px 6px 7px",
-                  background: profileOpen ? "rgba(19,93,255,0.14)" : "rgba(255,255,255,0.05)",
-                  border: profileOpen ? "1px solid rgba(19,93,255,0.35)" : "1px solid rgba(255,255,255,0.10)",
+                  padding: "6px 12px",
+                  background: "rgba(239,68,68,0.12)",
+                  border: "1px solid rgba(239,68,68,0.35)",
                   borderRadius: 99, cursor: "pointer", transition: "all 0.15s ease",
                 }}
               >
-                <div style={{
-                  width: 26, height: 26, borderRadius: "50%",
-                  background: "linear-gradient(135deg, #135DFF, #0ea5e9)",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: 10, fontWeight: 900, color: "#fff", flexShrink: 0,
-                }}>AB</div>
-                <span style={{ fontSize: 12, fontWeight: 700, color: "#e2e8f0" }}>Aaron</span>
-                <span style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", marginLeft: 2 }}>{profileOpen ? "▲" : "▼"}</span>
+                <span style={{ fontSize: 12, fontWeight: 700, color: "#fca5a5" }}>Log out</span>
               </button>
-              {profileOpen && (
-                <ProfileDropdown
-                  onNavigate={handleProfileNav}
-                  onClose={() => setProfileOpen(false)}
-                />
-              )}
             </div>
           </div>
         </div>

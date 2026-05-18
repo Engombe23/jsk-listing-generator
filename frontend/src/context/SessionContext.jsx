@@ -1,0 +1,57 @@
+import { createContext, useContext, useEffect, useState } from "react";
+import { supabase } from "../lib/supabaseClient";
+
+const SessionContext = createContext({ session: null });
+
+export function useSession() {
+  const context = useContext(SessionContext);
+  if (!context) {
+    throw new Error("useSession must be used within a SessionProvider");
+  }
+  return context;
+}
+
+export function SessionProvider({ children }) {
+  const [session, setSession] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session: initial } }) => {
+      setSession(initial);
+      setIsLoading(false);
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      setSession(nextSession);
+      setIsLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  if (isLoading) {
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          display: "grid",
+          placeItems: "center",
+          background: "linear-gradient(180deg, #0A1628 0%, #071020 100%)",
+          color: "rgba(255,255,255,0.6)",
+          fontFamily: "Inter, system-ui, sans-serif",
+          fontSize: 14,
+        }}
+      >
+        Loading…
+      </div>
+    );
+  }
+
+  return (
+    <SessionContext.Provider value={{ session }}>
+      {children}
+    </SessionContext.Provider>
+  );
+}
