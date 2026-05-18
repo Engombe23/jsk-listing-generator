@@ -298,31 +298,57 @@ async function fetchEngineTypesByModel(modelId) {
   } catch { return []; }
 }
 
+// Pull the vehicleId from a TecDoc car/engine-row object regardless of field name.
+function getVid(obj) {
+  return String(obj?.vehicleId || obj?.typeId || obj?.kType || obj?.kTypeId || obj?.id || "").trim();
+}
+
+// Pull typeEngineName from an engine row regardless of field name.
+function getEngineRowName(r) {
+  return String(r?.typeEngineName || r?.typeName || r?.carTypeName || r?.engineName || "").trim().toLowerCase();
+}
+
 // Match a compatibleCar entry to the best engine-type row from the model series.
-// Priority: exact vehicleId → typeEngineName + date range → typeEngineName alone.
+// Priority: exact vehicleId → name+dates → dates only → name alone.
 function findEngineMatch(car, engineRows) {
   if (!Array.isArray(engineRows) || engineRows.length === 0) return null;
 
-  // 1. Exact vehicleId match
-  const byId = engineRows.find(r => String(r.vehicleId) === String(car.vehicleId));
-  if (byId) return byId;
+  const carVid   = getVid(car);
+  const carName  = String(car.typeEngineName || car.typeName || car.carTypeName || "").trim().toLowerCase();
+  const carStart = String(car.constructionIntervalStart || car.yearFrom || "");
+  const carEnd   = String(car.constructionIntervalEnd   || car.yearTo   || "");
 
-  const carName  = String(car.typeEngineName  || "").trim().toLowerCase();
-  const carStart = String(car.constructionIntervalStart || "");
-  const carEnd   = String(car.constructionIntervalEnd   || "");
+  // 1. Exact vehicleId — try every known field name on both sides
+  if (carVid) {
+    const byId = engineRows.find(r => getVid(r) === carVid);
+    if (byId) return byId;
+  }
 
-  // 2. typeEngineName + construction dates
-  const byNameAndDate = engineRows.find(r =>
-    String(r.typeEngineName || "").trim().toLowerCase() === carName &&
-    String(r.constructionIntervalStart || "") === carStart &&
-    String(r.constructionIntervalEnd   || "") === carEnd
-  );
-  if (byNameAndDate) return byNameAndDate;
+  // 2. Engine name + construction date range
+  if (carName && carStart) {
+    const byNameAndDate = engineRows.find(r =>
+      getEngineRowName(r) === carName &&
+      String(r.constructionIntervalStart || r.yearFrom || "") === carStart &&
+      String(r.constructionIntervalEnd   || r.yearTo   || "") === carEnd
+    );
+    if (byNameAndDate) return byNameAndDate;
+  }
 
-  // 3. typeEngineName only
-  return engineRows.find(r =>
-    String(r.typeEngineName || "").trim().toLowerCase() === carName
-  ) || null;
+  // 3. Date range only (useful when engine name field is absent but dates are present)
+  if (carStart) {
+    const byDates = engineRows.find(r =>
+      String(r.constructionIntervalStart || r.yearFrom || "") === carStart &&
+      String(r.constructionIntervalEnd   || r.yearTo   || "") === carEnd
+    );
+    if (byDates) return byDates;
+  }
+
+  // 4. Engine name alone
+  if (carName) {
+    return engineRows.find(r => getEngineRowName(r) === carName) || null;
+  }
+
+  return null;
 }
 
 // Fetch engine data for all unique modelIds in a compatible-cars list.
@@ -330,7 +356,7 @@ function findEngineMatch(car, engineRows) {
 // Runs in parallel batches of 4 with 200ms between batches to respect rate limits.
 // Capped at MAX_MODEL_LOOKUPS uncached fetches — the full compatibility list is still
 // built from the article response; only engine-code enrichment is limited.
-const MAX_MODEL_LOOKUPS = 20;
+const MAX_MODEL_LOOKUPS = 60; // raised from 20 — parts like gaskets can have 40+ unique model series
 
 async function fetchEngineDataByModelIds(cars) {
   const uniqueModelIds = uniq(cars.map(c => String(c.modelId)).filter(Boolean));
@@ -387,33 +413,46 @@ function normalizeTecdoc(articleResponse, engineDataByModelId) {
   const compatibility = article.compatibleCars || [];
 
   const rows = compatibility.map((car) => {
-    // Look up the model-series engine list, then find the best match for this variant
-    const engineRows = engineDataByModelId[String(car.modelId)] || [];
-    const match      = findEngineMatch(car, engineRows);
+    // ── Consistent field extraction (TecDoc API field names vary by endpoint) ──
+    const make    = car.manufacturerName || car.manuName   || car.make  || car.brand  || "";
+    const model   = car.modelName        || car.carModelName || car.model || car.series || "";
+    const engine  = car.typeEngineName   || car.carTypeName  || car.typeName || car.engineName || car.variant || "";
+    const yearFrom = car.constructionIntervalStart || car.yearFrom || car.from || "";
+    const yearTo   = car.constructionIntervalEnd   || car.yearTo   || car.to   || "";
+    const vid      = car.vehicleId || car.typeId || car.kType || car.kTypeId || car.id || "";
+    const modelId  = String(car.modelId || car.carModelId || "");
 
-    // Engine codes: matched engine row first, then any field on the car entry itself
+    // Look up model-series engine list, then find the best match for this variant
+    const engineRows = (modelId ? engineDataByModelId[modelId] : null) || [];
+    const match      = findEngineMatch({ ...car, typeEngineName: engine, constructionIntervalStart: yearFrom, constructionIntervalEnd: yearTo }, engineRows);
+
+    // Engine codes — try match first, then every known field name on the car entry
     const rawCodes =
-      match?.engCodes    ||
-      match?.engineCodes ||
-      match?.engineCode  ||
-      car?.engCodes      ||
-      car?.engineCodes   ||
-      car?.engineCode    ||
+      match?.engCodes    || match?.engineCodes || match?.engineCode || match?.motorCodes ||
+      car?.engCodes      || car?.engineCodes   || car?.engineCode   || car?.motorCodes   ||
       "";
 
+    // Power + capacity — match overrides car entry if available
+    const kw = match?.powerKw   ?? car?.powerKw   ?? car?.kw  ?? null;
+    const hp = match?.powerPs   ?? car?.powerPs   ?? car?.ps  ?? car?.hp ?? null;
+    const cc = match?.capacityTech ?? car?.capacityTech ?? car?.displacement ?? car?.cc ?? null;
+
+    const vehicle = `${make} ${model} ${engine}`.trim();
+
+    // Skip completely empty rows (no make AND no model) — these are ghost entries
+    // with no useful data that would render as blank table rows.
+    if (!make && !model && !engine) return null;
+
     return {
-      make:             car.manufacturerName || "",
-      model:            car.modelName        || "",
-      engine:           car.typeEngineName   || "",
-      vehicle:          `${car.manufacturerName || ""} ${car.modelName || ""} ${car.typeEngineName || ""}`.trim(),
-      production_years: formatYearRange(car.constructionIntervalStart, car.constructionIntervalEnd),
-      kw:               cleanNumber(match?.powerKw      ?? car?.powerKw),
-      hp:               cleanNumber(match?.powerPs      ?? car?.powerPs),
-      cc:               cleanNumber(match?.capacityTech ?? car?.capacityTech),
-      engine_codes:     uniq(splitEngineCodes(rawCodes)),
-      k_number:         String(car.vehicleId || "")
+      make,  model,  engine,  vehicle,
+      production_years: formatYearRange(yearFrom, yearTo),
+      kw:           cleanNumber(kw),
+      hp:           cleanNumber(hp),
+      cc:           cleanNumber(cc),
+      engine_codes: uniq(splitEngineCodes(rawCodes)),
+      k_number:     String(vid)
     };
-  });
+  }).filter(Boolean); // remove ghost rows
 
   const specifications = uniq(
     (article.allSpecifications || [])
