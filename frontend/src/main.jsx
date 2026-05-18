@@ -13,6 +13,7 @@ import SignUpPage from "./pages/auth/SignUpPage.jsx";
 import ForgotPasswordPage from "./pages/auth/ForgotPasswordPage.jsx";
 import UpdatePasswordPage from "./pages/auth/UpdatePasswordPage.jsx";
 import SignUpSuccessPage from "./pages/auth/SignUpSuccessPage.jsx";
+import AuthCallback from "./callback/AuthCallback.jsx";
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>
@@ -31,6 +32,8 @@ createRoot(document.getElementById("root")).render(
             <Route path="/auth/sign-up" element={<SignUpPage />} />
             <Route path="/auth/sign-up-success" element={<SignUpSuccessPage />} />
           </Route>
+
+          <Route path="/auth/callback" element={<AuthCallback />} />
 
           <Route path="/auth/forget-password" element={<ForgotPasswordPage />} />
           <Route path="/auth/update-password" element={<UpdatePasswordPage />} />
