@@ -1,12 +1,6 @@
-import { Navigate, Outlet } from "react-router-dom";
-import { useSession } from "../context/SessionContext";
+import { Outlet } from "react-router-dom";
 
+// Auth temporarily disabled — remove this comment and restore session check when Supabase is configured
 export default function AuthProtectedRoute() {
-  const { session } = useSession();
-
-  if (!session) {
-    return <Navigate to="/auth/login" replace />;
-  }
-
   return <Outlet />;
 }
