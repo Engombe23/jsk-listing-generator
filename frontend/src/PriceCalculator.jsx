@@ -452,6 +452,7 @@ function PriceDistribution({ data, listings, price, onBinSelect }) {
   const [tableSort,   setTableSort]   = useState("price");
   const [panelSort,   setPanelSort]   = useState("asc");
   const [lightboxImg, setLightboxImg] = useState(null); // URL of expanded image, null = closed
+  const [hoveredZBin, setHoveredZBin] = useState(null); // index into zBins for zoom chart hover
 
   // Refs to share latest computed bin data with parent (when onBinSelect is provided)
   const binsRef        = useRef([]);
@@ -872,15 +873,35 @@ function PriceDistribution({ data, listings, price, onBinSelect }) {
           </svg>
 
 
-          {/* ── X-axis labels ── */}
-          <div style={{ position: "relative", height: 40, marginTop: 4 }}>
+          {/* ── Hover tooltip — floats over the hovered bar ── */}
+          {hoveredBin !== null && bins[hoveredBin] && (() => {
+            const hb = bins[hoveredBin];
+            const rawPct = toPct((hb.s + hb.e) / 2);
+            const leftPct = clamp(rawPct, 8, 82);
+            return (
+              <div style={{ position: "absolute", left: `${leftPct}%`, top: 6, transform: "translateX(-50%)", background: "rgba(4,12,28,0.97)", border: "1px solid rgba(56,189,248,0.35)", borderRadius: 6, padding: "4px 10px", fontSize: 11, fontWeight: 600, color: "#e2e8f0", whiteSpace: "nowrap", pointerEvents: "none", zIndex: 20, boxShadow: "0 2px 14px rgba(0,0,0,0.6)" }}>
+                <span style={{ color: "#7dd3fc" }}>{fmtRange(hb.s, hb.e)}</span>
+                <span style={{ color: "#38bdf8", marginLeft: 8 }}>{hb.count}</span>
+                <span style={{ color: "#3d5a72", marginLeft: 3, fontWeight: 400 }}>listing{hb.count !== 1 ? 's' : ''}</span>
+              </div>
+            );
+          })()}
+
+          {/* ── X-axis: tick marks + thinned labels + summary ── */}
+          <div style={{ position: "relative", height: 46, marginTop: 4 }}>
+            {/* Tick mark for every non-empty bin */}
+            {bins.filter(b => b.count > 0).map(b => (
+              <div key={`tick-${b.s}`} style={{ position: "absolute", left: `${clamp(toPct((b.s + b.e) / 2), 0.5, 99.5)}%`, top: 0, width: 1, height: 5, background: "rgba(56,189,248,0.22)", transform: "translateX(-50%)" }} />
+            ))}
+            {/* Text label only for thinned ticks */}
             {xTicks.map(tick => (
-              <div key={tick.v} style={{ position: "absolute", left: `${clamp(toPct(tick.mid), 1, 97)}%`, top: 2, transform: "translateX(-50%)", fontSize: 10, color: "#6b90b0", whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums", userSelect: "none", fontWeight: 600 }}>
+              <div key={tick.v} style={{ position: "absolute", left: `${clamp(toPct(tick.mid), 1, 97)}%`, top: 7, transform: "translateX(-50%)", fontSize: 10, color: "#6b90b0", whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums", userSelect: "none", fontWeight: 600 }}>
                 {fmtRange(tick.v, tick.e)}
               </div>
             ))}
-            <div style={{ textAlign: "center", paddingTop: 26, fontSize: 8, color: "#2d4a65", textTransform: "uppercase", letterSpacing: 1.5, userSelect: "none", fontWeight: 700 }}>
-              PRICE (£)
+            {/* Summary line */}
+            <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, textAlign: "center", fontSize: 9, color: "#2a4060", userSelect: "none", fontWeight: 500, letterSpacing: 0.2 }}>
+              {fmtX(low)} – {fmtX(high)} &nbsp;·&nbsp; {fmtX(binW)} price bands &nbsp;·&nbsp; {n} listings
             </div>
           </div>
         </div>
@@ -997,7 +1018,8 @@ function PriceDistribution({ data, listings, price, onBinSelect }) {
               {/* Chart */}
               <div style={{ flex: 1, minWidth: 0, position: "relative" }}>
                 <svg viewBox={`0 0 ${ZCW} ${ZCH}`} preserveAspectRatio="none"
-                  width="100%" height={ZCH} style={{ display: "block" }}>
+                  width="100%" height={ZCH} style={{ display: "block" }}
+                  onMouseLeave={() => setHoveredZBin(null)}>
                   <defs>
                     <linearGradient id="zBarGrad" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="0%" stopColor="#38bdf8" stopOpacity="0.85" />
@@ -1034,6 +1056,8 @@ function PriceDistribution({ data, listings, price, onBinSelect }) {
                     return (
                       <g key={i}
                         onClick={() => setZoomRange(isSel ? null : { s: b.s, e: b.e })}
+                        onMouseEnter={() => setHoveredZBin(i)}
+                        onMouseLeave={() => setHoveredZBin(null)}
                         style={{ cursor: "pointer" }}
                       >
                         <rect x={cX} y={ZPADT} width={colW} height={zPlotH} fill="transparent" />
@@ -1077,21 +1101,34 @@ function PriceDistribution({ data, listings, price, onBinSelect }) {
                     stroke="rgba(255,255,255,0.10)" strokeWidth={1} vectorEffect="non-scaling-stroke" />
                 </svg>
 
-                {/* X-axis labels */}
-                <div style={{ position: "relative", height: 36, marginTop: 4 }}>
+                {/* Zoom hover tooltip */}
+                {hoveredZBin !== null && zBins[hoveredZBin] && zBins[hoveredZBin].count > 0 && (() => {
+                  const hzb = zBins[hoveredZBin];
+                  const midPctZ = Math.min(82, Math.max(8, (zBinMidX(hoveredZBin) / ZCW) * 100));
+                  return (
+                    <div style={{ position: "absolute", left: `${midPctZ}%`, top: 4, transform: "translateX(-50%)", background: "rgba(4,12,28,0.97)", border: "1px solid rgba(56,189,248,0.35)", borderRadius: 6, padding: "4px 10px", fontSize: 11, fontWeight: 600, color: "#e2e8f0", whiteSpace: "nowrap", pointerEvents: "none", zIndex: 20, boxShadow: "0 2px 14px rgba(0,0,0,0.6)" }}>
+                      <span style={{ color: "#7dd3fc" }}>{fmtRange(hzb.s, hzb.e)}</span>
+                      <span style={{ color: "#38bdf8", marginLeft: 8 }}>{hzb.count}</span>
+                      <span style={{ color: "#3d5a72", marginLeft: 3, fontWeight: 400 }}>listing{hzb.count !== 1 ? 's' : ''}</span>
+                    </div>
+                  );
+                })()}
+
+                {/* Zoom X-axis: tick marks + thinned labels + summary */}
+                <div style={{ position: "relative", height: 42, marginTop: 4 }}>
+                  {/* Tick for every non-empty zoom bin */}
+                  {zBins.map((b, i) => b.count === 0 ? null : (
+                    <div key={`ztick-${b.s}`} style={{ position: "absolute", left: `${Math.min(99.5, Math.max(0.5, (zBinMidX(i) / ZCW) * 100))}%`, top: 0, width: 1, height: 4, background: "rgba(56,189,248,0.22)", transform: "translateX(-50%)" }} />
+                  ))}
+                  {/* Thinned text labels */}
                   {zTicks.map(tick => (
-                    <div key={tick.v} style={{
-                      position: "absolute",
-                      left: `${Math.min(97, Math.max(1, (tick.midX / ZCW) * 100))}%`,
-                      top: 2, transform: "translateX(-50%)",
-                      fontSize: 10, color: "#6b90b0", whiteSpace: "nowrap",
-                      fontVariantNumeric: "tabular-nums", userSelect: "none", fontWeight: 600,
-                    }}>
+                    <div key={tick.v} style={{ position: "absolute", left: `${Math.min(97, Math.max(1, (tick.midX / ZCW) * 100))}%`, top: 6, transform: "translateX(-50%)", fontSize: 10, color: "#6b90b0", whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums", userSelect: "none", fontWeight: 600 }}>
                       {fmtRange(tick.v, tick.e)}
                     </div>
                   ))}
-                  <div style={{ textAlign: "center", paddingTop: 22, fontSize: 8, color: "#2d4a65", textTransform: "uppercase", letterSpacing: 1.5, userSelect: "none", fontWeight: 700 }}>
-                    PRICE (£)
+                  {/* Zoom summary */}
+                  <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, textAlign: "center", fontSize: 9, color: "#2a4060", userSelect: "none", fontWeight: 500, letterSpacing: 0.2 }}>
+                    {fmtX(zMin)} – {fmtX(zMax)} &nbsp;·&nbsp; {fmtX(zBinW)} price bands
                   </div>
                 </div>
               </div>
