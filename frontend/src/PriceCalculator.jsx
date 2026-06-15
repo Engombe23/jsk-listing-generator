@@ -1744,10 +1744,10 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
           {!isPro && <Locked />}
 
           {isPro && (
-            <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "290px 1fr 340px", gap: 16, alignItems: "stretch" }}>
 
               {/* ═══ LEFT SIDEBAR: Cost & Pricing Inputs ═══ */}
-              <div style={{ width: 290, flexShrink: 0, background: C.bg1, border: C.borderBlue, borderRadius: 16, overflow: "hidden" }}>
+              <div style={{ background: C.bg1, border: C.borderBlue, borderRadius: 16, overflow: "hidden", display: "flex", flexDirection: "column" }}>
                 <div style={{ padding: "12px 14px 10px", borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
                   <div style={{ fontSize: 10, fontWeight: 700, color: "#5a8ab0", textTransform: "uppercase", letterSpacing: 1.2 }}>Cost &amp; Pricing Inputs</div>
                 </div>
@@ -1838,7 +1838,7 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
               </div>
 
               {/* ═══ CENTER: Main Pricing Dashboard ═══ */}
-              <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 12 }}>
+              <div style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 16 }}>
 
                 {/* Search & header card */}
                 <div style={{ background: C.bg1, border: C.borderBlue, borderRadius: 16, overflow: "hidden" }}>
@@ -1899,30 +1899,30 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
                       </div>
                     ))}
                   </div>
+
+                  {/* Breakdown — inside the card, below KPIs */}
+                  {hasResult && (
+                    <div style={{ padding: "10px 18px 12px", borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+                      {!isNaN(breakEven) && (
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, padding: "5px 10px", background: "rgba(251,191,36,0.05)", border: "1px solid rgba(251,191,36,0.12)", borderRadius: 7 }}>
+                          <span style={{ fontSize: 12, color: "#6b7280" }}>Break-even selling price</span>
+                          <span style={{ fontSize: 15, fontWeight: 800, color: "#fbbf24" }}>{fmt(breakEven)}</span>
+                        </div>
+                      )}
+                      <div style={{ fontSize: 10, fontWeight: 700, color: "#3d5268", textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 4 }}>Cost Breakdown</div>
+                      {buyerShip > 0 && <BR label="Buyer shipping (income)" value={`+${fmt(buyerShip)}`} color="#93c5fd" />}
+                      {cost > 0      && <BR label="Product cost"            value={`-${fmt(cost)}`}       color="#f87171" />}
+                      {(shipping + packaging) > 0 && <BR label="Postage & packaging" value={`-${fmt(shipping + packaging)}`} color="#f87171" />}
+                      {other > 0     && <BR label="Other costs"             value={`-${fmt(other)}`}      color="#f87171" />}
+                      <BR label={`eBay fees (${fvf}% + £${fixed.toFixed(2)}${promo > 0 ? ` + ${promo}% ad` : ""})`} value={`-${fmt(ebayFVF + ebayPromo)}`} color="#f87171" />
+                      {vatRegistered && <BR label="VAT collected → HMRC" value={`-${fmt(vatAmount)}`} color="#f87171" note="You keep none of this" />}
+                      <BR label="Net Profit" value={fmt(profit)} color={profitColor} strong />
+                    </div>
+                  )}
                 </div>
 
-                {/* Cost breakdown (when calculated) */}
-                {hasResult && (
-                  <div style={{ background: C.bg1, border: C.borderBlue, borderRadius: 14, padding: "10px 16px 12px" }}>
-                    {!isNaN(breakEven) && (
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, padding: "5px 10px", background: "rgba(251,191,36,0.05)", border: "1px solid rgba(251,191,36,0.12)", borderRadius: 7 }}>
-                        <span style={{ fontSize: 12, color: "#6b7280" }}>Break-even selling price</span>
-                        <span style={{ fontSize: 15, fontWeight: 800, color: "#fbbf24" }}>{fmt(breakEven)}</span>
-                      </div>
-                    )}
-                    <div style={{ fontSize: 10, fontWeight: 700, color: "#3d5268", textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 4 }}>Cost Breakdown</div>
-                    {buyerShip > 0 && <BR label="Buyer shipping (income)" value={`+${fmt(buyerShip)}`} color="#93c5fd" />}
-                    {cost > 0      && <BR label="Product cost"            value={`-${fmt(cost)}`}       color="#f87171" />}
-                    {(shipping + packaging) > 0 && <BR label="Postage & packaging" value={`-${fmt(shipping + packaging)}`} color="#f87171" />}
-                    {other > 0     && <BR label="Other costs"             value={`-${fmt(other)}`}      color="#f87171" />}
-                    <BR label={`eBay fees (${fvf}% + £${fixed.toFixed(2)}${promo > 0 ? ` + ${promo}% ad` : ""})`} value={`-${fmt(ebayFVF + ebayPromo)}`} color="#f87171" />
-                    {vatRegistered && <BR label="VAT collected → HMRC" value={`-${fmt(vatAmount)}`} color="#f87171" note="You keep none of this" />}
-                    <BR label="Net Profit" value={fmt(profit)} color={profitColor} strong />
-                  </div>
-                )}
-
                 {/* Market Intelligence */}
-                <div style={{ background: C.bg1, border: C.borderBlue, borderRadius: 16, overflow: "hidden" }}>
+                <div style={{ background: C.bg1, border: C.borderBlue, borderRadius: 16, overflow: "hidden", flex: 1, display: "flex", flexDirection: "column" }}>
                   <div style={{ padding: "12px 18px 10px", borderBottom: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                     <div>
                       <div style={{ fontSize: 14, fontWeight: 700, color: "#e2e8f0", marginBottom: 2 }}>Market Intelligence</div>
@@ -1997,21 +1997,31 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
               </div>
 
               {/* ═══ RIGHT: Listings Panel ═══ */}
-              <div style={{ width: 340, flexShrink: 0, background: C.bg1, border: C.borderBlue, borderRadius: 16, overflow: "hidden", display: "flex", flexDirection: "column", minHeight: 400 }}>
+              <div style={{ background: C.bg1, border: C.borderBlue, borderRadius: 16, overflow: "hidden", display: "flex", flexDirection: "column" }}>
                 {!binPanelData ? (
-                  <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, padding: "32px 24px", textAlign: "center" }}>
-                    <div style={{ opacity: 0.25 }}>
-                      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                        <rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
-                        <line x1="12" y1="11" x2="16" y2="11"/><line x1="12" y1="16" x2="16" y2="16"/>
-                        <line x1="8" y1="11" x2="8.01" y2="11"/><line x1="8" y1="16" x2="8.01" y2="16"/>
-                      </svg>
+                  <>
+                    {/* Persistent header */}
+                    <div style={{ padding: "12px 16px 10px", borderBottom: "1px solid rgba(255,255,255,0.07)", flexShrink: 0 }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: "#5a8ab0", textTransform: "uppercase", letterSpacing: 1.2 }}>Listings in Selected Range</div>
                     </div>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: "#2d4a65" }}>No range selected</div>
-                    <div style={{ fontSize: 11, color: "#1e3347", lineHeight: 1.6 }}>
-                      {smData ? "Click a price bar in the chart to view listings in that range." : "Fetch market data first, then click a bar to see the listings."}
+                    {/* Empty state */}
+                    <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14, padding: "32px 24px", textAlign: "center" }}>
+                      <div style={{ opacity: 0.3 }}>
+                        <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+                          <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/>
+                          <line x1="6" y1="20" x2="6" y2="14"/><line x1="2" y1="20" x2="22" y2="20"/>
+                        </svg>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: "#3d5a72", marginBottom: 6 }}>Select a price range</div>
+                        <div style={{ fontSize: 11, color: "#1e3347", lineHeight: 1.65 }}>
+                          {smData
+                            ? "Click a bar in the chart to view matching listings."
+                            : "Fetch market data, then click a bar to see the listings."}
+                        </div>
+                      </div>
                     </div>
-                  </div>
+                  </>
                 ) : (() => {
                   const { bin, allListings, zoomRange, setZoomRange, setClickedBin, fmtX, onViewAll } = binPanelData;
                   const bl = zoomRange ? allListings.filter(l => l.price >= zoomRange.s && l.price <= zoomRange.e) : allListings;
