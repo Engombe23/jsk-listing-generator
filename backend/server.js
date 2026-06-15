@@ -1162,11 +1162,11 @@ app.post("/api/ebay/search-prices", async (req, res) => {
     // Debug: log the first item's raw shape so we can verify field availability
     if (rawItems[0]) {
       const s = rawItems[0];
-      console.log("[eBay debug] first item keys:", Object.keys(s));
-      console.log("[eBay debug] image:", s.image);
-      console.log("[eBay debug] seller:", s.seller);
-      console.log("[eBay debug] shippingOptions:", JSON.stringify(s.shippingOptions));
-      console.log("[eBay debug] condition:", s.condition, "conditionId:", s.conditionId);
+      console.log("[eBay debug] first item keys:", Object.keys(s).join(", "));
+      console.log("[eBay debug] itemId:", s.itemId);
+      console.log("[eBay debug] quantitySold:", s.quantitySold);
+      console.log("[eBay debug] estimatedAvailabilities:", JSON.stringify(s.estimatedAvailabilities));
+      console.log("[eBay debug] seller:", JSON.stringify(s.seller));
     }
 
     // Enrich each item — capture all fields needed for table view
@@ -1300,9 +1300,12 @@ app.post("/api/ebay/sold-counts", async (req, res) => {
     const { itemIds } = req.body;
     if (!Array.isArray(itemIds) || itemIds.length === 0) return res.json({});
 
+    console.log(`[sold-counts] Fetching ${itemIds.length} items. First ID: ${itemIds[0]}`);
+
     const token   = await getEbayAccessToken();
     const results = {};
     const CONCURRENCY = 10;
+    let debugged = false;
 
     // Process in chunks to avoid hammering the API
     for (let i = 0; i < itemIds.length; i += CONCURRENCY) {
@@ -1319,18 +1322,31 @@ app.post("/api/ebay/sold-counts", async (req, res) => {
                 "Content-Type":             "application/json",
               },
             },
-            5000
+            8000
           );
+          const text = await r.text();
+          if (!debugged) {
+            debugged = true;
+            console.log(`[sold-counts] First item status: ${r.status}`);
+            try {
+              const parsed = JSON.parse(text);
+              console.log(`[sold-counts] First item keys: ${Object.keys(parsed).join(", ")}`);
+              console.log(`[sold-counts] estimatedAvailabilities: ${JSON.stringify(parsed.estimatedAvailabilities)}`);
+            } catch { console.log(`[sold-counts] Raw response: ${text.slice(0, 300)}`); }
+          }
           if (!r.ok) { results[itemId] = null; return; }
-          const data  = await r.json();
+          const data  = JSON.parse(text);
           const avail = Array.isArray(data.estimatedAvailabilities) ? data.estimatedAvailabilities[0] : null;
           results[itemId] = avail?.soldQuantity ?? null;
-        } catch {
+        } catch (e) {
+          console.error(`[sold-counts] Error for ${itemId}: ${e.message}`);
           results[itemId] = null;
         }
       }));
     }
 
+    const filled = Object.values(results).filter(v => v !== null).length;
+    console.log(`[sold-counts] Done. ${filled}/${itemIds.length} had soldQuantity data.`);
     res.json(results);
   } catch (err) {
     console.error("[/api/ebay/sold-counts]", err.message);
