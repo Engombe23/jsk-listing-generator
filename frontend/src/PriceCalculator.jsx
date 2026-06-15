@@ -1580,62 +1580,15 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
           {!isPro && <Locked />}
 
           {isPro && (
-            <div style={{ background: C.bg1, border: C.borderBlue, borderRadius: 16, overflow: "hidden", display: "flex", flexDirection: "column" }}>
+            <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
 
-              {/* ── Card header ── */}
-              <div style={{ padding: "14px 20px 12px", borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
-                  <div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <span style={{ fontSize: 16, fontWeight: 800, color: "#fff", letterSpacing: -0.3 }}>Smart eBay Pricing</span>
-                      <span style={{ fontSize: 9, fontWeight: 800, color: C.blue, background: "rgba(19,93,255,0.15)", border: "1px solid rgba(19,93,255,0.4)", borderRadius: 4, padding: "2px 7px", letterSpacing: 0.8 }}>PRO</span>
-                    </div>
-                    <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>Compare market pricing, fees and profit in one place</div>
-                  </div>
-                  {smData && (
-                    <div style={{ display: "flex", alignItems: "center", gap: 7, background: "rgba(19,93,255,0.1)", border: "1px solid rgba(19,93,255,0.22)", borderRadius: 8, padding: "7px 13px", flexShrink: 0 }}>
-                      <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#4ade80", display: "inline-block", animation: "pcPulse 2s ease-in-out infinite" }} />
-                      <span style={{ fontSize: 15, fontWeight: 800, color: "#93c5fd" }}>{smData.priceCount}</span>
-                      <span style={{ fontSize: 11, color: C.muted }}>{smData.conditionLabel?.toLowerCase() || ""} listings used</span>
-                    </div>
-                  )}
-                </div>
-                {/* Condition toggle */}
-                <div style={{ marginBottom: 8 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5 }}>
-                    <span style={{ fontSize: 11, color: C.muted, flexShrink: 0 }}>Condition</span>
-                    <div style={{ display: "flex", gap: 3, background: "#060d1a", borderRadius: 8, padding: 3, border: "1px solid rgba(255,255,255,0.07)" }}>
-                      {[{ key: "new", label: "New" }, { key: "used", label: "Used" }, { key: "remanufactured", label: "Remanufactured" }].map(({ key, label }) => {
-                        const active = smCondition === key;
-                        return (
-                          <button key={key} onClick={() => { setSmCondition(key); if (smData) setSmData(null); }}
-                            style={{ padding: "4px 16px", borderRadius: 6, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, background: active ? C.blue : "transparent", color: active ? "#fff" : C.muted, boxShadow: active ? "0 0 10px rgba(19,93,255,0.35)" : "none", transition: "all 0.15s" }}>
-                            {label}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                  <div style={{ fontSize: 10, color: C.dim, paddingLeft: 2 }}>
-                    Market data will only use listings matching the selected condition.
-                  </div>
+              {/* ═══ LEFT SIDEBAR: Cost & Pricing Inputs ═══ */}
+              <div style={{ width: 310, flexShrink: 0, background: C.bg1, border: C.borderBlue, borderRadius: 16, overflow: "hidden" }}>
+                <div style={{ padding: "12px 16px 10px", borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: "#5a8ab0", textTransform: "uppercase", letterSpacing: 1.2 }}>Cost &amp; Pricing Inputs</div>
                 </div>
 
-                {/* Search row */}
-                <div style={{ display: "flex", gap: 8 }}>
-                  <input value={smQuery} onChange={(e) => setSmQuery(e.target.value)} onKeyDown={(e) => e.key === "Enter" && !smLoading && handleFetch()} placeholder="OEM / part number or product name…" style={{ ...CI, flex: 1, fontSize: 14 }} />
-                  <button onClick={handleFetch} disabled={smLoading || !smQuery.trim()} style={{ ...BUTTON_BASE, padding: "8px 22px", fontSize: 13, flexShrink: 0, background: smLoading || !smQuery.trim() ? "#0d2040" : C.blue, color: "#fff", opacity: smLoading || !smQuery.trim() ? 0.5 : 1, whiteSpace: "nowrap", boxShadow: smLoading || !smQuery.trim() ? "none" : "0 0 16px rgba(19,93,255,0.4)" }}>
-                    {smLoading ? "Fetching…" : "Fetch Prices"}
-                  </button>
-                </div>
-                {smError && <div style={{ marginTop: 8, padding: "7px 12px", background: "#0d1428", color: "#fca5a5", border: "1px solid rgba(220,38,38,0.25)", borderRadius: 8, fontSize: 12 }}>⚠ {smError}</div>}
-              </div>
-
-              {/* ── Two-column body ── */}
-              <div style={{ display: "flex", alignItems: "stretch", flex: 1 }}>
-
-                {/* ═══ LEFT: Inputs ═══ */}
-                <div style={{ width: 230, flexShrink: 0, background: C.bg2, borderRight: "1px solid rgba(255,255,255,0.05)", padding: "14px 16px", display: "flex", flexDirection: "column" }}>
+                <div style={{ padding: "10px 16px 16px" }}>
 
                   <SL mt={0}>Product</SL>
                   <Row label="Product / SKU">
@@ -1685,9 +1638,10 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
                   <HD />
 
                   {/* Selling price */}
-                  <div style={{ marginBottom: 6 }}>
-                    <div style={{ fontSize: 10, fontWeight: 700, color: C.dim, textTransform: "uppercase", letterSpacing: 0.7, marginBottom: 5 }}>
-                      Selling Price {vatRegistered ? "(inc. VAT)" : "(ex. VAT)"}
+                  <SL>Selling Price</SL>
+                  <div style={{ marginBottom: 8 }}>
+                    <div style={{ fontSize: 10, color: "#4a7096", marginBottom: 4 }}>
+                      {vatRegistered ? "Inc. VAT" : "Ex. VAT"}
                     </div>
                     <input
                       type="number" value={sellingPrice}
@@ -1697,24 +1651,12 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
                     />
                   </div>
 
-                  {/* Buyer shipping */}
-                  <Row label="Buyer shipping (£)" note="Charged to buyer — inc. in fees" last>
+                  <Row label="Buyer shipping" note="Charged to buyer" last>
                     <input type="number" value={buyerShipping} onChange={(e) => setBuyerShipping(e.target.value)} placeholder="0.00" style={CI} />
                   </Row>
 
-                  <div style={{ marginTop: 8, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 7 }}>
-                    <div>
-                      <div style={{ fontSize: 10, color: C.dim, marginBottom: 3 }}>Target markup %</div>
-                      <div style={{ display: "flex", gap: 3 }}>
-                        <input type="number" value={targetMarkup}
-                          onChange={(e) => { setTargetMarkup(e.target.value); }}
-                          onFocus={() => setEditingMarkup(true)} onBlur={() => setEditingMarkup(false)}
-                          onKeyDown={(e) => e.key === "Enter" && calcFromMarkup()}
-                          placeholder="50" style={{ ...CI, flex: 1, padding: "6px 8px" }}
-                        />
-                        <button onClick={calcFromMarkup} style={{ ...SMALL_BUTTON_STYLE, padding: "6px 8px", fontSize: 11 }}>Set</button>
-                      </div>
-                    </div>
+                  <SL>Target Profit</SL>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 7, marginBottom: 6 }}>
                     <div>
                       <div style={{ fontSize: 10, color: C.dim, marginBottom: 3 }}>Target margin %</div>
                       <div style={{ display: "flex", gap: 3 }}>
@@ -1727,135 +1669,193 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
                         <button onClick={calcFromMargin} style={{ ...SMALL_BUTTON_STYLE, padding: "6px 8px", fontSize: 11 }}>Set</button>
                       </div>
                     </div>
+                    <div>
+                      <div style={{ fontSize: 10, color: C.dim, marginBottom: 3 }}>Target markup %</div>
+                      <div style={{ display: "flex", gap: 3 }}>
+                        <input type="number" value={targetMarkup}
+                          onChange={(e) => { setTargetMarkup(e.target.value); }}
+                          onFocus={() => setEditingMarkup(true)} onBlur={() => setEditingMarkup(false)}
+                          onKeyDown={(e) => e.key === "Enter" && calcFromMarkup()}
+                          placeholder="50" style={{ ...CI, flex: 1, padding: "6px 8px" }}
+                        />
+                        <button onClick={calcFromMarkup} style={{ ...SMALL_BUTTON_STYLE, padding: "6px 8px", fontSize: 11 }}>Set</button>
+                      </div>
+                    </div>
                   </div>
 
-                  <div style={{ flex: 1, minHeight: 12 }} />
-
                   {hasResult && (
-                    <button onClick={handleSave} style={{ ...BUTTON_BASE, background: savedFlash ? "#166534" : C.blue, color: "#fff", width: "100%", textAlign: "center", fontSize: 13, padding: "9px", marginTop: 8, boxShadow: savedFlash ? "0 0 14px rgba(22,101,52,0.4)" : "0 0 14px rgba(19,93,255,0.3)" }}>
+                    <button onClick={handleSave} style={{ ...BUTTON_BASE, background: savedFlash ? "#166534" : C.blue, color: "#fff", width: "100%", textAlign: "center", fontSize: 13, padding: "9px", marginTop: 10, boxShadow: savedFlash ? "0 0 14px rgba(22,101,52,0.4)" : "0 0 14px rgba(19,93,255,0.3)" }}>
                       {savedFlash ? "✓ Saved!" : "Save Product"}
                     </button>
                   )}
                 </div>
+              </div>
 
-                {/* ═══ RIGHT: Results + Market ═══ */}
-                <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
+              {/* ═══ RIGHT MAIN: Smart eBay Pricing Dashboard ═══ */}
+              <div style={{ flex: 1, minWidth: 0, background: C.bg1, border: C.borderBlue, borderRadius: 16, overflow: "hidden" }}>
 
-                  {/* ── Compact profit stats bar ── */}
-                  <div style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", flexShrink: 0 }}>
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)" }}>
-                      {[
-                        {
-                          label: "Selling Price",
-                          value: price > 0 ? fmtGBP(price) : "—",
-                          color: price > 0 ? "#e2e8f0" : "#2a3f55",
-                          sub: buyerShip > 0 ? `+ ${fmtGBP(buyerShip)} p&p` : null,
-                        },
-                        {
-                          label: "Net Profit",
-                          value: hasResult ? fmt(profit) : "—",
-                          color: hasResult ? profitColor : "#2a3f55",
-                          sub: null,
-                        },
-                        {
-                          label: "Margin",
-                          value: hasResult ? fmtPct(margin) : "—",
-                          color: hasResult ? profitColor : "#2a3f55",
-                          sub: hasResult ? "of revenue" : null,
-                        },
-                        {
-                          label: "Markup",
-                          value: hasResult ? fmtPct(markup) : "—",
-                          color: hasResult ? profitColor : "#2a3f55",
-                          sub: hasResult ? "on cost" : null,
-                        },
-                      ].map(({ label, value, color, sub }, i) => (
-                        <div key={label} style={{
-                          padding: "12px 14px", textAlign: "center",
-                          borderLeft: i > 0 ? "1px solid rgba(255,255,255,0.05)" : "none",
-                        }}>
-                          <div style={{ fontSize: 9, fontWeight: 700, color: "#4a6a8a", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 5 }}>{label}</div>
-                          <div style={{ fontSize: 22, fontWeight: 900, color, lineHeight: 1, letterSpacing: -0.5 }}>{value}</div>
-                          {sub && <div style={{ fontSize: 10, color: "#3d5a7a", marginTop: 3 }}>{sub}</div>}
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* Break-even + cost breakdown */}
-                    {hasResult && (
-                      <div style={{ borderTop: "1px solid rgba(255,255,255,0.05)", padding: "8px 16px" }}>
-
-                        {!isNaN(breakEven) && (
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, padding: "5px 10px", background: "rgba(251,191,36,0.05)", border: "1px solid rgba(251,191,36,0.12)", borderRadius: 7 }}>
-                            <span style={{ fontSize: 12, color: "#6b7280" }}>Break-even</span>
-                            <span style={{ fontSize: 15, fontWeight: 800, color: "#fbbf24" }}>{fmt(breakEven)}</span>
-                          </div>
-                        )}
-
-                        <div style={{ fontSize: 10, fontWeight: 700, color: "#3d5268", textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 4 }}>Breakdown</div>
-                        {buyerShip > 0 && <BR label="Buyer shipping (income)" value={`+${fmt(buyerShip)}`} color="#93c5fd" />}
-                        {cost > 0      && <BR label="Product cost"            value={`-${fmt(cost)}`}       color="#f87171" />}
-                        {(shipping + packaging) > 0 && <BR label="Postage & packaging" value={`-${fmt(shipping + packaging)}`} color="#f87171" />}
-                        {other > 0     && <BR label="Other costs"             value={`-${fmt(other)}`}      color="#f87171" />}
-                        <BR label={`eBay fees (${fvf}% + £${fixed.toFixed(2)}${promo > 0 ? ` + ${promo}% ad` : ""})`} value={`-${fmt(ebayFVF + ebayPromo)}`} color="#f87171" />
-                        {vatRegistered && <BR label="VAT collected → HMRC" value={`-${fmt(vatAmount)}`} color="#f87171" note="You keep none of this" />}
-                        <BR label="Net Profit" value={fmt(profit)} color={profitColor} strong />
+                {/* ── Dashboard header ── */}
+                <div style={{ padding: "16px 20px 14px", borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
+                  <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 14 }}>
+                    <div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                        <span style={{ fontSize: 18, fontWeight: 800, color: "#fff", letterSpacing: -0.3 }}>Smart eBay Pricing</span>
+                        <span style={{ fontSize: 9, fontWeight: 800, color: C.blue, background: "rgba(19,93,255,0.15)", border: "1px solid rgba(19,93,255,0.4)", borderRadius: 4, padding: "2px 7px", letterSpacing: 0.8 }}>PRO</span>
                       </div>
-                    )}
-
-                    {!hasResult && (
-                      <div style={{ padding: "8px 0 2px", textAlign: "center", fontSize: 12, color: "#2a3f55" }}>
-                        Enter item cost &amp; selling price to calculate profit
+                      <div style={{ fontSize: 12, color: C.muted }}>Compare market pricing, fees and profit in one place.</div>
+                    </div>
+                    {smData && (
+                      <div style={{ display: "flex", alignItems: "center", gap: 7, background: "rgba(19,93,255,0.1)", border: "1px solid rgba(19,93,255,0.22)", borderRadius: 8, padding: "7px 13px", flexShrink: 0 }}>
+                        <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#4ade80", display: "inline-block", animation: "pcPulse 2s ease-in-out infinite" }} />
+                        <span style={{ fontSize: 15, fontWeight: 800, color: "#93c5fd" }}>{smData.priceCount}</span>
+                        <span style={{ fontSize: 11, color: C.muted }}>{smData.conditionLabel?.toLowerCase() || ""} listings used</span>
                       </div>
                     )}
                   </div>
 
-                  {/* ── Market Intelligence — HERO section ── */}
-                  <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0, padding: "0 20px 16px" }}>
+                  {/* Condition + search row */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <div style={{ display: "flex", gap: 3, background: "#060d1a", borderRadius: 8, padding: 3, border: "1px solid rgba(255,255,255,0.07)", flexShrink: 0 }}>
+                      {[{ key: "new", label: "New" }, { key: "used", label: "Used" }, { key: "remanufactured", label: "Remanufactured" }].map(({ key, label }) => {
+                        const active = smCondition === key;
+                        return (
+                          <button key={key} onClick={() => { setSmCondition(key); if (smData) setSmData(null); }}
+                            style={{ padding: "4px 14px", borderRadius: 6, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, background: active ? C.blue : "transparent", color: active ? "#fff" : C.muted, boxShadow: active ? "0 0 10px rgba(19,93,255,0.35)" : "none", transition: "all 0.15s" }}>
+                            {label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <input
+                      value={smQuery}
+                      onChange={(e) => setSmQuery(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && !smLoading && handleFetch()}
+                      placeholder="Search by OEM / part number or product name…"
+                      style={{ ...CI, flex: 1, fontSize: 13 }}
+                    />
+                    <button
+                      onClick={handleFetch}
+                      disabled={smLoading || !smQuery.trim()}
+                      style={{ ...BUTTON_BASE, padding: "8px 22px", fontSize: 13, flexShrink: 0, background: smLoading || !smQuery.trim() ? "#0d2040" : C.blue, color: "#fff", opacity: smLoading || !smQuery.trim() ? 0.5 : 1, whiteSpace: "nowrap", boxShadow: smLoading || !smQuery.trim() ? "none" : "0 0 16px rgba(19,93,255,0.4)" }}
+                    >
+                      {smLoading ? "Fetching…" : "Fetch Prices"}
+                    </button>
+                  </div>
+                  {smError && <div style={{ marginTop: 8, padding: "7px 12px", background: "#0d1428", color: "#fca5a5", border: "1px solid rgba(220,38,38,0.25)", borderRadius: 8, fontSize: 12 }}>⚠ {smError}</div>}
+                </div>
 
-                    {/* Section header */}
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 0 8px" }}>
-                      <div style={{ fontSize: 11, fontWeight: 700, color: "#5a8ab0", textTransform: "uppercase", letterSpacing: 1.2 }}>
+                {/* ── 4 KPI cards ── */}
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+                  {[
+                    {
+                      label: "Selling Price",
+                      value: price > 0 ? fmtGBP(price) : "—",
+                      color: price > 0 ? "#e2e8f0" : "#2a3f55",
+                      sub: buyerShip > 0 ? `+ ${fmtGBP(buyerShip)} p&p` : "Item price",
+                      icon: "£",
+                    },
+                    {
+                      label: "Net Profit",
+                      value: hasResult ? fmt(profit) : "—",
+                      color: hasResult ? profitColor : "#2a3f55",
+                      sub: hasResult ? "after all fees" : "Enter cost & price",
+                      icon: "↑",
+                    },
+                    {
+                      label: "Margin",
+                      value: hasResult ? fmtPct(margin) : "—",
+                      color: hasResult ? profitColor : "#2a3f55",
+                      sub: "of revenue",
+                      icon: "%",
+                    },
+                    {
+                      label: "Markup",
+                      value: hasResult ? fmtPct(markup) : "—",
+                      color: hasResult ? profitColor : "#2a3f55",
+                      sub: "on cost",
+                      icon: "×",
+                    },
+                  ].map(({ label, value, color, sub, icon }, i) => (
+                    <div key={label} style={{
+                      padding: "14px 18px",
+                      borderLeft: i > 0 ? "1px solid rgba(255,255,255,0.05)" : "none",
+                    }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                        <div style={{ fontSize: 9, fontWeight: 700, color: "#4a6a8a", textTransform: "uppercase", letterSpacing: 0.8 }}>{label}</div>
+                        <span style={{ fontSize: 12, color: "#2a3f55", fontWeight: 700 }}>{icon}</span>
+                      </div>
+                      <div style={{ fontSize: 24, fontWeight: 900, color, lineHeight: 1, letterSpacing: -0.5, fontVariantNumeric: "tabular-nums", marginBottom: 4 }}>{value}</div>
+                      <div style={{ fontSize: 10, color: "#3d5a7a" }}>{sub}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* ── Break-even + cost breakdown (when calculated) ── */}
+                {hasResult && (
+                  <div style={{ padding: "10px 20px 12px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                    {!isNaN(breakEven) && (
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, padding: "5px 10px", background: "rgba(251,191,36,0.05)", border: "1px solid rgba(251,191,36,0.12)", borderRadius: 7 }}>
+                        <span style={{ fontSize: 12, color: "#6b7280" }}>Break-even</span>
+                        <span style={{ fontSize: 15, fontWeight: 800, color: "#fbbf24" }}>{fmt(breakEven)}</span>
+                      </div>
+                    )}
+                    <div style={{ fontSize: 10, fontWeight: 700, color: "#3d5268", textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 4 }}>Breakdown</div>
+                    {buyerShip > 0 && <BR label="Buyer shipping (income)" value={`+${fmt(buyerShip)}`} color="#93c5fd" />}
+                    {cost > 0      && <BR label="Product cost"            value={`-${fmt(cost)}`}       color="#f87171" />}
+                    {(shipping + packaging) > 0 && <BR label="Postage & packaging" value={`-${fmt(shipping + packaging)}`} color="#f87171" />}
+                    {other > 0     && <BR label="Other costs"             value={`-${fmt(other)}`}      color="#f87171" />}
+                    <BR label={`eBay fees (${fvf}% + £${fixed.toFixed(2)}${promo > 0 ? ` + ${promo}% ad` : ""})`} value={`-${fmt(ebayFVF + ebayPromo)}`} color="#f87171" />
+                    {vatRegistered && <BR label="VAT collected → HMRC" value={`-${fmt(vatAmount)}`} color="#f87171" note="You keep none of this" />}
+                    <BR label="Net Profit" value={fmt(profit)} color={profitColor} strong />
+                  </div>
+                )}
+
+                {/* ── Market Intelligence — HERO section ── */}
+                <div style={{ padding: "0 20px 20px" }}>
+
+                  {/* Section header */}
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", padding: "14px 0 10px" }}>
+                    <div>
+                      <div style={{ fontSize: 15, fontWeight: 700, color: "#e2e8f0", marginBottom: 3 }}>Market Intelligence</div>
+                      <div style={{ fontSize: 11, color: C.muted }}>
                         {smData
                           ? `eBay UK Market · ${smData.conditionLabel} · ${smData.priceCount} listings`
-                          : "Market Intelligence"
+                          : "Live eBay UK pricing insights for your search."
                         }
                       </div>
-                      {smData && (
-                        <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 9, fontWeight: 700, color: "#4ade80", background: "rgba(74,222,128,0.08)", borderRadius: 20, padding: "3px 9px" }}>
-                          <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#4ade80", display: "inline-block", animation: "pcPulse 2s ease-in-out infinite" }} />
-                          LIVE
-                        </span>
-                      )}
                     </div>
-
-                    {smLoading && <div style={{ textAlign: "center", padding: "24px 0", color: C.muted, fontSize: 13 }}>⏳ Fetching live market data…</div>}
-
-                    {!smLoading && !smData && (
-                      <div style={{
-                        display: "flex", flexDirection: "column",
-                        alignItems: "center", justifyContent: "center",
-                        minHeight: 280, textAlign: "center",
-                      }}>
-                        <div style={{ fontSize: 42, opacity: 0.35, marginBottom: 12 }}>📊</div>
-                        <div style={{ fontSize: 16, fontWeight: 700, color: "#4b5563", marginBottom: 6 }}>No market data</div>
-                        <div style={{ fontSize: 13, color: C.dim, lineHeight: 1.6 }}>
-                          Search a part number above to<br />load live eBay UK pricing.
-                        </div>
-                      </div>
-                    )}
-
-                    {!smLoading && smData && (
-                      <div style={{ animation: "pcIn 0.3s ease" }}>
-
-                        {/* ── Price Distribution — HERO ── */}
-                        <PriceDistribution data={smData} listings={smData.listings} price={price} />
-
-                      </div>
+                    {smData && (
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 9, fontWeight: 700, color: "#4ade80", background: "rgba(74,222,128,0.08)", border: "1px solid rgba(74,222,128,0.15)", borderRadius: 20, padding: "4px 10px" }}>
+                        <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#4ade80", display: "inline-block", animation: "pcPulse 2s ease-in-out infinite" }} />
+                        LIVE
+                      </span>
                     )}
                   </div>
-                </div>{/* end right */}
-              </div>{/* end two-column */}
+
+                  {smLoading && <div style={{ textAlign: "center", padding: "40px 0", color: C.muted, fontSize: 13 }}>⏳ Fetching live market data…</div>}
+
+                  {!smLoading && !smData && (
+                    <div style={{
+                      display: "flex", flexDirection: "column",
+                      alignItems: "center", justifyContent: "center",
+                      minHeight: 280, textAlign: "center",
+                    }}>
+                      <div style={{ fontSize: 42, opacity: 0.35, marginBottom: 12 }}>📊</div>
+                      <div style={{ fontSize: 16, fontWeight: 700, color: "#4b5563", marginBottom: 6 }}>No market data</div>
+                      <div style={{ fontSize: 13, color: C.dim, lineHeight: 1.6 }}>
+                        Search a part number above to<br />load live eBay UK pricing.
+                      </div>
+                    </div>
+                  )}
+
+                  {!smLoading && smData && (
+                    <div style={{ animation: "pcIn 0.3s ease" }}>
+                      <PriceDistribution data={smData} listings={smData.listings} price={price} />
+                    </div>
+                  )}
+                </div>
+
+              </div>
             </div>
           )}
         </>
