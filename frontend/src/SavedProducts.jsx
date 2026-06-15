@@ -160,7 +160,12 @@ export default function SavedProducts({ products, onDelete, onLoad }) {
         textAlign: "center", padding: 40
       }}>
         <div>
-          <div style={{ fontSize: 32, marginBottom: 12 }}>📦</div>
+          <div style={{ marginBottom: 14, opacity: 0.35 }}>
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#7dd3fc" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/>
+              <path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/>
+            </svg>
+          </div>
           <div style={{ fontWeight: 700, color: "#d1d5db", marginBottom: 8 }}>No saved products yet</div>
           <div style={{ fontSize: 14, color: "#6b7280" }}>
             Open the Calculator tab, fill in your costs and selling price, then click Save Product.

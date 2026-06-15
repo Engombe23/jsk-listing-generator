@@ -700,7 +700,10 @@ function VehicleSelectionStep({ options, onSelect, onBack }) {
         {/* Header */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ fontSize: 20 }}>🚗</span>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7dd3fc" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M5 17H3a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h13l4 4v4a2 2 0 0 1-2 2h-1"/>
+              <circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/>
+            </svg>
             <div style={{ fontSize: 18, fontWeight: 800, color: "#fff" }}>Select Your Vehicle</div>
           </div>
           <button

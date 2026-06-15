@@ -430,7 +430,7 @@ function PricingBand({ data, price }) {
       {/* Interpretation */}
       {verdict && (
         <div style={{ marginTop: 18, padding: "10px 14px", background: "rgba(14,165,233,0.07)", border: "1px solid rgba(14,165,233,0.2)", borderRadius: 10, fontSize: 13, color: "#93c5fd", lineHeight: 1.55 }}>
-          💡 {verdict}
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#93c5fd" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginRight: 7, verticalAlign: "middle" }}><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>{verdict}
         </div>
       )}
       {!verdict && hasPrice && (
@@ -1491,7 +1491,7 @@ function PriceDistribution({ data, listings, price, onBinSelect, soldCounts = {}
 
             {/* Tip */}
             <div style={{ padding: "8px 14px 14px", display: "flex", alignItems: "flex-start", gap: 7 }}>
-              <span style={{ fontSize: 13, flexShrink: 0 }}>💡</span>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#3d5a72" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 1 }}><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>
               <span style={{ fontSize: 10, color: "#2d4a65", lineHeight: 1.4 }}>Tip: Click a bar to lock this range</span>
             </div>
           </div>
@@ -1554,7 +1554,12 @@ function Locked() {
       </div>
       <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom,rgba(8,15,28,0.5),rgba(8,15,28,0.93))", backdropFilter: "blur(2px)", borderRadius: 14, display: "flex", alignItems: "center", justifyContent: "center" }}>
         <div style={{ textAlign: "center", maxWidth: 420 }}>
-          <div style={{ fontSize: 28, marginBottom: 10 }}>🔒</div>
+          <div style={{ marginBottom: 14, opacity: 0.5 }}>
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+            </svg>
+          </div>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 6 }}>
             <span style={{ fontSize: 18, fontWeight: 800, color: "#fff" }}>Smart eBay Pricing</span>
             <span style={{ fontSize: 9, fontWeight: 800, color: C.blue, background: "rgba(19,93,255,0.18)", border: "1px solid rgba(19,93,255,0.4)", borderRadius: 4, padding: "2px 7px", letterSpacing: 0.8 }}>PRO</span>
@@ -1965,7 +1970,12 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
                   )}
                   {!smLoading && !smData && (
                     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: 260, textAlign: "center" }}>
-                      <div style={{ fontSize: 40, opacity: 0.3, marginBottom: 12 }}>📊</div>
+                      <div style={{ marginBottom: 14, opacity: 0.3 }}>
+                        <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                          <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/>
+                          <line x1="6" y1="20" x2="6" y2="14"/><line x1="2" y1="20" x2="22" y2="20"/>
+                        </svg>
+                      </div>
                       <div style={{ fontSize: 15, fontWeight: 700, color: "#4b5563", marginBottom: 6 }}>No market data yet</div>
                       <div style={{ fontSize: 12, color: C.dim, lineHeight: 1.6 }}>Search a part number above to load live eBay UK pricing.</div>
                     </div>
@@ -1990,7 +2000,13 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
               <div style={{ width: 340, flexShrink: 0, background: C.bg1, border: C.borderBlue, borderRadius: 16, overflow: "hidden", display: "flex", flexDirection: "column", minHeight: 400 }}>
                 {!binPanelData ? (
                   <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, padding: "32px 24px", textAlign: "center" }}>
-                    <div style={{ fontSize: 36, opacity: 0.2, lineHeight: 1 }}>📋</div>
+                    <div style={{ opacity: 0.25 }}>
+                      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                        <rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
+                        <line x1="12" y1="11" x2="16" y2="11"/><line x1="12" y1="16" x2="16" y2="16"/>
+                        <line x1="8" y1="11" x2="8.01" y2="11"/><line x1="8" y1="16" x2="8.01" y2="16"/>
+                      </svg>
+                    </div>
                     <div style={{ fontSize: 12, fontWeight: 700, color: "#2d4a65" }}>No range selected</div>
                     <div style={{ fontSize: 11, color: "#1e3347", lineHeight: 1.6 }}>
                       {smData ? "Click a price bar in the chart to view listings in that range." : "Fetch market data first, then click a bar to see the listings."}
