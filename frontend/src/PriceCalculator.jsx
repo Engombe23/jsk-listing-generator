@@ -22,6 +22,8 @@ const fmtGBP = (v) => (v != null && !isNaN(v)) ? `£${Number(v).toFixed(2)}` : "
     @keyframes pdBeamPulse { 0%,100%{box-shadow:0 0 28px #38bdf8cc,0 0 56px #38bdf844,0 3px 12px rgba(0,0,0,.5)} 50%{box-shadow:0 0 40px #38bdf8ff,0 0 80px #38bdf866,0 3px 12px rgba(0,0,0,.5)} }
     @keyframes pdDotPulse  { 0%,100%{r:5;opacity:1} 50%{r:7;opacity:.7} }
     @keyframes pdBeamLine  { 0%,100%{opacity:.55} 50%{opacity:.85} }
+    @keyframes pcSpin      { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+    @keyframes pcLoadBar   { 0%,100%{transform:scaleY(0.15);opacity:0.35} 50%{transform:scaleY(1);opacity:1} }
   `;
   document.head.appendChild(s);
 })();
@@ -1739,7 +1741,7 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
                       <input value={smQuery} onChange={(e) => setSmQuery(e.target.value)} onKeyDown={(e) => e.key === "Enter" && !smLoading && handleFetch()} placeholder="Search by OEM / part number or product name…" style={{ ...CI, flex: 1, fontSize: 13 }} />
                       <button onClick={handleFetch} disabled={smLoading || !smQuery.trim()}
                         style={{ ...BUTTON_BASE, padding: "8px 20px", fontSize: 13, flexShrink: 0, background: smLoading || !smQuery.trim() ? "#0d2040" : C.blue, color: "#fff", opacity: smLoading || !smQuery.trim() ? 0.5 : 1, whiteSpace: "nowrap", boxShadow: smLoading || !smQuery.trim() ? "none" : "0 0 16px rgba(19,93,255,0.4)" }}>
-                        {smLoading ? "Fetching…" : "Fetch Prices"}
+                        {smLoading ? "Scanning…" : "Fetch Prices"}
                       </button>
                     </div>
                     {smError && <div style={{ marginTop: 8, padding: "7px 12px", background: "#0d1428", color: "#fca5a5", border: "1px solid rgba(220,38,38,0.25)", borderRadius: 8, fontSize: 12 }}>⚠ {smError}</div>}
@@ -1801,7 +1803,37 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
                       </span>
                     )}
                   </div>
-                  {smLoading && <div style={{ textAlign: "center", padding: "40px 0", color: C.muted, fontSize: 13 }}>⏳ Fetching live market data…</div>}
+                  {smLoading && (
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "44px 24px 40px", gap: 20 }}>
+                      {/* Animated bar chart */}
+                      <div style={{ display: "flex", alignItems: "flex-end", gap: 4, height: 44, transformOrigin: "bottom" }}>
+                        {[0.35, 0.6, 0.85, 0.5, 1.0, 0.7, 0.4, 0.9, 0.55, 0.75, 0.3, 0.65].map((h, i) => (
+                          <div key={i} style={{
+                            width: 7, height: 44, borderRadius: "3px 3px 0 0",
+                            background: `linear-gradient(to top, #1d4ed8 0%, #38bdf8 100%)`,
+                            transformOrigin: "bottom",
+                            animation: `pcLoadBar ${0.7 + h * 0.7}s ease-in-out ${i * 0.09}s infinite`,
+                          }} />
+                        ))}
+                      </div>
+                      {/* Ring spinner */}
+                      <div style={{
+                        width: 32, height: 32, borderRadius: "50%",
+                        border: "2.5px solid rgba(56,189,248,0.12)",
+                        borderTop: "2.5px solid #38bdf8",
+                        animation: "pcSpin 0.85s linear infinite",
+                      }} />
+                      {/* Text */}
+                      <div style={{ textAlign: "center" }}>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: "#7dd3fc", marginBottom: 5, letterSpacing: -0.2 }}>
+                          Scanning eBay UK listings
+                        </div>
+                        <div style={{ fontSize: 11, color: "#3d5a72", lineHeight: 1.55 }}>
+                          Fetching live <span style={{ color: "#4a7096", fontWeight: 600 }}>{smCondition}</span> condition pricing data…
+                        </div>
+                      </div>
+                    </div>
+                  )}
                   {!smLoading && !smData && (
                     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: 260, textAlign: "center" }}>
                       <div style={{ fontSize: 40, opacity: 0.3, marginBottom: 12 }}>📊</div>
