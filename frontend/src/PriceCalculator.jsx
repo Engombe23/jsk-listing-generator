@@ -561,10 +561,14 @@ function PriceDistribution({ data, listings, price, onBinSelect }) {
   // Minimum pixel height so 1-count bars are always visible and clickable
   const MIN_BAR_PX = 4;
 
-  // ── X-axis ticks — one per non-empty bin, centred under each bar ────────────
-  const xTicks = bins
-    .filter(b => b.count > 0)
-    .map(b => ({ v: b.s, e: b.e, mid: (b.s + b.e) / 2 }));
+  // ── X-axis ticks — thinned so labels never overlap ──────────────────────────
+  // Allow ~9% chart width per label → max ~11 labels visible at once.
+  // Always keep the first and last non-empty bin; thin the rest evenly.
+  const allXTicks = bins.filter(b => b.count > 0).map(b => ({ v: b.s, e: b.e, mid: (b.s + b.e) / 2 }));
+  const _xMaxVisible = Math.max(2, Math.floor(100 / 9));
+  const _xStep       = allXTicks.length > _xMaxVisible ? Math.ceil(allXTicks.length / _xMaxVisible) : 1;
+  const xTicks = _xStep <= 1 ? allXTicks
+    : allXTicks.filter((_, i) => i === 0 || i === allXTicks.length - 1 || i % _xStep === 0);
 
   // ── Price marker cards — Low, Median, Avg, Your Price, High ─────────────────
   const MARKERS_DEF = [
@@ -597,7 +601,11 @@ function PriceDistribution({ data, listings, price, onBinSelect }) {
   }
 
   const CARD_H = 72;
-  const fmtX   = v => v >= 1000 ? `£${+(v / 1000).toFixed(1)}k` : `£${Math.round(v)}`;
+  const fmtX = v => v >= 10000 ? `£${Math.round(v / 1000)}k`
+                  : v >= 1000  ? `£${+(v / 1000).toFixed(1)}k`.replace('.0k', 'k')
+                  : `£${Math.round(v)}`;
+  // Compact range label: £20–40, £1k–1.2k, £800–£1k
+  const fmtRange = (s, e) => `${fmtX(s)}–${fmtX(e)}`;
   fmtXRef.current = fmtX;
 
   // ── Rounded-top bar path helper ──────────────────────────────────────────────
@@ -865,13 +873,13 @@ function PriceDistribution({ data, listings, price, onBinSelect }) {
 
 
           {/* ── X-axis labels ── */}
-          <div style={{ position: "relative", height: 30, marginTop: 2 }}>
+          <div style={{ position: "relative", height: 40, marginTop: 4 }}>
             {xTicks.map(tick => (
-              <div key={tick.v} style={{ position: "absolute", left: `${clamp(toPct(tick.mid), 2, 96)}%`, top: 4, transform: "translateX(-50%)", fontSize: 9, color: "#5a7fa0", whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums", userSelect: "none", fontWeight: 600 }}>
-                {fmtX(tick.v)}–{Math.round(tick.e)}
+              <div key={tick.v} style={{ position: "absolute", left: `${clamp(toPct(tick.mid), 1, 97)}%`, top: 2, transform: "translateX(-50%)", fontSize: 10, color: "#6b90b0", whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums", userSelect: "none", fontWeight: 600 }}>
+                {fmtRange(tick.v, tick.e)}
               </div>
             ))}
-            <div style={{ textAlign: "center", paddingTop: 18, fontSize: 7, color: "#2d4a65", textTransform: "uppercase", letterSpacing: 1.8, userSelect: "none", fontWeight: 700 }}>
+            <div style={{ textAlign: "center", paddingTop: 26, fontSize: 8, color: "#2d4a65", textTransform: "uppercase", letterSpacing: 1.5, userSelect: "none", fontWeight: 700 }}>
               PRICE (£)
             </div>
           </div>
@@ -923,9 +931,14 @@ function PriceDistribution({ data, listings, price, onBinSelect }) {
         const zBinMidX   = i => groupX + i * colW + colW / 2;
         const zBarFrac   = 0.55; // matches main chart bar width fraction
 
-        const zTicks = zBins
+        const allZTicks = zBins
           .map((b, i) => ({ v: b.s, e: b.e, midX: zBinMidX(i) }))
           .filter((_, i) => zBins[i].count > 0);
+        // Thin zoom ticks the same way — max ~8 labels to keep them readable
+        const _zMaxVisible = Math.max(2, Math.floor(100 / 12));
+        const _zStep       = allZTicks.length > _zMaxVisible ? Math.ceil(allZTicks.length / _zMaxVisible) : 1;
+        const zTicks = _zStep <= 1 ? allZTicks
+          : allZTicks.filter((_, i) => i === 0 || i === allZTicks.length - 1 || i % _zStep === 0);
         const totalInRange = zBins.reduce((s, b) => s + b.count, 0);
 
         return (
@@ -1065,19 +1078,19 @@ function PriceDistribution({ data, listings, price, onBinSelect }) {
                 </svg>
 
                 {/* X-axis labels */}
-                <div style={{ position: "relative", height: 28, marginTop: 2 }}>
+                <div style={{ position: "relative", height: 36, marginTop: 4 }}>
                   {zTicks.map(tick => (
                     <div key={tick.v} style={{
                       position: "absolute",
-                      left: `${Math.min(96, Math.max(2, (tick.midX / ZCW) * 100))}%`,
-                      top: 4, transform: "translateX(-50%)",
-                      fontSize: 9, color: "#5a7fa0", whiteSpace: "nowrap",
+                      left: `${Math.min(97, Math.max(1, (tick.midX / ZCW) * 100))}%`,
+                      top: 2, transform: "translateX(-50%)",
+                      fontSize: 10, color: "#6b90b0", whiteSpace: "nowrap",
                       fontVariantNumeric: "tabular-nums", userSelect: "none", fontWeight: 600,
                     }}>
-                      {fmtX(tick.v)}–{Math.round(tick.e)}
+                      {fmtRange(tick.v, tick.e)}
                     </div>
                   ))}
-                  <div style={{ textAlign: "center", paddingTop: 16, fontSize: 7, color: "#2d4a65", textTransform: "uppercase", letterSpacing: 1.8, userSelect: "none", fontWeight: 700 }}>
+                  <div style={{ textAlign: "center", paddingTop: 22, fontSize: 8, color: "#2d4a65", textTransform: "uppercase", letterSpacing: 1.5, userSelect: "none", fontWeight: 700 }}>
                     PRICE (£)
                   </div>
                 </div>
@@ -1740,8 +1753,11 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
                       </div>
                       <input value={smQuery} onChange={(e) => setSmQuery(e.target.value)} onKeyDown={(e) => e.key === "Enter" && !smLoading && handleFetch()} placeholder="Search by OEM / part number or product name…" style={{ ...CI, flex: 1, fontSize: 13 }} />
                       <button onClick={handleFetch} disabled={smLoading || !smQuery.trim()}
-                        style={{ ...BUTTON_BASE, padding: "8px 20px", fontSize: 13, flexShrink: 0, background: smLoading || !smQuery.trim() ? "#0d2040" : C.blue, color: "#fff", opacity: smLoading || !smQuery.trim() ? 0.5 : 1, whiteSpace: "nowrap", boxShadow: smLoading || !smQuery.trim() ? "none" : "0 0 16px rgba(19,93,255,0.4)" }}>
-                        {smLoading ? "Scanning…" : "Fetch Prices"}
+                        style={{ ...BUTTON_BASE, padding: "8px 20px", fontSize: 13, flexShrink: 0, display: "flex", alignItems: "center", gap: 7, background: smLoading ? "rgba(19,93,255,0.12)" : !smQuery.trim() ? "#0d2040" : C.blue, color: smLoading ? "#93c5fd" : "#fff", opacity: !smQuery.trim() && !smLoading ? 0.45 : 1, whiteSpace: "nowrap", border: smLoading ? "1px solid rgba(19,93,255,0.35)" : "1px solid transparent", boxShadow: smLoading ? "0 0 14px rgba(19,93,255,0.2)" : !smQuery.trim() ? "none" : "0 0 16px rgba(19,93,255,0.4)" }}>
+                        {smLoading && (
+                          <div style={{ width: 13, height: 13, borderRadius: "50%", border: "2px solid rgba(147,197,253,0.2)", borderTop: "2px solid #93c5fd", animation: "pcSpin 0.75s linear infinite", flexShrink: 0 }} />
+                        )}
+                        {smLoading ? "Fetching prices…" : "Fetch Prices"}
                       </button>
                     </div>
                     {smError && <div style={{ marginTop: 8, padding: "7px 12px", background: "#0d1428", color: "#fca5a5", border: "1px solid rgba(220,38,38,0.25)", borderRadius: 8, fontSize: 12 }}>⚠ {smError}</div>}
