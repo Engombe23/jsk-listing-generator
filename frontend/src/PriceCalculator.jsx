@@ -442,6 +442,35 @@ function PricingBand({ data, price }) {
   );
 }
 
+// ─── Greedy label thinning — guarantees zero overlap ─────────────────────────
+// Each tick carries a pre-computed pct (0-100) centre position and halfW (half
+// the estimated label width, also in pct units).  The algorithm places labels
+// left-to-right, skipping any that would clip the previous one.  The last
+// label is always included; if it would overlap the previous kept label, that
+// label is removed and we keep walking back until there is room.
+function thinLabels(ticks) {
+  if (ticks.length <= 1) return ticks;
+  const GAP = 1.5; // % gap between right edge of prev and left edge of next
+  const out  = [ticks[0]];
+  let lastR  = ticks[0].pct + ticks[0].halfW;
+
+  for (let i = 1; i < ticks.length - 1; i++) {
+    const t = ticks[i];
+    if (t.pct - t.halfW >= lastR + GAP) {
+      out.push(t);
+      lastR = t.pct + t.halfW;
+    }
+  }
+
+  // Always keep the last tick — back out any recently added labels that collide
+  const last = ticks[ticks.length - 1];
+  while (out.length > 1 && last.pct - last.halfW < out[out.length - 1].pct + out[out.length - 1].halfW + GAP) {
+    out.pop();
+  }
+  if (last !== out[out.length - 1]) out.push(last);
+  return out;
+}
+
 // ─── Price Distribution — Market Intelligence Chart ───────────────────────────
 function PriceDistribution({ data, listings, price, onBinSelect, soldCounts = {}, soldCountsFetching = false, onTableView }) {
   const svgRef       = useRef(null);
@@ -562,14 +591,7 @@ function PriceDistribution({ data, listings, price, onBinSelect, soldCounts = {}
   // Minimum pixel height so 1-count bars are always visible and clickable
   const MIN_BAR_PX = 4;
 
-  // ── X-axis ticks — thinned so labels never overlap ──────────────────────────
-  // Allow ~9% chart width per label → max ~11 labels visible at once.
-  // Always keep the first and last non-empty bin; thin the rest evenly.
-  const allXTicks = bins.filter(b => b.count > 0).map(b => ({ v: b.s, e: b.e, mid: (b.s + b.e) / 2 }));
-  const _xMaxVisible = Math.max(2, Math.floor(100 / 9));
-  const _xStep       = allXTicks.length > _xMaxVisible ? Math.ceil(allXTicks.length / _xMaxVisible) : 1;
-  const xTicks = _xStep <= 1 ? allXTicks
-    : allXTicks.filter((_, i) => i === 0 || i === allXTicks.length - 1 || i % _xStep === 0);
+  // xTicks computed below after fmtRange is available (width-aware thinning)
 
   // ── Price marker cards — Low, Median, Avg, Your Price, High ─────────────────
   const MARKERS_DEF = [
@@ -608,6 +630,19 @@ function PriceDistribution({ data, listings, price, onBinSelect, soldCounts = {}
   // Compact range label: £20–40, £1k–1.2k, £800–£1k
   const fmtRange = (s, e) => `${fmtX(s)}–${fmtX(e)}`;
   fmtXRef.current = fmtX;
+
+  // ── X-axis ticks — width-aware greedy thinning ───────────────────────────────
+  // Estimate each label's half-width as % of the chart area.
+  // Using a conservative 380px chart estimate so we under-place rather than over.
+  const _EST_PX  = 380;
+  const _halfW   = (s, e) => Math.min(20, ((fmtRange(s, e).length * 7.5 + 10) / _EST_PX) * 50);
+  const xTicks   = thinLabels(
+    bins.filter(b => b.count > 0).map(b => ({
+      v: b.s, e: b.e, mid: (b.s + b.e) / 2,
+      pct:   clamp(toPct((b.s + b.e) / 2), 0.5, 99.5),
+      halfW: _halfW(b.s, b.e),
+    }))
+  );
 
   // ── Rounded-top bar path helper ──────────────────────────────────────────────
   const roundedTopRect = (x, y, w, h, r) => {
@@ -893,9 +928,9 @@ function PriceDistribution({ data, listings, price, onBinSelect, soldCounts = {}
             {bins.filter(b => b.count > 0).map(b => (
               <div key={`tick-${b.s}`} style={{ position: "absolute", left: `${clamp(toPct((b.s + b.e) / 2), 0.5, 99.5)}%`, top: 0, width: 1, height: 5, background: "rgba(56,189,248,0.22)", transform: "translateX(-50%)" }} />
             ))}
-            {/* Text label only for thinned ticks */}
+            {/* Text label only for thinned ticks — positions pre-computed by thinLabels */}
             {xTicks.map(tick => (
-              <div key={tick.v} style={{ position: "absolute", left: `${clamp(toPct(tick.mid), 1, 97)}%`, top: 7, transform: "translateX(-50%)", fontSize: 10, color: "#6b90b0", whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums", userSelect: "none", fontWeight: 600 }}>
+              <div key={tick.v} style={{ position: "absolute", left: `${tick.pct}%`, top: 7, transform: "translateX(-50%)", fontSize: 10, color: "#6b90b0", whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums", userSelect: "none", fontWeight: 600 }}>
                 {fmtRange(tick.v, tick.e)}
               </div>
             ))}
@@ -952,14 +987,15 @@ function PriceDistribution({ data, listings, price, onBinSelect, soldCounts = {}
         const zBinMidX   = i => groupX + i * colW + colW / 2;
         const zBarFrac   = 0.55; // matches main chart bar width fraction
 
-        const allZTicks = zBins
-          .map((b, i) => ({ v: b.s, e: b.e, midX: zBinMidX(i) }))
-          .filter((_, i) => zBins[i].count > 0);
-        // Thin zoom ticks the same way — max ~8 labels to keep them readable
-        const _zMaxVisible = Math.max(2, Math.floor(100 / 12));
-        const _zStep       = allZTicks.length > _zMaxVisible ? Math.ceil(allZTicks.length / _zMaxVisible) : 1;
-        const zTicks = _zStep <= 1 ? allZTicks
-          : allZTicks.filter((_, i) => i === 0 || i === allZTicks.length - 1 || i % _zStep === 0);
+        const zTicks = thinLabels(
+          zBins
+            .map((b, i) => ({
+              v: b.s, e: b.e, midX: zBinMidX(i),
+              pct:   Math.min(99.5, Math.max(0.5, (zBinMidX(i) / ZCW) * 100)),
+              halfW: Math.min(22, ((fmtRange(b.s, b.e).length * 7.5 + 10) / _EST_PX) * 50),
+            }))
+            .filter((_, i) => zBins[i].count > 0)
+        );
         const totalInRange = zBins.reduce((s, b) => s + b.count, 0);
 
         return (
@@ -1120,9 +1156,9 @@ function PriceDistribution({ data, listings, price, onBinSelect, soldCounts = {}
                   {zBins.map((b, i) => b.count === 0 ? null : (
                     <div key={`ztick-${b.s}`} style={{ position: "absolute", left: `${Math.min(99.5, Math.max(0.5, (zBinMidX(i) / ZCW) * 100))}%`, top: 0, width: 1, height: 4, background: "rgba(56,189,248,0.22)", transform: "translateX(-50%)" }} />
                   ))}
-                  {/* Thinned text labels */}
+                  {/* Thinned text labels — positions pre-computed by thinLabels */}
                   {zTicks.map(tick => (
-                    <div key={tick.v} style={{ position: "absolute", left: `${Math.min(97, Math.max(1, (tick.midX / ZCW) * 100))}%`, top: 6, transform: "translateX(-50%)", fontSize: 10, color: "#6b90b0", whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums", userSelect: "none", fontWeight: 600 }}>
+                    <div key={tick.v} style={{ position: "absolute", left: `${tick.pct}%`, top: 6, transform: "translateX(-50%)", fontSize: 10, color: "#6b90b0", whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums", userSelect: "none", fontWeight: 600 }}>
                       {fmtRange(tick.v, tick.e)}
                     </div>
                   ))}
