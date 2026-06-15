@@ -1037,18 +1037,22 @@ function PriceDistribution({ data, listings, price, onBinSelect, soldCounts = {}
                       Listings
                     </span>
                   </div>
-                  {Array.from({ length: zYMax + 1 }, (_, t) => t).map(t => (
-                    <div key={t} style={{
-                      position: "absolute", right: 5,
-                      top: ZPADT + zPlotH - (t / zYMax) * zPlotH,
-                      transform: "translateY(-50%)",
-                      fontSize: 9, color: t === 0 ? "#2d4a65" : "#5a7fa0",
-                      lineHeight: 1, fontVariantNumeric: "tabular-nums",
-                      userSelect: "none", fontWeight: 600,
-                    }}>
-                      {t}
-                    </div>
-                  ))}
+                  {(() => {
+                    const zYStep  = zYMax <= 5 ? 1 : zYMax <= 10 ? 2 : zYMax <= 20 ? 5 : zYMax <= 50 ? 10 : 20;
+                    const zYTicks = Array.from({ length: Math.floor(zYMax / zYStep) + 1 }, (_, i) => i * zYStep);
+                    return zYTicks.map(t => (
+                      <div key={t} style={{
+                        position: "absolute", right: 5,
+                        top: ZPADT + zPlotH - (t / zYMax) * zPlotH,
+                        transform: "translateY(-50%)",
+                        fontSize: 9, color: t === 0 ? "#2d4a65" : "#5a7fa0",
+                        lineHeight: 1, fontVariantNumeric: "tabular-nums",
+                        userSelect: "none", fontWeight: 600,
+                      }}>
+                        {t}
+                      </div>
+                    ));
+                  })()}
                 </div>
               </div>
               {/* Chart */}
