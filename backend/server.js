@@ -1175,6 +1175,7 @@ app.post("/api/ebay/search-prices", async (req, res) => {
       const shippingOpt = item.shippingOptions?.[0];
       const shippingVal = parseFloat(shippingOpt?.shippingCost?.value);
       return {
+        itemId:            item.itemId || null,
         title:             item.title || "",
         price:             Number.isFinite(v) && v > 0 ? v : null,
         url:               item.itemWebUrl || "",
@@ -1268,6 +1269,7 @@ app.post("/api/ebay/search-prices", async (req, res) => {
       confidenceLabel: confidence.label,
       confidenceColor: confidence.color,
       listings: relevantItems.map(i => ({
+        itemId:            i.itemId,
         title:             i.title,
         price:             i.price,
         url:               i.url,
@@ -1285,6 +1287,53 @@ app.post("/api/ebay/search-prices", async (req, res) => {
 
   } catch (err) {
     console.error("[/api/ebay/search-prices]", err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── eBay sold-count lookup ───────────────────────────────────────────────────
+// POST /api/ebay/sold-counts
+// Accepts { itemIds: string[] }, returns { [itemId]: soldQty | null }.
+// Fetches item details in parallel (max 10 concurrent) with a 5-second timeout.
+app.post("/api/ebay/sold-counts", async (req, res) => {
+  try {
+    const { itemIds } = req.body;
+    if (!Array.isArray(itemIds) || itemIds.length === 0) return res.json({});
+
+    const token   = await getEbayAccessToken();
+    const results = {};
+    const CONCURRENCY = 10;
+
+    // Process in chunks to avoid hammering the API
+    for (let i = 0; i < itemIds.length; i += CONCURRENCY) {
+      const chunk = itemIds.slice(i, i + CONCURRENCY);
+      await Promise.allSettled(chunk.map(async (itemId) => {
+        try {
+          const r = await fetchWithTimeout(
+            `https://api.ebay.com/buy/browse/v1/item/${encodeURIComponent(String(itemId))}`,
+            {
+              method: "GET",
+              headers: {
+                "Authorization":            `Bearer ${token}`,
+                "X-EBAY-C-MARKETPLACE-ID":  "EBAY_GB",
+                "Content-Type":             "application/json",
+              },
+            },
+            5000
+          );
+          if (!r.ok) { results[itemId] = null; return; }
+          const data  = await r.json();
+          const avail = Array.isArray(data.estimatedAvailabilities) ? data.estimatedAvailabilities[0] : null;
+          results[itemId] = avail?.soldQuantity ?? null;
+        } catch {
+          results[itemId] = null;
+        }
+      }));
+    }
+
+    res.json(results);
+  } catch (err) {
+    console.error("[/api/ebay/sold-counts]", err.message);
     res.status(500).json({ error: err.message });
   }
 });

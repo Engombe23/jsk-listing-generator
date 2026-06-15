@@ -443,7 +443,7 @@ function PricingBand({ data, price }) {
 }
 
 // ─── Price Distribution — Market Intelligence Chart ───────────────────────────
-function PriceDistribution({ data, listings, price, onBinSelect }) {
+function PriceDistribution({ data, listings, price, onBinSelect, soldCounts = {}, soldCountsFetching = false, onTableView }) {
   const svgRef       = useRef(null);
   const [hoveredBin,  setHoveredBin]  = useState(null);
   const [clickedBin,  setClickedBin]  = useState(null); // index of clicked bar → opens zoom + right panel
@@ -665,7 +665,7 @@ function PriceDistribution({ data, listings, price, onBinSelect }) {
         {/* Volume / Cumulative % / Table tabs */}
         <div style={{ display: "flex", gap: 2, background: "rgba(0,0,0,0.25)", borderRadius: 8, padding: "3px", flexShrink: 0 }}>
           {[["volume", "Volume"], ["table", "Table"]].map(([mode, label]) => (
-            <button key={mode} onClick={() => setViewMode(mode)} style={{
+            <button key={mode} onClick={() => { setViewMode(mode); if (mode === "table" && onTableView) onTableView(); }} style={{
               padding: "5px 13px", fontSize: 10, fontWeight: 700,
               letterSpacing: 0.5,
               background: viewMode === mode ? "rgba(56,189,248,0.16)" : "transparent",
@@ -1202,6 +1202,7 @@ function PriceDistribution({ data, listings, price, onBinSelect }) {
               <div style={{ width: 52, flexShrink: 0 }} /> {/* thumbnail spacer: 44px img + 8px marginRight */}
               <TH flex1>Title</TH>
               <TH w={62}>Price</TH>
+              <TH w={48}>Sold</TH>
               <TH w={56}>Cond.</TH>
               <TH w={104}>Seller</TH>
               <TH w={68}>Delivery</TH>
@@ -1252,6 +1253,15 @@ function PriceDistribution({ data, listings, price, onBinSelect }) {
                     {/* Price */}
                     <div style={{ width: 62, flexShrink: 0, fontSize: 12, fontWeight: 800, color: isUser ? "#00e5ff" : "#e2e8f0", fontVariantNumeric: "tabular-nums" }}>
                       {fmtGBP(item.price)}
+                    </div>
+                    {/* Sold qty */}
+                    <div style={{ width: 48, flexShrink: 0, fontSize: 11, fontVariantNumeric: "tabular-nums" }}>
+                      {item.itemId && soldCounts[item.itemId] != null
+                        ? <span style={{ fontWeight: 700, color: "#4ade80" }}>{soldCounts[item.itemId]}</span>
+                        : soldCountsFetching && item.itemId && !(item.itemId in soldCounts)
+                          ? <span style={{ color: "#2d4a65" }}>…</span>
+                          : <span style={{ color: "#2d4a65" }}>—</span>
+                      }
                     </div>
                     {/* Condition */}
                     <div style={{ width: 56, flexShrink: 0, fontSize: 10, color: "#7a9cc0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -1548,8 +1558,34 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
   const [smError,        setSmError]        = useState("");
 
   // ── Right listings panel state ────────────────────────────────────────────────
-  const [binPanelData,   setBinPanelData]   = useState(null);
-  const [panelSort,      setPanelSort]      = useState("asc");
+  const [binPanelData,      setBinPanelData]      = useState(null);
+  const [panelSort,         setPanelSort]         = useState("asc");
+
+  // ── Sold-count cache: { [itemId]: number | null } ─────────────────────────────
+  const [soldCounts,        setSoldCounts]        = useState({});
+  const [soldCountsFetching, setSoldCountsFetching] = useState(false);
+
+  const fetchSoldCounts = async (listings) => {
+    const ids = (listings || []).map(l => l.itemId).filter(Boolean);
+    const toFetch = ids.filter(id => !(id in soldCounts));
+    if (toFetch.length === 0) return;
+    setSoldCountsFetching(true);
+    try {
+      const res  = await fetch(`${API_URL}/api/ebay/sold-counts`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ itemIds: toFetch }),
+      });
+      const data = await res.json();
+      setSoldCounts(prev => ({ ...prev, ...data }));
+    } catch {}
+    finally { setSoldCountsFetching(false); }
+  };
+
+  // Fetch sold counts when a bin is selected
+  useEffect(() => {
+    if (binPanelData?.allListings?.length) fetchSoldCounts(binPanelData.allListings);
+  }, [binPanelData]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Derived calculations ─────────────────────────────────────────────────────
   const cost        = parseFloat(itemCost)      || 0;
@@ -1605,7 +1641,7 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
 
   const handleFetch = async () => {
     if (!smQuery.trim()) return;
-    setSmLoading(true); setSmError(""); setBinPanelData(null);
+    setSmLoading(true); setSmError(""); setBinPanelData(null); setSoldCounts({});
     try {
       const res  = await fetch(`${API_URL}/api/ebay/search-prices`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ query: smQuery.trim(), condition: smCondition }) });
       const json = await res.json();
@@ -1896,7 +1932,15 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
                   )}
                   {!smLoading && smData && (
                     <div style={{ animation: "pcIn 0.3s ease" }}>
-                      <PriceDistribution data={smData} listings={smData.listings} price={price} onBinSelect={setBinPanelData} />
+                      <PriceDistribution
+                        data={smData}
+                        listings={smData.listings}
+                        price={price}
+                        onBinSelect={setBinPanelData}
+                        soldCounts={soldCounts}
+                        soldCountsFetching={soldCountsFetching}
+                        onTableView={() => fetchSoldCounts(smData.listings)}
+                      />
                     </div>
                   )}
                 </div>
@@ -1964,7 +2008,17 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
                             </div>
                             <div style={{ flex: 1, minWidth: 0 }}>
                               <div style={{ fontSize: 10.5, color: "#a8c8e8", lineHeight: 1.35, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", marginBottom: 3 }}>{l.title}</div>
-                              <div style={{ fontSize: 13, fontWeight: 800, color: "#e2e8f0", fontVariantNumeric: "tabular-nums", marginBottom: 2 }}>{fmtGBP(l.price)}</div>
+                              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
+                                <div style={{ fontSize: 13, fontWeight: 800, color: "#e2e8f0", fontVariantNumeric: "tabular-nums" }}>{fmtGBP(l.price)}</div>
+                                {l.itemId && soldCounts[l.itemId] != null && (
+                                  <span style={{ fontSize: 9, fontWeight: 700, color: "#4ade80", background: "rgba(74,222,128,0.08)", border: "1px solid rgba(74,222,128,0.2)", borderRadius: 3, padding: "1px 6px", whiteSpace: "nowrap" }}>
+                                    {soldCounts[l.itemId]} sold
+                                  </span>
+                                )}
+                                {l.itemId && soldCountsFetching && !(l.itemId in soldCounts) && (
+                                  <span style={{ fontSize: 9, color: "#2d4a65" }}>…</span>
+                                )}
+                              </div>
                               <div style={{ display: "flex", gap: 5, flexWrap: "wrap", alignItems: "center" }}>
                                 {l.condition && <span style={{ fontSize: 9, color: "#4a7090", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 3, padding: "1px 5px" }}>{l.condition}</span>}
                                 {l.sellerFeedback != null && <span style={{ fontSize: 9, color: "#3d5a72" }}>{l.sellerFeedback.toLocaleString()}{l.sellerFeedbackPct != null && <span style={{ color: "#4a9a6a", marginLeft: 2 }}>{l.sellerFeedbackPct.toFixed(1)}%</span>}</span>}
