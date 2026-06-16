@@ -39,7 +39,8 @@ const THEMES = [
 // ─── LocalStorage helpers ─────────────────────────────────────────────────────
 
 const LS_THEME_KEY     = "jsk_theme_v2";
-const LS_TEMPLATES_KEY = "jsk_custom_templates_v1";
+const LS_TEMPLATES_KEY     = "jsk_custom_templates_v1";
+const LS_ACCOUNT_TEMPLATES = "jsk_listing_templates_v1";
 
 function getSavedTheme() {
   try { return localStorage.getItem(LS_THEME_KEY) || "clean-default"; }
@@ -50,9 +51,19 @@ function saveTheme(id) {
 }
 
 // ── Custom template storage ───────────────────────────────────────────────────
+// Merges templates from both storage systems:
+// 1. jsk_custom_templates_v1  — saved via "Save as Template" in the listing editor
+// 2. jsk_listing_templates_v1 — saved via Account → Listing Templates builder
 function loadCustomTemplates() {
-  try { return JSON.parse(localStorage.getItem(LS_TEMPLATES_KEY) || "[]"); }
-  catch { return []; }
+  const editor   = (() => { try { return JSON.parse(localStorage.getItem(LS_TEMPLATES_KEY)     || "[]"); } catch { return []; } })();
+  const account  = (() => { try { return JSON.parse(localStorage.getItem(LS_ACCOUNT_TEMPLATES) || "[]"); } catch { return []; } })();
+  // Normalise account templates to the { id, name, html } shape the editor expects
+  const accountNorm = account
+    .filter(t => t.rawHtml?.trim())
+    .map(t => ({ id: t.id, name: t.name || "Untitled", html: t.rawHtml }));
+  // Merge, deduplicating by id
+  const seen = new Set(editor.map(t => t.id));
+  return [...editor, ...accountNorm.filter(t => !seen.has(t.id))];
 }
 function persistCustomTemplates(list) {
   try { localStorage.setItem(LS_TEMPLATES_KEY, JSON.stringify(list)); } catch {}
@@ -353,6 +364,17 @@ function ListingGenerator({
   const [customTemplates,    setCustomTemplates]    = useState(loadCustomTemplates);
   const [customTemplateHtml, setCustomTemplateHtml] = useState(null);
 
+  // Reload merged templates whenever Account → Listing Templates adds/removes one
+  useEffect(() => {
+    const onStorage = (e) => {
+      if (e.key === LS_ACCOUNT_TEMPLATES || e.key === LS_TEMPLATES_KEY) {
+        setCustomTemplates(loadCustomTemplates());
+      }
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
+
   // ── Batch state ───────────────────────────────────────────────────────────
   const [batchRows,    setBatchRows]    = useSessionState("jsk_gen_batch_rows", [{ id: makeRowId(), articleNo: "", sku: "", binPrice: "" }]);
   const [batchLoading, setBatchLoading] = useState(false);
@@ -616,7 +638,7 @@ function ListingGenerator({
 
                 {/* Description Theme / Preset selector */}
                 <div>
-                  <FieldLabel>Description Preset</FieldLabel>
+                  <FieldLabel>Templates</FieldLabel>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 4 }}>
                     {THEMES.map((t) => {
                       const active = themeId === t.id && !customTemplateHtml;
@@ -643,7 +665,7 @@ function ListingGenerator({
                   {customTemplates.length > 0 && (
                     <div style={{ marginTop: 10 }}>
                       <div style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 700, marginBottom: 6, letterSpacing: 0.4 }}>
-                        MY TEMPLATES
+                        SAVED TEMPLATES
                       </div>
                       <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                         {customTemplates.map((t) => {
