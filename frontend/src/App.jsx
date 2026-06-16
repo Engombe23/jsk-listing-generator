@@ -201,98 +201,94 @@ export default function App() {
     setTimeout(() => { if (loadProductRef.current) loadProductRef.current(product); }, 50);
   };
 
-  return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: "var(--bg)",
-        fontFamily: "Inter, system-ui, sans-serif",
-        padding: 24
-      }}
-    >
-      <div style={{ maxWidth: 1440, margin: "0 auto" }}>
+  const NAV_ICONS = {
+    listing: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+        <line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
+      </svg>
+    ),
+    calculator: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/>
+        <line x1="16" y1="10" x2="16" y2="18"/><line x1="8" y1="14" x2="12" y2="14"/><line x1="8" y1="18" x2="12" y2="18"/>
+      </svg>
+    ),
+    compatibility: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+      </svg>
+    ),
+    account: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+      </svg>
+    ),
+  };
 
-        {/* Navbar */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            background: "var(--bg-nav)",
-            borderRadius: 20,
-            padding: "14px 24px",
-            border: "1px solid var(--border)",
-            marginBottom: 16,
-            boxShadow: "0 4px 24px rgba(0,0,0,0.28)"
-          }}
-        >
-          <img src="/logo.png" alt="PartLister" style={{ height: 32, width: "auto" }} />
-          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-            <div style={{ fontSize: 13, color: "rgba(255,255,255,0.45)", fontWeight: 500 }}>
-              Listing Tool
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              {session?.user?.email && (
-                <span style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", marginRight: 4 }}>
-                  {session.user.email}
-                </span>
-              )}
-              <button
-                type="button"
-                onClick={() => handleProfileNav("logout")}
-                style={{
-                  display: "flex", alignItems: "center", gap: 8,
-                  padding: "6px 12px",
-                  background: "rgba(239,68,68,0.12)",
-                  border: "1px solid rgba(239,68,68,0.35)",
-                  borderRadius: 99, cursor: "pointer", transition: "all 0.15s ease",
-                }}
-              >
-                <span style={{ fontSize: 12, fontWeight: 700, color: "var(--red)" }}>Log out</span>
-              </button>
-            </div>
+  return (
+    <div style={{ minHeight: "100vh", background: "var(--bg)", fontFamily: "Inter, system-ui, sans-serif" }}>
+
+      {/* ── Top Navbar ── */}
+      <div style={{ background: "var(--bg-surface)", borderBottom: "1px solid var(--border)", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
+        <div style={{ maxWidth: 1440, margin: "0 auto", padding: "0 28px", display: "flex", alignItems: "stretch", height: 62 }}>
+
+          {/* Logo */}
+          <div style={{ display: "flex", alignItems: "center", paddingRight: 32, borderRight: "1px solid var(--border)", marginRight: 8 }}>
+            <img src="/logo.png" alt="PartLister" style={{ height: 30, width: "auto" }} />
+          </div>
+
+          {/* Nav tabs */}
+          <div style={{ display: "flex", flex: 1, alignItems: "stretch" }}>
+            {[
+              { key: "listing",       label: "Listing Generator" },
+              { key: "calculator",    label: "Price Calculator" },
+              { key: "compatibility", label: "Compatibility Checker" },
+              { key: "account",       label: "Account" },
+            ].map(({ key, label }) => {
+              const active = page === key;
+              return (
+                <button key={key} onClick={() => navigateTo(key)} style={{
+                  display: "flex", alignItems: "center", gap: 7,
+                  padding: "0 18px", border: "none", background: "transparent", cursor: "pointer",
+                  fontSize: 13, fontWeight: active ? 700 : 500,
+                  color: active ? "var(--blue)" : "var(--text-muted)",
+                  borderBottom: active ? "2px solid var(--blue)" : "2px solid transparent",
+                  transition: "all 0.15s ease", whiteSpace: "nowrap",
+                }}>
+                  <span style={{ color: active ? "var(--blue)" : "var(--text-dim)", display: "flex" }}>
+                    {NAV_ICONS[key]}
+                  </span>
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Right: email + logout */}
+          <div style={{ display: "flex", alignItems: "center", gap: 12, paddingLeft: 16 }}>
+            {session?.user?.email && (
+              <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{session.user.email}</span>
+            )}
+            <button type="button" onClick={() => handleProfileNav("logout")} style={{
+              display: "flex", alignItems: "center", gap: 6,
+              padding: "6px 14px", borderRadius: 8,
+              border: "1px solid var(--border)", background: "transparent",
+              cursor: "pointer", fontSize: 12, fontWeight: 600, color: "var(--red)",
+              transition: "all 0.15s ease",
+            }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+              </svg>
+              Log out
+            </button>
           </div>
         </div>
+      </div>
 
-        {/* Page tabs */}
-        <div
-          style={{
-            display: "flex",
-            gap: 6,
-            marginBottom: 24,
-            background: "var(--bg-nav)",
-            borderRadius: 20,
-            padding: 6,
-            border: "1px solid var(--border)"
-          }}
-        >
-          {[
-            { key: "listing",       label: "Listing Generator" },
-            { key: "calculator",    label: "Price Calculator" },
-            { key: "compatibility", label: "Compatibility Checker" },
-            { key: "account",       label: "Account" },
-          ].map(({ key, label }) => (
-            <button
-              key={key}
-              onClick={() => navigateTo(key)}
-              style={{
-                flex: 1,
-                padding: "12px 16px",
-                borderRadius: 14,
-                border: "none",
-                cursor: "pointer",
-                fontWeight: 700,
-                fontSize: 14,
-                background: page === key ? "var(--blue)" : "transparent",
-                color:      page === key ? "var(--text-on-dark)"    : "var(--text-muted)",
-                boxShadow:  page === key ? "0 0 16px rgba(19,93,255,0.28)" : "none",
-                transition: "all 0.2s ease"
-              }}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+      {/* ── Page content ── */}
+      <div style={{ maxWidth: 1440, margin: "0 auto", padding: "24px 28px" }}>
 
         {page === "listing" && (
           <ListingGenerator
@@ -331,6 +327,7 @@ export default function App() {
     </div>
   );
 }
+
 
 // ─── ListingGenerator ─────────────────────────────────────────────────────────
 // innerPage: "generate" | "generated"
@@ -527,55 +524,67 @@ function ListingGenerator({
   return (
     <>
       {/* ── Inner tab bar ── */}
-      <div style={{
-        display: "flex", gap: 6, marginBottom: 20,
-        background: "var(--bg-nav)", borderRadius: 16, padding: 5,
-        border: "1px solid var(--border)"
-      }}>
+      <div style={{ display: "flex", gap: 0, marginBottom: 24, borderBottom: "1px solid var(--border)" }}>
         {[
           { key: "generate",  label: "Generate" },
-          { key: "generated", label: `Generated Listings${listingCount ? ` (${listingCount})` : ""}` },
-        ].map(({ key, label }) => (
-          <button
-            key={key}
-            onClick={() => setInnerPage(key)}
-            style={{
-              flex: 1, padding: "10px 16px", borderRadius: 12,
-              border: "none", cursor: "pointer", fontWeight: 700, fontSize: 13,
-              background: innerPage === key ? "var(--blue)" : "transparent",
-              color:      innerPage === key ? "var(--text-on-dark)" : "var(--text-muted)",
-              boxShadow:  innerPage === key ? "0 0 14px rgba(19,93,255,0.28)" : "none",
-              transition: "all 0.18s ease"
-            }}
-          >
-            {label}
-          </button>
-        ))}
+          { key: "generated", label: "Generated Listings", count: listingCount },
+        ].map(({ key, label, count }) => {
+          const active = innerPage === key;
+          return (
+            <button key={key} onClick={() => setInnerPage(key)} style={{
+              display: "flex", alignItems: "center", gap: 7,
+              padding: "12px 20px", border: "none", background: "transparent",
+              cursor: "pointer", fontSize: 13, fontWeight: active ? 700 : 500,
+              color: active ? "var(--blue)" : "var(--text-muted)",
+              borderBottom: active ? "2px solid var(--blue)" : "2px solid transparent",
+              marginBottom: -1, transition: "all 0.15s ease",
+            }}>
+              {label}
+              {count > 0 && (
+                <span style={{
+                  fontSize: 11, fontWeight: 700, lineHeight: 1,
+                  background: active ? "var(--blue)" : "var(--border-strong)",
+                  color: active ? "var(--text-on-dark)" : "var(--text-muted)",
+                  borderRadius: 99, padding: "2px 7px",
+                }}>
+                  {count}
+                </span>
+              )}
+            </button>
+          );
+        })}
       </div>
 
       {/* ── Generate tab ── */}
       {innerPage === "generate" && (<>
         {error && (
           <div style={{
-            background: "var(--bg-surface3)", color: "var(--red)",
-            border: "1px solid rgba(220,38,38,0.45)", borderRadius: 20,
-            padding: 16, marginBottom: 20,
-            boxShadow: "0 0 20px rgba(220,38,38,0.10)"
+            display: "flex", alignItems: "flex-start", gap: 10,
+            background: "var(--red-bg)", border: "1px solid rgba(220,38,38,0.22)",
+            borderRadius: 10, padding: "12px 16px", marginBottom: 20,
           }}>
-            <strong>Error:</strong> {error}
+            <div style={{ width: 20, height: 20, borderRadius: "50%", background: "var(--red)", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: "var(--text-on-dark)", fontWeight: 800, marginTop: 1 }}>!</div>
+            <div style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.55 }}>
+              <strong style={{ color: "var(--red)" }}>Error:</strong> {error}
+            </div>
           </div>
         )}
 
-        <div style={{ display: "grid", gridTemplateColumns: "360px 1fr 290px", gap: 20, alignItems: "start" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "340px 1fr 280px", gap: 20, alignItems: "start" }}>
 
-          {/* ── Left column: form + AI titles + final title ── */}
-          <div style={{ display: "grid", gap: 20 }}>
+          {/* ── Left column: form + AI titles ── */}
+          <div style={{ display: "grid", gap: 16 }}>
 
             {/* Single Listing */}
             <Card
               title="Single Listing"
               subtitle="Enter a TecDoc article number or OEM / reference number."
-              centeredTitle
+              icon={
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+                  <line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
+                </svg>
+              }
             >
               <div style={{ display: "grid", gap: 14 }}>
 
@@ -617,9 +626,9 @@ function ListingGenerator({
                           onClick={() => handleThemeChange(t.id)}
                           style={{
                             padding: "6px 12px", borderRadius: 10, fontSize: 12, cursor: "pointer",
-                            border:     active ? "1px solid var(--blue)"    : "1px solid rgba(255,255,255,0.14)",
-                            background: active ? "var(--border-blue)" : "var(--border-light)",
-                            color:      active ? "var(--text-accent)"              : "var(--text-muted)",
+                            border:     active ? "1px solid var(--blue)" : "1px solid var(--border)",
+                            background: active ? "var(--blue-bg)"     : "var(--bg-surface2)",
+                            color:      active ? "var(--blue)"        : "var(--text-muted)",
                             fontWeight: active ? 700 : 400,
                             transition: "all 0.15s ease"
                           }}
@@ -753,82 +762,67 @@ function ListingGenerator({
 
           {/* ── Right column: article info & actions ── */}
           {phase === "done" && result && (
-            <div style={{ display: "grid", gap: 12, position: "sticky", top: 16, maxHeight: "calc(100vh - 60px)", overflowY: "auto" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12, position: "sticky", top: 16, maxHeight: "calc(100vh - 80px)", overflowY: "auto" }}>
 
-              {/* Article chip */}
-              <div style={{
-                background: "var(--bg-nav)", border: "1px solid var(--border)",
-                borderRadius: 14, padding: "12px 16px",
-                display: "flex", flexDirection: "column", gap: 4
-              }}>
-                <div style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase" }}>Article</div>
-                <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-on-dark)" }}>{result.article_number || "—"}</div>
-                {result.product_type && (
-                  <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{result.product_type}</div>
+              {/* Article */}
+              <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 12, padding: "14px 16px", boxShadow: "var(--shadow)" }}>
+                <div style={{ fontSize: 10, color: "var(--text-dim)", fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>Article</div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text)", marginBottom: 2 }}>
+                  {result.product_type || result.article_number || "—"}
+                </div>
+                {result.product_type && result.article_number && (
+                  <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 4 }}>{result.article_number}</div>
                 )}
                 {result.compatibility_count > 0 && (
-                  <div style={{ fontSize: 11, color: "var(--green)", marginTop: 2 }}>
-                    ✓ {result.compatibility_count} compatible vehicles
+                  <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: "var(--green)", fontWeight: 600, marginTop: 4 }}>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    {result.compatibility_count} compatible vehicles
                   </div>
                 )}
               </div>
 
-              {/* Product Image — directly below article chip */}
+              {/* Product Image */}
               {result.article_image && (
-                <div style={{
-                  background: "var(--bg-surface3)", border: "1px solid var(--border)",
-                  borderRadius: 14, padding: 12,
-                  display: "flex", justifyContent: "center", alignItems: "center"
-                }}>
+                <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 12, padding: 12, display: "flex", justifyContent: "center" }}>
                   <img src={result.article_image} alt={result.generated_title || "Product"}
-                    style={{ maxWidth: "100%", maxHeight: 160, objectFit: "contain", borderRadius: 8 }} />
+                    style={{ maxWidth: "100%", maxHeight: 140, objectFit: "contain", borderRadius: 8 }} />
                 </div>
               )}
 
-              {/* Quick Actions */}
-              <div style={{ display: "grid", gap: 8 }}>
-                <CopyButton
-                  onCopy={() => navigator.clipboard.writeText(liveHtmlRef.current || "")}
-                  style={{ width: "100%", textAlign: "center", fontSize: 13 }}
-                >
-                  📋 Copy HTML
-                </CopyButton>
-              </div>
+              {/* Copy HTML */}
+              <CopyButton
+                onCopy={() => navigator.clipboard.writeText(liveHtmlRef.current || "")}
+                style={{ width: "100%", textAlign: "center", fontSize: 13, padding: "10px 16px", borderRadius: 10 }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline", verticalAlign: "middle", marginRight: 6 }}><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                Copy HTML
+              </CopyButton>
 
-              {/* Active Title */}
-              <div style={{
-                background: "var(--bg-nav)", border: "1px solid var(--border)",
-                borderRadius: 14, padding: "12px 16px"
-              }}>
-                <div style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 6 }}>
-                  Title
+              {/* Title */}
+              <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 12, padding: "14px 16px", boxShadow: "var(--shadow)" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                  <div style={{ fontSize: 10, color: "var(--text-dim)", fontWeight: 700, letterSpacing: 1, textTransform: "uppercase" }}>Title</div>
+                  <div style={{
+                    fontSize: 11, fontWeight: 600,
+                    color: (result.generated_title || "").length > 80 ? "var(--red)" :
+                           (result.generated_title || "").length >= 70 ? "var(--green)" : "var(--text-muted)"
+                  }}>
+                    {(result.generated_title || "").length} / 80
+                  </div>
                 </div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-on-dark)", lineHeight: 1.5, wordBreak: "break-word" }}>
+                <div style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.5, wordBreak: "break-word" }}>
                   {result.generated_title || "—"}
-                </div>
-                <div style={{
-                  fontSize: 10, marginTop: 5, textAlign: "right",
-                  color: (result.generated_title || "").length > 80 ? "var(--red)" :
-                         (result.generated_title || "").length >= 70 ? "var(--green)" : "var(--text-muted)"
-                }}>
-                  {(result.generated_title || "").length} / 80
                 </div>
               </div>
 
               {/* K Numbers */}
               {(result.k_number_list || []).length > 0 && (
-                <div style={{
-                  background: "var(--bg-nav)", border: "1px solid var(--border)",
-                  borderRadius: 14, padding: "12px 16px"
-                }}>
-                  <div style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 6 }}>K Numbers</div>
-                  <div style={{ fontSize: 12, color: "var(--text)", lineHeight: 1.6, wordBreak: "break-word" }}>
+                <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 12, padding: "14px 16px", boxShadow: "var(--shadow)" }}>
+                  <div style={{ fontSize: 10, color: "var(--text-dim)", fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>K Numbers</div>
+                  <div style={{ fontSize: 12, color: "var(--text-muted)", lineHeight: 1.7, wordBreak: "break-word", marginBottom: 10 }}>
                     {(result.k_number_list || []).join(", ")}
                   </div>
-                  <CopyButton
-                    value={(result.k_number_list || []).join(", ")}
-                    style={{ marginTop: 8, fontSize: 11, padding: "5px 10px" }}
-                  >
+                  <CopyButton value={(result.k_number_list || []).join(", ")} style={{ fontSize: 11, padding: "5px 12px", borderRadius: 7 }}>
                     Copy K Numbers
                   </CopyButton>
                 </div>
@@ -836,19 +830,16 @@ function ListingGenerator({
 
               {/* OEM Numbers */}
               {(result.oem_numbers || []).length > 0 && (
-                <div style={{
-                  background: "var(--bg-nav)", border: "1px solid var(--border)",
-                  borderRadius: 14, padding: "12px 16px"
-                }}>
-                  <div style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 6 }}>OEM Numbers</div>
-                  <div style={{ fontSize: 12, color: "var(--text)", lineHeight: 1.6, wordBreak: "break-word" }}>
+                <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 12, padding: "14px 16px", boxShadow: "var(--shadow)" }}>
+                  <div style={{ fontSize: 10, color: "var(--text-dim)", fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>OEM Numbers</div>
+                  <div style={{ fontSize: 12, color: "var(--text-muted)", lineHeight: 1.7, wordBreak: "break-word" }}>
                     {(result.oem_numbers || []).slice(0, 8).join(", ")}
                     {(result.oem_numbers || []).length > 8 ? ` +${(result.oem_numbers || []).length - 8} more` : ""}
                   </div>
                 </div>
               )}
 
-              {/* Description HTML (collapsible) — uses a local toggle */}
+              {/* Description HTML toggle */}
               <RightPanelHtmlToggle htmlRef={liveHtmlRef} />
 
             </div>
@@ -1579,34 +1570,30 @@ function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate, n
     <div style={{ display: "grid", gridTemplateColumns: noRightPanel ? "1fr" : "1fr 290px", gap: 20, alignItems: "start" }}>
 
       {/* ── Left: Preview / Item Specifics ── */}
-      <div style={{ display: "grid", gap: 14 }}>
+      <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 16, overflow: "hidden", boxShadow: "var(--shadow)" }}>
 
         {/* Tab bar */}
-        <div style={{
-          display: "flex", gap: 6,
-          background: "var(--bg-nav)", borderRadius: 14, padding: 4,
-          border: "1px solid var(--border-light)"
-        }}>
+        <div style={{ display: "flex", borderBottom: "1px solid var(--border)", padding: "0 4px" }}>
           {[
             { key: "overview",  label: "Preview"        },
             { key: "specifics", label: "Item Specifics" }
-          ].map(({ key, label }) => (
-            <button
-              key={key}
-              onClick={() => setInnerTab(key)}
-              style={{
-                flex: 1, padding: "9px 14px", borderRadius: 10,
-                border: "none", cursor: "pointer", fontWeight: 700, fontSize: 13,
-                background: innerTab === key ? "var(--blue)" : "transparent",
-                color:      innerTab === key ? "var(--text-on-dark)"    : "var(--text-muted)",
-                boxShadow:  innerTab === key ? "0 0 14px rgba(19,93,255,0.28)" : "none",
-                transition: "all 0.18s ease"
-              }}
-            >
-              {label}
-            </button>
-          ))}
+          ].map(({ key, label }) => {
+            const active = innerTab === key;
+            return (
+              <button key={key} onClick={() => setInnerTab(key)} style={{
+                padding: "13px 20px", border: "none", background: "transparent",
+                cursor: "pointer", fontSize: 13, fontWeight: active ? 700 : 500,
+                color: active ? "var(--blue)" : "var(--text-muted)",
+                borderBottom: active ? "2px solid var(--blue)" : "2px solid transparent",
+                marginBottom: -1, transition: "all 0.15s ease",
+              }}>
+                {label}
+              </button>
+            );
+          })}
         </div>
+
+        <div style={{ padding: "16px 18px" }}>
 
         {/* Editor Toolbar (preview tab + edit mode only) */}
         {innerTab === "overview" && editMode && (
@@ -1633,12 +1620,12 @@ function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate, n
           <div
             onMouseDown={editMode ? (e) => captureTarget(e.target) : undefined}
             style={{
-              background: "var(--text-on-dark)",
+              background: "var(--bg-surface)",
               border: editMode ? "2px solid var(--blue)" : "1px solid var(--border)",
-              borderRadius: 18, padding: 18,
+              borderRadius: 12, padding: 18,
               overflowX: "auto", overflowY: "auto",
-              maxHeight: "calc(100vh - 230px)",
-              boxShadow: editMode ? "0 0 0 4px rgba(19,93,255,0.12)" : "0 0 16px rgba(19,93,255,0.08)"
+              maxHeight: "calc(100vh - 200px)",
+              boxShadow: editMode ? "0 0 0 4px rgba(19,93,255,0.10)" : "none",
             }}
           >
             {editMode ? (
@@ -1694,7 +1681,8 @@ function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate, n
           <ItemSpecificsTab result={result} copyText={copyText} />
         )}
 
-      </div>
+        </div>{/* end padding wrapper */}
+      </div>{/* end card */}
 
       {/* ── Right: Info & Actions Panel (only when not in noRightPanel mode) ── */}
       {!noRightPanel && (

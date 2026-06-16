@@ -69,32 +69,34 @@ export const StatPill = memo(function StatPill({ value }) {
   );
 });
 
-export const Card = memo(function Card({ title, subtitle, children, centeredTitle = false, glow = false }) {
+export const Card = memo(function Card({ title, subtitle, icon, children, centeredTitle = false, glow = false }) {
   return (
     <div style={{
       background: "var(--bg-surface)",
-      borderRadius: 24,
-      padding: 22,
+      borderRadius: 16,
+      padding: "20px 22px",
       border: "1px solid var(--border)",
-      boxShadow: glow ? "0 0 0 1px var(--border-blue), 0 0 26px var(--blue-glow), var(--shadow-lg)" : "var(--shadow-lg)"
+      boxShadow: glow ? "0 0 0 1px var(--border-blue), 0 0 20px var(--blue-glow), var(--shadow)" : "var(--shadow)"
     }}>
-      <div style={{
-        display: "flex",
-        justifyContent: centeredTitle ? "center" : "space-between",
-        alignItems: "flex-start",
-        gap: 12,
-        marginBottom: 18,
-        textAlign: centeredTitle ? "center" : "left"
-      }}>
-        <div style={{ width: centeredTitle ? "100%" : "auto" }}>
-          <div style={{ fontSize: 20, fontWeight: 800, color: "var(--text)" }}>{title}</div>
-          {subtitle ? (
-            <div style={{ marginTop: 6, fontSize: 14, color: "var(--text-muted)", lineHeight: 1.55 }}>
+      {(title || subtitle) && (
+        <div style={{ marginBottom: 18 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: subtitle ? 4 : 0 }}>
+            {icon && (
+              <div style={{ width: 34, height: 34, borderRadius: 9, background: "var(--blue-bg)", border: "1px solid var(--border-blue)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                {icon}
+              </div>
+            )}
+            <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text)", textAlign: centeredTitle && !icon ? "center" : "left", flex: centeredTitle && !icon ? 1 : undefined }}>
+              {title}
+            </div>
+          </div>
+          {subtitle && (
+            <div style={{ fontSize: 13, color: "var(--text-muted)", lineHeight: 1.55, marginLeft: icon ? 44 : 0, textAlign: centeredTitle && !icon ? "center" : "left" }}>
               {subtitle}
             </div>
-          ) : null}
+          )}
         </div>
-      </div>
+      )}
       {children}
     </div>
   );
