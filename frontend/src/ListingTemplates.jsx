@@ -471,66 +471,79 @@ function TemplateBuilder({ initial, onSave, onCancel }) {
           </div>
         </div>
 
-        {/* ══ CENTER: Placeholder mapping (review phase only) ══ */}
+        {/* ══ CENTER: Detected sections (review phase only) ══ */}
         {phase === "review" && (
           <div style={{ display: "flex", flexDirection: "column", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, overflow: "hidden", boxShadow: "var(--shadow)" }}>
-            <div style={{ padding: "12px 16px", borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: C.text }}>Placeholder Mapping</div>
-              <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>
-                {detections.length > 0
-                  ? `${detections.length} section${detections.length !== 1 ? "s" : ""} detected. Toggle to include or exclude.`
-                  : "No sections auto-detected — add placeholders manually in the HTML."}
+
+            {/* Header */}
+            <div style={{ padding: "14px 16px", borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: C.text }}>Detected Sections</div>
+                  <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>
+                    Toggle each section on or off to include it in the template.
+                  </div>
+                </div>
+                {detections.length > 0 && (
+                  <span style={{ fontSize: 12, fontWeight: 700, color: "var(--blue)", background: "var(--blue-bg)", border: "1px solid var(--border-blue)", borderRadius: 20, padding: "3px 10px" }}>
+                    {detections.filter(d => d.enabled).length} / {detections.length}
+                  </span>
+                )}
               </div>
             </div>
 
-            <div style={{ flex: 1, overflowY: "auto", padding: "10px 12px" }}>
+            {/* Detected list */}
+            <div style={{ flex: 1, overflowY: "auto", padding: "10px 12px", display: "flex", flexDirection: "column", gap: 4 }}>
 
-              {/* Detected sections */}
-              {detections.length > 0 && (
-                <div style={{ marginBottom: 16 }}>
-                  <div style={{ fontSize: 9, fontWeight: 800, color: C.dim, textTransform: "uppercase", letterSpacing: 1.2, marginBottom: 8 }}>
-                    Detected sections
-                  </div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                    {detections.map(det => {
-                      const ph = PLACEHOLDERS.find(p => p.key === det.key);
-                      return (
-                        <DetectionRow
-                          key={det.key}
-                          detection={det}
-                          color={ph?.color || "var(--blue)"}
-                          onToggle={() => toggleDetection(det.key)}
-                        />
-                      );
-                    })}
+              {detections.length === 0 ? (
+                <div style={{ padding: "24px 16px", textAlign: "center" }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: C.muted, marginBottom: 8 }}>Nothing detected automatically</div>
+                  <div style={{ fontSize: 11, color: C.dim, lineHeight: 1.6 }}>
+                    Switch to <strong style={{ color: C.text }}>Template HTML</strong> on the right to manually insert placeholder tokens like <code style={{ fontFamily: "monospace", color: "var(--blue)" }}>{"{{OE_NUMBERS}}"}</code> where needed.
                   </div>
                 </div>
+              ) : (
+                <>
+                  {/* Found */}
+                  {detections.map(det => {
+                    const ph = PLACEHOLDERS.find(p => p.key === det.key);
+                    return (
+                      <DetectionRow
+                        key={det.key}
+                        detection={det}
+                        color={ph?.color || "var(--blue)"}
+                        onToggle={() => toggleDetection(det.key)}
+                      />
+                    );
+                  })}
+
+                  {/* Not detected — dimmed rows so user knows what wasn't found */}
+                  {(() => {
+                    const found = new Set(detections.map(d => d.key));
+                    const missing = PLACEHOLDERS.filter(p => !found.has(p.key));
+                    if (!missing.length) return null;
+                    return (
+                      <div style={{ marginTop: 6 }}>
+                        <div style={{ fontSize: 9, fontWeight: 700, color: C.dim, textTransform: "uppercase", letterSpacing: 1, margin: "6px 4px 6px" }}>
+                          Not detected
+                        </div>
+                        {missing.map(p => (
+                          <div key={p.key} style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 10px", borderRadius: 8, opacity: 0.45 }}>
+                            <div style={{ width: 7, height: 7, borderRadius: "50%", background: C.border, flexShrink: 0 }} />
+                            <span style={{ flex: 1, fontSize: 12, color: C.muted }}>{p.label}</span>
+                            <code style={{ fontSize: 9, color: C.dim, fontFamily: "ui-monospace, monospace" }}>{p.key}</code>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()}
+                </>
               )}
-
-              {/* Manual placeholder insert */}
-              <div>
-                <div style={{ fontSize: 9, fontWeight: 800, color: C.dim, textTransform: "uppercase", letterSpacing: 1.2, marginBottom: 8 }}>
-                  All placeholders
-                </div>
-                <div style={{ fontSize: 11, color: C.muted, marginBottom: 10, lineHeight: 1.5 }}>
-                  Click to copy a placeholder and paste it manually into your HTML where needed.
-                </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                  {PLACEHOLDERS.map(p => (
-                    <PlaceholderChip key={p.key} ph={p} used={processedHtml.includes(p.key)} />
-                  ))}
-                </div>
-              </div>
             </div>
 
-            {/* Warning */}
-            <div style={{ padding: "10px 14px", borderTop: `1px solid ${C.border}`, flexShrink: 0 }}>
-              <div style={{ display: "flex", gap: 8, background: "var(--yellow-bg)", border: "1px solid rgba(217,119,6,0.2)", borderRadius: 8, padding: "8px 12px" }}>
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 1 }}><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-                <div style={{ fontSize: 11, color: "#92400e", lineHeight: 1.5 }}>
-                  Review detected sections before saving. The original HTML is always preserved.
-                </div>
-              </div>
+            {/* Footer note */}
+            <div style={{ padding: "10px 14px", borderTop: `1px solid ${C.border}`, flexShrink: 0, fontSize: 11, color: C.muted, lineHeight: 1.5 }}>
+              Need to add something manually? Switch to <strong style={{ color: C.text, fontWeight: 600 }}>Template HTML</strong> on the right and paste a placeholder token directly.
             </div>
           </div>
         )}
@@ -595,34 +608,43 @@ function StepBadge({ n, label, active }) {
 }
 
 function DetectionRow({ detection, color, onToggle }) {
+  const [expanded, setExpanded] = useState(false);
   return (
     <div style={{
-      border: `1px solid ${detection.enabled ? color + "30" : "var(--border)"}`,
-      borderRadius: 9, padding: "9px 12px",
-      background: detection.enabled ? color + "06" : "transparent",
+      border: `1px solid ${detection.enabled ? color + "28" : "var(--border)"}`,
+      borderRadius: 9,
+      background: detection.enabled ? color + "05" : "var(--bg-surface2)",
       transition: "all 0.13s",
+      overflow: "hidden",
     }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: detection.preview ? 5 : 0 }}>
+      {/* Main row */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 12px" }}>
         <div style={{ width: 8, height: 8, borderRadius: "50%", background: detection.enabled ? color : "var(--border)", flexShrink: 0 }} />
-        <span style={{ flex: 1, fontSize: 12, fontWeight: 700, color: detection.enabled ? C.text : C.muted }}>{detection.label}</span>
+        <span style={{ flex: 1, fontSize: 12, fontWeight: 600, color: detection.enabled ? C.text : C.muted }}>{detection.label}</span>
+        <code style={{ fontSize: 9, fontFamily: "ui-monospace, monospace", color: detection.enabled ? color : C.dim, fontWeight: 700, flexShrink: 0 }}>{detection.key}</code>
         <ConfBadge level={detection.confidence} />
+        {/* Toggle */}
         <button onClick={onToggle} style={{
-          padding: "2px 10px", fontSize: 10, fontWeight: 700, borderRadius: 6, cursor: "pointer",
-          border: `1px solid ${detection.enabled ? color + "40" : "var(--border)"}`,
-          background: detection.enabled ? color + "12" : "transparent",
-          color: detection.enabled ? color : C.muted, transition: "all 0.13s",
+          width: 42, height: 22, borderRadius: 11, cursor: "pointer", border: "none", flexShrink: 0,
+          background: detection.enabled ? color : "var(--border)",
+          position: "relative", transition: "background 0.2s",
         }}>
-          {detection.enabled ? "On" : "Off"}
+          <span style={{
+            position: "absolute", top: 3, left: detection.enabled ? "calc(100% - 19px)" : 3,
+            width: 16, height: 16, borderRadius: "50%", background: "#fff",
+            transition: "left 0.2s", display: "block",
+            boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
+          }} />
         </button>
       </div>
-      {detection.preview && (
-        <div style={{ fontSize: 10, color: C.muted, fontFamily: "ui-monospace, monospace", lineHeight: 1.4, paddingLeft: 16, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-          {detection.preview}
-        </div>
+      {/* Preview (expandable) */}
+      {detection.preview && detection.preview !== "Compatibility table detected" && (
+        <button onClick={() => setExpanded(e => !e)} style={{ width: "100%", padding: "0 12px 8px 28px", background: "none", border: "none", cursor: "pointer", textAlign: "left" }}>
+          <div style={{ fontSize: 10, color: C.dim, fontFamily: "ui-monospace, monospace", lineHeight: 1.4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: expanded ? "normal" : "nowrap" }}>
+            {detection.preview}
+          </div>
+        </button>
       )}
-      <div style={{ marginTop: 5, paddingLeft: 16 }}>
-        <code style={{ fontSize: 9, color: color, fontFamily: "ui-monospace, monospace", fontWeight: 700 }}>{detection.key}</code>
-      </div>
     </div>
   );
 }
