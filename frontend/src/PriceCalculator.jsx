@@ -57,7 +57,7 @@ function getPos(price, data) {
   const pct = ((price - data.low) / range) * 100;
   if (price < data.low)   return { label: "Below Market",  color: "#60a5fa" };
   if (pct < 25)           return { label: "Lower Range",   color: "#60a5fa" };
-  if (pct < 45)           return { label: "Lower-Mid",     color: "#7dd3fc" };
+  if (pct < 45)           return { label: "Lower-Mid",     color: "var(--text-accent)" };
   if (pct < 65)           return { label: "Core Market",   color: "var(--text-accent)" };
   if (pct < 82)           return { label: "Upper-Mid",     color: "#bae6fd" };
   if (price <= data.high) return { label: "Premium Range", color: "#dbeafe" };
@@ -128,7 +128,7 @@ function Row({ label, children, last, note }) {
 
 function SL({ children, mt }) {
   return (
-    <div style={{ fontSize: 10, fontWeight: 700, color: "#4a7096", textTransform: "uppercase", letterSpacing: 1.2, paddingTop: mt ?? 10, paddingBottom: 4 }}>
+    <div style={{ fontSize: 10, fontWeight: 700, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: 1.2, paddingTop: mt ?? 12, paddingBottom: 5 }}>
       {children}
     </div>
   );
@@ -387,7 +387,7 @@ function PricingBand({ data, price }) {
 
           {/* LOW — always shown */}
           <div style={{ position: "absolute", left: 0 }}>
-            <div style={{ fontSize: 13, fontWeight: 800, color: "#7dd3fc", lineHeight: 1 }}>{fmtGBP(data.low)}</div>
+            <div style={{ fontSize: 13, fontWeight: 800, color: "var(--text-accent)", lineHeight: 1 }}>{fmtGBP(data.low)}</div>
             <div style={{ fontSize: 11, color: C.muted, marginTop: 3 }}>Low</div>
           </div>
 
@@ -419,7 +419,7 @@ function PricingBand({ data, price }) {
 
           {/* HIGH — always shown */}
           <div style={{ position: "absolute", right: 0, textAlign: "right" }}>
-            <div style={{ fontSize: 13, fontWeight: 800, color: "#7dd3fc", lineHeight: 1 }}>{fmtGBP(data.high)}</div>
+            <div style={{ fontSize: 13, fontWeight: 800, color: "var(--text-accent)", lineHeight: 1 }}>{fmtGBP(data.high)}</div>
             <div style={{ fontSize: 11, color: C.muted, marginTop: 3 }}>High</div>
           </div>
         </div>
@@ -691,8 +691,8 @@ function PriceDistribution({ data, listings, price, onBinSelect, soldCounts = {}
           <div style={{ fontSize: 18, fontWeight: 800, color: "var(--text)", letterSpacing: -0.4, lineHeight: 1.2 }}>
             Price Distribution
           </div>
-          <div style={{ fontSize: 11, color: "#5a7fa0", marginTop: 4 }}>
-            <strong style={{ color: "#7dd3fc" }}>{n}</strong> listings analysed
+          <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4 }}>
+            <strong style={{ color: "var(--text-accent)" }}>{n}</strong> listings analysed
           </div>
         </div>
         {/* Volume / Cumulative % / Table tabs */}
@@ -702,9 +702,9 @@ function PriceDistribution({ data, listings, price, onBinSelect, soldCounts = {}
               padding: "5px 13px", fontSize: 10, fontWeight: 700,
               letterSpacing: 0.5,
               background: viewMode === mode ? "rgba(56,189,248,0.16)" : "transparent",
-              border: viewMode === mode ? "1px solid rgba(56,189,248,0.35)" : "1px solid transparent",
+              border: viewMode === mode ? "1px solid var(--border-blue)" : "1px solid transparent",
               borderRadius: 6,
-              color: viewMode === mode ? "#7dd3fc" : "#3d5a72",
+              color: viewMode === mode ? "var(--text-accent)" : "var(--text-muted)",
               cursor: "pointer", transition: "all 0.15s",
             }}>
               {label}
@@ -716,7 +716,7 @@ function PriceDistribution({ data, listings, price, onBinSelect, soldCounts = {}
       {viewMode === "volume" && <>
 
       {/* ── Market stats bar — LOW / MEDIAN / YOUR PRICE / HIGH ── */}
-      <div style={{ display: "grid", gridTemplateColumns: `repeat(${markers.length}, 1fr)`, borderTop: "1px solid var(--border-light)", borderBottom: "1px solid var(--border-light)" }}>
+      <div style={{ display: "grid", gridTemplateColumns: `repeat(${markers.length}, 1fr)`, borderTop: "1px solid var(--border-light)", borderBottom: "1px solid var(--border)" }}>
         {markers.map((m, i) => (
           <div key={m.key} style={{
             padding: "11px 14px", textAlign: "center",
@@ -750,7 +750,7 @@ function PriceDistribution({ data, listings, price, onBinSelect, soldCounts = {}
             </div>
             {/* Tick numbers */}
             {yTicks.map(t => (
-              <div key={t} style={{ position: "absolute", right: 5, top: toY(t), transform: "translateY(-50%)", fontSize: 9, color: t === 0 ? "#2d4a65" : "#5a7fa0", lineHeight: 1, fontVariantNumeric: "tabular-nums", userSelect: "none", fontWeight: 600 }}>
+              <div key={t} style={{ position: "absolute", right: 5, top: toY(t), transform: "translateY(-50%)", fontSize: 9, color: t === 0 ? "var(--text-dim)" : "var(--text-muted)", lineHeight: 1, fontVariantNumeric: "tabular-nums", userSelect: "none", fontWeight: 600 }}>
                 {t}
               </div>
             ))}
@@ -779,7 +779,7 @@ function PriceDistribution({ data, listings, price, onBinSelect, soldCounts = {}
               </linearGradient>
               {/* Neutral bar gradient — same for all bars, opacity modulated per-bar */}
               <linearGradient id="pdBar" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%"   stopColor="#38bdf8" stopOpacity="1.00" />
+                <stop offset="0%"   stopColor="var(--blue)" stopOpacity="1.00" />
                 <stop offset="55%"  stopColor="#0ea5e9" stopOpacity="0.90" />
                 <stop offset="100%" stopColor="#0369a1" stopOpacity="0.60" />
               </linearGradient>
@@ -912,10 +912,10 @@ function PriceDistribution({ data, listings, price, onBinSelect, soldCounts = {}
             const rawPct = toPct((hb.s + hb.e) / 2);
             const leftPct = clamp(rawPct, 8, 82);
             return (
-              <div style={{ position: "absolute", left: `${leftPct}%`, top: 6, transform: "translateX(-50%)", background: "rgba(4,12,28,0.97)", border: "1px solid rgba(56,189,248,0.35)", borderRadius: 6, padding: "4px 10px", fontSize: 11, fontWeight: 600, color: "var(--text)", whiteSpace: "nowrap", pointerEvents: "none", zIndex: 20, boxShadow: "0 2px 14px rgba(0,0,0,0.6)" }}>
-                <span style={{ color: "#7dd3fc" }}>{fmtRange(hb.s, hb.e)}</span>
-                <span style={{ color: "#38bdf8", marginLeft: 8 }}>{hb.count}</span>
-                <span style={{ color: "#3d5a72", marginLeft: 3, fontWeight: 400 }}>listing{hb.count !== 1 ? 's' : ''}</span>
+              <div style={{ position: "absolute", left: `${leftPct}%`, top: 6, transform: "translateX(-50%)", background: "rgba(4,12,28,0.97)", border: "1px solid var(--border-blue)", borderRadius: 6, padding: "4px 10px", fontSize: 11, fontWeight: 600, color: "var(--text)", whiteSpace: "nowrap", pointerEvents: "none", zIndex: 20, boxShadow: "0 2px 14px rgba(0,0,0,0.6)" }}>
+                <span style={{ color: "var(--text-accent)" }}>{fmtRange(hb.s, hb.e)}</span>
+                <span style={{ color: "var(--blue)", marginLeft: 8 }}>{hb.count}</span>
+                <span style={{ color: "var(--text-muted)", marginLeft: 3, fontWeight: 400 }}>listing{hb.count !== 1 ? 's' : ''}</span>
               </div>
             );
           })()}
@@ -924,16 +924,16 @@ function PriceDistribution({ data, listings, price, onBinSelect, soldCounts = {}
           <div style={{ position: "relative", height: 46, marginTop: 4 }}>
             {/* Tick mark for every non-empty bin */}
             {bins.filter(b => b.count > 0).map(b => (
-              <div key={`tick-${b.s}`} style={{ position: "absolute", left: `${clamp(toPct((b.s + b.e) / 2), 0.5, 99.5)}%`, top: 0, width: 1, height: 5, background: "rgba(56,189,248,0.22)", transform: "translateX(-50%)" }} />
+              <div key={`tick-${b.s}`} style={{ position: "absolute", left: `${clamp(toPct((b.s + b.e) / 2), 0.5, 99.5)}%`, top: 0, width: 1, height: 5, background: "var(--border-blue)", transform: "translateX(-50%)" }} />
             ))}
             {/* Text label only for thinned ticks — positions pre-computed by thinLabels */}
             {xTicks.map(tick => (
-              <div key={tick.v} style={{ position: "absolute", left: `${tick.pct}%`, top: 7, transform: "translateX(-50%)", fontSize: 10, color: "#6b90b0", whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums", userSelect: "none", fontWeight: 600 }}>
+              <div key={tick.v} style={{ position: "absolute", left: `${tick.pct}%`, top: 7, transform: "translateX(-50%)", fontSize: 10, color: "var(--text-muted)", whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums", userSelect: "none", fontWeight: 600 }}>
                 {fmtRange(tick.v, tick.e)}
               </div>
             ))}
             {/* Summary line */}
-            <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, textAlign: "center", fontSize: 9, color: "#2a4060", userSelect: "none", fontWeight: 500, letterSpacing: 0.2 }}>
+            <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, textAlign: "center", fontSize: 9, color: "var(--text-dim)", userSelect: "none", fontWeight: 500, letterSpacing: 0.2 }}>
               {fmtX(low)} – {fmtX(high)} &nbsp;·&nbsp; {fmtX(binW)} price bands &nbsp;·&nbsp; {n} listings
             </div>
           </div>
@@ -997,28 +997,28 @@ function PriceDistribution({ data, listings, price, onBinSelect, soldCounts = {}
         const totalInRange = zBins.reduce((s, b) => s + b.count, 0);
 
         return (
-          <div style={{ borderTop: "1px solid rgba(56,189,248,0.12)", background: "rgba(0,10,25,0.45)" }}>
+          <div style={{ borderTop: "1px solid var(--blue-bg)", background: "rgba(0,10,25,0.45)" }}>
             {/* Zoom header */}
             <div style={{ padding: "12px 22px 4px", display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
               <div>
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <span style={{ fontSize: 9, fontWeight: 800, color: "#38bdf8", textTransform: "uppercase", letterSpacing: 1.4, background: "rgba(56,189,248,0.10)", border: "1px solid rgba(56,189,248,0.22)", borderRadius: 4, padding: "2px 8px" }}>
+                  <span style={{ fontSize: 9, fontWeight: 800, color: "var(--blue)", textTransform: "uppercase", letterSpacing: 1.4, background: "var(--blue-bg)", border: "1px solid var(--border-blue)", borderRadius: 4, padding: "2px 8px" }}>
                     Zoomed
                   </span>
                   <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>
                     {fmtX(zMin)} – {fmtX(zMax)}
                   </span>
-                  <span style={{ fontSize: 10, color: "#4a7090" }}>
+                  <span style={{ fontSize: 10, color: "var(--text-muted)" }}>
                     £{zBinW} steps
                   </span>
                 </div>
-                <div style={{ fontSize: 11, color: "#5a7fa0", marginTop: 4 }}>
-                  <strong style={{ color: "#7dd3fc" }}>{totalInRange}</strong> listings in range
+                <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4 }}>
+                  <strong style={{ color: "var(--text-accent)" }}>{totalInRange}</strong> listings in range
                 </div>
               </div>
               <button onClick={() => { setClickedBin(null); setZoomRange(null); }} style={{
                 background: "none", border: "1px solid var(--border)",
-                borderRadius: 5, color: "#4a7090", cursor: "pointer",
+                borderRadius: 5, color: "var(--text-muted)", cursor: "pointer",
                 fontSize: 10, fontWeight: 600, padding: "3px 10px", letterSpacing: 0.3,
               }}>
                 ← Back
@@ -1043,7 +1043,7 @@ function PriceDistribution({ data, listings, price, onBinSelect, soldCounts = {}
                         position: "absolute", right: 5,
                         top: ZPADT + zPlotH - (t / zYMax) * zPlotH,
                         transform: "translateY(-50%)",
-                        fontSize: 9, color: t === 0 ? "#2d4a65" : "#5a7fa0",
+                        fontSize: 9, color: t === 0 ? "var(--text-dim)" : "var(--text-muted)",
                         lineHeight: 1, fontVariantNumeric: "tabular-nums",
                         userSelect: "none", fontWeight: 600,
                       }}>
@@ -1060,7 +1060,7 @@ function PriceDistribution({ data, listings, price, onBinSelect, soldCounts = {}
                   onMouseLeave={() => setHoveredZBin(null)}>
                   <defs>
                     <linearGradient id="zBarGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#38bdf8" stopOpacity="0.85" />
+                      <stop offset="0%" stopColor="var(--blue)" stopOpacity="0.85" />
                       <stop offset="100%" stopColor="#1d6fa4" stopOpacity="0.60" />
                     </linearGradient>
                   </defs>
@@ -1144,10 +1144,10 @@ function PriceDistribution({ data, listings, price, onBinSelect, soldCounts = {}
                   const hzb = zBins[hoveredZBin];
                   const midPctZ = Math.min(82, Math.max(8, (zBinMidX(hoveredZBin) / ZCW) * 100));
                   return (
-                    <div style={{ position: "absolute", left: `${midPctZ}%`, top: 4, transform: "translateX(-50%)", background: "rgba(4,12,28,0.97)", border: "1px solid rgba(56,189,248,0.35)", borderRadius: 6, padding: "4px 10px", fontSize: 11, fontWeight: 600, color: "var(--text)", whiteSpace: "nowrap", pointerEvents: "none", zIndex: 20, boxShadow: "0 2px 14px rgba(0,0,0,0.6)" }}>
-                      <span style={{ color: "#7dd3fc" }}>{fmtRange(hzb.s, hzb.e)}</span>
-                      <span style={{ color: "#38bdf8", marginLeft: 8 }}>{hzb.count}</span>
-                      <span style={{ color: "#3d5a72", marginLeft: 3, fontWeight: 400 }}>listing{hzb.count !== 1 ? 's' : ''}</span>
+                    <div style={{ position: "absolute", left: `${midPctZ}%`, top: 4, transform: "translateX(-50%)", background: "rgba(4,12,28,0.97)", border: "1px solid var(--border-blue)", borderRadius: 6, padding: "4px 10px", fontSize: 11, fontWeight: 600, color: "var(--text)", whiteSpace: "nowrap", pointerEvents: "none", zIndex: 20, boxShadow: "0 2px 14px rgba(0,0,0,0.6)" }}>
+                      <span style={{ color: "var(--text-accent)" }}>{fmtRange(hzb.s, hzb.e)}</span>
+                      <span style={{ color: "var(--blue)", marginLeft: 8 }}>{hzb.count}</span>
+                      <span style={{ color: "var(--text-muted)", marginLeft: 3, fontWeight: 400 }}>listing{hzb.count !== 1 ? 's' : ''}</span>
                     </div>
                   );
                 })()}
@@ -1156,16 +1156,16 @@ function PriceDistribution({ data, listings, price, onBinSelect, soldCounts = {}
                 <div style={{ position: "relative", height: 42, marginTop: 4 }}>
                   {/* Tick for every non-empty zoom bin */}
                   {zBins.map((b, i) => b.count === 0 ? null : (
-                    <div key={`ztick-${b.s}`} style={{ position: "absolute", left: `${Math.min(99.5, Math.max(0.5, (zBinMidX(i) / ZCW) * 100))}%`, top: 0, width: 1, height: 4, background: "rgba(56,189,248,0.22)", transform: "translateX(-50%)" }} />
+                    <div key={`ztick-${b.s}`} style={{ position: "absolute", left: `${Math.min(99.5, Math.max(0.5, (zBinMidX(i) / ZCW) * 100))}%`, top: 0, width: 1, height: 4, background: "var(--border-blue)", transform: "translateX(-50%)" }} />
                   ))}
                   {/* Thinned text labels — positions pre-computed by thinLabels */}
                   {zTicks.map(tick => (
-                    <div key={tick.v} style={{ position: "absolute", left: `${tick.pct}%`, top: 6, transform: "translateX(-50%)", fontSize: 10, color: "#6b90b0", whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums", userSelect: "none", fontWeight: 600 }}>
+                    <div key={tick.v} style={{ position: "absolute", left: `${tick.pct}%`, top: 6, transform: "translateX(-50%)", fontSize: 10, color: "var(--text-muted)", whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums", userSelect: "none", fontWeight: 600 }}>
                       {fmtRange(tick.v, tick.e)}
                     </div>
                   ))}
                   {/* Zoom summary */}
-                  <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, textAlign: "center", fontSize: 9, color: "#2a4060", userSelect: "none", fontWeight: 500, letterSpacing: 0.2 }}>
+                  <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, textAlign: "center", fontSize: 9, color: "var(--text-dim)", userSelect: "none", fontWeight: 500, letterSpacing: 0.2 }}>
                     {fmtX(zMin)} – {fmtX(zMax)} &nbsp;·&nbsp; {fmtX(zBinW)} price bands
                   </div>
                 </div>
@@ -1204,15 +1204,15 @@ function PriceDistribution({ data, listings, price, onBinSelect, soldCounts = {}
           const pct = ((p - low) / range) * 100;
           if (p < low)    return { label: "Below",   col: "#60a5fa" };
           if (pct < 25)   return { label: "Lower",   col: "#60a5fa" };
-          if (pct < 45)   return { label: "Low-mid", col: "#7dd3fc" };
-          if (pct < 65)   return { label: "Core",    col: "#34d399" };
+          if (pct < 45)   return { label: "Low-mid", col: "var(--text-accent)" };
+          if (pct < 65)   return { label: "Core",    col: "var(--green)" };
           if (pct < 82)   return { label: "Up-mid",  col: "var(--yellow)" };
           if (p <= high)  return { label: "Upper",   col: "var(--red)" };
           return               { label: "Above",    col: "#ef4444" };
         };
 
         const TH = ({ children, w, flex1 }) => (
-          <div style={{ ...(flex1 ? { flex: 1, minWidth: 0 } : { width: w, flexShrink: 0 }), fontSize: 8, fontWeight: 800, color: "#2d4a65", textTransform: "uppercase", letterSpacing: 1.2, paddingBottom: 8 }}>
+          <div style={{ ...(flex1 ? { flex: 1, minWidth: 0 } : { width: w, flexShrink: 0 }), fontSize: 8, fontWeight: 800, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: 1.2, paddingBottom: 8 }}>
             {children}
           </div>
         );
@@ -1221,13 +1221,13 @@ function PriceDistribution({ data, listings, price, onBinSelect, soldCounts = {}
           <div style={{ padding: "0 22px 18px" }}>
             {/* Sort bar */}
             <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12 }}>
-              <span style={{ fontSize: 9, color: "#2d4a65", textTransform: "uppercase", letterSpacing: 1, fontWeight: 700 }}>Sort</span>
+              <span style={{ fontSize: 9, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: 1, fontWeight: 700 }}>Sort</span>
               {SORTS.map(s => (
                 <button key={s.key} onClick={() => setTableSort(s.key)} style={{
                   padding: "3px 10px", fontSize: 10, fontWeight: 600,
-                  background: tableSort === s.key ? "rgba(56,189,248,0.12)" : "transparent",
+                  background: tableSort === s.key ? "var(--blue-bg)" : "transparent",
                   border: tableSort === s.key ? "1px solid rgba(56,189,248,0.30)" : "1px solid var(--border-light)",
-                  borderRadius: 5, color: tableSort === s.key ? "#7dd3fc" : "#3d5a72",
+                  borderRadius: 5, color: tableSort === s.key ? "var(--text-accent)" : "var(--text-muted)",
                   cursor: "pointer",
                 }}>
                   {s.label}
@@ -1236,7 +1236,7 @@ function PriceDistribution({ data, listings, price, onBinSelect, soldCounts = {}
             </div>
 
             {/* Header row — widths must exactly mirror data row cell widths */}
-            <div style={{ display: "flex", borderBottom: "1px solid var(--border-light)", paddingBottom: 4, marginBottom: 2, paddingLeft: 8 }}>
+            <div style={{ display: "flex", borderBottom: "1px solid var(--border)", paddingBottom: 4, marginBottom: 2, paddingLeft: 8 }}>
               <div style={{ width: 52, flexShrink: 0 }} /> {/* thumbnail spacer: 44px img + 8px marginRight */}
               <TH flex1>Title</TH>
               <TH w={62}>Price</TH>
@@ -1256,7 +1256,7 @@ function PriceDistribution({ data, listings, price, onBinSelect, soldCounts = {}
                 return (
                   <div key={i} style={{
                     display: "flex", alignItems: "center",
-                    padding: "5px 0", borderBottom: "1px solid var(--border-light)",
+                    padding: "5px 0", borderBottom: "1px solid var(--border)",
                     background: rowBg,
                     borderLeft: isUser ? "2px solid #00e5ff" : "2px solid transparent",
                     paddingLeft: isUser ? 6 : 8,
@@ -1297,8 +1297,8 @@ function PriceDistribution({ data, listings, price, onBinSelect, soldCounts = {}
                       {item.itemId && soldCounts[item.itemId] != null
                         ? <span style={{ fontWeight: 700, color: "var(--green)" }}>{soldCounts[item.itemId]}</span>
                         : soldCountsFetching && item.itemId && !(item.itemId in soldCounts)
-                          ? <span style={{ color: "#2d4a65" }}>…</span>
-                          : <span style={{ color: "#2d4a65" }}>—</span>
+                          ? <span style={{ color: "var(--text-dim)" }}>…</span>
+                          : <span style={{ color: "var(--text-dim)" }}>—</span>
                       }
                     </div>
                     {/* Condition */}
@@ -1307,18 +1307,18 @@ function PriceDistribution({ data, listings, price, onBinSelect, soldCounts = {}
                     </div>
                     {/* Seller */}
                     <div style={{ width: 104, flexShrink: 0, overflow: "hidden", paddingRight: 4 }}>
-                      <div style={{ fontSize: 10, fontWeight: 600, color: "#9ab8d0", textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>
+                      <div style={{ fontSize: 10, fontWeight: 600, color: "var(--text-muted)", textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>
                         {item.sellerName || "—"}
                       </div>
                       {item.sellerFeedback != null && (
-                        <div style={{ fontSize: 9, color: "#5a7fa0", marginTop: 2 }}>
+                        <div style={{ fontSize: 9, color: "var(--text-muted)", marginTop: 2 }}>
                           {item.sellerFeedback.toLocaleString()}
-                          {item.sellerFeedbackPct != null && <span style={{ color: "#4a9a6a", marginLeft: 3 }}>{item.sellerFeedbackPct.toFixed(1)}%</span>}
+                          {item.sellerFeedbackPct != null && <span style={{ color: "var(--green)", marginLeft: 3 }}>{item.sellerFeedbackPct.toFixed(1)}%</span>}
                         </div>
                       )}
                     </div>
                     {/* Delivery */}
-                    <div style={{ width: 68, flexShrink: 0, fontSize: 10, color: item.shippingCost === 0 || item.shippingType === "FREE" ? "#34d399" : "var(--text-muted)" }}>
+                    <div style={{ width: 68, flexShrink: 0, fontSize: 10, color: item.shippingCost === 0 || item.shippingType === "FREE" ? "var(--green)" : "var(--text-muted)" }}>
                       {fmtShipping(item.shippingCost, item.shippingType)}
                     </div>
                     {/* Position badge */}
@@ -1342,7 +1342,7 @@ function PriceDistribution({ data, listings, price, onBinSelect, soldCounts = {}
       })()}
 
       {/* ── Footer ── */}
-      <div style={{ padding: "10px 20px 14px", borderTop: "1px solid var(--border-light)", fontSize: 10, color: "#2d4a65", display: "flex", alignItems: "center", gap: 7 }}>
+      <div style={{ padding: "10px 20px 14px", borderTop: "1px solid var(--border-light)", fontSize: 10, color: "var(--text-dim)", display: "flex", alignItems: "center", gap: 7 }}>
         <span style={{ fontSize: 13, opacity: 0.5 }}>ⓘ</span>
         Prices analysed from active eBay UK listings only. Data updates every 24 hours.
       </div>
@@ -1372,23 +1372,23 @@ function PriceDistribution({ data, listings, price, onBinSelect, soldCounts = {}
         return (
           <div style={{
             width: 310, flexShrink: 0,
-            borderLeft: "1px solid rgba(56,189,248,0.14)",
+            borderLeft: "1px solid var(--border-blue)",
             background: "rgba(1,7,18,0.98)",
             display: "flex", flexDirection: "column",
             maxHeight: "100vh",
             overflow: "hidden",
           }}>
             {/* Panel header */}
-            <div style={{ padding: "18px 16px 14px", borderBottom: "1px solid var(--border-light)", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
+            <div style={{ padding: "18px 16px 14px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
               <div>
                 {/* Breadcrumb when zoomed in */}
                 {zoomRange && (
                   <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 6 }}>
-                    <button onClick={() => setZoomRange(null)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontSize: 9, color: "#3d5a72", fontWeight: 600, letterSpacing: 0.3 }}>
+                    <button onClick={() => setZoomRange(null)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontSize: 9, color: "var(--text-muted)", fontWeight: 600, letterSpacing: 0.3 }}>
                       {fmtX(b.s)}–{fmtX(b.e)}
                     </button>
-                    <span style={{ fontSize: 9, color: "#2d4a65" }}>›</span>
-                    <span style={{ fontSize: 9, color: "#38bdf8", fontWeight: 700 }}>
+                    <span style={{ fontSize: 9, color: "var(--text-dim)" }}>›</span>
+                    <span style={{ fontSize: 9, color: "var(--blue)", fontWeight: 700 }}>
                       {fmtX(zoomRange.s)}–{fmtX(zoomRange.e)}
                     </span>
                   </div>
@@ -1396,20 +1396,20 @@ function PriceDistribution({ data, listings, price, onBinSelect, soldCounts = {}
                 <div style={{ fontSize: 15, fontWeight: 800, color: "var(--text)", letterSpacing: -0.3 }}>
                   {fmtX(displayRange.s)} – {fmtX(displayRange.e)} Range
                 </div>
-                <span style={{ display: "inline-block", marginTop: 5, fontSize: 10, fontWeight: 700, color: "#38bdf8", background: "rgba(56,189,248,0.10)", border: "1px solid rgba(56,189,248,0.22)", borderRadius: 5, padding: "2px 8px" }}>
+                <span style={{ display: "inline-block", marginTop: 5, fontSize: 10, fontWeight: 700, color: "var(--blue)", background: "var(--blue-bg)", border: "1px solid var(--border-blue)", borderRadius: 5, padding: "2px 8px" }}>
                   {bl.length} listings
                 </span>
               </div>
-              <button onClick={() => { setClickedBin(null); setZoomRange(null); }} style={{ background: "none", border: "none", color: "#4a7090", cursor: "pointer", fontSize: 22, lineHeight: 1, padding: "0 2px", marginTop: -2, flexShrink: 0 }}>
+              <button onClick={() => { setClickedBin(null); setZoomRange(null); }} style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", fontSize: 22, lineHeight: 1, padding: "0 2px", marginTop: -2, flexShrink: 0 }}>
                 ×
               </button>
             </div>
 
             {/* Sort bar */}
-            <div style={{ padding: "8px 14px", borderBottom: "1px solid var(--border-light)", display: "flex", alignItems: "center", gap: 7 }}>
-              <span style={{ fontSize: 10, color: "#3d5a72", whiteSpace: "nowrap" }}>Sort by:</span>
+            <div style={{ padding: "8px 14px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 7 }}>
+              <span style={{ fontSize: 10, color: "var(--text-muted)", whiteSpace: "nowrap" }}>Sort by:</span>
               <select value={panelSort} onChange={e => setPanelSort(e.target.value)} style={{
-                background: "rgba(0,0,0,0.35)", border: "1px solid var(--border)",
+                background: "var(--bg-surface2)", border: "1px solid var(--border)",
                 borderRadius: 5, color: "var(--text-muted)", fontSize: 10, padding: "3px 8px",
                 cursor: "pointer", flex: 1,
               }}>
@@ -1424,12 +1424,12 @@ function PriceDistribution({ data, listings, price, onBinSelect, soldCounts = {}
               {sorted.map((l, i) => (
                 <a key={i} href={l.url} target="_blank" rel="noreferrer" style={{
                   display: "flex", alignItems: "center", gap: 10, padding: "10px 14px",
-                  borderBottom: "1px solid var(--border-light)",
+                  borderBottom: "1px solid var(--border)",
                   textDecoration: "none",
                   background: "transparent",
                   transition: "background 0.12s",
                 }}
-                  onMouseEnter={e => e.currentTarget.style.background = "rgba(56,189,248,0.04)"}
+                  onMouseEnter={e => e.currentTarget.style.background = "var(--blue-bg)"}
                   onMouseLeave={e => e.currentTarget.style.background = "transparent"}
                 >
                   {/* Thumbnail */}
@@ -1452,24 +1452,24 @@ function PriceDistribution({ data, listings, price, onBinSelect, soldCounts = {}
                     </div>
                     <div style={{ display: "flex", gap: 6, marginTop: 2, alignItems: "center", flexWrap: "wrap" }}>
                       {l.condition && (
-                        <span style={{ fontSize: 9, color: "#4a7090", background: "var(--border-light)", border: "1px solid var(--border)", borderRadius: 3, padding: "1px 5px" }}>
+                        <span style={{ fontSize: 9, color: "var(--text-muted)", background: "var(--border-light)", border: "1px solid var(--border)", borderRadius: 3, padding: "1px 5px" }}>
                           {l.condition}
                         </span>
                       )}
                       {l.sellerFeedback != null && (
-                        <span style={{ fontSize: 9, color: "#3d5a72" }}>
+                        <span style={{ fontSize: 9, color: "var(--text-muted)" }}>
                           {l.sellerFeedback.toLocaleString()}
-                          {l.sellerFeedbackPct != null && <span style={{ color: "#4a9a6a", marginLeft: 2 }}>{l.sellerFeedbackPct.toFixed(1)}%</span>}
+                          {l.sellerFeedbackPct != null && <span style={{ color: "var(--green)", marginLeft: 2 }}>{l.sellerFeedbackPct.toFixed(1)}%</span>}
                         </span>
                       )}
                       {(l.shippingCost != null || l.shippingType) && (
-                        <span style={{ fontSize: 9, color: l.shippingCost === 0 || l.shippingType === "FREE" ? "#34d399" : "#4a7090" }}>
+                        <span style={{ fontSize: 9, color: l.shippingCost === 0 || l.shippingType === "FREE" ? "var(--green)" : "var(--text-muted)" }}>
                           {fmtShip(l.shippingCost, l.shippingType)}
                         </span>
                       )}
                     </div>
                   </div>
-                  <span style={{ fontSize: 14, color: "#2d4a65", flexShrink: 0 }}>›</span>
+                  <span style={{ fontSize: 14, color: "var(--text-dim)", flexShrink: 0 }}>›</span>
                 </a>
               ))}
             </div>
@@ -1478,8 +1478,8 @@ function PriceDistribution({ data, listings, price, onBinSelect, soldCounts = {}
             <div style={{ padding: "10px 14px", borderTop: "1px solid var(--border-light)" }}>
               <button onClick={() => setViewMode("table")} style={{
                 width: "100%", padding: "8px", fontSize: 11, fontWeight: 700,
-                color: "#38bdf8", background: "rgba(56,189,248,0.07)",
-                border: "1px solid rgba(56,189,248,0.20)", borderRadius: 7,
+                color: "var(--blue)", background: "var(--blue-bg)",
+                border: "1px solid var(--border-blue)", borderRadius: 7,
                 cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
               }}>
                 View all {bl.length} listings in this range
@@ -1488,9 +1488,9 @@ function PriceDistribution({ data, listings, price, onBinSelect, soldCounts = {}
             </div>
 
             {/* Tip */}
-            <div style={{ padding: "8px 14px 14px", display: "flex", alignItems: "flex-start", gap: 7 }}>
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#3d5a72" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 1 }}><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>
-              <span style={{ fontSize: 10, color: "#2d4a65", lineHeight: 1.4 }}>Tip: Click a bar to lock this range</span>
+            <div style={{ padding: "10px 16px 16px", display: "flex", alignItems: "flex-start", gap: 7 }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 1 }}><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>
+              <span style={{ fontSize: 10, color: "var(--text-dim)", lineHeight: 1.4 }}>Tip: Click a bar to lock this range</span>
             </div>
           </div>
         );
@@ -1727,10 +1727,27 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
     <div style={{ maxWidth: 1440, margin: "0 auto" }}>
 
       {/* ── Inner tab bar ── */}
-      <div style={{ display: "flex", gap: 5, marginBottom: 14, background: "var(--bg-nav)", borderRadius: 12, padding: 4, border: "1px solid var(--border)" }}>
-        {[{ key: "calculator", label: "Calculator" }, { key: "saved", label: `Saved Products${savedCount ? ` (${savedCount})` : ""}` }].map(({ key, label }) => (
-          <button key={key} onClick={() => setInnerPage(key)} style={{ flex: 1, padding: "8px 14px", borderRadius: 8, border: "none", cursor: "pointer", fontWeight: 700, fontSize: 13, background: innerPage === key ? C.blue : "transparent", color: innerPage === key ? "var(--text-on-dark)" : C.muted, boxShadow: innerPage === key ? "0 0 12px rgba(19,93,255,0.28)" : "none", transition: "all 0.15s" }}>{label}</button>
-        ))}
+      <div style={{ display: "flex", gap: 0, marginBottom: 24, borderBottom: "1px solid var(--border)" }}>
+        {[{ key: "calculator", label: "Calculator" }, { key: "saved", label: "Saved Products", count: savedCount }].map(({ key, label, count }) => {
+          const active = innerPage === key;
+          return (
+            <button key={key} onClick={() => setInnerPage(key)} style={{
+              display: "flex", alignItems: "center", gap: 7,
+              padding: "12px 20px", border: "none", background: "transparent",
+              cursor: "pointer", fontSize: 13, fontWeight: active ? 700 : 500,
+              color: active ? "var(--blue)" : "var(--text-muted)",
+              borderBottom: active ? "2px solid var(--blue)" : "2px solid transparent",
+              marginBottom: -1, transition: "all 0.15s ease",
+            }}>
+              {label}
+              {count > 0 && (
+                <span style={{ fontSize: 11, fontWeight: 700, background: active ? "var(--blue)" : "var(--bg-surface2)", color: active ? "var(--text-on-dark)" : "var(--text-muted)", borderRadius: 99, padding: "2px 7px", border: "1px solid var(--border)" }}>
+                  {count}
+                </span>
+              )}
+            </button>
+          );
+        })}
       </div>
 
       {/* ── Saved tab ── */}
@@ -1745,11 +1762,11 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
             <div style={{ display: "grid", gridTemplateColumns: "290px 1fr 340px", gap: 16, alignItems: "stretch" }}>
 
               {/* ═══ LEFT SIDEBAR: Cost & Pricing Inputs ═══ */}
-              <div style={{ background: C.bg1, border: C.borderBlue, borderRadius: 16, overflow: "hidden", display: "flex", flexDirection: "column" }}>
-                <div style={{ padding: "12px 14px 10px", borderBottom: "1px solid var(--border)" }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: "#5a8ab0", textTransform: "uppercase", letterSpacing: 1.2 }}>Cost &amp; Pricing Inputs</div>
+              <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 16, overflow: "hidden", display: "flex", flexDirection: "column", boxShadow: "var(--shadow)" }}>
+                <div style={{ padding: "14px 16px 12px", borderBottom: "1px solid var(--border)" }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: 1.2 }}>Cost &amp; Pricing Inputs</div>
                 </div>
-                <div style={{ padding: "8px 14px 14px" }}>
+                <div style={{ padding: "10px 16px 16px" }}>
 
                   <SL mt={0}>Product</SL>
                   <Row label="Product / SKU">
@@ -1800,9 +1817,9 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
 
                   <SL>Selling Price</SL>
                   <div style={{ marginBottom: 8 }}>
-                    <div style={{ fontSize: 10, color: "#4a7096", marginBottom: 4 }}>{vatRegistered ? "Inc. VAT" : "Ex. VAT"}</div>
+                    <div style={{ fontSize: 10, color: "var(--text-muted)", marginBottom: 4 }}>{vatRegistered ? "Inc. VAT" : "Ex. VAT"}</div>
                     <input type="number" value={sellingPrice} onChange={(e) => setSellingPrice(e.target.value)} placeholder="e.g. 29.99"
-                      style={{ ...CI, fontSize: 18, fontWeight: 700, width: "100%", background: "rgba(19,93,255,0.08)", border: "1px solid rgba(19,93,255,0.3)" }} />
+                      style={{ ...CI, fontSize: 18, fontWeight: 700, width: "100%", background: "var(--blue-bg)", border: "1px solid var(--border-blue)" }} />
                   </div>
 
                   <Row label="Buyer shipping" note="Charged to buyer" last>
@@ -1839,13 +1856,13 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
               <div style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 16 }}>
 
                 {/* Search & header card */}
-                <div style={{ background: C.bg1, border: C.borderBlue, borderRadius: 16, overflow: "hidden" }}>
-                  <div style={{ padding: "14px 18px 12px", borderBottom: "1px solid var(--border-light)" }}>
+                <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 16, overflow: "hidden", boxShadow: "var(--shadow)" }}>
+                  <div style={{ padding: "14px 18px 12px", borderBottom: "1px solid var(--border)" }}>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <span style={{ fontSize: 16, fontWeight: 800, color: "var(--text-on-dark)", letterSpacing: -0.3 }}>Smart eBay Pricing</span>
-                        <span style={{ fontSize: 9, fontWeight: 800, color: C.blue, background: "rgba(19,93,255,0.15)", border: "1px solid rgba(19,93,255,0.4)", borderRadius: 4, padding: "2px 7px", letterSpacing: 0.8 }}>PRO</span>
-                        <span style={{ fontSize: 11, color: C.dim }}>Compare market pricing, fees and profit in one place.</span>
+                        <span style={{ fontSize: 15, fontWeight: 700, color: "var(--text)", letterSpacing: -0.2 }}>Smart eBay Pricing</span>
+                        <span style={{ fontSize: 9, fontWeight: 800, color: "var(--blue)", background: "var(--blue-bg)", border: "1px solid var(--border-blue)", borderRadius: 4, padding: "2px 7px", letterSpacing: 0.8 }}>PRO</span>
+                        <span style={{ fontSize: 12, color: "var(--text-muted)" }}>Compare market pricing, fees and profit in one place.</span>
                       </div>
                       {smData && (
                         <div style={{ display: "flex", alignItems: "center", gap: 7, background: "rgba(19,93,255,0.08)", border: "1px solid var(--border-blue)", borderRadius: 8, padding: "5px 12px", flexShrink: 0 }}>
@@ -1876,24 +1893,24 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
                         {smLoading ? "Fetching prices…" : "Fetch Prices"}
                       </button>
                     </div>
-                    {smError && <div style={{ marginTop: 8, padding: "7px 12px", background: "#0d1428", color: "var(--red)", border: "1px solid rgba(220,38,38,0.25)", borderRadius: 8, fontSize: 12 }}>⚠ {smError}</div>}
+                    {smError && <div style={{ marginTop: 8, padding: "7px 12px", background: "var(--bg-surface2)", color: "var(--red)", border: "1px solid rgba(220,38,38,0.25)", borderRadius: 8, fontSize: 12 }}>⚠ {smError}</div>}
                   </div>
 
                   {/* 4 KPI cards */}
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)" }}>
                     {[
-                      { label: "Selling Price", value: price > 0 ? fmtGBP(price) : "—", color: price > 0 ? "var(--text)" : "#2a3f55", sub: buyerShip > 0 ? `+ ${fmtGBP(buyerShip)} p&p` : "Item price",       icon: "£" },
-                      { label: "Net Profit",    value: hasResult ? fmt(profit)    : "—", color: hasResult ? profitColor : "#2a3f55", sub: hasResult ? "after all fees" : "Enter cost & price", icon: "↑" },
-                      { label: "Margin",        value: hasResult ? fmtPct(margin) : "—", color: hasResult ? profitColor : "#2a3f55", sub: "of revenue",     icon: "%" },
-                      { label: "Markup",        value: hasResult ? fmtPct(markup) : "—", color: hasResult ? profitColor : "#2a3f55", sub: "on cost",         icon: "×" },
+                      { label: "Selling Price", value: price > 0 ? fmtGBP(price) : "—", color: price > 0 ? "var(--text)" : "var(--text-dim)", sub: buyerShip > 0 ? `+ ${fmtGBP(buyerShip)} p&p` : "Item price",       icon: "£" },
+                      { label: "Net Profit",    value: hasResult ? fmt(profit)    : "—", color: hasResult ? profitColor : "var(--text-dim)", sub: hasResult ? "after all fees" : "Enter cost & price", icon: "↑" },
+                      { label: "Margin",        value: hasResult ? fmtPct(margin) : "—", color: hasResult ? profitColor : "var(--text-dim)", sub: "of revenue",     icon: "%" },
+                      { label: "Markup",        value: hasResult ? fmtPct(markup) : "—", color: hasResult ? profitColor : "var(--text-dim)", sub: "on cost",         icon: "×" },
                     ].map(({ label, value, color, sub, icon }, i) => (
                       <div key={label} style={{ padding: "12px 16px", borderLeft: i > 0 ? "1px solid var(--border-light)" : "none", borderTop: "1px solid var(--border-light)" }}>
                         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 5 }}>
-                          <div style={{ fontSize: 9, fontWeight: 700, color: "#4a6a8a", textTransform: "uppercase", letterSpacing: 0.8 }}>{label}</div>
-                          <span style={{ fontSize: 11, color: "#2a3f55" }}>{icon}</span>
+                          <div style={{ fontSize: 9, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: 0.8 }}>{label}</div>
+                          <span style={{ fontSize: 11, color: "var(--text-dim)" }}>{icon}</span>
                         </div>
                         <div style={{ fontSize: 22, fontWeight: 900, color, lineHeight: 1, letterSpacing: -0.5, fontVariantNumeric: "tabular-nums", marginBottom: 3 }}>{value}</div>
-                        <div style={{ fontSize: 10, color: "#3d5a7a" }}>{sub}</div>
+                        <div style={{ fontSize: 10, color: "var(--text-muted)" }}>{sub}</div>
                       </div>
                     ))}
                   </div>
@@ -1907,7 +1924,7 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
                           <span style={{ fontSize: 15, fontWeight: 800, color: "var(--yellow)" }}>{fmt(breakEven)}</span>
                         </div>
                       )}
-                      <div style={{ fontSize: 10, fontWeight: 700, color: "#3d5268", textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 4 }}>Cost Breakdown</div>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 4 }}>Cost Breakdown</div>
                       {buyerShip > 0 && <BR label="Buyer shipping (income)" value={`+${fmt(buyerShip)}`} color="var(--text-accent)" />}
                       {cost > 0      && <BR label="Product cost"            value={`-${fmt(cost)}`}       color="var(--red)" />}
                       {(shipping + packaging) > 0 && <BR label="Postage & packaging" value={`-${fmt(shipping + packaging)}`} color="var(--red)" />}
@@ -1920,8 +1937,8 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
                 </div>
 
                 {/* Market Intelligence */}
-                <div style={{ background: C.bg1, border: C.borderBlue, borderRadius: 16, overflow: "hidden", flex: 1, display: "flex", flexDirection: "column" }}>
-                  <div style={{ padding: "12px 18px 10px", borderBottom: "1px solid var(--border-light)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 16, overflow: "hidden", flex: 1, display: "flex", flexDirection: "column", boxShadow: "var(--shadow)" }}>
+                  <div style={{ padding: "12px 18px 10px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                     <div>
                       <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", marginBottom: 2 }}>Market Intelligence</div>
                       <div style={{ fontSize: 11, color: C.muted }}>
@@ -1951,17 +1968,17 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
                       {/* Ring spinner */}
                       <div style={{
                         width: 32, height: 32, borderRadius: "50%",
-                        border: "2.5px solid rgba(56,189,248,0.12)",
+                        border: "2.5px solid var(--blue-bg)",
                         borderTop: "2.5px solid #38bdf8",
                         animation: "pcSpin 0.85s linear infinite",
                       }} />
                       {/* Text */}
                       <div style={{ textAlign: "center" }}>
-                        <div style={{ fontSize: 14, fontWeight: 700, color: "#7dd3fc", marginBottom: 5, letterSpacing: -0.2 }}>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-accent)", marginBottom: 5, letterSpacing: -0.2 }}>
                           Scanning eBay UK listings
                         </div>
-                        <div style={{ fontSize: 11, color: "#3d5a72", lineHeight: 1.55 }}>
-                          Fetching live <span style={{ color: "#4a7096", fontWeight: 600 }}>{smCondition}</span> condition pricing data…
+                        <div style={{ fontSize: 11, color: "var(--text-muted)", lineHeight: 1.55 }}>
+                          Fetching live <span style={{ color: "var(--text-muted)", fontWeight: 600 }}>{smCondition}</span> condition pricing data…
                         </div>
                       </div>
                     </div>
@@ -1969,7 +1986,7 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
                   {!smLoading && !smData && (
                     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: 260, textAlign: "center" }}>
                       <div style={{ marginBottom: 14, opacity: 0.3 }}>
-                        <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                        <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                           <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/>
                           <line x1="6" y1="20" x2="6" y2="14"/><line x1="2" y1="20" x2="22" y2="20"/>
                         </svg>
@@ -1995,24 +2012,24 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
               </div>
 
               {/* ═══ RIGHT: Listings Panel ═══ */}
-              <div style={{ background: C.bg1, border: C.borderBlue, borderRadius: 16, overflow: "hidden", display: "flex", flexDirection: "column" }}>
+              <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 16, overflow: "hidden", display: "flex", flexDirection: "column", boxShadow: "var(--shadow)" }}>
                 {!binPanelData ? (
                   <>
                     {/* Persistent header */}
                     <div style={{ padding: "12px 16px 10px", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
-                      <div style={{ fontSize: 10, fontWeight: 700, color: "#5a8ab0", textTransform: "uppercase", letterSpacing: 1.2 }}>Listings in Selected Range</div>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: 1.2 }}>Listings in Selected Range</div>
                     </div>
                     {/* Empty state */}
                     <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14, padding: "32px 24px", textAlign: "center" }}>
                       <div style={{ opacity: 0.3 }}>
-                        <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+                        <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
                           <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/>
                           <line x1="6" y1="20" x2="6" y2="14"/><line x1="2" y1="20" x2="22" y2="20"/>
                         </svg>
                       </div>
                       <div>
-                        <div style={{ fontSize: 13, fontWeight: 600, color: "#3d5a72", marginBottom: 6 }}>Select a price range</div>
-                        <div style={{ fontSize: 11, color: "#1e3347", lineHeight: 1.65 }}>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-muted)", marginBottom: 6 }}>Select a price range</div>
+                        <div style={{ fontSize: 11, color: "var(--text-muted)", lineHeight: 1.65 }}>
                           {smData
                             ? "Click a bar in the chart to view matching listings."
                             : "Fetch market data, then click a bar to see the listings."}
@@ -2036,25 +2053,25 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
                   });
                   return (
                     <>
-                      <div style={{ padding: "12px 14px 10px", borderBottom: "1px solid var(--border-light)", flexShrink: 0 }}>
+                      <div style={{ padding: "12px 14px 10px", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
                         {zoomRange && (
                           <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 5 }}>
-                            <button onClick={() => setZoomRange(null)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontSize: 9, color: "#3d5a72", fontWeight: 600 }}>{fmtX(bin.s)}–{fmtX(bin.e)}</button>
-                            <span style={{ fontSize: 9, color: "#2d4a65" }}>›</span>
-                            <span style={{ fontSize: 9, color: "#38bdf8", fontWeight: 700 }}>{fmtX(zoomRange.s)}–{fmtX(zoomRange.e)}</span>
+                            <button onClick={() => setZoomRange(null)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontSize: 9, color: "var(--text-muted)", fontWeight: 600 }}>{fmtX(bin.s)}–{fmtX(bin.e)}</button>
+                            <span style={{ fontSize: 9, color: "var(--text-dim)" }}>›</span>
+                            <span style={{ fontSize: 9, color: "var(--blue)", fontWeight: 700 }}>{fmtX(zoomRange.s)}–{fmtX(zoomRange.e)}</span>
                           </div>
                         )}
                         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
                           <div>
                             <div style={{ fontSize: 14, fontWeight: 800, color: "var(--text)", letterSpacing: -0.2 }}>{fmtX(displayRange.s)} – {fmtX(displayRange.e)}</div>
-                            <span style={{ display: "inline-block", marginTop: 4, fontSize: 10, fontWeight: 700, color: "#38bdf8", background: "rgba(56,189,248,0.10)", border: "1px solid rgba(56,189,248,0.22)", borderRadius: 5, padding: "2px 8px" }}>{bl.length} listings</span>
+                            <span style={{ display: "inline-block", marginTop: 4, fontSize: 10, fontWeight: 700, color: "var(--blue)", background: "var(--blue-bg)", border: "1px solid var(--border-blue)", borderRadius: 5, padding: "2px 8px" }}>{bl.length} listings</span>
                           </div>
-                          <button onClick={() => setClickedBin(null)} style={{ background: "none", border: "none", color: "#4a7090", cursor: "pointer", fontSize: 20, lineHeight: 1, padding: "0 2px", marginTop: -2 }}>×</button>
+                          <button onClick={() => setClickedBin(null)} style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", fontSize: 20, lineHeight: 1, padding: "0 2px", marginTop: -2 }}>×</button>
                         </div>
                       </div>
-                      <div style={{ padding: "6px 12px", borderBottom: "1px solid var(--border-light)", display: "flex", alignItems: "center", gap: 7, flexShrink: 0 }}>
-                        <span style={{ fontSize: 10, color: "#3d5a72", whiteSpace: "nowrap" }}>Sort:</span>
-                        <select value={panelSort} onChange={e => setPanelSort(e.target.value)} style={{ background: "rgba(0,0,0,0.35)", border: "1px solid var(--border)", borderRadius: 5, color: "var(--text-muted)", fontSize: 10, padding: "3px 8px", cursor: "pointer", flex: 1 }}>
+                      <div style={{ padding: "6px 12px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 7, flexShrink: 0 }}>
+                        <span style={{ fontSize: 10, color: "var(--text-muted)", whiteSpace: "nowrap" }}>Sort:</span>
+                        <select value={panelSort} onChange={e => setPanelSort(e.target.value)} style={{ background: "var(--bg-surface2)", border: "1px solid var(--border)", borderRadius: 5, color: "var(--text-muted)", fontSize: 10, padding: "3px 8px", cursor: "pointer", flex: 1 }}>
                           <option value="asc">Price: Low to High</option>
                           <option value="desc">Price: High to Low</option>
                           <option value="feedback">Most Feedback</option>
@@ -2063,8 +2080,8 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
                       <div style={{ flex: 1, overflowY: "auto" }}>
                         {sorted.map((l, i) => (
                           <a key={i} href={l.url} target="_blank" rel="noreferrer"
-                            style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", borderBottom: "1px solid var(--border-light)", textDecoration: "none", background: "transparent", transition: "background 0.12s" }}
-                            onMouseEnter={e => e.currentTarget.style.background = "rgba(56,189,248,0.04)"}
+                            style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", borderBottom: "1px solid var(--border)", textDecoration: "none", background: "transparent", transition: "background 0.12s" }}
+                            onMouseEnter={e => e.currentTarget.style.background = "var(--blue-bg)"}
                             onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
                             <div style={{ width: 42, height: 42, flexShrink: 0, borderRadius: 6, overflow: "hidden", background: "var(--bg-surface3)", border: "1px solid var(--border)" }}>
                               {l.image ? <img src={l.image} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
@@ -2080,22 +2097,22 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
                                   </span>
                                 )}
                                 {l.itemId && soldCountsFetching && !(l.itemId in soldCounts) && (
-                                  <span style={{ fontSize: 9, color: "#2d4a65" }}>…</span>
+                                  <span style={{ fontSize: 9, color: "var(--text-dim)" }}>…</span>
                                 )}
                               </div>
                               <div style={{ display: "flex", gap: 5, flexWrap: "wrap", alignItems: "center" }}>
-                                {l.condition && <span style={{ fontSize: 9, color: "#4a7090", background: "var(--border-light)", border: "1px solid var(--border)", borderRadius: 3, padding: "1px 5px" }}>{l.condition}</span>}
-                                {l.sellerFeedback != null && <span style={{ fontSize: 9, color: "#3d5a72" }}>{l.sellerFeedback.toLocaleString()}{l.sellerFeedbackPct != null && <span style={{ color: "#4a9a6a", marginLeft: 2 }}>{l.sellerFeedbackPct.toFixed(1)}%</span>}</span>}
-                                {(l.shippingCost != null || l.shippingType) && <span style={{ fontSize: 9, color: l.shippingCost === 0 || l.shippingType === "FREE" ? "#34d399" : "#4a7090" }}>{fmtShip(l.shippingCost, l.shippingType)}</span>}
+                                {l.condition && <span style={{ fontSize: 9, color: "var(--text-muted)", background: "var(--border-light)", border: "1px solid var(--border)", borderRadius: 3, padding: "1px 5px" }}>{l.condition}</span>}
+                                {l.sellerFeedback != null && <span style={{ fontSize: 9, color: "var(--text-muted)" }}>{l.sellerFeedback.toLocaleString()}{l.sellerFeedbackPct != null && <span style={{ color: "var(--green)", marginLeft: 2 }}>{l.sellerFeedbackPct.toFixed(1)}%</span>}</span>}
+                                {(l.shippingCost != null || l.shippingType) && <span style={{ fontSize: 9, color: l.shippingCost === 0 || l.shippingType === "FREE" ? "var(--green)" : "var(--text-muted)" }}>{fmtShip(l.shippingCost, l.shippingType)}</span>}
                               </div>
                             </div>
-                            <span style={{ fontSize: 13, color: "#2d4a65", flexShrink: 0 }}>›</span>
+                            <span style={{ fontSize: 13, color: "var(--text-dim)", flexShrink: 0 }}>›</span>
                           </a>
                         ))}
                       </div>
                       {onViewAll && (
                         <div style={{ padding: "8px 12px", borderTop: "1px solid var(--border-light)", flexShrink: 0 }}>
-                          <button onClick={onViewAll} style={{ width: "100%", padding: "7px", fontSize: 11, fontWeight: 700, color: "#38bdf8", background: "rgba(56,189,248,0.07)", border: "1px solid rgba(56,189,248,0.20)", borderRadius: 7, cursor: "pointer" }}>
+                          <button onClick={onViewAll} style={{ width: "100%", padding: "7px", fontSize: 11, fontWeight: 700, color: "var(--blue)", background: "var(--blue-bg)", border: "1px solid var(--border-blue)", borderRadius: 7, cursor: "pointer" }}>
                             View all {bl.length} in table ↗
                           </button>
                         </div>
