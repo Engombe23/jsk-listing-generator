@@ -1,4 +1,4 @@
-import React, { memo, useState, useMemo } from "react";
+﻿import React, { memo, useState, useMemo } from "react";
 import { SMALL_BUTTON_STYLE, BUTTON_BASE } from "./shared.jsx";
 
 // ─── Formatters ───────────────────────────────────────────────────────────────
@@ -30,7 +30,7 @@ const fmtPctRaw = (n) => (n == null || isNaN(n) ? "" : Number(n).toFixed(1));
 const COL_STYLE = {
   padding: "12px 14px",
   fontSize: 14,
-  borderBottom: "1px solid rgba(255,255,255,0.06)",
+  borderBottom: "1px solid var(--border-light)",
   whiteSpace: "nowrap"
 };
 
@@ -38,8 +38,8 @@ const HEADER_STYLE = {
   ...COL_STYLE,
   fontSize: 12,
   fontWeight: 700,
-  color: "#9ca3af",
-  background: "#081322",
+  color: "var(--text-muted)",
+  background: "var(--bg-surface3)",
   textTransform: "uppercase",
   letterSpacing: "0.05em"
 };
@@ -155,19 +155,19 @@ export default function SavedProducts({ products, onDelete, onLoad }) {
     return (
       <div style={{
         minHeight: 360, display: "grid", placeItems: "center",
-        background: "#0F1E35", border: "1px dashed rgba(255,255,255,0.10)",
-        borderRadius: 24, color: "#9ca3af", fontSize: 15,
+        background: "var(--bg-nav)", border: "1px dashed var(--border-strong)",
+        borderRadius: 24, color: "var(--text-muted)", fontSize: 15,
         textAlign: "center", padding: 40
       }}>
         <div>
           <div style={{ marginBottom: 14, opacity: 0.35 }}>
-            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#7dd3fc" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--text-accent)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/>
               <path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/>
             </svg>
           </div>
-          <div style={{ fontWeight: 700, color: "#d1d5db", marginBottom: 8 }}>No saved products yet</div>
-          <div style={{ fontSize: 14, color: "#6b7280" }}>
+          <div style={{ fontWeight: 700, color: "var(--text)", marginBottom: 8 }}>No saved products yet</div>
+          <div style={{ fontSize: 14, color: "var(--text-muted)" }}>
             Open the Calculator tab, fill in your costs and selling price, then click Save Product.
           </div>
         </div>
@@ -185,7 +185,7 @@ export default function SavedProducts({ products, onDelete, onLoad }) {
 
   // Date input shared style
   const DATE_INPUT = {
-    background: "#0D2040", color: "#d1d5db",
+    background: "var(--bg-surface2)", color: "var(--text)",
     border: "1px solid rgba(255,255,255,0.14)", borderRadius: 8,
     padding: "5px 9px", fontSize: 12, fontFamily: "inherit",
     outline: "none", cursor: "pointer",
@@ -194,21 +194,21 @@ export default function SavedProducts({ products, onDelete, onLoad }) {
 
   return (
     <div style={{
-      background: "#0F1E35", borderRadius: 24,
-      border: "1px solid rgba(255,255,255,0.10)",
+      background: "var(--bg-nav)", borderRadius: 24,
+      border: "1px solid var(--border-strong)",
       boxShadow: "0 16px 36px rgba(0,0,0,0.28)",
       overflow: "hidden"
     }}>
       {/* ── Header + toolbar ── */}
       <div style={{
         padding: "18px 22px 14px",
-        borderBottom: "1px solid rgba(255,255,255,0.08)",
+        borderBottom: "1px solid var(--border)",
         display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap"
       }}>
         {/* Title + count */}
         <div style={{ flex: 1, minWidth: 160 }}>
-          <div style={{ fontSize: 20, fontWeight: 800, color: "#ffffff" }}>Saved Products</div>
-          <div style={{ fontSize: 13, color: "#9ca3af", marginTop: 3 }}>
+          <div style={{ fontSize: 20, fontWeight: 800, color: "var(--text-on-dark)" }}>Saved Products</div>
+          <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 3 }}>
             {filtered.length === products.length
               ? `${products.length} product${products.length !== 1 ? "s" : ""} saved`
               : `${filtered.length} of ${products.length} shown`}
@@ -218,8 +218,8 @@ export default function SavedProducts({ products, onDelete, onLoad }) {
         {/* Period filter pills */}
         <div style={{
           display: "flex", alignItems: "center", gap: 5, flexWrap: "wrap",
-          background: "#081322", borderRadius: 12, padding: 4,
-          border: "1px solid rgba(255,255,255,0.07)"
+          background: "var(--bg-surface3)", borderRadius: 12, padding: 4,
+          border: "1px solid var(--border)"
         }}>
           {PERIODS.map(({ key, label }) => {
             const active = period === key;
@@ -232,8 +232,8 @@ export default function SavedProducts({ products, onDelete, onLoad }) {
                   padding: "6px 13px", borderRadius: 9,
                   border: "none", cursor: "pointer",
                   fontWeight: 700, fontSize: 12,
-                  background: active ? "#135DFF" : "transparent",
-                  color:      active ? "#ffffff"  : "#6b7280",
+                  background: active ? "var(--blue)" : "transparent",
+                  color:      active ? "var(--text-on-dark)"  : "var(--text-muted)",
                   boxShadow:  active ? "0 0 12px rgba(19,93,255,0.30)" : "none",
                   transition: "all 0.15s ease",
                   whiteSpace: "nowrap"
@@ -244,7 +244,7 @@ export default function SavedProducts({ products, onDelete, onLoad }) {
                   <span style={{
                     marginLeft: 5, fontSize: 10, fontWeight: 800,
                     background: active ? "rgba(255,255,255,0.22)" : "rgba(255,255,255,0.09)",
-                    color: active ? "#fff" : "#9ca3af",
+                    color: active ? "var(--text-on-dark)" : "var(--text-muted)",
                     borderRadius: 6, padding: "1px 5px"
                   }}>
                     {count}
@@ -257,9 +257,9 @@ export default function SavedProducts({ products, onDelete, onLoad }) {
           {/* Custom date pickers — shown inline when Custom is active */}
           {period === "custom" && (
             <>
-              <div style={{ width: 1, alignSelf: "stretch", background: "rgba(255,255,255,0.10)", margin: "2px 2px" }} />
+              <div style={{ width: 1, alignSelf: "stretch", background: "var(--border-strong)", margin: "2px 2px" }} />
               <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "2px 4px" }}>
-                <span style={{ fontSize: 11, color: "#6b7280", fontWeight: 600, whiteSpace: "nowrap" }}>From</span>
+                <span style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 600, whiteSpace: "nowrap" }}>From</span>
                 <input
                   type="date"
                   value={customFrom}
@@ -267,7 +267,7 @@ export default function SavedProducts({ products, onDelete, onLoad }) {
                   onChange={(e) => setCustomFrom(e.target.value)}
                   style={DATE_INPUT}
                 />
-                <span style={{ fontSize: 11, color: "#6b7280", fontWeight: 600, whiteSpace: "nowrap" }}>To</span>
+                <span style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 600, whiteSpace: "nowrap" }}>To</span>
                 <input
                   type="date"
                   value={customTo}
@@ -290,11 +290,11 @@ export default function SavedProducts({ products, onDelete, onLoad }) {
             fontSize: 12, padding: "8px 16px",
             background: exportFlash
               ? "#16a34a"
-              : filtered.length ? "#135DFF" : "#1f2937",
+              : filtered.length ? "var(--blue)" : "#1f2937",
             boxShadow: exportFlash
               ? "0 0 20px rgba(22,163,74,0.45)"
               : filtered.length ? "0 0 16px rgba(19,93,255,0.28)" : "none",
-            color:   filtered.length ? "#ffffff" : "#4b5563",
+            color:   filtered.length ? "var(--text-on-dark)" : "var(--text-dim)",
             cursor:  filtered.length ? "pointer"  : "default",
             transition: "background 0.18s ease, box-shadow 0.18s ease",
             whiteSpace: "nowrap"
@@ -308,7 +308,7 @@ export default function SavedProducts({ products, onDelete, onLoad }) {
       {filtered.length === 0 ? (
         <div style={{
           padding: "48px 24px", textAlign: "center",
-          color: "#6b7280", fontSize: 14
+          color: "var(--text-muted)", fontSize: 14
         }}>
           No products saved in this period.
         </div>
@@ -335,37 +335,37 @@ export default function SavedProducts({ products, onDelete, onLoad }) {
                     transition: "background 0.15s"
                   }}
                 >
-                  <td style={{ ...COL_STYLE, color: "#ffffff", fontWeight: 600, maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis" }}>
+                  <td style={{ ...COL_STYLE, color: "var(--text-on-dark)", fontWeight: 600, maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis" }}>
                     {product.name || "Unnamed"}
                   </td>
-                  <td style={{ ...COL_STYLE, color: "#d1d5db" }}>{fmt(product.itemCost)}</td>
-                  <td style={{ ...COL_STYLE, color: "#d1d5db" }}>{fmt(product.shippingCost)}</td>
-                  <td style={{ ...COL_STYLE, color: "#d1d5db" }}>{fmt(product.sellingPrice)}</td>
-                  <td style={{ ...COL_STYLE, color: "#f87171" }}>
+                  <td style={{ ...COL_STYLE, color: "var(--text)" }}>{fmt(product.itemCost)}</td>
+                  <td style={{ ...COL_STYLE, color: "var(--text)" }}>{fmt(product.shippingCost)}</td>
+                  <td style={{ ...COL_STYLE, color: "var(--text)" }}>{fmt(product.sellingPrice)}</td>
+                  <td style={{ ...COL_STYLE, color: "var(--red)" }}>
                     {fmt((product.ebayFVF || 0) + (product.ebayPromo || 0))}
                   </td>
-                  <td style={{ ...COL_STYLE, color: product.vatRegistered ? "#f87171" : "#4b5563" }}>
+                  <td style={{ ...COL_STYLE, color: product.vatRegistered ? "var(--red)" : "var(--text-dim)" }}>
                     {product.vatRegistered ? fmt(product.vatAmount) : "N/A"}
                   </td>
                   <td style={{
                     ...COL_STYLE, fontWeight: 700,
-                    color: product.profit > 0 ? "#4ade80" : product.profit < 0 ? "#f87171" : "#ffffff"
+                    color: product.profit > 0 ? "var(--green)" : product.profit < 0 ? "var(--red)" : "var(--text-on-dark)"
                   }}>
                     {fmt(product.profit)}
                   </td>
                   <td style={{
                     ...COL_STYLE, fontWeight: 600,
-                    color: product.margin > 0 ? "#4ade80" : product.margin < 0 ? "#f87171" : "#ffffff"
+                    color: product.margin > 0 ? "var(--green)" : product.margin < 0 ? "var(--red)" : "var(--text-on-dark)"
                   }}>
                     {fmtPct(product.margin)}
                   </td>
                   <td style={{
                     ...COL_STYLE, fontWeight: 600,
-                    color: product.markup > 0 ? "#4ade80" : product.markup < 0 ? "#f87171" : "#ffffff"
+                    color: product.markup > 0 ? "var(--green)" : product.markup < 0 ? "var(--red)" : "var(--text-on-dark)"
                   }}>
                     {fmtPct(product.markup)}
                   </td>
-                  <td style={{ ...COL_STYLE, color: "#6b7280", fontSize: 13 }}>
+                  <td style={{ ...COL_STYLE, color: "var(--text-muted)", fontSize: 13 }}>
                     {fmtDate(product.savedAt)}
                   </td>
                   <td style={{ ...COL_STYLE }}>
@@ -374,9 +374,9 @@ export default function SavedProducts({ products, onDelete, onLoad }) {
                         onClick={() => { onLoad(product); setConfirmId(null); }}
                         style={{
                           ...BUTTON_BASE,
-                          background: "#0D2040", color: "#d1d5db",
+                          background: "var(--bg-surface2)", color: "var(--text)",
                           padding: "6px 12px", fontSize: 12,
-                          border: "1px solid rgba(255,255,255,0.12)"
+                          border: "1px solid var(--border-strong)"
                         }}
                       >
                         Load
@@ -389,7 +389,7 @@ export default function SavedProducts({ products, onDelete, onLoad }) {
                         style={{
                           ...BUTTON_BASE,
                           background: confirmId === product.id ? "#7f1d1d" : "transparent",
-                          color: "#f87171", padding: "6px 12px", fontSize: 12,
+                          color: "var(--red)", padding: "6px 12px", fontSize: 12,
                           border: "1px solid rgba(248,113,113,0.25)"
                         }}
                       >

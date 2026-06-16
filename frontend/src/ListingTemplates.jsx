@@ -1,16 +1,16 @@
-import React, { useState, useRef, useEffect, useCallback } from "react";
+﻿import React, { useState, useRef, useEffect, useCallback } from "react";
 
 // ─── Colour tokens ────────────────────────────────────────────────────────────
 const C = {
-  bg:      "#0A1628",
-  card:    "#0F1E35",
+  bg:      "var(--bg-surface3)",
+  card:    "var(--bg-nav)",
   card2:   "#080f1e",
-  border:  "rgba(255,255,255,0.08)",
-  border2: "rgba(255,255,255,0.05)",
-  blue:    "#135DFF",
-  text:    "#e2e8f0",
-  sub:     "#94a3b8",
-  muted:   "#4b5563",
+  border:  "var(--border)",
+  border2: "var(--border-light)",
+  blue:    "var(--blue)",
+  text:    "var(--text)",
+  sub:     "var(--text-muted)",
+  muted:   "var(--text-dim)",
   dim:     "#1e2d42",
   green:   "#10b981",
   amber:   "#f59e0b",
@@ -129,10 +129,10 @@ function Btn({ children, onClick, variant = "ghost", size = "sm", disabled, full
   const pad = size === "sm" ? "6px 14px" : "9px 20px";
   const fs  = size === "sm" ? 11 : 13;
   const v = {
-    primary: { bg: hov ? "#1a6bff" : C.blue,   color: "#fff",   border: C.blue },
-    ghost:   { bg: hov ? "rgba(255,255,255,0.07)" : "transparent", color: C.text, border: C.border },
+    primary: { bg: hov ? "#1a6bff" : C.blue,   color: "var(--text-on-dark)",   border: C.blue },
+    ghost:   { bg: hov ? "var(--border)" : "transparent", color: C.text, border: C.border },
     danger:  { bg: hov ? "rgba(239,68,68,0.12)" : "transparent", color: C.red,  border: "rgba(239,68,68,0.22)" },
-    subtle:  { bg: hov ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.03)", color: C.sub, border: C.border2 },
+    subtle:  { bg: hov ? "var(--border-light)" : "var(--border-light)", color: C.sub, border: C.border2 },
   }[variant];
   return (
     <button onClick={onClick} disabled={disabled}
@@ -205,7 +205,7 @@ function PlaceholderPicker({ onPick }) {
                 width: "100%", padding: "7px 10px", borderRadius: 7, border: "none",
                 background: "transparent", cursor: "pointer", gap: 10, textAlign: "left",
               }}
-              onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.05)"}
+              onMouseEnter={e => e.currentTarget.style.background = "var(--border-light)"}
               onMouseLeave={e => e.currentTarget.style.background = "transparent"}
             >
               <span style={{ fontSize: 11, fontWeight: 700, color: C.text }}>{p.label}</span>
@@ -282,7 +282,7 @@ function EditorPanel({ template, onSave, onClose }) {
               padding: "7px 16px", fontSize: 12, fontWeight: 700, border: "none",
               background: tab === k ? "rgba(19,93,255,0.14)" : "transparent",
               borderBottom: tab === k ? `2px solid ${C.blue}` : "2px solid transparent",
-              color: tab === k ? "#93c5fd" : C.muted, cursor: "pointer", borderRadius: "6px 6px 0 0",
+              color: tab === k ? "var(--text-accent)" : C.muted, cursor: "pointer", borderRadius: "6px 6px 0 0",
             }}>{l}</button>
           ))}
         </div>
@@ -308,7 +308,7 @@ function EditorPanel({ template, onSave, onClose }) {
                         <span style={{ flex: 1, fontSize: 12, fontWeight: 800, color: s.enabled ? C.text : C.muted }}>{s.label}</span>
                         <button onClick={() => setSection(key, { enabled: !s.enabled })} style={{
                           fontSize: 10, fontWeight: 700, padding: "3px 10px", borderRadius: 6,
-                          background: s.enabled ? "rgba(16,185,129,0.12)" : "rgba(255,255,255,0.04)",
+                          background: s.enabled ? "rgba(16,185,129,0.12)" : "var(--border-light)",
                           border: `1px solid ${s.enabled ? "rgba(16,185,129,0.25)" : C.border2}`,
                           color: s.enabled ? C.green : C.muted, cursor: "pointer",
                         }}>
@@ -348,7 +348,7 @@ function EditorPanel({ template, onSave, onClose }) {
                   style={{
                     width: "100%", minHeight: 420, padding: "12px 14px",
                     background: C.card2, border: `1px solid ${C.border}`,
-                    color: "#93c5fd", fontSize: 11, fontFamily: "monospace",
+                    color: "var(--text-accent)", fontSize: 11, fontFamily: "monospace",
                     resize: "vertical", outline: "none", borderRadius: 10, lineHeight: 1.7,
                     boxSizing: "border-box",
                   }}
@@ -429,7 +429,7 @@ function ImportModal({ onImport, onClose }) {
             const active = String(step) === n;
             return (
               <div key={n} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 14px", borderBottom: active ? `2px solid ${C.blue}` : "2px solid transparent" }}>
-                <div style={{ width: 18, height: 18, borderRadius: "50%", background: active ? C.blue : C.dim, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 900, color: "#fff" }}>{n}</div>
+                <div style={{ width: 18, height: 18, borderRadius: "50%", background: active ? C.blue : C.dim, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 900, color: "var(--text-on-dark)" }}>{n}</div>
                 <span style={{ fontSize: 11, fontWeight: 700, color: active ? C.text : C.muted }}>{l}</span>
               </div>
             );
@@ -449,7 +449,7 @@ function ImportModal({ onImport, onClose }) {
                 placeholder={"<div class='listing-header'>BMW N47 Connecting Rod Bearing Set…</div>"}
                 style={{
                   flex: 1, padding: "12px 14px", background: C.card2,
-                  border: `1px solid ${C.border}`, color: "#93c5fd", fontSize: 11,
+                  border: `1px solid ${C.border}`, color: "var(--text-accent)", fontSize: 11,
                   fontFamily: "monospace", resize: "none", outline: "none",
                   borderRadius: 10, lineHeight: 1.7,
                 }}
@@ -472,7 +472,7 @@ function ImportModal({ onImport, onClose }) {
                   onChange={e => setProcessed(e.target.value)}
                   style={{
                     flex: 1, padding: "12px 14px", background: "transparent",
-                    border: "none", color: "#93c5fd", fontSize: 11,
+                    border: "none", color: "var(--text-accent)", fontSize: 11,
                     fontFamily: "monospace", resize: "none", outline: "none", lineHeight: 1.7,
                   }}
                 />
@@ -536,7 +536,7 @@ function TemplateCard({ template, onEdit, onDuplicate, onDelete, onSetDefault })
     <div
       onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}
       style={{
-        background: C.card, border: `1px solid ${hov ? "rgba(255,255,255,0.12)" : C.border}`,
+        background: C.card, border: `1px solid ${hov ? "var(--border-strong)" : C.border}`,
         borderRadius: 12, padding: "14px 16px",
         transition: "border-color 0.13s, box-shadow 0.13s",
         boxShadow: hov ? "0 4px 20px rgba(0,0,0,0.3)" : "none",
@@ -546,10 +546,10 @@ function TemplateCard({ template, onEdit, onDuplicate, onDelete, onSetDefault })
       {/* Icon */}
       <div style={{
         width: 36, height: 36, borderRadius: 9, flexShrink: 0,
-        background: template.isDefault ? "rgba(19,93,255,0.16)" : "rgba(255,255,255,0.04)",
+        background: template.isDefault ? "rgba(19,93,255,0.16)" : "var(--border-light)",
         border: `1px solid ${template.isDefault ? "rgba(19,93,255,0.3)" : C.border2}`,
         display: "flex", alignItems: "center", justifyContent: "center",
-        fontSize: 14, color: template.isDefault ? "#93c5fd" : C.muted,
+        fontSize: 14, color: template.isDefault ? "var(--text-accent)" : C.muted,
       }}>⬚</div>
 
       {/* Name + meta */}
@@ -606,7 +606,7 @@ function ActionBtn({ children, onClick, title }) {
       onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}
       style={{
         padding: "4px 10px", fontSize: 11, fontWeight: 700, borderRadius: 7,
-        background: hov ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.03)",
+        background: hov ? "var(--border)" : "var(--border-light)",
         border: `1px solid ${C.border}`, color: C.text,
         cursor: "pointer", transition: "background 0.1s",
       }}>{children}</button>
@@ -621,7 +621,7 @@ function MenuBtn({ children, onClick, danger }) {
       style={{
         display: "flex", alignItems: "center", gap: 8, width: "100%",
         padding: "7px 10px", borderRadius: 7, border: "none",
-        background: hov ? (danger ? "rgba(239,68,68,0.1)" : "rgba(255,255,255,0.05)") : "transparent",
+        background: hov ? (danger ? "rgba(239,68,68,0.1)" : "var(--border-light)") : "transparent",
         color: danger ? C.red : C.text, fontSize: 11, fontWeight: 600, cursor: "pointer",
       }}>{children}</button>
   );

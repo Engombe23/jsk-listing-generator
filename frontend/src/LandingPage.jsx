@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+﻿import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 
 const R = "#b70017";
@@ -6,10 +6,10 @@ const R_GLOW = "rgba(183,0,23,0.30)";
 const BG = "#08090b";
 const CARD = "#111317";
 const CARD_DARK = "#0d0f12";
-const BORDER = "rgba(255,255,255,0.07)";
+const BORDER = "var(--border)";
 const TEXT = "#ffffff";
-const MUTED = "#9ca3af";
-const DIM = "#6b7280";
+const MUTED = "var(--text-muted)";
+const DIM = "var(--text-muted)";
 
 const FEATURES = [
   {
@@ -90,7 +90,7 @@ function Navbar() {
             padding: "9px 22px",
             borderRadius: 12,
             border: `1px solid ${BORDER}`,
-            background: "rgba(255,255,255,0.05)",
+            background: "var(--border-light)",
             color: TEXT,
             textDecoration: "none",
             fontWeight: 600,
@@ -268,7 +268,7 @@ export default function LandingPage() {
               fontWeight: 800,
               fontSize: 16,
               boxShadow: `0 0 32px ${R_GLOW}, 0 8px 24px rgba(0,0,0,0.30)`,
-              border: "1px solid rgba(255,255,255,0.08)"
+              border: "1px solid var(--border)"
             }}
           >
             Start Listing Smarter →
@@ -278,7 +278,7 @@ export default function LandingPage() {
             style={{
               padding: "16px 32px",
               borderRadius: 16,
-              background: "rgba(255,255,255,0.05)",
+              background: "var(--border-light)",
               color: MUTED,
               textDecoration: "none",
               fontWeight: 600,
@@ -669,7 +669,7 @@ export default function LandingPage() {
                 fontWeight: 800,
                 fontSize: 18,
                 boxShadow: `0 0 40px ${R_GLOW}, 0 12px 32px rgba(0,0,0,0.35)`,
-                border: "1px solid rgba(255,255,255,0.08)"
+                border: "1px solid var(--border)"
               }}
             >
               Get Started →

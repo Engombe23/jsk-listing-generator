@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useMemo } from "react";
+﻿import React, { useState, useEffect, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import ListingTemplates from "./ListingTemplates.jsx";
 import { loadPreferences, savePreferences, PREF_DEFAULTS } from "./useListingPreferences.js";
 import { useSession } from "./context/SessionContext";
+import { useTheme } from "./context/ThemeContext";
 import { supabase } from "./lib/supabaseClient";
 
 function useAuthUser() {
@@ -30,19 +31,19 @@ function useAuthUser() {
 
 // ─── Colour tokens ────────────────────────────────────────────────────────────
 const C = {
-  bg:      "#0A1628",
-  card:    "#0F1E35",
-  card2:   "#0a1829",
-  border:  "rgba(255,255,255,0.08)",
-  border2: "rgba(255,255,255,0.05)",
-  blue:    "#135DFF",
-  text:    "#e2e8f0",
-  sub:     "#94a3b8",
-  muted:   "#6b7280",
-  dim:     "#1e2d42",
-  green:   "#10b981",
-  amber:   "#f59e0b",
-  red:     "#ef4444",
+  bg:      "var(--bg)",
+  card:    "var(--bg-nav)",
+  card2:   "var(--bg-surface2)",
+  border:  "var(--border)",
+  border2: "var(--border-light)",
+  blue:    "var(--blue)",
+  text:    "var(--text)",
+  sub:     "var(--text-muted)",
+  muted:   "var(--text-muted)",
+  dim:     "var(--text-dim)",
+  green:   "var(--green)",
+  amber:   "var(--yellow)",
+  red:     "var(--red)",
 };
 
 // ─── Primitives ───────────────────────────────────────────────────────────────
@@ -73,8 +74,8 @@ function Card({ children, style }) {
 function Btn({ children, onClick, variant = "ghost", disabled }) {
   const [hov, setHov] = useState(false);
   const v = {
-    primary: { bg: hov ? "#1a6bff" : C.blue,   color: "#fff",   border: C.blue },
-    ghost:   { bg: hov ? "rgba(255,255,255,0.06)" : "transparent", color: C.text, border: C.border },
+    primary: { bg: hov ? "#1a6bff" : C.blue,   color: "var(--text-on-dark)",   border: C.blue },
+    ghost:   { bg: hov ? "var(--border-light)" : "transparent", color: C.text, border: C.border },
     danger:  { bg: hov ? "rgba(239,68,68,0.1)"  : "transparent", color: C.red,  border: "rgba(239,68,68,0.25)" },
   }[variant];
   return (
@@ -135,7 +136,7 @@ function UsageBar({ used, total }) {
         <span style={{ fontSize: 11, color: C.sub }}>{used.toLocaleString()} / {total.toLocaleString()} listings</span>
         <span style={{ fontSize: 11, color, fontWeight: 700 }}>{pct.toFixed(0)}%</span>
       </div>
-      <div style={{ height: 4, background: "rgba(255,255,255,0.07)", borderRadius: 99, overflow: "hidden" }}>
+      <div style={{ height: 4, background: "var(--border)", borderRadius: 99, overflow: "hidden" }}>
         <div style={{ height: "100%", width: `${pct}%`, background: color, borderRadius: 99, transition: "width 0.4s" }} />
       </div>
     </div>
@@ -162,7 +163,7 @@ function AccountPage() {
             width: 44, height: 44, borderRadius: "50%", flexShrink: 0,
             background: "linear-gradient(135deg, #135DFF, #0ea5e9)",
             display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: 14, fontWeight: 900, color: "#fff",
+            fontSize: 14, fontWeight: 900, color: "var(--text-on-dark)",
           }}>{initials}</div>
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 14, fontWeight: 800, color: C.text }}>{displayName}</div>
@@ -245,7 +246,7 @@ function BillingPage() {
       {/* Upgrade */}
       <div style={{
         background: "linear-gradient(135deg, rgba(19,93,255,0.10), rgba(14,165,233,0.06))",
-        border: "1px solid rgba(19,93,255,0.22)", borderRadius: 12, padding: "16px 20px",
+        border: "1px solid var(--border-blue)", borderRadius: 12, padding: "16px 20px",
       }}>
         <div style={{ fontSize: 13, fontWeight: 800, color: C.text, marginBottom: 4 }}>Need more capacity?</div>
         <div style={{ fontSize: 11, color: C.muted, marginBottom: 14, lineHeight: 1.6 }}>
@@ -278,6 +279,49 @@ function BillingPage() {
       </Card>
 
     </div>
+  );
+}
+
+// ─── PAGE: Appearance ─────────────────────────────────────────────────────────
+function AppearancePage() {
+  const { theme, setTheme } = useTheme();
+  const options = [
+    { key: "light",  label: "Light",  desc: "Clean white interface" },
+    { key: "dark",   label: "Dark",   desc: "Dark navy interface" },
+    { key: "system", label: "System", desc: "Follow OS setting" },
+  ];
+  return (
+    <Card>
+      <SL>Appearance</SL>
+      <div style={{ fontSize: 13, color: C.muted, marginBottom: 20, lineHeight: 1.6 }}>
+        Choose how Part Lister looks to you. Your preference is saved locally and will persist across sessions.
+      </div>
+      <div style={{ display: "flex", gap: 10 }}>
+        {options.map(({ key, label, desc }) => {
+          const active = theme === key;
+          return (
+            <button
+              key={key}
+              onClick={() => setTheme(key)}
+              style={{
+                flex: 1, padding: "14px 12px", borderRadius: 10, cursor: "pointer",
+                border: active ? `2px solid ${C.blue}` : `2px solid ${C.border}`,
+                background: active ? "var(--blue-bg)" : "var(--bg-surface)",
+                color: active ? "var(--text-accent)" : C.muted,
+                textAlign: "center", transition: "all 0.15s",
+                boxShadow: active ? "0 0 0 3px var(--blue-glow)" : "none",
+              }}
+            >
+              <div style={{ fontSize: 22, marginBottom: 6 }}>
+                {key === "light" ? "☀️" : key === "dark" ? "🌙" : "💻"}
+              </div>
+              <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 3 }}>{label}</div>
+              <div style={{ fontSize: 11, opacity: 0.7 }}>{desc}</div>
+            </button>
+          );
+        })}
+      </div>
+    </Card>
   );
 }
 
@@ -326,7 +370,7 @@ function PrefSelect({ value, onChange, options, narrow }) {
       style={{ ...inputBase, width: narrow ? "auto" : "100%", cursor: "pointer",
         color: value ? C.text : C.muted }}>
       {options.map(o => (
-        <option key={o.value ?? o} value={o.value ?? o} style={{ background: "#0a1628" }}>
+        <option key={o.value ?? o} value={o.value ?? o} style={{ background: "var(--bg-surface3)" }}>
           {o.label ?? (o === "" ? "— Not set —" : o)}
         </option>
       ))}
@@ -445,10 +489,11 @@ function ListingPreferencesPage() {
 
 // ─── Sidebar ──────────────────────────────────────────────────────────────────
 const NAV_ITEMS = [
-  { key: "account",     label: "Account",             icon: "○" },
-  { key: "billing",     label: "Billing",             icon: "◈" },
-  { key: "templates",   label: "Listing Templates",   icon: "⬚" },
-  { key: "preferences", label: "Listing Preferences", icon: "⚙" },
+  { key: "account",    label: "Account",            icon: "○" },
+  { key: "billing",    label: "Billing",            icon: "◈" },
+  { key: "appearance", label: "Appearance",         icon: "◑" },
+  { key: "templates",  label: "Listing Templates",  icon: "⬚" },
+  { key: "preferences",label: "Listing Preferences",icon: "⚙" },
 ];
 
 function Sidebar({ active, onChange }) {
@@ -470,7 +515,7 @@ function Sidebar({ active, onChange }) {
             display: "flex", alignItems: "center", gap: 9, width: "100%",
             padding: "8px 10px", borderRadius: 8, border: "none",
             background: active_ ? "rgba(19,93,255,0.13)" : "transparent",
-            color: active_ ? "#93c5fd" : C.muted,
+            color: active_ ? "var(--text-accent)" : C.muted,
             fontSize: 12, fontWeight: active_ ? 700 : 500,
             cursor: "pointer", textAlign: "left", transition: "all 0.12s",
           }}>
@@ -485,10 +530,11 @@ function Sidebar({ active, onChange }) {
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 const PAGE_TITLES = {
-  account:     "Account",
-  billing:     "Billing",
-  templates:   "Listing Templates",
-  preferences: "Listing Preferences",
+  account:    "Account",
+  billing:    "Billing",
+  appearance: "Appearance",
+  templates:  "Listing Templates",
+  preferences:"Listing Preferences",
 };
 
 const PAGE_SUBS = {
@@ -513,6 +559,7 @@ export default function Account({ initialPage = "account" }) {
 
         {page === "account"     && <AccountPage />}
         {page === "billing"     && <BillingPage />}
+        {page === "appearance"  && <AppearancePage />}
         {page === "templates"   && <ListingTemplates />}
         {page === "preferences" && <ListingPreferencesPage />}
       </div>
@@ -547,7 +594,7 @@ export function ProfileDropdown({ onNavigate, onClose }) {
   return (
     <div style={{
       position: "absolute", top: "calc(100% + 8px)", right: 0, zIndex: 200,
-      background: "#0d1d32", border: `1px solid ${C.border}`,
+      background: "var(--bg-surface)", border: `1px solid ${C.border}`,
       borderRadius: 11, padding: "5px", minWidth: 185,
       boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
     }}>
@@ -572,7 +619,7 @@ function DropdownItem({ icon, label, danger, onClick }) {
       style={{
         display: "flex", alignItems: "center", gap: 9, width: "100%",
         padding: "7px 11px", borderRadius: 7, border: "none",
-        background: hov ? (danger ? "rgba(239,68,68,0.09)" : "rgba(255,255,255,0.05)") : "transparent",
+        background: hov ? (danger ? "rgba(239,68,68,0.09)" : "var(--border-light)") : "transparent",
         color: danger ? C.red : C.text,
         fontSize: 11, fontWeight: 600, cursor: "pointer", textAlign: "left",
         transition: "background 0.1s",

@@ -1,4 +1,4 @@
-import React, { memo, useState, useRef, useEffect, useMemo } from "react";
+﻿import React, { memo, useState, useRef, useEffect, useMemo } from "react";
 import { supabase } from "./lib/supabaseClient";
 import { useSession } from "./context/SessionContext";
 import {
@@ -65,7 +65,7 @@ function blankContentHtml(html) {
   tmp.innerHTML = html;
   tmp.querySelectorAll("div, td, th, p, span").forEach((el) => {
     const bg = el.style.background || el.style.backgroundColor || "";
-    const isDarkBg = bg && bg !== "#ffffff" && bg !== "white" &&
+    const isDarkBg = bg && bg !== "var(--text-on-dark)" && bg !== "white" &&
       !bg.startsWith("rgb(255,255,255") && !bg.startsWith("rgba(255,255,255");
     if (!isDarkBg && el.children.length === 0) el.textContent = "";
   });
@@ -218,10 +218,10 @@ export default function App() {
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            background: "#0F1E35",
+            background: "var(--bg-nav)",
             borderRadius: 20,
             padding: "14px 24px",
-            border: "1px solid rgba(255,255,255,0.08)",
+            border: "1px solid var(--border)",
             marginBottom: 16,
             boxShadow: "0 4px 24px rgba(0,0,0,0.28)"
           }}
@@ -248,7 +248,7 @@ export default function App() {
                   borderRadius: 99, cursor: "pointer", transition: "all 0.15s ease",
                 }}
               >
-                <span style={{ fontSize: 12, fontWeight: 700, color: "#fca5a5" }}>Log out</span>
+                <span style={{ fontSize: 12, fontWeight: 700, color: "var(--red)" }}>Log out</span>
               </button>
             </div>
           </div>
@@ -260,10 +260,10 @@ export default function App() {
             display: "flex",
             gap: 6,
             marginBottom: 24,
-            background: "#0F1E35",
+            background: "var(--bg-nav)",
             borderRadius: 20,
             padding: 6,
-            border: "1px solid rgba(255,255,255,0.08)"
+            border: "1px solid var(--border)"
           }}
         >
           {[
@@ -283,8 +283,8 @@ export default function App() {
                 cursor: "pointer",
                 fontWeight: 700,
                 fontSize: 14,
-                background: page === key ? "#135DFF" : "transparent",
-                color:      page === key ? "#fff"    : "#9ca3af",
+                background: page === key ? "var(--blue)" : "transparent",
+                color:      page === key ? "var(--text-on-dark)"    : "var(--text-muted)",
                 boxShadow:  page === key ? "0 0 16px rgba(19,93,255,0.28)" : "none",
                 transition: "all 0.2s ease"
               }}
@@ -529,8 +529,8 @@ function ListingGenerator({
       {/* ── Inner tab bar ── */}
       <div style={{
         display: "flex", gap: 6, marginBottom: 20,
-        background: "#0F1E35", borderRadius: 16, padding: 5,
-        border: "1px solid rgba(255,255,255,0.08)"
+        background: "var(--bg-nav)", borderRadius: 16, padding: 5,
+        border: "1px solid var(--border)"
       }}>
         {[
           { key: "generate",  label: "Generate" },
@@ -542,8 +542,8 @@ function ListingGenerator({
             style={{
               flex: 1, padding: "10px 16px", borderRadius: 12,
               border: "none", cursor: "pointer", fontWeight: 700, fontSize: 13,
-              background: innerPage === key ? "#135DFF" : "transparent",
-              color:      innerPage === key ? "#ffffff" : "#9ca3af",
+              background: innerPage === key ? "var(--blue)" : "transparent",
+              color:      innerPage === key ? "var(--text-on-dark)" : "var(--text-muted)",
               boxShadow:  innerPage === key ? "0 0 14px rgba(19,93,255,0.28)" : "none",
               transition: "all 0.18s ease"
             }}
@@ -557,7 +557,7 @@ function ListingGenerator({
       {innerPage === "generate" && (<>
         {error && (
           <div style={{
-            background: "#0D1428", color: "#fca5a5",
+            background: "var(--bg-surface3)", color: "var(--red)",
             border: "1px solid rgba(220,38,38,0.45)", borderRadius: 20,
             padding: 16, marginBottom: 20,
             boxShadow: "0 0 20px rgba(220,38,38,0.10)"
@@ -595,7 +595,7 @@ function ListingGenerator({
                 <div>
                   <FieldLabel>
                     SKU{" "}
-                    <span style={{ fontWeight: 400, color: "#6b7280", fontSize: 11 }}>(optional)</span>
+                    <span style={{ fontWeight: 400, color: "var(--text-muted)", fontSize: 11 }}>(optional)</span>
                   </FieldLabel>
                   <TextInput
                     value={inputSku}
@@ -617,9 +617,9 @@ function ListingGenerator({
                           onClick={() => handleThemeChange(t.id)}
                           style={{
                             padding: "6px 12px", borderRadius: 10, fontSize: 12, cursor: "pointer",
-                            border:     active ? "1px solid #135DFF"    : "1px solid rgba(255,255,255,0.14)",
-                            background: active ? "rgba(19,93,255,0.18)" : "rgba(255,255,255,0.04)",
-                            color:      active ? "#93c5fd"              : "#9ca3af",
+                            border:     active ? "1px solid var(--blue)"    : "1px solid rgba(255,255,255,0.14)",
+                            background: active ? "var(--border-blue)" : "var(--border-light)",
+                            color:      active ? "var(--text-accent)"              : "var(--text-muted)",
                             fontWeight: active ? 700 : 400,
                             transition: "all 0.15s ease"
                           }}
@@ -633,7 +633,7 @@ function ListingGenerator({
                   {/* Custom (saved) templates */}
                   {customTemplates.length > 0 && (
                     <div style={{ marginTop: 10 }}>
-                      <div style={{ fontSize: 11, color: "#6b7280", fontWeight: 700, marginBottom: 6, letterSpacing: 0.4 }}>
+                      <div style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 700, marginBottom: 6, letterSpacing: 0.4 }}>
                         MY TEMPLATES
                       </div>
                       <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
@@ -647,8 +647,8 @@ function ListingGenerator({
                                   padding: "6px 12px", borderRadius: "10px 0 0 10px", fontSize: 12, cursor: "pointer",
                                   border:     active ? "1px solid #f59e0b"        : "1px solid rgba(255,255,255,0.14)",
                                   borderRight: "none",
-                                  background: active ? "rgba(245,158,11,0.18)"    : "rgba(255,255,255,0.04)",
-                                  color:      active ? "#fbbf24"                  : "#9ca3af",
+                                  background: active ? "rgba(245,158,11,0.18)"    : "var(--border-light)",
+                                  color:      active ? "var(--yellow)"                  : "var(--text-muted)",
                                   fontWeight: active ? 700 : 400,
                                   transition: "all 0.15s ease"
                                 }}
@@ -662,7 +662,7 @@ function ListingGenerator({
                                   padding: "6px 7px", borderRadius: "0 10px 10px 0", fontSize: 11, cursor: "pointer",
                                   border:     "1px solid rgba(255,255,255,0.14)",
                                   background: "rgba(220,38,38,0.07)",
-                                  color:      "#f87171",
+                                  color:      "var(--red)",
                                   transition: "all 0.15s ease"
                                 }}
                               >×</button>
@@ -757,17 +757,17 @@ function ListingGenerator({
 
               {/* Article chip */}
               <div style={{
-                background: "#0F1E35", border: "1px solid rgba(255,255,255,0.08)",
+                background: "var(--bg-nav)", border: "1px solid var(--border)",
                 borderRadius: 14, padding: "12px 16px",
                 display: "flex", flexDirection: "column", gap: 4
               }}>
-                <div style={{ fontSize: 10, color: "#6b7280", fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase" }}>Article</div>
-                <div style={{ fontSize: 15, fontWeight: 700, color: "#ffffff" }}>{result.article_number || "—"}</div>
+                <div style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase" }}>Article</div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-on-dark)" }}>{result.article_number || "—"}</div>
                 {result.product_type && (
-                  <div style={{ fontSize: 12, color: "#9ca3af" }}>{result.product_type}</div>
+                  <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{result.product_type}</div>
                 )}
                 {result.compatibility_count > 0 && (
-                  <div style={{ fontSize: 11, color: "#4ade80", marginTop: 2 }}>
+                  <div style={{ fontSize: 11, color: "var(--green)", marginTop: 2 }}>
                     ✓ {result.compatibility_count} compatible vehicles
                   </div>
                 )}
@@ -776,7 +776,7 @@ function ListingGenerator({
               {/* Product Image — directly below article chip */}
               {result.article_image && (
                 <div style={{
-                  background: "#0D1B30", border: "1px solid rgba(255,255,255,0.08)",
+                  background: "var(--bg-surface3)", border: "1px solid var(--border)",
                   borderRadius: 14, padding: 12,
                   display: "flex", justifyContent: "center", alignItems: "center"
                 }}>
@@ -797,19 +797,19 @@ function ListingGenerator({
 
               {/* Active Title */}
               <div style={{
-                background: "#0F1E35", border: "1px solid rgba(255,255,255,0.08)",
+                background: "var(--bg-nav)", border: "1px solid var(--border)",
                 borderRadius: 14, padding: "12px 16px"
               }}>
-                <div style={{ fontSize: 10, color: "#6b7280", fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 6 }}>
+                <div style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 6 }}>
                   Title
                 </div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: "#ffffff", lineHeight: 1.5, wordBreak: "break-word" }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-on-dark)", lineHeight: 1.5, wordBreak: "break-word" }}>
                   {result.generated_title || "—"}
                 </div>
                 <div style={{
                   fontSize: 10, marginTop: 5, textAlign: "right",
-                  color: (result.generated_title || "").length > 80 ? "#f87171" :
-                         (result.generated_title || "").length >= 70 ? "#4ade80" : "#6b7280"
+                  color: (result.generated_title || "").length > 80 ? "var(--red)" :
+                         (result.generated_title || "").length >= 70 ? "var(--green)" : "var(--text-muted)"
                 }}>
                   {(result.generated_title || "").length} / 80
                 </div>
@@ -818,11 +818,11 @@ function ListingGenerator({
               {/* K Numbers */}
               {(result.k_number_list || []).length > 0 && (
                 <div style={{
-                  background: "#0F1E35", border: "1px solid rgba(255,255,255,0.08)",
+                  background: "var(--bg-nav)", border: "1px solid var(--border)",
                   borderRadius: 14, padding: "12px 16px"
                 }}>
-                  <div style={{ fontSize: 10, color: "#6b7280", fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 6 }}>K Numbers</div>
-                  <div style={{ fontSize: 12, color: "#d1d5db", lineHeight: 1.6, wordBreak: "break-word" }}>
+                  <div style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 6 }}>K Numbers</div>
+                  <div style={{ fontSize: 12, color: "var(--text)", lineHeight: 1.6, wordBreak: "break-word" }}>
                     {(result.k_number_list || []).join(", ")}
                   </div>
                   <CopyButton
@@ -837,11 +837,11 @@ function ListingGenerator({
               {/* OEM Numbers */}
               {(result.oem_numbers || []).length > 0 && (
                 <div style={{
-                  background: "#0F1E35", border: "1px solid rgba(255,255,255,0.08)",
+                  background: "var(--bg-nav)", border: "1px solid var(--border)",
                   borderRadius: 14, padding: "12px 16px"
                 }}>
-                  <div style={{ fontSize: 10, color: "#6b7280", fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 6 }}>OEM Numbers</div>
-                  <div style={{ fontSize: 12, color: "#d1d5db", lineHeight: 1.6, wordBreak: "break-word" }}>
+                  <div style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 6 }}>OEM Numbers</div>
+                  <div style={{ fontSize: 12, color: "var(--text)", lineHeight: 1.6, wordBreak: "break-word" }}>
                     {(result.oem_numbers || []).slice(0, 8).join(", ")}
                     {(result.oem_numbers || []).length > 8 ? ` +${(result.oem_numbers || []).length - 8} more` : ""}
                   </div>
@@ -877,8 +877,8 @@ function EmptyOutputPanel({ message }) {
   return (
     <div style={{
       minHeight: 420, display: "grid", placeItems: "center",
-      background: "#081322", border: "1px dashed rgba(255,255,255,0.12)",
-      borderRadius: 20, color: "#9ca3af", fontSize: 15, textAlign: "center", padding: 24
+      background: "var(--bg-surface3)", border: "1px dashed var(--border-strong)",
+      borderRadius: 20, color: "var(--text-muted)", fontSize: 15, textAlign: "center", padding: 24
     }}>
       {message}
     </div>
@@ -897,36 +897,36 @@ function ArticleSelector({ articles, onSelect }) {
           style={{
             display: "grid", gridTemplateColumns: "auto 1fr",
             gap: 14, alignItems: "center",
-            background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.10)",
+            background: "var(--border-light)", border: "1px solid var(--border-strong)",
             borderRadius: 14, padding: "14px 16px",
             cursor: "pointer", textAlign: "left", transition: "all 0.15s ease", width: "100%"
           }}
           onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(19,93,255,0.10)"; e.currentTarget.style.borderColor = "rgba(19,93,255,0.4)"; }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.10)"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = "var(--border-light)"; e.currentTarget.style.borderColor = "var(--border-strong)"; }}
         >
           {/* Brand badge */}
           <div style={{
-            background: a.brand ? "#135DFF" : "rgba(255,255,255,0.08)",
-            color:      a.brand ? "#fff"    : "#6b7280",
+            background: a.brand ? "var(--blue)" : "var(--border)",
+            color:      a.brand ? "var(--text-on-dark)"    : "var(--text-muted)",
             fontWeight: 700, fontSize: 11, padding: "4px 10px", borderRadius: 8,
             whiteSpace: "nowrap", textTransform: "uppercase", letterSpacing: 0.5,
-            border: a.brand ? "none" : "1px solid rgba(255,255,255,0.12)"
+            border: a.brand ? "none" : "1px solid var(--border-strong)"
           }}>
             {a.brand || "—"}
           </div>
 
           {/* Info */}
           <div>
-            <div style={{ fontSize: 14, fontWeight: 600, color: "#ffffff", marginBottom: 3 }}>
+            <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-on-dark)", marginBottom: 3 }}>
               {a.productName || "—"}
             </div>
             <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
-              <span style={{ fontSize: 12, color: "#9ca3af" }}>
-                Article No. <span style={{ color: "#d1d5db" }}>{a.articleNo || "—"}</span>
+              <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
+                Article No. <span style={{ color: "var(--text)" }}>{a.articleNo || "—"}</span>
               </span>
               {a.oemNumbers?.length > 0 && (
-                <span style={{ fontSize: 12, color: "#9ca3af" }}>
-                  OEM: <span style={{ color: "#d1d5db" }}>
+                <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
+                  OEM: <span style={{ color: "var(--text)" }}>
                     {a.oemNumbers.slice(0, 3).join(", ")}{a.oemNumbers.length > 3 ? ` +${a.oemNumbers.length - 3}` : ""}
                   </span>
                 </span>
@@ -1034,16 +1034,16 @@ function InsertZone({ onInsert }) {
         <div style={{
           display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center",
           padding: "8px 10px", margin: "4px 0",
-          background: "#f0f4ff", border: "1px dashed #93c5fd", borderRadius: 10
+          background: "var(--bg-surface2)", border: "1px dashed #93c5fd", borderRadius: 10
         }}>
-          <span style={{ fontSize: 11, color: "#6b7280", fontWeight: 700, marginRight: 2 }}>INSERT:</span>
+          <span style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 700, marginRight: 2 }}>INSERT:</span>
           {BLOCK_TEMPLATES.map((t) => (
             <button
               key={t.label}
               onClick={() => { onInsert(t.html); setOpen(false); }}
               style={{
                 padding: "4px 12px", borderRadius: 8, fontSize: 12,
-                background: "#135DFF", color: "#ffffff",
+                background: "var(--blue)", color: "var(--text-on-dark)",
                 border: "none", cursor: "pointer", fontWeight: 600
               }}
             >
@@ -1054,7 +1054,7 @@ function InsertZone({ onInsert }) {
             onClick={() => setOpen(false)}
             style={{
               padding: "4px 8px", borderRadius: 8, fontSize: 12,
-              background: "transparent", color: "#9ca3af",
+              background: "transparent", color: "var(--text-muted)",
               border: "1px solid #d1d5db", cursor: "pointer", marginLeft: 2
             }}
           >
@@ -1074,15 +1074,15 @@ function InsertZone({ onInsert }) {
           onMouseEnter={(e) => (e.currentTarget.style.opacity = "1")}
           onMouseLeave={(e) => (e.currentTarget.style.opacity = "0")}
         >
-          <div style={{ flex: 1, height: 1, background: "#135DFF", opacity: 0.5 }} />
+          <div style={{ flex: 1, height: 1, background: "var(--blue)", opacity: 0.5 }} />
           <span style={{
             padding: "2px 10px", borderRadius: 10, fontSize: 11, fontWeight: 700,
-            background: "#135DFF", color: "#fff", margin: "0 6px",
+            background: "var(--blue)", color: "var(--text-on-dark)", margin: "0 6px",
             userSelect: "none", whiteSpace: "nowrap"
           }}>
             + Insert
           </span>
-          <div style={{ flex: 1, height: 1, background: "#135DFF", opacity: 0.5 }} />
+          <div style={{ flex: 1, height: 1, background: "var(--blue)", opacity: 0.5 }} />
         </div>
       )}
     </div>
@@ -1107,8 +1107,8 @@ function RightPanelHtmlToggle({ htmlRef }) {
         onClick={toggle}
         style={{
           ...SMALL_BUTTON_STYLE, width: "100%", textAlign: "center",
-          fontSize: 12, background: "rgba(255,255,255,0.05)", boxShadow: "none",
-          color: "#9ca3af", border: "1px solid rgba(255,255,255,0.10)"
+          fontSize: 12, background: "var(--border-light)", boxShadow: "none",
+          color: "var(--text-muted)", border: "1px solid var(--border-strong)"
         }}
       >
         {open ? "▲ Hide HTML" : "▼ Show Description HTML"}
@@ -1184,20 +1184,20 @@ function AiTitleSuggestions({ result, apiUrl, onUseTitle }) {
   };
 
   const charColor = (count) => {
-    if (count >= 75) return "#4ade80";
-    if (count >= 60) return "#fbbf24";
-    return "#9ca3af";
+    if (count >= 75) return "var(--green)";
+    if (count >= 60) return "var(--yellow)";
+    return "var(--text-muted)";
   };
 
   return (
     <div style={{
-      background: "linear-gradient(135deg, #135DFF 0%, #7C3AED 100%)",
+      background: "linear-gradient(135deg, var(--blue) 0%, #7C3AED 100%)",
       borderRadius: 22,
       padding: 2,
-      boxShadow: "0 0 24px rgba(19,93,255,0.18), 0 0 48px rgba(124,58,237,0.10)"
+      boxShadow: "0 0 24px var(--border-blue), 0 0 48px rgba(124,58,237,0.10)"
     }}>
     <div style={{
-      background: "#0B1929",
+      background: "var(--bg-surface)",
       borderRadius: 20,
       padding: 20,
     }}>
@@ -1211,9 +1211,9 @@ function AiTitleSuggestions({ result, apiUrl, onUseTitle }) {
               WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
               textTransform: "uppercase"
             }}>✦ AI</span>
-            <div style={{ fontSize: 14, fontWeight: 700, color: "#fff" }}>Title Suggestions</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-on-dark)" }}>Title Suggestions</div>
           </div>
-          <div style={{ fontSize: 12, color: "#6b7280", marginTop: 2 }}>
+          <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
             Generate 3 optimised eBay title styles from the listing data.
           </div>
         </div>
@@ -1222,8 +1222,8 @@ function AiTitleSuggestions({ result, apiUrl, onUseTitle }) {
           disabled={loading}
           style={{
             padding: "10px 20px", borderRadius: 12, border: "none",
-            background: loading ? "rgba(19,93,255,0.3)" : "#135DFF",
-            color: "#fff", fontWeight: 700, fontSize: 13,
+            background: loading ? "rgba(19,93,255,0.3)" : "var(--blue)",
+            color: "var(--text-on-dark)", fontWeight: 700, fontSize: 13,
             cursor: loading ? "not-allowed" : "pointer",
             opacity: loading ? 0.7 : 1,
             transition: "all 0.15s ease",
@@ -1237,7 +1237,7 @@ function AiTitleSuggestions({ result, apiUrl, onUseTitle }) {
       {/* Error */}
       {error && (
         <div style={{
-          background: "#0D1428", color: "#fca5a5",
+          background: "var(--bg-surface3)", color: "var(--red)",
           border: "1px solid rgba(220,38,38,0.4)", borderRadius: 12,
           padding: "12px 14px", fontSize: 13
         }}>
@@ -1250,14 +1250,14 @@ function AiTitleSuggestions({ result, apiUrl, onUseTitle }) {
         <div style={{ display: "grid", gap: 12 }}>
           {titles.map((t) => (
             <div key={t.style} style={{
-              background: "#081322",
-              border: "1px solid rgba(255,255,255,0.08)",
+              background: "var(--bg-surface3)",
+              border: "1px solid var(--border)",
               borderRadius: 14, padding: 16
             }}>
               {/* Style label + char count */}
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
                 <span style={{
-                  fontSize: 11, fontWeight: 700, color: "#6b7280",
+                  fontSize: 11, fontWeight: 700, color: "var(--text-muted)",
                   textTransform: "uppercase", letterSpacing: 0.6
                 }}>
                   {STYLE_LABELS[t.style] || t.style}
@@ -1269,7 +1269,7 @@ function AiTitleSuggestions({ result, apiUrl, onUseTitle }) {
 
               {/* Title text */}
               <div style={{
-                fontSize: 15, fontWeight: 600, color: "#ffffff",
+                fontSize: 15, fontWeight: 600, color: "var(--text-on-dark)",
                 lineHeight: 1.4, marginBottom: 8,
                 wordBreak: "break-word"
               }}>
@@ -1282,9 +1282,9 @@ function AiTitleSuggestions({ result, apiUrl, onUseTitle }) {
                   onClick={() => handleCopy(t.title, t.style)}
                   style={{
                     padding: "7px 14px", borderRadius: 9, fontSize: 12, fontWeight: 600,
-                    cursor: "pointer", border: "1px solid rgba(255,255,255,0.12)",
-                    background: copied === t.style ? "rgba(74,222,128,0.15)" : "rgba(255,255,255,0.05)",
-                    color: copied === t.style ? "#4ade80" : "#9ca3af",
+                    cursor: "pointer", border: "1px solid var(--border-strong)",
+                    background: copied === t.style ? "rgba(74,222,128,0.15)" : "var(--border-light)",
+                    color: copied === t.style ? "var(--green)" : "var(--text-muted)",
                     transition: "all 0.15s ease"
                   }}
                 >
@@ -1301,7 +1301,7 @@ function AiTitleSuggestions({ result, apiUrl, onUseTitle }) {
                     cursor: "pointer",
                     border: applied === t.style ? "1px solid rgba(74,222,128,0.4)" : "1px solid rgba(19,93,255,0.4)",
                     background: applied === t.style ? "rgba(74,222,128,0.15)" : "rgba(19,93,255,0.15)",
-                    color: applied === t.style ? "#4ade80" : "#93c5fd",
+                    color: applied === t.style ? "var(--green)" : "var(--text-accent)",
                     transition: "all 0.15s ease"
                   }}
                 >
@@ -1335,7 +1335,7 @@ function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate, n
   const [wrapperOpen,  setWrapperOpen]  = useState(null);
   const [wrapperClose, setWrapperClose] = useState(null);
   const [textColor,    setTextColor]    = useState("#cc0000");
-  const [boxBgColor,        setBoxBgColor]        = useState("#ffffff");
+  const [boxBgColor,        setBoxBgColor]        = useState("var(--text-on-dark)");
   const [borderColor,       setBorderColor]       = useState("#000000");
   const [borderWidth,       setBorderWidth]       = useState("1px");
   const [tableBorderColor,  setTableBorderColor]  = useState("#cccccc");
@@ -1584,8 +1584,8 @@ function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate, n
         {/* Tab bar */}
         <div style={{
           display: "flex", gap: 6,
-          background: "#0F1E35", borderRadius: 14, padding: 4,
-          border: "1px solid rgba(255,255,255,0.06)"
+          background: "var(--bg-nav)", borderRadius: 14, padding: 4,
+          border: "1px solid var(--border-light)"
         }}>
           {[
             { key: "overview",  label: "Preview"        },
@@ -1597,8 +1597,8 @@ function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate, n
               style={{
                 flex: 1, padding: "9px 14px", borderRadius: 10,
                 border: "none", cursor: "pointer", fontWeight: 700, fontSize: 13,
-                background: innerTab === key ? "#135DFF" : "transparent",
-                color:      innerTab === key ? "#fff"    : "#9ca3af",
+                background: innerTab === key ? "var(--blue)" : "transparent",
+                color:      innerTab === key ? "var(--text-on-dark)"    : "var(--text-muted)",
                 boxShadow:  innerTab === key ? "0 0 14px rgba(19,93,255,0.28)" : "none",
                 transition: "all 0.18s ease"
               }}
@@ -1633,8 +1633,8 @@ function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate, n
           <div
             onMouseDown={editMode ? (e) => captureTarget(e.target) : undefined}
             style={{
-              background: "#ffffff",
-              border: editMode ? "2px solid #135DFF" : "1px solid rgba(255,255,255,0.08)",
+              background: "var(--text-on-dark)",
+              border: editMode ? "2px solid var(--blue)" : "1px solid var(--border)",
               borderRadius: 18, padding: 18,
               overflowX: "auto", overflowY: "auto",
               maxHeight: "calc(100vh - 230px)",
@@ -1652,7 +1652,7 @@ function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate, n
                         gap: 4, paddingTop: 4, flexShrink: 0
                       }}>
                         <span style={{
-                          fontSize: 10, fontWeight: 700, color: "#9ca3af",
+                          fontSize: 10, fontWeight: 700, color: "var(--text-muted)",
                           background: "#f3f4f6", borderRadius: 4,
                           padding: "1px 5px", userSelect: "none"
                         }}>{idx + 1}</span>
@@ -1702,17 +1702,17 @@ function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate, n
 
           {/* Article chip */}
           <div style={{
-            background: "#0F1E35", border: "1px solid rgba(255,255,255,0.08)",
+            background: "var(--bg-nav)", border: "1px solid var(--border)",
             borderRadius: 14, padding: "12px 16px",
             display: "flex", flexDirection: "column", gap: 4
           }}>
-            <div style={{ fontSize: 10, color: "#6b7280", fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase" }}>Article</div>
-            <div style={{ fontSize: 15, fontWeight: 700, color: "#ffffff" }}>{result.article_number || "—"}</div>
+            <div style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase" }}>Article</div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-on-dark)" }}>{result.article_number || "—"}</div>
             {result.product_type && (
-              <div style={{ fontSize: 12, color: "#9ca3af" }}>{result.product_type}</div>
+              <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{result.product_type}</div>
             )}
             {result.compatibility_count > 0 && (
-              <div style={{ fontSize: 11, color: "#4ade80", marginTop: 2 }}>
+              <div style={{ fontSize: 11, color: "var(--green)", marginTop: 2 }}>
                 ✓ {result.compatibility_count} compatible vehicles
               </div>
             )}
@@ -1757,7 +1757,7 @@ function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate, n
                       autoFocus
                       style={{
                         padding: "6px 10px", borderRadius: 10, fontSize: 12,
-                        background: "#0D2040", color: "#ffffff",
+                        background: "var(--bg-surface2)", color: "var(--text-on-dark)",
                         border: "1px solid rgba(255,255,255,0.20)", outline: "none"
                       }}
                     />
@@ -1767,7 +1767,7 @@ function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate, n
                         💾 Save
                       </button>
                       <button onClick={() => { setSaveMode(false); setSaveName(""); }}
-                        style={{ ...SMALL_BUTTON_STYLE, flex: 1, textAlign: "center", fontSize: 12, background: "#374151", boxShadow: "none" }}>
+                        style={{ ...SMALL_BUTTON_STYLE, flex: 1, textAlign: "center", fontSize: 12, background: "var(--text-dim)", boxShadow: "none" }}>
                         Cancel
                       </button>
                     </div>
@@ -1787,11 +1787,11 @@ function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate, n
           {/* K Numbers */}
           {(result.k_number_list || []).length > 0 && (
             <div style={{
-              background: "#0F1E35", border: "1px solid rgba(255,255,255,0.08)",
+              background: "var(--bg-nav)", border: "1px solid var(--border)",
               borderRadius: 14, padding: "12px 16px"
             }}>
-              <div style={{ fontSize: 10, color: "#6b7280", fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 6 }}>K Numbers</div>
-              <div style={{ fontSize: 12, color: "#d1d5db", lineHeight: 1.6, wordBreak: "break-word" }}>
+              <div style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 6 }}>K Numbers</div>
+              <div style={{ fontSize: 12, color: "var(--text)", lineHeight: 1.6, wordBreak: "break-word" }}>
                 {(result.k_number_list || []).join(", ")}
               </div>
               <CopyButton
@@ -1806,11 +1806,11 @@ function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate, n
           {/* OEM Numbers */}
           {(result.oem_numbers || []).length > 0 && (
             <div style={{
-              background: "#0F1E35", border: "1px solid rgba(255,255,255,0.08)",
+              background: "var(--bg-nav)", border: "1px solid var(--border)",
               borderRadius: 14, padding: "12px 16px"
             }}>
-              <div style={{ fontSize: 10, color: "#6b7280", fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 6 }}>OEM Numbers</div>
-              <div style={{ fontSize: 12, color: "#d1d5db", lineHeight: 1.6, wordBreak: "break-word" }}>
+              <div style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 6 }}>OEM Numbers</div>
+              <div style={{ fontSize: 12, color: "var(--text)", lineHeight: 1.6, wordBreak: "break-word" }}>
                 {(result.oem_numbers || []).slice(0, 8).join(", ")}
                 {(result.oem_numbers || []).length > 8 ? ` +${(result.oem_numbers || []).length - 8} more` : ""}
               </div>
@@ -1820,7 +1820,7 @@ function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate, n
           {/* Product Image */}
           {result.article_image && (
             <div style={{
-              background: "#0D1B30", border: "1px solid rgba(255,255,255,0.08)",
+              background: "var(--bg-surface3)", border: "1px solid var(--border)",
               borderRadius: 14, padding: 12,
               display: "flex", justifyContent: "center", alignItems: "center"
             }}>
@@ -1835,8 +1835,8 @@ function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate, n
               onClick={() => setShowDescHtml((v) => !v)}
               style={{
                 ...SMALL_BUTTON_STYLE, width: "100%", textAlign: "center",
-                fontSize: 12, background: "rgba(255,255,255,0.05)", boxShadow: "none",
-                color: "#9ca3af", border: "1px solid rgba(255,255,255,0.10)"
+                fontSize: 12, background: "var(--border-light)", boxShadow: "none",
+                color: "var(--text-muted)", border: "1px solid var(--border-strong)"
               }}
             >
               {showDescHtml ? "▲ Hide HTML" : "▼ Show Description HTML"}
@@ -1879,7 +1879,7 @@ function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate, n
                     autoFocus
                     style={{
                       padding: "6px 10px", borderRadius: 10, fontSize: 12,
-                      background: "#0D2040", color: "#ffffff",
+                      background: "var(--bg-surface2)", color: "var(--text-on-dark)",
                       border: "1px solid rgba(255,255,255,0.20)", outline: "none"
                     }}
                   />
@@ -1888,7 +1888,7 @@ function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate, n
                     💾 Save
                   </button>
                   <button onClick={() => { setSaveMode(false); setSaveName(""); }}
-                    style={{ ...SMALL_BUTTON_STYLE, fontSize: 12, background: "#374151", boxShadow: "none" }}>
+                    style={{ ...SMALL_BUTTON_STYLE, fontSize: 12, background: "var(--text-dim)", boxShadow: "none" }}>
                     Cancel
                   </button>
                 </div>
@@ -1964,7 +1964,7 @@ function EditorToolbar({
       style={{
         padding: "5px 10px", borderRadius: 8, cursor: "pointer",
         border: "1px solid rgba(255,255,255,0.15)",
-        background: "rgba(255,255,255,0.07)", color: "#ffffff",
+        background: "var(--border)", color: "var(--text-on-dark)",
         fontSize: 13, userSelect: "none", lineHeight: 1.3,
         ...extra
       }}
@@ -1981,7 +1981,7 @@ function EditorToolbar({
     <div style={{
       display: "flex", flexWrap: "wrap", gap: 5, alignItems: "center",
       padding: "10px 12px", marginBottom: 12,
-      background: "#0F1E35", border: "1px solid rgba(255,255,255,0.10)",
+      background: "var(--bg-nav)", border: "1px solid var(--border-strong)",
       borderRadius: 14,
       position: "sticky", top: 0, zIndex: 50,
       backdropFilter: "blur(8px)"
@@ -2013,7 +2013,7 @@ function EditorToolbar({
         defaultValue=""
         style={{
           padding: "5px 8px", borderRadius: 8, fontSize: 12,
-          background: "#0D2040", color: "#ffffff",
+          background: "var(--bg-surface2)", color: "var(--text-on-dark)",
           border: "1px solid rgba(255,255,255,0.15)", cursor: "pointer",
           maxWidth: 150
         }}
@@ -2035,7 +2035,7 @@ function EditorToolbar({
         defaultValue=""
         style={{
           padding: "5px 8px", borderRadius: 8, fontSize: 12,
-          background: "#0D2040", color: "#ffffff",
+          background: "var(--bg-surface2)", color: "var(--text-on-dark)",
           border: "1px solid rgba(255,255,255,0.15)", cursor: "pointer"
         }}
       >
@@ -2054,12 +2054,12 @@ function EditorToolbar({
         style={{
           padding: "5px 10px", borderRadius: 8, cursor: "pointer",
           border: "1px solid rgba(255,255,255,0.15)",
-          background: "rgba(255,255,255,0.07)", userSelect: "none",
+          background: "var(--border)", userSelect: "none",
           display: "flex", flexDirection: "column", alignItems: "center", gap: 2
         }}
       >
-        <span style={{ fontSize: 11, color: "#9ca3af", lineHeight: 1 }}>Text</span>
-        <span style={{ fontSize: 13, color: "#ffffff", lineHeight: 1, fontWeight: 700 }}>A</span>
+        <span style={{ fontSize: 11, color: "var(--text-muted)", lineHeight: 1 }}>Text</span>
+        <span style={{ fontSize: 13, color: "var(--text-on-dark)", lineHeight: 1, fontWeight: 700 }}>A</span>
         <span style={{ width: 16, height: 3, borderRadius: 2, background: textColor, display: "block" }} />
       </button>
       <input
@@ -2079,11 +2079,11 @@ function EditorToolbar({
         style={{
           padding: "5px 10px", borderRadius: 8, cursor: "pointer",
           border: "1px solid rgba(255,255,255,0.15)",
-          background: "rgba(255,255,255,0.07)", userSelect: "none",
+          background: "var(--border)", userSelect: "none",
           display: "flex", flexDirection: "column", alignItems: "center", gap: 2
         }}
       >
-        <span style={{ fontSize: 11, color: "#9ca3af", lineHeight: 1 }}>Fill</span>
+        <span style={{ fontSize: 11, color: "var(--text-muted)", lineHeight: 1 }}>Fill</span>
         <span style={{ width: 16, height: 10, borderRadius: 3, background: boxBgColor, display: "block", border: "1px solid rgba(255,255,255,0.2)" }} />
       </button>
       <input
@@ -2101,11 +2101,11 @@ function EditorToolbar({
         style={{
           padding: "5px 10px", borderRadius: 8, cursor: "pointer",
           border: "1px solid rgba(255,255,255,0.15)",
-          background: "rgba(255,255,255,0.07)", userSelect: "none",
+          background: "var(--border)", userSelect: "none",
           display: "flex", flexDirection: "column", alignItems: "center", gap: 2
         }}
       >
-        <span style={{ fontSize: 11, color: "#9ca3af", lineHeight: 1 }}>Border</span>
+        <span style={{ fontSize: 11, color: "var(--text-muted)", lineHeight: 1 }}>Border</span>
         <span style={{ width: 16, height: 10, borderRadius: 3, background: "transparent", display: "block", border: `2px solid ${borderColor}` }} />
       </button>
       <input
@@ -2124,7 +2124,7 @@ function EditorToolbar({
         title="Border thickness"
         style={{
           padding: "5px 8px", borderRadius: 8, fontSize: 12,
-          background: "#0D2040", color: "#ffffff",
+          background: "var(--bg-surface2)", color: "var(--text-on-dark)",
           border: "1px solid rgba(255,255,255,0.15)", cursor: "pointer"
         }}
       >
@@ -2139,7 +2139,7 @@ function EditorToolbar({
       {sep}
 
       {/* ── TABLE section ───────────────────────────────────────────────── */}
-      <span style={{ fontSize: 10, fontWeight: 700, color: "#6b7280", userSelect: "none", letterSpacing: 0.5 }}>TABLE</span>
+      <span style={{ fontSize: 10, fontWeight: 700, color: "var(--text-muted)", userSelect: "none", letterSpacing: 0.5 }}>TABLE</span>
 
       {/* Table cell border colour */}
       <button
@@ -2148,11 +2148,11 @@ function EditorToolbar({
         style={{
           padding: "5px 10px", borderRadius: 8, cursor: "pointer",
           border: "1px solid rgba(255,255,255,0.15)",
-          background: "rgba(255,255,255,0.07)", userSelect: "none",
+          background: "var(--border)", userSelect: "none",
           display: "flex", flexDirection: "column", alignItems: "center", gap: 2
         }}
       >
-        <span style={{ fontSize: 11, color: "#9ca3af", lineHeight: 1 }}>Lines</span>
+        <span style={{ fontSize: 11, color: "var(--text-muted)", lineHeight: 1 }}>Lines</span>
         {/* mini table icon */}
         <svg width="16" height="10" viewBox="0 0 16 10" fill="none" style={{ display: "block" }}>
           <rect x="0.5" y="0.5" width="15" height="9" stroke={tableBorderColor} strokeWidth="1.2" fill="none" rx="1"/>
@@ -2176,7 +2176,7 @@ function EditorToolbar({
         title="Table line weight"
         style={{
           padding: "5px 8px", borderRadius: 8, fontSize: 12,
-          background: "#0D2040", color: "#ffffff",
+          background: "var(--bg-surface2)", color: "var(--text-on-dark)",
           border: "1px solid rgba(255,255,255,0.15)", cursor: "pointer"
         }}
       >
@@ -2196,7 +2196,7 @@ function EditorToolbar({
         style={{
           padding: "5px 10px", borderRadius: 8, cursor: "pointer",
           border: "1px solid rgba(255,255,255,0.15)",
-          background: "rgba(255,255,255,0.07)", color: "#9ca3af",
+          background: "var(--border)", color: "var(--text-muted)",
           fontSize: 12, userSelect: "none"
         }}
       >
@@ -2342,15 +2342,15 @@ function ItemSpecificsTab({ result, copyText }) {
           onClick={() => setShowAddRow((v) => !v)}
           style={{
             ...SMALL_BUTTON_STYLE, fontSize: 12,
-            background: showAddRow ? "#374151" : "rgba(255,255,255,0.07)",
-            boxShadow: "none", color: showAddRow ? "#d1d5db" : "#9ca3af"
+            background: showAddRow ? "var(--text-dim)" : "var(--border)",
+            boxShadow: "none", color: showAddRow ? "var(--text)" : "var(--text-muted)"
           }}
         >
           + Add Field
         </button>
         <button
           onClick={() => setShowReset(true)}
-          style={{ ...SMALL_BUTTON_STYLE, fontSize: 12, background: "rgba(220,38,38,0.12)", color: "#f87171", boxShadow: "none" }}
+          style={{ ...SMALL_BUTTON_STYLE, fontSize: 12, background: "rgba(220,38,38,0.12)", color: "var(--red)", boxShadow: "none" }}
         >
           ↺ Reset
         </button>
@@ -2363,7 +2363,7 @@ function ItemSpecificsTab({ result, copyText }) {
           borderRadius: 12, padding: "12px 16px",
           display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap"
         }}>
-          <span style={{ fontSize: 13, color: "#fca5a5", flex: 1 }}>
+          <span style={{ fontSize: 13, color: "var(--red)", flex: 1 }}>
             Reset all fields to the originally generated values?
           </span>
           <button onClick={doReset}
@@ -2371,7 +2371,7 @@ function ItemSpecificsTab({ result, copyText }) {
             Reset
           </button>
           <button onClick={() => setShowReset(false)}
-            style={{ ...SMALL_BUTTON_STYLE, background: "#374151", boxShadow: "none", fontSize: 12, padding: "6px 12px" }}>
+            style={{ ...SMALL_BUTTON_STYLE, background: "var(--text-dim)", boxShadow: "none", fontSize: 12, padding: "6px 12px" }}>
             Cancel
           </button>
         </div>
@@ -2387,7 +2387,7 @@ function ItemSpecificsTab({ result, copyText }) {
             Batch CSV Export — Item Specifics
           </div>
           {savedProds.length === 0 ? (
-            <div style={{ fontSize: 13, color: "#9ca3af" }}>
+            <div style={{ fontSize: 13, color: "var(--text-muted)" }}>
               No saved listings found. Save a listing from the Price Calculator first.
             </div>
           ) : (<>
@@ -2403,9 +2403,9 @@ function ItemSpecificsTab({ result, copyText }) {
                     onClick={() => { setDateFilter(key); setSelectedIds([]); }}
                     style={{
                       padding: "5px 12px", borderRadius: 8, fontSize: 12, cursor: "pointer",
-                      border:      active ? "1px solid #0e7490" : "1px solid rgba(255,255,255,0.10)",
+                      border:      active ? "1px solid #0e7490" : "1px solid var(--border-strong)",
                       background:  active ? "rgba(14,116,144,0.20)" : "transparent",
-                      color:       active ? "#67e8f9" : "#9ca3af",
+                      color:       active ? "#67e8f9" : "var(--text-muted)",
                       fontWeight:  active ? 700 : 400, transition: "all 0.15s"
                     }}
                   >
@@ -2430,10 +2430,10 @@ function ItemSpecificsTab({ result, copyText }) {
                     <input type="checkbox" checked={checked}
                       onChange={() => toggleSelected(p.id)}
                       style={{ cursor: "pointer", accentColor: "#0e7490" }} />
-                    <span style={{ fontSize: 12, color: "#d1d5db", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    <span style={{ fontSize: 12, color: "var(--text)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {p.generated_title || p.title || "Untitled"}
                     </span>
-                    <span style={{ fontSize: 11, color: "#6b7280", flexShrink: 0 }}>
+                    <span style={{ fontSize: 11, color: "var(--text-muted)", flexShrink: 0 }}>
                       {p.savedAt ? new Date(p.savedAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short" }) : ""}
                     </span>
                   </label>
@@ -2451,7 +2451,7 @@ function ItemSpecificsTab({ result, copyText }) {
               {selectedIds.length > 0 && (
                 <button onClick={() => setSelectedIds([])} style={{
                   ...SMALL_BUTTON_STYLE, fontSize: 12, background: "transparent",
-                  boxShadow: "none", color: "#9ca3af"
+                  boxShadow: "none", color: "var(--text-muted)"
                 }}>
                   Clear Selection
                 </button>
@@ -2464,22 +2464,22 @@ function ItemSpecificsTab({ result, copyText }) {
       {/* Add field form */}
       {showAddRow && (
         <div style={{
-          background: "#081322", border: "1px solid rgba(19,93,255,0.28)",
+          background: "var(--bg-surface3)", border: "1px solid rgba(19,93,255,0.28)",
           borderRadius: 12, padding: 14
         }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: "#6b7280", letterSpacing: "0.05em", marginBottom: 10 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", letterSpacing: "0.05em", marginBottom: 10 }}>
             ADD CUSTOM FIELD
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: 8, alignItems: "end" }}>
             <div>
-              <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 4 }}>Field Name</div>
+              <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 4 }}>Field Name</div>
               <input value={newLabel} onChange={(e) => setNewLabel(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && addRow()}
                 placeholder="e.g. Material"
                 style={{ ...INPUT_STYLE, padding: "8px 10px", fontSize: 13 }} />
             </div>
             <div>
-              <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 4 }}>Value</div>
+              <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 4 }}>Value</div>
               <input value={newValue} onChange={(e) => setNewValue(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && addRow()}
                 placeholder="e.g. Steel"
@@ -2491,7 +2491,7 @@ function ItemSpecificsTab({ result, copyText }) {
                 Add
               </button>
               <button onClick={() => { setShowAddRow(false); setNewLabel(""); setNewValue(""); }}
-                style={{ ...SMALL_BUTTON_STYLE, background: "#374151", boxShadow: "none", fontSize: 12 }}>
+                style={{ ...SMALL_BUTTON_STYLE, background: "var(--text-dim)", boxShadow: "none", fontSize: 12 }}>
                 Cancel
               </button>
             </div>
@@ -2501,22 +2501,22 @@ function ItemSpecificsTab({ result, copyText }) {
 
       {/* Specifics table */}
       <div style={{
-        background: "#081322", border: "1px solid rgba(255,255,255,0.08)",
+        background: "var(--bg-surface3)", border: "1px solid var(--border)",
         borderRadius: 16, overflow: "hidden"
       }}>
         {/* Column headers */}
         <div style={{
           display: "grid", gridTemplateColumns: "220px 1fr 72px 36px",
           padding: "8px 14px",
-          background: "#0F1E35", borderBottom: "1px solid rgba(255,255,255,0.08)"
+          background: "var(--bg-nav)", borderBottom: "1px solid var(--border)"
         }}>
           {["Field Name", "Value", "", ""].map((h, i) => (
-            <div key={i} style={{ fontSize: 11, fontWeight: 700, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.05em" }}>{h}</div>
+            <div key={i} style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>{h}</div>
           ))}
         </div>
 
         {rows.length === 0 ? (
-          <div style={{ padding: "28px 16px", textAlign: "center", color: "#9ca3af", fontSize: 14 }}>
+          <div style={{ padding: "28px 16px", textAlign: "center", color: "var(--text-muted)", fontSize: 14 }}>
             No item specifics available for this listing.
           </div>
         ) : (() => {
@@ -2536,9 +2536,9 @@ function ItemSpecificsTab({ result, copyText }) {
                 <div key={`sec-${sec}`} style={{
                   display: "grid", gridTemplateColumns: "220px 1fr 72px 36px",
                   padding: "7px 14px",
-                  background: "#0a1628",
-                  borderTop: lastSection ? "1px solid rgba(255,255,255,0.06)" : "none",
-                  borderBottom: "1px solid rgba(255,255,255,0.06)"
+                  background: "var(--bg-surface3)",
+                  borderTop: lastSection ? "1px solid var(--border-light)" : "none",
+                  borderBottom: "1px solid var(--border-light)"
                 }}>
                   <div style={{ fontSize: 10, fontWeight: 800, color: "#4b6fa8", letterSpacing: "0.08em", gridColumn: "1 / 3" }}>
                     {SECTION_TITLES[sec] || sec.toUpperCase()}
@@ -2557,7 +2557,7 @@ function ItemSpecificsTab({ result, copyText }) {
               <div key={row.id} style={{
                 display: "grid", gridTemplateColumns: "220px 1fr 72px 36px",
                 alignItems: "center",
-                borderBottom: "1px solid rgba(255,255,255,0.04)",
+                borderBottom: "1px solid var(--border-light)",
                 background: isEven ? "rgba(255,255,255,0.015)" : "transparent"
               }}>
                 {/* Label */}
@@ -2566,8 +2566,8 @@ function ItemSpecificsTab({ result, copyText }) {
                   onChange={(e) => updateLabel(row.id, e.target.value)}
                   style={{
                     background: "transparent", border: "none", outline: "none",
-                    borderRight: "1px solid rgba(255,255,255,0.05)",
-                    color: row.value?.trim() ? "#9ca3af" : "#4b5563",
+                    borderRight: "1px solid var(--border-light)",
+                    color: row.value?.trim() ? "var(--text-muted)" : "var(--text-dim)",
                     fontSize: 13, fontWeight: 600,
                     padding: "9px 14px", width: "100%", fontFamily: "inherit"
                   }}
@@ -2579,7 +2579,7 @@ function ItemSpecificsTab({ result, copyText }) {
                   placeholder="—"
                   style={{
                     background: "transparent", border: "none", outline: "none",
-                    color: row.value?.trim() ? "#ffffff" : "#374151",
+                    color: row.value?.trim() ? "var(--text-on-dark)" : "var(--text-dim)",
                     fontSize: 13,
                     padding: "9px 14px", width: "100%", fontFamily: "inherit"
                   }}
@@ -2592,9 +2592,9 @@ function ItemSpecificsTab({ result, copyText }) {
                     margin: "0 5px",
                     padding: "5px 0",
                     borderRadius: 8,
-                    border: "1px solid rgba(255,255,255,0.08)",
-                    background: "rgba(255,255,255,0.03)",
-                    color: "#6b7280",
+                    border: "1px solid var(--border)",
+                    background: "var(--border-light)",
+                    color: "var(--text-muted)",
                     fontSize: 11,
                     fontWeight: 700,
                     whiteSpace: "nowrap",
@@ -2609,13 +2609,13 @@ function ItemSpecificsTab({ result, copyText }) {
                   style={{
                     width: 24, height: 24, margin: "0 6px 0 0",
                     borderRadius: 6, border: "1px solid rgba(220,38,38,0.15)",
-                    background: "rgba(220,38,38,0.06)", color: "#6b7280",
+                    background: "rgba(220,38,38,0.06)", color: "var(--text-muted)",
                     cursor: "pointer", fontSize: 13,
                     display: "flex", alignItems: "center", justifyContent: "center",
                     transition: "all 0.15s"
                   }}
-                  onMouseEnter={(e) => { e.currentTarget.style.color = "#f87171"; e.currentTarget.style.borderColor = "rgba(220,38,38,0.4)"; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.color = "#6b7280"; e.currentTarget.style.borderColor = "rgba(220,38,38,0.15)"; }}
+                  onMouseEnter={(e) => { e.currentTarget.style.color = "var(--red)"; e.currentTarget.style.borderColor = "rgba(220,38,38,0.4)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-muted)"; e.currentTarget.style.borderColor = "rgba(220,38,38,0.15)"; }}
                 >×</button>
               </div>
             );
@@ -2657,15 +2657,15 @@ function ItemSpecificsPanel({ itemSpecifics, specifications, onCopyAll }) {
             key={i}
             style={{
               display: "flex", alignItems: "center", justifyContent: "space-between",
-              background: i % 2 === 0 ? "rgba(255,255,255,0.03)" : "rgba(255,255,255,0.06)",
+              background: i % 2 === 0 ? "var(--border-light)" : "var(--border-light)",
               borderRadius: 8, padding: "8px 12px", gap: 12
             }}
           >
             <div style={{ display: "flex", gap: 10, flex: 1, minWidth: 0 }}>
-              <span style={{ fontSize: 13, color: "#9ca3af", minWidth: 140, flexShrink: 0 }}>
+              <span style={{ fontSize: 13, color: "var(--text-muted)", minWidth: 140, flexShrink: 0 }}>
                 {row.label}
               </span>
-              <span style={{ fontSize: 13, color: "#ffffff", wordBreak: "break-word" }}>
+              <span style={{ fontSize: 13, color: "var(--text-on-dark)", wordBreak: "break-word" }}>
                 {row.value}
               </span>
             </div>
