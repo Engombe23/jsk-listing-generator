@@ -4,15 +4,15 @@
 const C = {
   bg:      "var(--bg-surface3)",
   card:    "var(--bg-nav)",
-  card2:   "#080f1e",
+  card2:   "var(--bg-surface3)",
   border:  "var(--border)",
   border2: "var(--border-light)",
   blue:    "var(--blue)",
   text:    "var(--text)",
   sub:     "var(--text-muted)",
   muted:   "var(--text-dim)",
-  dim:     "#1e2d42",
-  green:   "#10b981",
+  dim:     "var(--bg-surface2)",
+  green:   "var(--green)",
   amber:   "#f59e0b",
   red:     "#ef4444",
 };
@@ -118,7 +118,7 @@ function buildPreviewHtml(template) {
     }).join("");
 
   return `<html><head><style>
-    body { margin:0; padding:14px 18px; background:#080f1e; font-family:Inter,system-ui,sans-serif; color:#e2e8f0; }
+    body { margin:0; padding:14px 18px; background:var(--bg-surface3); font-family:Inter,system-ui,sans-serif; color:#e2e8f0; }
     * { box-sizing:border-box; }
   </style></head><body>${rows || "<p style='color:#4b5563;font-style:italic'>Enable at least one section.</p>"}</body></html>`;
 }
@@ -129,7 +129,7 @@ function Btn({ children, onClick, variant = "ghost", size = "sm", disabled, full
   const pad = size === "sm" ? "6px 14px" : "9px 20px";
   const fs  = size === "sm" ? 11 : 13;
   const v = {
-    primary: { bg: hov ? "#1a6bff" : C.blue,   color: "var(--text-on-dark)",   border: C.blue },
+    primary: { bg: hov ? "var(--blue)" : C.blue,   color: "var(--text-on-dark)",   border: C.blue },
     ghost:   { bg: hov ? "var(--border)" : "transparent", color: C.text, border: C.border },
     danger:  { bg: hov ? "rgba(239,68,68,0.12)" : "transparent", color: C.red,  border: "rgba(239,68,68,0.22)" },
     subtle:  { bg: hov ? "var(--border-light)" : "var(--border-light)", color: C.sub, border: C.border2 },
@@ -195,7 +195,7 @@ function PlaceholderPicker({ onPick }) {
       {open && (
         <div style={{
           position: "absolute", top: "calc(100% + 4px)", left: 0, zIndex: 300,
-          background: "#0b1828", border: `1px solid ${C.border}`, borderRadius: 10,
+          background: "var(--bg-surface3)", border: `1px solid ${C.border}`, borderRadius: 10,
           padding: 6, minWidth: 210, boxShadow: "0 8px 28px rgba(0,0,0,0.5)",
         }}>
           {PLACEHOLDERS.map(p => (
@@ -256,7 +256,7 @@ function EditorPanel({ template, onSave, onClose }) {
       <div style={{
         position: "fixed", top: 0, right: 0, bottom: 0, zIndex: 401,
         width: "min(820px, 92vw)",
-        background: "#0a1525", borderLeft: `1px solid ${C.border}`,
+        background: "var(--bg-surface3)", borderLeft: `1px solid ${C.border}`,
         display: "flex", flexDirection: "column",
         boxShadow: "-12px 0 48px rgba(0,0,0,0.6)",
       }}>
@@ -408,7 +408,7 @@ function ImportModal({ onImport, onClose }) {
       <div style={{
         position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)", zIndex: 401,
         width: "min(760px, 94vw)", maxHeight: "88vh",
-        background: "#0a1525", border: `1px solid ${C.border}`, borderRadius: 16,
+        background: "var(--bg-surface3)", border: `1px solid ${C.border}`, borderRadius: 16,
         display: "flex", flexDirection: "column",
         boxShadow: "0 24px 64px rgba(0,0,0,0.7)",
       }}>
@@ -582,7 +582,7 @@ function TemplateCard({ template, onEdit, onDuplicate, onDelete, onSetDefault })
           {menuOpen && (
             <div style={{
               position: "absolute", top: "calc(100% + 4px)", right: 0, zIndex: 200,
-              background: "#0b1828", border: `1px solid ${C.border}`, borderRadius: 9,
+              background: "var(--bg-surface3)", border: `1px solid ${C.border}`, borderRadius: 9,
               padding: 5, minWidth: 130, boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
             }}>
               {!template.isDefault && (

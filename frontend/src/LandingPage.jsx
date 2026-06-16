@@ -3,9 +3,9 @@ import { Link } from "react-router-dom";
 
 const R = "#b70017";
 const R_GLOW = "rgba(183,0,23,0.30)";
-const BG = "#08090b";
-const CARD = "#111317";
-const CARD_DARK = "#0d0f12";
+const BG = "var(--bg)";
+const CARD = "var(--bg-surface)";
+const CARD_DARK = "var(--bg)";
 const BORDER = "var(--border)";
 const TEXT = "#ffffff";
 const MUTED = "var(--text-muted)";
@@ -624,7 +624,7 @@ export default function LandingPage() {
       {/* ── FINAL CTA ── */}
       <div
         style={{
-          background: `linear-gradient(135deg, #1a0205 0%, #0d0002 50%, #08090b 100%)`,
+          background: `linear-gradient(135deg, var(--red-bg) 0%, var(--red-bg) 50%, var(--bg) 100%)`,
           borderTop: `1px solid rgba(183,0,23,0.20)`
         }}
       >

@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+﻿import { Link } from "react-router-dom";
 import "./auth.css";
 
 export default function AuthPageLayout({ title, subtitle, children }) {
@@ -7,7 +7,7 @@ export default function AuthPageLayout({ title, subtitle, children }) {
       className="auth-page"
       style={{
         minHeight: "100vh",
-        background: "linear-gradient(180deg, #0A1628 0%, #071020 100%)",
+        background: "linear-gradient(180deg, var(--bg) 0%, var(--bg) 100%)",
         fontFamily: "Inter, system-ui, sans-serif",
         display: "grid",
         placeItems: "center",

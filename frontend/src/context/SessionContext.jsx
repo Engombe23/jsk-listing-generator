@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from "react";
+﻿import { createContext, useContext, useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 
 const SessionContext = createContext({ session: null });
@@ -38,7 +38,7 @@ export function SessionProvider({ children }) {
           minHeight: "100vh",
           display: "grid",
           placeItems: "center",
-          background: "linear-gradient(180deg, #0A1628 0%, #071020 100%)",
+          background: "linear-gradient(180deg, var(--bg) 0%, var(--bg) 100%)",
           color: "rgba(255,255,255,0.6)",
           fontFamily: "Inter, system-ui, sans-serif",
           fontSize: 14,

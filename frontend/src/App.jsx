@@ -205,7 +205,7 @@ export default function App() {
     <div
       style={{
         minHeight: "100vh",
-        background: "linear-gradient(180deg, #0A1628 0%, #071020 100%)",
+        background: "var(--bg)",
         fontFamily: "Inter, system-ui, sans-serif",
         padding: 24
       }}
@@ -2331,7 +2331,7 @@ function ItemSpecificsTab({ result, copyText }) {
           onClick={() => { setBatchOpen((v) => !v); }}
           style={{
             ...SMALL_BUTTON_STYLE, fontSize: 12,
-            background: batchOpen ? "#164e63" : "#0e7490",
+            background: batchOpen ? "#164e63" : "var(--blue)",
             boxShadow: "0 0 14px rgba(14,116,144,0.25)"
           }}
         >
@@ -2359,7 +2359,7 @@ function ItemSpecificsTab({ result, copyText }) {
       {/* Reset confirmation */}
       {showReset && (
         <div style={{
-          background: "#1c0a0a", border: "1px solid rgba(220,38,38,0.35)",
+          background: "var(--red-bg)", border: "1px solid rgba(220,38,38,0.35)",
           borderRadius: 12, padding: "12px 16px",
           display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap"
         }}>
@@ -2380,7 +2380,7 @@ function ItemSpecificsTab({ result, copyText }) {
       {/* Batch export panel */}
       {batchOpen && (
         <div style={{
-          background: "#061826", border: "1px solid rgba(14,116,144,0.35)",
+          background: "var(--bg-surface3)", border: "1px solid rgba(14,116,144,0.35)",
           borderRadius: 16, padding: 16
         }}>
           <div style={{ fontSize: 13, fontWeight: 700, color: "#67e8f9", marginBottom: 12 }}>
@@ -2429,7 +2429,7 @@ function ItemSpecificsTab({ result, copyText }) {
                   }}>
                     <input type="checkbox" checked={checked}
                       onChange={() => toggleSelected(p.id)}
-                      style={{ cursor: "pointer", accentColor: "#0e7490" }} />
+                      style={{ cursor: "pointer", accentColor: "var(--blue)" }} />
                     <span style={{ fontSize: 12, color: "var(--text)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {p.generated_title || p.title || "Untitled"}
                     </span>
@@ -2444,7 +2444,7 @@ function ItemSpecificsTab({ result, copyText }) {
             <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
               <button onClick={exportBatch} style={{
                 ...SMALL_BUTTON_STYLE, fontSize: 12,
-                background: "#0e7490", boxShadow: "0 0 14px rgba(14,116,144,0.28)"
+                background: "var(--blue)", boxShadow: "0 0 14px rgba(14,116,144,0.28)"
               }}>
                 ↓ Download CSV ({selectedIds.length > 0 ? `${selectedIds.length} selected` : `${batchCount} listings`})
               </button>

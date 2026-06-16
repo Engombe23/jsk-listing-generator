@@ -290,7 +290,7 @@ export default function SavedProducts({ products, onDelete, onLoad }) {
             fontSize: 12, padding: "8px 16px",
             background: exportFlash
               ? "#16a34a"
-              : filtered.length ? "var(--blue)" : "#1f2937",
+              : filtered.length ? "var(--blue)" : "var(--text-dim)",
             boxShadow: exportFlash
               ? "0 0 20px rgba(22,163,74,0.45)"
               : filtered.length ? "0 0 16px rgba(19,93,255,0.28)" : "none",

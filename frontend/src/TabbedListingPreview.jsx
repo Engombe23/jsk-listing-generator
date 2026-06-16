@@ -159,7 +159,7 @@ function PreviewTab({ descHtml, compatCount, topModels, yearRange, onViewCompat 
       {/* Compact compatibility summary */}
       {hasCompat && (
         <div style={{
-          background: "#081A2E",
+          background: "var(--bg-surface3)",
           border: "1px solid rgba(74,222,128,0.18)",
           borderRadius: 14, padding: "14px 18px"
         }}>
@@ -297,7 +297,7 @@ const TH = ({ children, left = false }) => (
   <th style={{
     border: "1px solid #000000", padding: "7px 8px",
     textAlign: left ? "left" : "center",
-    fontSize: 12, fontWeight: "bold", color: "#000000"
+    fontSize: 12, fontWeight: "bold", color: "var(--text)"
   }}>
     {children}
   </th>
@@ -324,7 +324,7 @@ function MakeTable({ make, rows }) {
           <tr>
             <th colSpan={6} style={{
               border: "1px solid #000000",
-              background: "#000000", color: "#cc0000",
+              background: "var(--text)", color: "#cc0000",
               fontWeight: "bold", textAlign: "center",
               padding: "9px 10px", fontSize: 15
             }}>

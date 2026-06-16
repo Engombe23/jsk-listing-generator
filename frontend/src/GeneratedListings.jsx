@@ -240,7 +240,7 @@ function AdListerSettings() {
 
   return (
     <div style={{
-      background: "#060e1a", borderRadius: 12, padding: "16px 18px",
+      background: "var(--bg-surface3)", borderRadius: 12, padding: "16px 18px",
       border: "1px solid rgba(99,102,241,0.20)", display: "grid", gap: 14
     }}>
       <div style={{ fontSize: 11, fontWeight: 800, color: "#a5b4fc", letterSpacing: 0.6, textTransform: "uppercase" }}>
@@ -528,7 +528,7 @@ function DetailSpecificsEditor({ rows, onChange }) {
           <td colSpan={3} style={{
             padding: "7px 10px 3px", fontSize: 10, fontWeight: 800,
             color: "var(--text-dim)", letterSpacing: "0.08em", textTransform: "uppercase",
-            background: "#060e1a", borderBottom: "1px solid var(--border-light)"
+            background: "var(--bg-surface3)", borderBottom: "1px solid var(--border-light)"
           }}>
             {SECTION_TITLES[row.section] || row.section}
           </td>
@@ -585,7 +585,7 @@ function DetailSpecificsEditor({ rows, onChange }) {
         </thead>
         <tbody>{elements}</tbody>
       </table>
-      <div style={{ padding: "7px 10px", borderTop: "1px solid var(--border-light)", background: "#060e1a" }}>
+      <div style={{ padding: "7px 10px", borderTop: "1px solid var(--border-light)", background: "var(--bg-surface3)" }}>
         <button onClick={addRow} style={{
           ...SMALL_BUTTON_STYLE, fontSize: 11, padding: "4px 10px",
           background: "var(--border-light)", boxShadow: "none", color: "var(--text-muted)"
@@ -863,7 +863,7 @@ function ListingDetail({ listing, onClose, onSave }) {
                   style={{
                     display: "block", width: "100%", boxSizing: "border-box",
                     marginTop: 6, height: 180, resize: "vertical",
-                    background: "#060e1a", color: "var(--text-accent)",
+                    background: "var(--bg-surface3)", color: "var(--text-accent)",
                     border: "1px solid var(--border)", borderRadius: 10,
                     fontSize: 11, fontFamily: "monospace", lineHeight: 1.5,
                     padding: "10px 12px", outline: "none"
@@ -928,7 +928,7 @@ function ItemSpecificsExport({ listings }) {
                 <td style={{
                   ...COL, color: "var(--text-on-dark)", fontWeight: 600,
                   position: "sticky", left: 0,
-                  background: idx % 2 === 0 ? "#0d1e35" : "#091527",
+                  background: idx % 2 === 0 ? "var(--bg-surface2)" : "var(--bg-surface3)",
                   maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"
                 }}>
                   {listing.title}
@@ -1376,7 +1376,7 @@ export default function GeneratedListings({
           {/* ── Delete confirmation ── */}
           {deletePending && (
             <div style={{
-              background: "#1c0a0a", border: "1px solid rgba(220,38,38,0.35)",
+              background: "var(--red-bg)", border: "1px solid rgba(220,38,38,0.35)",
               borderRadius: 12, padding: "12px 16px",
               display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap"
             }}>

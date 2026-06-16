@@ -74,7 +74,7 @@ function Card({ children, style }) {
 function Btn({ children, onClick, variant = "ghost", disabled }) {
   const [hov, setHov] = useState(false);
   const v = {
-    primary: { bg: hov ? "#1a6bff" : C.blue,   color: "var(--text-on-dark)",   border: C.blue },
+    primary: { bg: hov ? "var(--blue)" : C.blue,   color: "var(--text-on-dark)",   border: C.blue },
     ghost:   { bg: hov ? "var(--border-light)" : "transparent", color: C.text, border: C.border },
     danger:  { bg: hov ? "rgba(239,68,68,0.1)"  : "transparent", color: C.red,  border: "rgba(239,68,68,0.25)" },
   }[variant];
@@ -351,7 +351,7 @@ function PrefRow({ label, hint, children }) {
 
 const inputBase = {
   width: "100%", padding: "7px 10px", borderRadius: 7, fontSize: 11,
-  background: "#060e1a", border: `1px solid ${C.border}`,
+  background: "var(--bg-surface3)", border: `1px solid ${C.border}`,
   color: C.text, outline: "none", boxSizing: "border-box",
   caretColor: C.blue, fontFamily: "inherit",
 };
