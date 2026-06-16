@@ -15,7 +15,7 @@ import {
   InfoBox,
   CopyButton
 } from "./shared.jsx";
-import TabbedListingPreview, { USE_TABBED_PREVIEW } from "./TabbedListingPreview.jsx";
+import TabbedListingPreview, { USE_TABBED_PREVIEW, stripCompatSection, extractCompatSection } from "./TabbedListingPreview.jsx";
 import PriceCalculator from "./PriceCalculator.jsx";
 import SavedProducts from "./SavedProducts.jsx";
 import CompatibilityChecker from "./CompatibilityChecker.jsx";
@@ -71,6 +71,64 @@ function persistCustomTemplates(list) {
 
 // Strip article-specific content from HTML, keeping structure + header text.
 // Light-background divs and table cells are cleared; dark-background headers kept.
+// ── Placeholder-token replacement for new-style templates ──────────────────────
+// Replaces {{TOKEN}} placeholders in a template with actual listing data.
+// Used when the selected template was created via the Listing Templates builder.
+function replacePlaceholders(templateHtml, result) {
+  let html = templateHtml;
+
+  // {{TITLE}}
+  html = html.replace(/\{\{TITLE\}\}/g, result.generated_title || "");
+
+  // {{OE_NUMBERS}}
+  const oeNums = (result.oem_numbers || []).join(", ");
+  html = html.replace(/\{\{OE_NUMBERS\}\}/g, oeNums || "—");
+
+  // {{K_NUMBERS}}
+  const kNums = (result.k_number_list || []).join(", ");
+  html = html.replace(/\{\{K_NUMBERS\}\}/g, kNums || "—");
+
+  // {{INTERCHANGEABLE_NUMBERS}}
+  const interch = (result.interchangeable_parts || [])
+    .map(p => `<span style="margin-right:18px"><b>${p.brand}:</b> ${p.articleNo}</span>`)
+    .join("");
+  html = html.replace(/\{\{INTERCHANGEABLE_NUMBERS\}\}/g, interch || "—");
+
+  // {{COMPATIBILITY_TABLE}} — extract from the AI-generated HTML
+  const compatHtml = extractCompatSection(result.generated_html || "");
+  html = html.replace(/\{\{COMPATIBILITY_TABLE\}\}/g, compatHtml || "");
+
+  // {{ITEM_SPECIFICS}} — extract the item specifics section from generated HTML
+  html = html.replace(/\{\{ITEM_SPECIFICS\}\}/g, (() => {
+    const src = result.generated_html || "";
+    const idx = src.search(/item\s+specific/i);
+    if (idx === -1) return "";
+    const start = src.lastIndexOf("<", idx);
+    if (start === -1) return "";
+    const rest = src.slice(start);
+    const nextSection = rest.search(/<[^>]+>[^<]*(?:Engine\s+Codes?|Compatible\s+(?:Models?|Vehicles?)|Interchang)[^<]*<\/[^>]+>/i);
+    return nextSection > 0 ? rest.slice(0, nextSection) : rest;
+  })());
+
+  // {{FITMENT_WARNING}} — standard warning banner
+  html = html.replace(/\{\{FITMENT_WARNING\}\}/g,
+    `<div style="background:#fff8e1;border:2px solid #f59e0b;padding:10px 16px;font-size:13px;font-weight:bold;color:#78350f;border-radius:6px;text-align:center;margin:8px 0;">` +
+    `⚠️ Please review the images / compatibility to ensure you are ordering the correct part!` +
+    `</div>`
+  );
+
+  // {{DESCRIPTION}} — full description content without compatibility table
+  const descHtml = stripCompatSection(result.generated_html || "");
+  html = html.replace(/\{\{DESCRIPTION\}\}/g, descHtml || "");
+
+  // Policy placeholders — leave blank if not set (sellers customise these)
+  html = html.replace(/\{\{WARRANTY\}\}/g, "");
+  html = html.replace(/\{\{SHIPPING\}\}/g, "");
+  html = html.replace(/\{\{RETURNS\}\}/g, "");
+
+  return html;
+}
+
 function blankContentHtml(html) {
   const tmp = document.createElement("div");
   tmp.innerHTML = html;
@@ -383,12 +441,16 @@ function ListingGenerator({
   const liveHtmlRef = useRef("");
 
   // ── Resolved HTML for TabbedListingPreview (no editing, so computed here) ──
-  const displayHtml = useMemo(
-    () => customTemplateHtml && result
-      ? mergeTemplateWithContent(customTemplateHtml, result.generated_html ?? "")
-      : (result?.generated_html ?? ""),
-    [customTemplateHtml, result?.generated_html]
-  );
+  // New-style templates (from Listing Templates builder) use {{TOKEN}} placeholders —
+  // detect them and replace with real data. Old-style templates use HTML structure merging.
+  const displayHtml = useMemo(() => {
+    if (!result) return "";
+    if (!customTemplateHtml) return result.generated_html ?? "";
+    const hasTokens = /\{\{[A-Z_]+\}\}/.test(customTemplateHtml);
+    return hasTokens
+      ? replacePlaceholders(customTemplateHtml, result)
+      : mergeTemplateWithContent(customTemplateHtml, result.generated_html ?? "");
+  }, [customTemplateHtml, result]);
 
   // Keep liveHtmlRef in sync when using the tabbed preview
   useEffect(() => {
@@ -1332,17 +1394,19 @@ function AiTitleSuggestions({ result, apiUrl, onUseTitle }) {
 
 // ─── ListingOutput ────────────────────────────────────────────────────────────
 
-function resolveHtml(customTemplateHtml, generatedHtml) {
-  return customTemplateHtml
-    ? mergeTemplateWithContent(customTemplateHtml, generatedHtml ?? "")
-    : (generatedHtml ?? "");
+function resolveHtml(customTemplateHtml, generatedHtml, result) {
+  if (!customTemplateHtml) return generatedHtml ?? "";
+  const hasTokens = /\{\{[A-Z_]+\}\}/.test(customTemplateHtml);
+  return hasTokens && result
+    ? replacePlaceholders(customTemplateHtml, result)
+    : mergeTemplateWithContent(customTemplateHtml, generatedHtml ?? "");
 }
 
 function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate, noRightPanel = false, onHtmlChange }) {
   const [innerTab,     setInnerTab]     = useState("overview"); // "overview" | "specifics"
   const [editMode,     setEditMode]     = useState(false);
   const [editedHtml,   setEditedHtml]   = useState(
-    () => resolveHtml(customTemplateHtml, result.generated_html)
+    () => resolveHtml(customTemplateHtml, result.generated_html, result)
   );
   const [sections,     setSections]     = useState([]);
   const [wrapperOpen,  setWrapperOpen]  = useState(null);
@@ -1364,7 +1428,7 @@ function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate, n
 
   // Sync whenever the generated HTML or selected template changes
   useEffect(() => {
-    setEditedHtml(resolveHtml(customTemplateHtml, result.generated_html));
+    setEditedHtml(resolveHtml(customTemplateHtml, result.generated_html, result));
   }, [result.generated_html, customTemplateHtml]);
 
   // Notify parent of latest editedHtml (for Copy HTML in detached right panel)
