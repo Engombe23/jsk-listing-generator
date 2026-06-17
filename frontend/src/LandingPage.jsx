@@ -131,6 +131,168 @@ const navLinkStyle = {
   transition: "color 0.2s"
 };
 
+// ── Footer legal placeholders — fill these in once company details are finalised ──
+const COMPANY_NAME        = "[COMPANY NAME]";
+const COMPANY_NUMBER      = "[COMPANY NUMBER]";
+const REGISTERED_ADDRESS  = "[REGISTERED ADDRESS]";
+
+const FOOTER_BLUE   = "#135DFF";
+const FOOTER_TEXT   = "#0f172a";
+const FOOTER_MUTED  = "#64748b";
+const FOOTER_DIM    = "#94a3b8";
+const FOOTER_BORDER = "#e2e8f0";
+const FOOTER_BG     = "#ffffff";
+const FOOTER_BG_ALT = "#fafbfc";
+
+const FOOTER_COLUMNS = [
+  {
+    heading: "Product",
+    links: [
+      { label: "Listing Generator",   to: "/app" },
+      { label: "Smart Pricing",       to: "/app" },
+      { label: "Compatibility Checker", to: "/app" },
+      { label: "CSV Export",          to: "/app" },
+      { label: "Pricing",             to: "/pricing" },
+    ],
+  },
+  {
+    heading: "Support",
+    links: [
+      { label: "FAQ",               to: "/about#faq" },
+      { label: "Contact",           href: "mailto:support@partlister.app" },
+      { label: "Support",           href: "mailto:support@partlister.app" },
+      { label: "Feature Requests",  href: "mailto:support@partlister.app?subject=Feature%20Request" },
+    ],
+    extra: "support@partlister.app",
+  },
+  {
+    heading: "Legal",
+    links: [
+      { label: "Terms of Service", to: "/terms" },
+      { label: "Privacy Policy",   to: "/privacy" },
+      { label: "Cookie Policy",    to: "/cookies" },
+      { label: "Refund Policy",    to: "/refunds" },
+    ],
+  },
+  {
+    heading: "Company",
+    links: [
+      { label: "About",                       to: "/about" },
+      { label: "Login",                       to: "/auth/login" },
+      { label: "Generate 10 Listings Free",   to: "/auth/sign-up" },
+    ],
+  },
+];
+
+const TRUST_ITEMS = [
+  "Built for eBay parts sellers",
+  "Powered by TecDoc data",
+  "Secure account management",
+];
+
+function FooterLink({ link }) {
+  const style = {
+    fontSize: 13,
+    color: FOOTER_MUTED,
+    textDecoration: "none",
+    transition: "color 0.15s",
+    lineHeight: 1.8,
+  };
+  const hover = (e) => { e.currentTarget.style.color = FOOTER_BLUE; };
+  const leave = (e) => { e.currentTarget.style.color = FOOTER_MUTED; };
+
+  if (link.href) {
+    return (
+      <a href={link.href} style={style} onMouseEnter={hover} onMouseLeave={leave}>
+        {link.label}
+      </a>
+    );
+  }
+  return (
+    <Link to={link.to} style={style} onMouseEnter={hover} onMouseLeave={leave}>
+      {link.label}
+    </Link>
+  );
+}
+
+function Footer() {
+  return (
+    <div style={{ background: FOOTER_BG, color: FOOTER_TEXT, fontFamily: "Arial, sans-serif" }}>
+
+      {/* ── Trust strip ── */}
+      <div style={{ borderTop: `1px solid ${FOOTER_BORDER}`, background: FOOTER_BG_ALT }}>
+        <div style={{
+          maxWidth: 1160, margin: "0 auto", padding: "18px 24px",
+          display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "10px 36px",
+        }}>
+          {TRUST_ITEMS.map((t) => (
+            <div key={t} style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 12.5, fontWeight: 600, color: FOOTER_MUTED }}>
+              <span style={{ color: "#16a34a", fontWeight: 800 }}>✓</span>
+              {t}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Footer columns ── */}
+      <div style={{ borderTop: `1px solid ${FOOTER_BORDER}` }}>
+        <div style={{ maxWidth: 1160, margin: "0 auto", padding: "56px 24px 40px" }}>
+
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+            gap: 32,
+          }}>
+            {/* Brand block */}
+            <div style={{ minWidth: 160, gridColumn: "span 1", paddingRight: 16 }}>
+              <img src="/logo.svg" alt="PartLister" style={{ height: 36, marginBottom: 14 }} />
+              <p style={{ fontSize: 13, color: FOOTER_MUTED, lineHeight: 1.7, maxWidth: 240 }}>
+                Automotive listing tools built for faster, cleaner product listings.
+              </p>
+            </div>
+
+            {/* Link columns */}
+            {FOOTER_COLUMNS.map((col) => (
+              <div key={col.heading} style={{ minWidth: 140 }}>
+                <div style={{
+                  fontSize: 11, fontWeight: 800, color: FOOTER_TEXT,
+                  textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 14,
+                }}>
+                  {col.heading}
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                  {col.links.map((l) => <FooterLink key={l.label} link={l} />)}
+                </div>
+                {col.extra && (
+                  <a href={`mailto:${col.extra}`} style={{
+                    display: "block", marginTop: 12, fontSize: 12.5, fontWeight: 600,
+                    color: FOOTER_BLUE, textDecoration: "none",
+                  }}>
+                    {col.extra}
+                  </a>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Bottom legal bar ── */}
+      <div style={{ borderTop: `1px solid ${FOOTER_BORDER}`, background: FOOTER_BG_ALT }}>
+        <div style={{ maxWidth: 1160, margin: "0 auto", padding: "22px 24px" }}>
+          <p style={{ fontSize: 12.5, color: FOOTER_DIM, lineHeight: 1.8, margin: 0 }}>
+            © {new Date().getFullYear()} Part Lister. All rights reserved.
+          </p>
+          <p style={{ fontSize: 12, color: FOOTER_DIM, lineHeight: 1.8, margin: "6px 0 0" }}>
+            Part Lister is a trading name of {COMPANY_NAME} Ltd.&nbsp; Company No: {COMPANY_NUMBER}.&nbsp;
+            Registered in England and Wales.&nbsp; Registered Office: {REGISTERED_ADDRESS}.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function Section({ children, style = {} }) {
   return (
     <section
@@ -377,7 +539,7 @@ export default function LandingPage() {
       </Section>
 
       {/* ── FEATURES ── */}
-      <div style={{ background: CARD_DARK, borderTop: `1px solid ${BORDER}`, borderBottom: `1px solid ${BORDER}` }}>
+      <div id="features" style={{ background: CARD_DARK, borderTop: `1px solid ${BORDER}`, borderBottom: `1px solid ${BORDER}` }}>
         <Section>
           <div style={{ textAlign: "center", marginBottom: 56 }}>
             <SectionLabel>Features</SectionLabel>
@@ -678,42 +840,7 @@ export default function LandingPage() {
         </Section>
       </div>
 
-      {/* ── FOOTER ── */}
-      <div
-        style={{
-          borderTop: `1px solid ${BORDER}`,
-          padding: "32px 24px",
-          textAlign: "center"
-        }}
-      >
-        <div
-          style={{
-            maxWidth: 1160,
-            margin: "0 auto",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            flexWrap: "wrap",
-            gap: 16
-          }}
-        >
-          <img src="/logo.svg" alt="PartLister" style={{ height: 40, opacity: 0.7 }} />
-          <div style={{ fontSize: 13, color: DIM }}>
-            © {new Date().getFullYear()} PartLister. All rights reserved.
-          </div>
-          <div style={{ display: "flex", gap: 24 }}>
-            {["About", "Pricing", "Login"].map((l) => (
-              <Link
-                key={l}
-                to={`/${l.toLowerCase()}`}
-                style={{ fontSize: 13, color: DIM, textDecoration: "none" }}
-              >
-                {l}
-              </Link>
-            ))}
-          </div>
-        </div>
-      </div>
+      <Footer />
     </div>
   );
 }
