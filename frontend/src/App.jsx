@@ -799,6 +799,7 @@ function ListingGenerator({
             {(phase === "idle" || phase === "searching" || phase === "generating") && (
               <Card title="Output" subtitle="Generated listing content and live preview." centeredTitle>
                 <EmptyOutputPanel
+                  loading={phase === "searching" || phase === "generating"}
                   message={
                     phase === "searching"  ? "Searching for matching articles…" :
                     phase === "generating" ? "Generating listing…" :
@@ -948,14 +949,57 @@ function ListingGenerator({
 
 // ─── Empty output placeholder ─────────────────────────────────────────────────
 
-function EmptyOutputPanel({ message }) {
+// Inject keyframes once (shared with the loading animation below)
+(function () {
+  if (typeof document === "undefined" || document.getElementById("__og-kf")) return;
+  const s = document.createElement("style"); s.id = "__og-kf";
+  s.textContent = `
+    @keyframes ogSpin    { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+    @keyframes ogLoadBar { 0%,100%{transform:scaleY(0.15);opacity:0.35} 50%{transform:scaleY(1);opacity:1} }
+  `;
+  document.head.appendChild(s);
+})();
+
+function EmptyOutputPanel({ message, loading = false }) {
+  if (!loading) {
+    return (
+      <div style={{
+        minHeight: 420, display: "grid", placeItems: "center",
+        background: "var(--bg-surface3)", border: "1px dashed var(--border-strong)",
+        borderRadius: 20, color: "var(--text-muted)", fontSize: 15, textAlign: "center", padding: 24
+      }}>
+        {message}
+      </div>
+    );
+  }
+
   return (
     <div style={{
-      minHeight: 420, display: "grid", placeItems: "center",
-      background: "var(--bg-surface3)", border: "1px dashed var(--border-strong)",
-      borderRadius: 20, color: "var(--text-muted)", fontSize: 15, textAlign: "center", padding: 24
+      minHeight: 420, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+      gap: 22, background: "var(--bg-surface3)", border: "1px dashed var(--border-strong)",
+      borderRadius: 20, padding: 24, textAlign: "center"
     }}>
-      {message}
+      {/* Animated bars */}
+      <div style={{ display: "flex", alignItems: "flex-end", gap: 5, height: 46, transformOrigin: "bottom" }}>
+        {[0.35, 0.65, 0.9, 0.5, 1.0, 0.6, 0.4, 0.8, 0.55].map((h, i) => (
+          <div key={i} style={{
+            width: 8, height: 46, borderRadius: "4px 4px 0 0",
+            background: "linear-gradient(to top, var(--blue) 0%, #38bdf8 100%)",
+            transformOrigin: "bottom",
+            animation: `ogLoadBar ${0.7 + h * 0.7}s ease-in-out ${i * 0.09}s infinite`,
+          }} />
+        ))}
+      </div>
+      {/* Ring spinner */}
+      <div style={{
+        width: 30, height: 30, borderRadius: "50%",
+        border: "3px solid var(--border-blue)",
+        borderTop: "3px solid var(--blue)",
+        animation: "ogSpin 0.8s linear infinite",
+      }} />
+      <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-muted)" }}>
+        {message}
+      </div>
     </div>
   );
 }
