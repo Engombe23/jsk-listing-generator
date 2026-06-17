@@ -255,7 +255,7 @@ function CompatTab({ compatRows, compatHtml, count }) {
           padding: "10px 16px", background: "var(--bg-nav)",
           border: "1px solid var(--border)", borderRadius: 12
         }}>
-          <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-on-dark)" }}>
+          <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>
             {count} Compatible Vehicles
           </span>
           <span style={{ fontSize: 11, color: "var(--text-muted)" }}>

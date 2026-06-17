@@ -1036,7 +1036,7 @@ function ArticleSelector({ articles, onSelect }) {
 
           {/* Info */}
           <div>
-            <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-on-dark)", marginBottom: 3 }}>
+            <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text)", marginBottom: 3 }}>
               {a.productName || "—"}
             </div>
             <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
@@ -1330,7 +1330,7 @@ function AiTitleSuggestions({ result, apiUrl, onUseTitle }) {
               WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
               textTransform: "uppercase"
             }}>✦ AI</span>
-            <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-on-dark)" }}>Title Suggestions</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)" }}>Title Suggestions</div>
           </div>
           <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
             Generate 3 optimised eBay title styles from the listing data.
@@ -1388,7 +1388,7 @@ function AiTitleSuggestions({ result, apiUrl, onUseTitle }) {
 
               {/* Title text */}
               <div style={{
-                fontSize: 15, fontWeight: 600, color: "var(--text-on-dark)",
+                fontSize: 15, fontWeight: 600, color: "var(--text)",
                 lineHeight: 1.4, marginBottom: 8,
                 wordBreak: "break-word"
               }}>
@@ -1825,7 +1825,7 @@ function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate, n
             display: "flex", flexDirection: "column", gap: 4
           }}>
             <div style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase" }}>Article</div>
-            <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-on-dark)" }}>{result.article_number || "—"}</div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text)" }}>{result.article_number || "—"}</div>
             {result.product_type && (
               <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{result.product_type}</div>
             )}
@@ -1875,8 +1875,8 @@ function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate, n
                       autoFocus
                       style={{
                         padding: "6px 10px", borderRadius: 10, fontSize: 12,
-                        background: "var(--bg-surface2)", color: "var(--text-on-dark)",
-                        border: "1px solid rgba(255,255,255,0.20)", outline: "none"
+                        background: "var(--bg-surface2)", color: "var(--text)",
+                        border: "1px solid var(--border-strong)", outline: "none"
                       }}
                     />
                     <div style={{ display: "flex", gap: 6 }}>
@@ -1997,8 +1997,8 @@ function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate, n
                     autoFocus
                     style={{
                       padding: "6px 10px", borderRadius: 10, fontSize: 12,
-                      background: "var(--bg-surface2)", color: "var(--text-on-dark)",
-                      border: "1px solid rgba(255,255,255,0.20)", outline: "none"
+                      background: "var(--bg-surface2)", color: "var(--text)",
+                      border: "1px solid var(--border-strong)", outline: "none"
                     }}
                   />
                   <button onClick={doSaveTemplate}
@@ -2082,7 +2082,7 @@ function EditorToolbar({
       style={{
         padding: "5px 10px", borderRadius: 8, cursor: "pointer",
         border: "1px solid rgba(255,255,255,0.15)",
-        background: "var(--border)", color: "var(--text-on-dark)",
+        background: "var(--border)", color: "var(--text)",
         fontSize: 13, userSelect: "none", lineHeight: 1.3,
         ...extra
       }}
@@ -2131,7 +2131,7 @@ function EditorToolbar({
         defaultValue=""
         style={{
           padding: "5px 8px", borderRadius: 8, fontSize: 12,
-          background: "var(--bg-surface2)", color: "var(--text-on-dark)",
+          background: "var(--bg-surface2)", color: "var(--text)",
           border: "1px solid rgba(255,255,255,0.15)", cursor: "pointer",
           maxWidth: 150
         }}
@@ -2153,7 +2153,7 @@ function EditorToolbar({
         defaultValue=""
         style={{
           padding: "5px 8px", borderRadius: 8, fontSize: 12,
-          background: "var(--bg-surface2)", color: "var(--text-on-dark)",
+          background: "var(--bg-surface2)", color: "var(--text)",
           border: "1px solid rgba(255,255,255,0.15)", cursor: "pointer"
         }}
       >
@@ -2177,7 +2177,7 @@ function EditorToolbar({
         }}
       >
         <span style={{ fontSize: 11, color: "var(--text-muted)", lineHeight: 1 }}>Text</span>
-        <span style={{ fontSize: 13, color: "var(--text-on-dark)", lineHeight: 1, fontWeight: 700 }}>A</span>
+        <span style={{ fontSize: 13, color: "var(--text)", lineHeight: 1, fontWeight: 700 }}>A</span>
         <span style={{ width: 16, height: 3, borderRadius: 2, background: textColor, display: "block" }} />
       </button>
       <input
@@ -2242,7 +2242,7 @@ function EditorToolbar({
         title="Border thickness"
         style={{
           padding: "5px 8px", borderRadius: 8, fontSize: 12,
-          background: "var(--bg-surface2)", color: "var(--text-on-dark)",
+          background: "var(--bg-surface2)", color: "var(--text)",
           border: "1px solid rgba(255,255,255,0.15)", cursor: "pointer"
         }}
       >
@@ -2294,7 +2294,7 @@ function EditorToolbar({
         title="Table line weight"
         style={{
           padding: "5px 8px", borderRadius: 8, fontSize: 12,
-          background: "var(--bg-surface2)", color: "var(--text-on-dark)",
+          background: "var(--bg-surface2)", color: "var(--text)",
           border: "1px solid rgba(255,255,255,0.15)", cursor: "pointer"
         }}
       >
@@ -2697,7 +2697,7 @@ function ItemSpecificsTab({ result, copyText }) {
                   placeholder="—"
                   style={{
                     background: "transparent", border: "none", outline: "none",
-                    color: row.value?.trim() ? "var(--text-on-dark)" : "var(--text-dim)",
+                    color: row.value?.trim() ? "var(--text)" : "var(--text-dim)",
                     fontSize: 13,
                     padding: "9px 14px", width: "100%", fontFamily: "inherit"
                   }}
@@ -2783,7 +2783,7 @@ function ItemSpecificsPanel({ itemSpecifics, specifications, onCopyAll }) {
               <span style={{ fontSize: 13, color: "var(--text-muted)", minWidth: 140, flexShrink: 0 }}>
                 {row.label}
               </span>
-              <span style={{ fontSize: 13, color: "var(--text-on-dark)", wordBreak: "break-word" }}>
+              <span style={{ fontSize: 13, color: "var(--text)", wordBreak: "break-word" }}>
                 {row.value}
               </span>
             </div>

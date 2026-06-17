@@ -1802,7 +1802,7 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
                   <div style={{ padding: "6px 0", marginTop: 2 }}>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                       <span style={{ fontSize: 12, color: C.muted }}>VAT registered (20%)</span>
-                      <button onClick={() => setVatRegistered(v => !v)} style={{ ...BUTTON_BASE, padding: "3px 12px", fontSize: 11, background: vatRegistered ? C.blue : "var(--bg-surface2)", color: "var(--text-on-dark)", boxShadow: vatRegistered ? "0 0 10px rgba(19,93,255,0.3)" : "none" }}>
+                      <button onClick={() => setVatRegistered(v => !v)} style={{ ...BUTTON_BASE, padding: "3px 12px", fontSize: 11, background: vatRegistered ? C.blue : "var(--bg-surface2)", color: vatRegistered ? "var(--text-on-dark)" : "var(--text-muted)", boxShadow: vatRegistered ? "0 0 10px rgba(19,93,255,0.3)" : "none" }}>
                         {vatRegistered ? "ON" : "OFF"}
                       </button>
                     </div>
@@ -1886,7 +1886,7 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
                       </div>
                       <input value={smQuery} onChange={(e) => setSmQuery(e.target.value)} onKeyDown={(e) => e.key === "Enter" && !smLoading && handleFetch()} placeholder="Search by OEM / part number or product name…" style={{ ...CI, flex: 1, fontSize: 13 }} />
                       <button onClick={handleFetch} disabled={smLoading || !smQuery.trim()}
-                        style={{ ...BUTTON_BASE, padding: "8px 20px", fontSize: 13, flexShrink: 0, display: "flex", alignItems: "center", gap: 7, background: smLoading ? "rgba(19,93,255,0.12)" : !smQuery.trim() ? "var(--bg-surface2)" : C.blue, color: smLoading ? "var(--text-accent)" : "var(--text-on-dark)", opacity: !smQuery.trim() && !smLoading ? 0.45 : 1, whiteSpace: "nowrap", border: smLoading ? "1px solid rgba(19,93,255,0.35)" : "1px solid transparent", boxShadow: smLoading ? "0 0 14px rgba(19,93,255,0.2)" : !smQuery.trim() ? "none" : "0 0 16px rgba(19,93,255,0.4)" }}>
+                        style={{ ...BUTTON_BASE, padding: "8px 20px", fontSize: 13, flexShrink: 0, display: "flex", alignItems: "center", gap: 7, background: smLoading ? "rgba(19,93,255,0.12)" : !smQuery.trim() ? "var(--bg-surface2)" : C.blue, color: smLoading ? "var(--text-accent)" : !smQuery.trim() ? "var(--text-muted)" : "var(--text-on-dark)", opacity: !smQuery.trim() && !smLoading ? 0.45 : 1, whiteSpace: "nowrap", border: smLoading ? "1px solid rgba(19,93,255,0.35)" : "1px solid transparent", boxShadow: smLoading ? "0 0 14px rgba(19,93,255,0.2)" : !smQuery.trim() ? "none" : "0 0 16px rgba(19,93,255,0.4)" }}>
                         {smLoading && (
                           <div style={{ width: 13, height: 13, borderRadius: "50%", border: "2px solid rgba(147,197,253,0.2)", borderTop: "2px solid #93c5fd", animation: "pcSpin 0.75s linear infinite", flexShrink: 0 }} />
                         )}

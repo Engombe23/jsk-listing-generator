@@ -207,7 +207,7 @@ export default function SavedProducts({ products, onDelete, onLoad }) {
       }}>
         {/* Title + count */}
         <div style={{ flex: 1, minWidth: 160 }}>
-          <div style={{ fontSize: 20, fontWeight: 800, color: "var(--text-on-dark)" }}>Saved Products</div>
+          <div style={{ fontSize: 20, fontWeight: 800, color: "var(--text)" }}>Saved Products</div>
           <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 3 }}>
             {filtered.length === products.length
               ? `${products.length} product${products.length !== 1 ? "s" : ""} saved`
@@ -335,7 +335,7 @@ export default function SavedProducts({ products, onDelete, onLoad }) {
                     transition: "background 0.15s"
                   }}
                 >
-                  <td style={{ ...COL_STYLE, color: "var(--text-on-dark)", fontWeight: 600, maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis" }}>
+                  <td style={{ ...COL_STYLE, color: "var(--text)", fontWeight: 600, maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis" }}>
                     {product.name || "Unnamed"}
                   </td>
                   <td style={{ ...COL_STYLE, color: "var(--text)" }}>{fmt(product.itemCost)}</td>
@@ -349,19 +349,19 @@ export default function SavedProducts({ products, onDelete, onLoad }) {
                   </td>
                   <td style={{
                     ...COL_STYLE, fontWeight: 700,
-                    color: product.profit > 0 ? "var(--green)" : product.profit < 0 ? "var(--red)" : "var(--text-on-dark)"
+                    color: product.profit > 0 ? "var(--green)" : product.profit < 0 ? "var(--red)" : "var(--text)"
                   }}>
                     {fmt(product.profit)}
                   </td>
                   <td style={{
                     ...COL_STYLE, fontWeight: 600,
-                    color: product.margin > 0 ? "var(--green)" : product.margin < 0 ? "var(--red)" : "var(--text-on-dark)"
+                    color: product.margin > 0 ? "var(--green)" : product.margin < 0 ? "var(--red)" : "var(--text)"
                   }}>
                     {fmtPct(product.margin)}
                   </td>
                   <td style={{
                     ...COL_STYLE, fontWeight: 600,
-                    color: product.markup > 0 ? "var(--green)" : product.markup < 0 ? "var(--red)" : "var(--text-on-dark)"
+                    color: product.markup > 0 ? "var(--green)" : product.markup < 0 ? "var(--red)" : "var(--text)"
                   }}>
                     {fmtPct(product.markup)}
                   </td>

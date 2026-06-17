@@ -97,7 +97,7 @@ function ProgressList({ currentStep }) {
                 justifyContent: "center",
                 flexShrink: 0,
                 fontSize: 12,
-                color: "var(--text-on-dark)",
+                color: done || active ? "var(--text-on-dark)" : "var(--text-muted)",
                 boxShadow: active ? "0 0 8px rgba(183,0,23,0.5)" : done ? "0 0 8px rgba(74,222,128,0.4)" : "none",
                 transition: "all 0.3s"
               }}
@@ -107,7 +107,7 @@ function ProgressList({ currentStep }) {
             <div
               style={{
                 fontSize: 14,
-                color: done ? GREEN : active ? "var(--text-on-dark)" : "var(--text-muted)",
+                color: done ? GREEN : active ? "var(--text)" : "var(--text-muted)",
                 fontWeight: active ? 700 : 400,
                 transition: "color 0.3s"
               }}
@@ -246,7 +246,7 @@ function VehicleCard({ vehicle }) {
                 >
                   {label}
                 </td>
-                <td style={{ fontSize: 13, color: "var(--text-on-dark)", paddingBottom: 6 }}>{value}</td>
+                <td style={{ fontSize: 13, color: "var(--text)", paddingBottom: 6 }}>{value}</td>
               </tr>
             ))}
         </tbody>
@@ -340,7 +340,7 @@ function PartCard({ part, strikethrough = false, recommended = false, onCopyArti
                 <td
                   style={{
                     fontSize: 13,
-                    color: strikethrough ? "var(--text-muted)" : "var(--text-on-dark)",
+                    color: strikethrough ? "var(--text-muted)" : "var(--text)",
                     paddingBottom: 6,
                     textDecoration: strikethrough ? "line-through" : "none",
                     wordBreak: "break-word"
@@ -704,7 +704,7 @@ function VehicleSelectionStep({ options, onSelect, onBack }) {
               <path d="M5 17H3a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h13l4 4v4a2 2 0 0 1-2 2h-1"/>
               <circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/>
             </svg>
-            <div style={{ fontSize: 18, fontWeight: 800, color: "var(--text-on-dark)" }}>Select Your Vehicle</div>
+            <div style={{ fontSize: 18, fontWeight: 800, color: "var(--text)" }}>Select Your Vehicle</div>
           </div>
           <button
             onClick={onBack}
@@ -763,7 +763,7 @@ function VehicleSelectionStep({ options, onSelect, onBack }) {
                   transform: isHovered ? "translateY(-2px)" : "none"
                 }}
               >
-                <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-on-dark)", marginBottom: 10, lineHeight: 1.3 }}>
+                <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text)", marginBottom: 10, lineHeight: 1.3 }}>
                   {[v.make, v.model, v.variant].filter(Boolean).join(" ")}
                 </div>
                 <table style={{ width: "100%", borderCollapse: "collapse" }}>

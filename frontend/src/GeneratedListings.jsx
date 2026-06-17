@@ -405,7 +405,7 @@ function ListingsTable({
                   <td style={{ ...COL, color: "var(--text-accent)", fontFamily: "monospace", fontSize: 12 }}>
                     {l.article_number || "—"}
                   </td>
-                  <td style={{ ...COL, color: "var(--text-on-dark)", fontWeight: 600, maxWidth: 220 }}>
+                  <td style={{ ...COL, color: "var(--text)", fontWeight: 600, maxWidth: 220 }}>
                     <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {l.title || "—"}
                     </div>
@@ -476,7 +476,7 @@ function ListingsTable({
                           background: "var(--border-light)", color: "var(--text)",
                           fontWeight: 600, transition: "all 0.14s"
                         }}
-                        onMouseEnter={(e) => { e.currentTarget.style.background = "var(--border-strong)"; e.currentTarget.style.color = "var(--text-on-dark)"; }}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = "var(--border-strong)"; e.currentTarget.style.color = "var(--text)"; }}
                         onMouseLeave={(e) => { e.currentTarget.style.background = "var(--border-light)"; e.currentTarget.style.color = "var(--text)"; }}
                       >
                         ↗
@@ -552,7 +552,7 @@ function DetailSpecificsEditor({ rows, onChange }) {
             style={{
               width: "100%", background: "var(--border-light)",
               border: "1px solid var(--border)", borderRadius: 5,
-              color: "var(--text-on-dark)", fontSize: 12, padding: "3px 7px", outline: "none",
+              color: "var(--text)", fontSize: 12, padding: "3px 7px", outline: "none",
               boxSizing: "border-box"
             }}
           />
@@ -667,7 +667,7 @@ function ListingDetail({ listing, onClose, onSave }) {
         }}>← Back</button>
 
         <div style={{ flex: 1, minWidth: 180 }}>
-          <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-on-dark)" }}>
+          <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text)" }}>
             {listing.article_number || "Listing Detail"}
           </div>
           <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 1 }}>
@@ -704,7 +704,7 @@ function ListingDetail({ listing, onClose, onSave }) {
               style={{
                 width: "100%", boxSizing: "border-box",
                 background: "var(--border-light)", border: "1px solid var(--border-strong)",
-                borderRadius: 10, color: "var(--text-on-dark)", fontSize: 14, fontWeight: 600,
+                borderRadius: 10, color: "var(--text)", fontSize: 14, fontWeight: 600,
                 padding: "10px 14px", outline: "none",
               }}
             />
@@ -721,7 +721,7 @@ function ListingDetail({ listing, onClose, onSave }) {
                 style={{
                   width: "100%", boxSizing: "border-box",
                   background: "var(--border-light)", border: "1px solid var(--border)",
-                  borderRadius: 8, color: "var(--text-on-dark)", fontSize: 13,
+                  borderRadius: 8, color: "var(--text)", fontSize: 13,
                   padding: "8px 12px", outline: "none", fontFamily: "monospace"
                 }}
               />
@@ -735,7 +735,7 @@ function ListingDetail({ listing, onClose, onSave }) {
                 style={{
                   width: "100%", boxSizing: "border-box",
                   background: "var(--border-light)", border: "1px solid var(--border)",
-                  borderRadius: 8, color: "var(--text-on-dark)", fontSize: 13,
+                  borderRadius: 8, color: "var(--text)", fontSize: 13,
                   padding: "8px 12px", outline: "none"
                 }}
               />
@@ -926,7 +926,7 @@ function ItemSpecificsExport({ listings }) {
             {rows.map(({ listing, vm }, idx) => (
               <tr key={listing.id} style={{ background: idx % 2 === 0 ? "rgba(255,255,255,0.015)" : "transparent" }}>
                 <td style={{
-                  ...COL, color: "var(--text-on-dark)", fontWeight: 600,
+                  ...COL, color: "var(--text)", fontWeight: 600,
                   position: "sticky", left: 0,
                   background: idx % 2 === 0 ? "var(--bg-surface2)" : "var(--bg-surface3)",
                   maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"
@@ -1218,7 +1218,7 @@ export default function GeneratedListings({
         border: "1px solid var(--border)"
       }}>
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 20, fontWeight: 800, color: "var(--text-on-dark)" }}>Generated Listings</div>
+          <div style={{ fontSize: 20, fontWeight: 800, color: "var(--text)" }}>Generated Listings</div>
           <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 3 }}>
             Auto-saved from the generator · manage, complete, and export from here
           </div>
