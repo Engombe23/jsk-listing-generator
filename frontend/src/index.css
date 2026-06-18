@@ -93,6 +93,7 @@ html, body {
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
   font-family: 'Inter', 'system-ui', sans-serif;
+  scroll-behavior: smooth;
 }
 
 #root {

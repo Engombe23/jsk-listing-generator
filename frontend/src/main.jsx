@@ -3,9 +3,8 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import "./index.css";
 import Providers from "./Providers.jsx";
-import AuthProtectedRoute from "./router/AuthProtectedRoute.jsx";
+import HomeRoute from "./router/HomeRoute.jsx";
 import GuestOnlyRoute from "./router/GuestOnlyRoute.jsx";
-import App from "./App.jsx";
 import About from "./pages/About.jsx";
 import Pricing from "./pages/Pricing.jsx";
 import LoginPage from "./pages/auth/LoginPage.jsx";
@@ -20,9 +19,7 @@ createRoot(document.getElementById("root")).render(
     <BrowserRouter>
       <Routes>
         <Route element={<Providers />}>
-          <Route element={<AuthProtectedRoute />}>
-            <Route path="/" element={<App />} />
-          </Route>
+          <Route path="/" element={<HomeRoute />} />
 
           <Route path="/about" element={<About />} />
           <Route path="/pricing" element={<Pricing />} />
