@@ -3,7 +3,7 @@ import AuthPageLayout from "./AuthPageLayout";
 
 export default function SignUpPage() {
   return (
-    <AuthPageLayout title="Create account" subtitle="Start using PartLister">
+    <AuthPageLayout title="Create your account" subtitle="Start generating eBay listings in minutes.">
       <SignUpForm />
     </AuthPageLayout>
   );

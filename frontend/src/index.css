@@ -1,5 +1,85 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 
+/* ─── Theme tokens ───────────────────────────────────────────────────────────── */
+
+/* Light (default) */
+:root, [data-theme="light"] {
+  --bg:            #f4f6fb;
+  --bg-surface:    #ffffff;
+  --bg-surface2:   #f0f4fb;
+  --bg-surface3:   #e8edf8;
+  --bg-input:      #f8faff;
+  --bg-nav:        #ffffff;
+  --bg-dark:       #e8edf8;
+
+  --border:        rgba(0, 0, 0, 0.09);
+  --border-light:  rgba(0, 0, 0, 0.05);
+  --border-blue:   rgba(19, 93, 255, 0.20);
+  --border-strong: rgba(0, 0, 0, 0.15);
+
+  --text:          #0f172a;
+  --text-muted:    #475569;
+  --text-dim:      #94a3b8;
+  --text-accent:   #2563eb;
+  --text-on-dark:  #ffffff;
+
+  --blue:          #135DFF;
+  --blue-bg:       rgba(19, 93, 255, 0.08);
+  --blue-glow:     rgba(19, 93, 255, 0.18);
+  --green:         #16a34a;
+  --green-bg:      rgba(22, 163, 74, 0.09);
+  --yellow:        #d97706;
+  --yellow-bg:     rgba(217, 119, 6, 0.08);
+  --red:           #dc2626;
+  --red-bg:        rgba(220, 38, 38, 0.08);
+
+  --chart-bg:      #f8faff;
+  --chart-grid:    rgba(0, 0, 0, 0.06);
+  --chart-axis:    #64748b;
+  --chart-dim:     #94a3b8;
+  --shadow:        0 2px 12px rgba(0, 0, 0, 0.08);
+  --shadow-lg:     0 8px 32px rgba(0, 0, 0, 0.12);
+}
+
+/* Dark */
+[data-theme="dark"] {
+  --bg:            #080f1c;
+  --bg-surface:    #0b1929;
+  --bg-surface2:   #0d1f35;
+  --bg-surface3:   #060d1a;
+  --bg-input:      #0d1f35;
+  --bg-nav:        #0F1E35;
+  --bg-dark:       #060d1a;
+
+  --border:        rgba(255, 255, 255, 0.07);
+  --border-light:  rgba(255, 255, 255, 0.04);
+  --border-blue:   rgba(19, 93, 255, 0.22);
+  --border-strong: rgba(255, 255, 255, 0.12);
+
+  --text:          #e2e8f0;
+  --text-muted:    #6b7280;
+  --text-dim:      #374151;
+  --text-accent:   #93c5fd;
+  --text-on-dark:  #ffffff;
+
+  --blue:          #135DFF;
+  --blue-bg:       rgba(19, 93, 255, 0.15);
+  --blue-glow:     rgba(19, 93, 255, 0.28);
+  --green:         #4ade80;
+  --green-bg:      rgba(74, 222, 128, 0.09);
+  --yellow:        #fbbf24;
+  --yellow-bg:     rgba(251, 191, 36, 0.08);
+  --red:           #f87171;
+  --red-bg:        rgba(248, 113, 113, 0.08);
+
+  --chart-bg:      #020e1f;
+  --chart-grid:    rgba(255, 255, 255, 0.055);
+  --chart-axis:    #5a7fa0;
+  --chart-dim:     #2d4a65;
+  --shadow:        0 2px 12px rgba(0, 0, 0, 0.4);
+  --shadow-lg:     0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
 *, *::before, *::after {
   box-sizing: border-box;
 }
@@ -7,11 +87,13 @@
 html, body {
   margin: 0;
   padding: 0;
-  background: #0A1628;
+  background: var(--bg);
+  color: var(--text);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
   font-family: 'Inter', 'system-ui', sans-serif;
+  scroll-behavior: smooth;
 }
 
 #root {
@@ -33,6 +115,39 @@ button {
 
 input, textarea, select {
   font-family: inherit;
+}
+
+/* ─── Custom scrollbars ──────────────────────────────────────────────────────── */
+
+/* WebKit / Blink (Chrome, Edge, Safari) */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 99px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(56, 189, 248, 0.18);
+  border-radius: 99px;
+  transition: background 0.2s;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(56, 189, 248, 0.38);
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(56, 189, 248, 0.18) rgba(255, 255, 255, 0.03);
 }
 
 /* Remove number input spinners */

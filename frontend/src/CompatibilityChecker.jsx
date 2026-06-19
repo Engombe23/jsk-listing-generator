@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+﻿import React, { useState, useEffect, useRef } from "react";
 import { useSessionState } from "./useSessionState.js";
 import {
   BUTTON_BASE,
@@ -13,13 +13,13 @@ import {
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
 
 // ─── Colour tokens ────────────────────────────────────────────────────────────
-const GREEN = "#4ade80";
+const GREEN = "var(--green)";
 const GREEN_GLOW = "rgba(74,222,128,0.20)";
 const GREEN_BORDER = "rgba(74,222,128,0.25)";
-const RED = "#f87171";
+const RED = "var(--red)";
 const RED_GLOW = "rgba(248,113,113,0.20)";
 const RED_BORDER = "rgba(248,113,113,0.25)";
-const AMBER = "#fbbf24";
+const AMBER = "var(--yellow)";
 const AMBER_GLOW = "rgba(251,191,36,0.20)";
 const AMBER_BORDER = "rgba(251,191,36,0.25)";
 const YELLOW = "#facc15";
@@ -39,7 +39,7 @@ function statusColors(status) {
     case "manual_check_required":
       return { glow: YELLOW_GLOW, border: YELLOW_BORDER, accent: YELLOW };
     default:
-      return { glow: GREY_GLOW, border: GREY_BORDER, accent: "#9ca3af" };
+      return { glow: GREY_GLOW, border: GREY_BORDER, accent: "var(--text-muted)" };
   }
 }
 
@@ -56,14 +56,14 @@ function ProgressList({ currentStep }) {
   return (
     <div
       style={{
-        background: "#0F1E35",
+        background: "var(--bg-nav)",
         borderRadius: 20,
-        border: "1px solid rgba(255,255,255,0.08)",
+        border: "1px solid var(--border)",
         padding: "20px 24px",
         marginTop: 20
       }}
     >
-      <div style={{ fontSize: 13, color: "#9ca3af", marginBottom: 14, fontWeight: 700 }}>
+      <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 14, fontWeight: 700 }}>
         Processing...
       </div>
       {STEPS.map((step, i) => {
@@ -86,18 +86,18 @@ function ProgressList({ currentStep }) {
                 width: 22,
                 height: 22,
                 borderRadius: "50%",
-                background: done ? GREEN : active ? "#135DFF" : "#0D2040",
+                background: done ? GREEN : active ? "var(--blue)" : "var(--bg-surface2)",
                 border: active
                   ? "2px solid #135DFF"
                   : done
                   ? "2px solid " + GREEN
-                  : "2px solid rgba(255,255,255,0.12)",
+                  : "2px solid var(--border-strong)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 flexShrink: 0,
                 fontSize: 12,
-                color: "#fff",
+                color: done || active ? "var(--text-on-dark)" : "var(--text-muted)",
                 boxShadow: active ? "0 0 8px rgba(183,0,23,0.5)" : done ? "0 0 8px rgba(74,222,128,0.4)" : "none",
                 transition: "all 0.3s"
               }}
@@ -107,7 +107,7 @@ function ProgressList({ currentStep }) {
             <div
               style={{
                 fontSize: 14,
-                color: done ? GREEN : active ? "#ffffff" : "#6b7280",
+                color: done ? GREEN : active ? "var(--text)" : "var(--text-muted)",
                 fontWeight: active ? 700 : 400,
                 transition: "color 0.3s"
               }}
@@ -129,7 +129,7 @@ function SpinDot() {
         width: 8,
         height: 8,
         borderRadius: "50%",
-        background: "#fff",
+        background: "var(--text-on-dark)",
         animation: "pulse 1s infinite"
       }}
     />
@@ -188,14 +188,14 @@ function VehicleCard({ vehicle }) {
   return (
     <div
       style={{
-        background: "#081322",
-        border: "1px solid rgba(255,255,255,0.10)",
+        background: "var(--bg-surface3)",
+        border: "1px solid var(--border-strong)",
         borderRadius: 18,
         padding: 18,
         flex: 1
       }}
     >
-      <div style={{ fontSize: 12, color: "#9ca3af", marginBottom: 10, fontWeight: 700 }}>
+      <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 10, fontWeight: 700 }}>
         VEHICLE
       </div>
       {vehicle.vin ? (
@@ -205,8 +205,8 @@ function VehicleCard({ vehicle }) {
             fontWeight: 700,
             letterSpacing: 1,
             marginBottom: 12,
-            background: "#0D2040",
-            color: "#9ca3af",
+            background: "var(--bg-surface2)",
+            color: "var(--text-muted)",
             display: "inline-block",
             padding: "4px 14px",
             borderRadius: 6,
@@ -238,7 +238,7 @@ function VehicleCard({ vehicle }) {
                 <td
                   style={{
                     fontSize: 12,
-                    color: "#9ca3af",
+                    color: "var(--text-muted)",
                     paddingBottom: 6,
                     paddingRight: 12,
                     whiteSpace: "nowrap"
@@ -246,7 +246,7 @@ function VehicleCard({ vehicle }) {
                 >
                   {label}
                 </td>
-                <td style={{ fontSize: 13, color: "#ffffff", paddingBottom: 6 }}>{value}</td>
+                <td style={{ fontSize: 13, color: "var(--text)", paddingBottom: 6 }}>{value}</td>
               </tr>
             ))}
         </tbody>
@@ -261,12 +261,12 @@ function PartCard({ part, strikethrough = false, recommended = false, onCopyArti
   return (
     <div
       style={{
-        background: "#081322",
+        background: "var(--bg-surface3)",
         border: recommended
           ? "1px solid " + GREEN_BORDER
           : strikethrough
           ? "1px solid " + RED_BORDER
-          : "1px solid rgba(255,255,255,0.10)",
+          : "1px solid var(--border-strong)",
         borderRadius: 18,
         padding: 18,
         flex: 1,
@@ -292,13 +292,13 @@ function PartCard({ part, strikethrough = false, recommended = false, onCopyArti
           RECOMMENDED
         </div>
       )}
-      <div style={{ fontSize: 12, color: "#9ca3af", marginBottom: 10, fontWeight: 700 }}>
+      <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 10, fontWeight: 700 }}>
         {strikethrough ? "CHECKED PART (NOT COMPATIBLE)" : recommended ? "COMPATIBLE PART" : "PART"}
       </div>
       {part.imageUrl ? (
         <div
           style={{
-            background: "#ffffff",
+            background: "var(--text-on-dark)",
             borderRadius: 12,
             padding: 10,
             marginBottom: 12,
@@ -328,7 +328,7 @@ function PartCard({ part, strikethrough = false, recommended = false, onCopyArti
                 <td
                   style={{
                     fontSize: 12,
-                    color: "#9ca3af",
+                    color: "var(--text-muted)",
                     paddingBottom: 6,
                     paddingRight: 12,
                     whiteSpace: "nowrap",
@@ -340,7 +340,7 @@ function PartCard({ part, strikethrough = false, recommended = false, onCopyArti
                 <td
                   style={{
                     fontSize: 13,
-                    color: strikethrough ? "#9ca3af" : "#ffffff",
+                    color: strikethrough ? "var(--text-muted)" : "var(--text)",
                     paddingBottom: 6,
                     textDecoration: strikethrough ? "line-through" : "none",
                     wordBreak: "break-word"
@@ -355,7 +355,7 @@ function PartCard({ part, strikethrough = false, recommended = false, onCopyArti
               <td
                 style={{
                   fontSize: 12,
-                  color: "#9ca3af",
+                  color: "var(--text-muted)",
                   paddingBottom: 6,
                   paddingRight: 12,
                   whiteSpace: "nowrap",
@@ -373,9 +373,9 @@ function PartCard({ part, strikethrough = false, recommended = false, onCopyArti
                       style={{
                         fontSize: 11,
                         fontFamily: "monospace",
-                        background: strikethrough ? "#374151" : "#1e3a5f",
-                        color: strikethrough ? "#6b7280" : "#93c5fd",
-                        border: `1px solid ${strikethrough ? "#4b5563" : "#2563eb44"}`,
+                        background: strikethrough ? "var(--text-dim)" : "#1e3a5f",
+                        color: strikethrough ? "var(--text-muted)" : "var(--text-accent)",
+                        border: `1px solid ${strikethrough ? "var(--text-dim)" : "#2563eb44"}`,
                         borderRadius: 4,
                         padding: "2px 6px",
                         letterSpacing: "0.02em"
@@ -474,7 +474,7 @@ function ResultSection({ result, onSendToListing }) {
   return (
     <div
       style={{
-        background: "#0F1E35",
+        background: "var(--bg-nav)",
         borderRadius: 24,
         border: "1px solid " + border,
         padding: 24,
@@ -483,20 +483,20 @@ function ResultSection({ result, onSendToListing }) {
       }}
     >
       <StatusBadge icon={cfg.icon} label={cfg.label} color={accent} />
-      <p style={{ color: "#d1d5db", fontSize: 14, marginTop: 0, marginBottom: 16 }}>
+      <p style={{ color: "var(--text)", fontSize: 14, marginTop: 0, marginBottom: 16 }}>
         {cfg.message}
       </p>
 
       {result.confidenceScore > 0 && (
         <div style={{ marginBottom: 16 }}>
-          <div style={{ fontSize: 13, color: "#9ca3af", marginBottom: 6 }}>Confidence</div>
+          <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 6 }}>Confidence</div>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <div
               style={{
                 height: 8,
                 flex: 1,
                 borderRadius: 999,
-                background: "#0D2040",
+                background: "var(--bg-surface2)",
                 overflow: "hidden"
               }}
             >
@@ -513,7 +513,7 @@ function ResultSection({ result, onSendToListing }) {
             <span style={{ fontSize: 14, fontWeight: 700, color: accent, minWidth: 36 }}>
               {result.confidenceScore}
             </span>
-            <span style={{ fontSize: 13, color: "#9ca3af" }}>{result.confidenceLabel}</span>
+            <span style={{ fontSize: 13, color: "var(--text-muted)" }}>{result.confidenceLabel}</span>
           </div>
         </div>
       )}
@@ -521,7 +521,7 @@ function ResultSection({ result, onSendToListing }) {
       {/* Match reasoning pills */}
       {result.matchReasoning?.matchedFields?.length > 0 && (
         <div style={{ marginBottom: 12 }}>
-          <div style={{ fontSize: 13, color: "#9ca3af", marginBottom: 6 }}>Matched Fields</div>
+          <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 6 }}>Matched Fields</div>
           <div>
             {result.matchReasoning.matchedFields.map((f) => (
               <Pill key={f} label={f} color={GREEN} />
@@ -531,7 +531,7 @@ function ResultSection({ result, onSendToListing }) {
       )}
       {result.matchReasoning?.conflictingFields?.length > 0 && (
         <div style={{ marginBottom: 12 }}>
-          <div style={{ fontSize: 13, color: "#9ca3af", marginBottom: 6 }}>Conflicting Fields</div>
+          <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 6 }}>Conflicting Fields</div>
           <div>
             {result.matchReasoning.conflictingFields.map((f) => (
               <Pill key={f} label={f} color={RED} />
@@ -541,9 +541,9 @@ function ResultSection({ result, onSendToListing }) {
       )}
       {result.matchReasoning?.notes?.length > 0 && (
         <div style={{ marginBottom: 16 }}>
-          <div style={{ fontSize: 13, color: "#9ca3af", marginBottom: 6 }}>Notes</div>
+          <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 6 }}>Notes</div>
           {result.matchReasoning.notes.map((n, i) => (
-            <div key={i} style={{ fontSize: 13, color: "#d1d5db", marginBottom: 4 }}>
+            <div key={i} style={{ fontSize: 13, color: "var(--text)", marginBottom: 4 }}>
               • {n}
             </div>
           ))}
@@ -579,12 +579,12 @@ function ResultSection({ result, onSendToListing }) {
       {/* Error list */}
       {result.errors?.length > 0 && (
         <div style={{ marginTop: 16 }}>
-          <div style={{ fontSize: 13, color: "#9ca3af", marginBottom: 8 }}>Errors by Step</div>
+          <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 8 }}>Errors by Step</div>
           {result.errors.map((e, i) => (
             <div
               key={i}
               style={{
-                background: "#0D1428",
+                background: "var(--bg-surface3)",
                 border: "1px solid rgba(183,0,23,0.30)",
                 borderRadius: 12,
                 padding: "10px 14px",
@@ -601,7 +601,7 @@ function ResultSection({ result, onSendToListing }) {
 
       {/* Manual overrides */}
       <div style={{ display: "flex", gap: 8, marginTop: 20, flexWrap: "wrap" }}>
-        <div style={{ fontSize: 13, color: "#9ca3af", alignSelf: "center", marginRight: 4 }}>
+        <div style={{ fontSize: 13, color: "var(--text-muted)", alignSelf: "center", marginRight: 4 }}>
           Override:
         </div>
         {[
@@ -615,8 +615,8 @@ function ResultSection({ result, onSendToListing }) {
             style={{
               ...BUTTON_BASE,
               background: overrideStatus === key ? color + "22" : "transparent",
-              color: overrideStatus === key ? color : "#9ca3af",
-              border: "1px solid " + (overrideStatus === key ? color + "55" : "rgba(255,255,255,0.10)"),
+              color: overrideStatus === key ? color : "var(--text-muted)",
+              border: "1px solid " + (overrideStatus === key ? color + "55" : "var(--border-strong)"),
               fontSize: 12,
               padding: "8px 12px"
             }}
@@ -630,7 +630,7 @@ function ResultSection({ result, onSendToListing }) {
             style={{
               ...BUTTON_BASE,
               background: "transparent",
-              color: "#9ca3af",
+              color: "var(--text-muted)",
               fontSize: 12,
               padding: "8px 12px"
             }}
@@ -647,8 +647,8 @@ function ResultSection({ result, onSendToListing }) {
           style={{
             ...BUTTON_BASE,
             background: "transparent",
-            color: "#9ca3af",
-            border: "1px solid rgba(255,255,255,0.10)",
+            color: "var(--text-muted)",
+            border: "1px solid var(--border-strong)",
             fontSize: 12,
             padding: "8px 14px"
           }}
@@ -659,9 +659,9 @@ function ResultSection({ result, onSendToListing }) {
           <div
             style={{
               marginTop: 12,
-              background: "#081322",
+              background: "var(--bg-surface3)",
               borderRadius: 14,
-              border: "1px solid rgba(255,255,255,0.08)",
+              border: "1px solid var(--border)",
               padding: 16,
               overflow: "auto",
               maxHeight: 400
@@ -670,7 +670,7 @@ function ResultSection({ result, onSendToListing }) {
             <pre
               style={{
                 fontSize: 11,
-                color: "#9ca3af",
+                color: "var(--text-muted)",
                 margin: 0,
                 whiteSpace: "pre-wrap",
                 wordBreak: "break-word"
@@ -692,7 +692,7 @@ function VehicleSelectionStep({ options, onSelect, onBack }) {
   return (
     <div style={{ marginTop: 20 }}>
       <div style={{
-        background: "#0F1E35", borderRadius: 24,
+        background: "var(--bg-nav)", borderRadius: 24,
         border: "1px solid rgba(251,191,36,0.25)",
         boxShadow: "0 0 28px rgba(251,191,36,0.10), 0 16px 36px rgba(0,0,0,0.28)",
         padding: "22px 24px"
@@ -700,21 +700,24 @@ function VehicleSelectionStep({ options, onSelect, onBack }) {
         {/* Header */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ fontSize: 20 }}>🚗</span>
-            <div style={{ fontSize: 18, fontWeight: 800, color: "#fff" }}>Select Your Vehicle</div>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-accent)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M5 17H3a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h13l4 4v4a2 2 0 0 1-2 2h-1"/>
+              <circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/>
+            </svg>
+            <div style={{ fontSize: 18, fontWeight: 800, color: "var(--text)" }}>Select Your Vehicle</div>
           </div>
           <button
             onClick={onBack}
             style={{
               ...BUTTON_BASE, background: "transparent",
-              color: "#9ca3af", border: "1px solid rgba(255,255,255,0.12)",
+              color: "var(--text-muted)", border: "1px solid var(--border-strong)",
               fontSize: 12, padding: "7px 14px"
             }}
           >
             ← Start Over
           </button>
         </div>
-        <div style={{ fontSize: 14, color: "#9ca3af", marginBottom: 20 }}>
+        <div style={{ fontSize: 14, color: "var(--text-muted)", marginBottom: 20 }}>
           Multiple vehicles match this VIN. Select the correct one to continue the compatibility check.
         </div>
 
@@ -749,28 +752,28 @@ function VehicleSelectionStep({ options, onSelect, onBack }) {
                 onMouseEnter={() => setHoveredId(id)}
                 onMouseLeave={() => setHoveredId(null)}
                 style={{
-                  background: isHovered ? "#0D2040" : "#081322",
+                  background: isHovered ? "var(--bg-surface2)" : "var(--bg-surface3)",
                   border: isHovered
                     ? "1px solid rgba(19,93,255,0.50)"
-                    : "1px solid rgba(255,255,255,0.10)",
-                  boxShadow: isHovered ? "0 0 18px rgba(19,93,255,0.20)" : "none",
+                    : "1px solid var(--border-strong)",
+                  boxShadow: isHovered ? "0 0 18px var(--border-blue)" : "none",
                   borderRadius: 18, padding: 18,
                   cursor: "pointer", textAlign: "left",
                   transition: "all 0.15s ease",
                   transform: isHovered ? "translateY(-2px)" : "none"
                 }}
               >
-                <div style={{ fontSize: 15, fontWeight: 700, color: "#fff", marginBottom: 10, lineHeight: 1.3 }}>
+                <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text)", marginBottom: 10, lineHeight: 1.3 }}>
                   {[v.make, v.model, v.variant].filter(Boolean).join(" ")}
                 </div>
                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
                   <tbody>
                     {rows.map(([label, value]) => (
                       <tr key={label}>
-                        <td style={{ fontSize: 11, color: "#9ca3af", paddingBottom: 5, paddingRight: 10, whiteSpace: "nowrap", verticalAlign: "top" }}>
+                        <td style={{ fontSize: 11, color: "var(--text-muted)", paddingBottom: 5, paddingRight: 10, whiteSpace: "nowrap", verticalAlign: "top" }}>
                           {label}
                         </td>
-                        <td style={{ fontSize: 12, color: "#d1d5db", paddingBottom: 5, wordBreak: "break-word" }}>
+                        <td style={{ fontSize: 12, color: "var(--text)", paddingBottom: 5, wordBreak: "break-word" }}>
                           {value}
                         </td>
                       </tr>
@@ -780,7 +783,7 @@ function VehicleSelectionStep({ options, onSelect, onBack }) {
                 {isHovered && (
                   <div style={{
                     marginTop: 10, fontSize: 12, fontWeight: 700,
-                    color: "#135DFF", display: "flex", alignItems: "center", gap: 5
+                    color: "var(--blue)", display: "flex", alignItems: "center", gap: 5
                   }}>
                     Select this vehicle →
                   </div>
@@ -911,7 +914,7 @@ export default function CompatibilityChecker({ onSendToListing }) {
       {error && (
         <div
           style={{
-            background: "#0D1428",
+            background: "var(--bg-surface3)",
             color: "#fecdd3",
             border: "1px solid rgba(19,93,255,0.35)",
             borderRadius: 20,

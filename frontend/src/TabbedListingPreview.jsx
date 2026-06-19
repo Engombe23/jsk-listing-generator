@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+﻿import React, { useState } from "react";
 import { CopyButton, ReadOnlyTextarea } from "./shared.jsx";
 
 // ─── Feature flag ─────────────────────────────────────────────────────────────
@@ -73,8 +73,8 @@ export default function TabbedListingPreview({ result, html, copyText, renderSpe
       {/* ── Tab bar ── */}
       <div style={{
         display: "flex", gap: 4,
-        background: "#0F1E35", borderRadius: 14, padding: 4,
-        border: "1px solid rgba(255,255,255,0.06)"
+        background: "var(--bg-nav)", borderRadius: 14, padding: 4,
+        border: "1px solid var(--border-light)"
       }}>
         {TABS.map(({ key, label }) => {
           const isActive = activeTab === key;
@@ -87,8 +87,8 @@ export default function TabbedListingPreview({ result, html, copyText, renderSpe
               style={{
                 flex: 1, padding: "9px 8px", borderRadius: 10,
                 border: "none", cursor: "pointer", fontWeight: 700, fontSize: 12,
-                background: isActive ? "#135DFF" : "transparent",
-                color:      isActive ? "#fff"    : "#9ca3af",
+                background: isActive ? "var(--blue)" : "transparent",
+                color:      isActive ? "var(--text-on-dark)"    : "var(--text-muted)",
                 boxShadow:  isActive ? "0 0 14px rgba(19,93,255,0.28)" : "none",
                 transition: "all 0.18s ease", whiteSpace: "nowrap"
               }}
@@ -122,7 +122,7 @@ export default function TabbedListingPreview({ result, html, copyText, renderSpe
       {activeTab === "specifics" && (
         <div style={{ display: "grid", gap: 14 }}>
           {renderSpecifics?.() ?? (
-            <div style={{ padding: 40, textAlign: "center", color: "#6b7280", fontSize: 13 }}>
+            <div style={{ padding: 40, textAlign: "center", color: "var(--text-muted)", fontSize: 13 }}>
               Item specifics unavailable.
             </div>
           )}
@@ -145,8 +145,8 @@ function PreviewTab({ descHtml, compatCount, topModels, yearRange, onViewCompat 
 
       {/* Rendered HTML — description only, compat tables removed */}
       <div style={{
-        background: "#ffffff",
-        border: "1px solid rgba(255,255,255,0.08)",
+        background: "var(--text-on-dark)",
+        border: "1px solid var(--border)",
         borderRadius: 18, padding: 18, overflowX: "auto",
         boxShadow: "0 0 16px rgba(19,93,255,0.08)"
       }}>
@@ -159,7 +159,7 @@ function PreviewTab({ descHtml, compatCount, topModels, yearRange, onViewCompat 
       {/* Compact compatibility summary */}
       {hasCompat && (
         <div style={{
-          background: "#081A2E",
+          background: "var(--bg-surface3)",
           border: "1px solid rgba(74,222,128,0.18)",
           borderRadius: 14, padding: "14px 18px"
         }}>
@@ -168,7 +168,7 @@ function PreviewTab({ descHtml, compatCount, topModels, yearRange, onViewCompat 
             <div style={{ flex: 1, minWidth: 0 }}>
               {/* Count headline */}
               <div style={{
-                fontSize: 13, fontWeight: 700, color: "#4ade80",
+                fontSize: 13, fontWeight: 700, color: "var(--green)",
                 display: "flex", alignItems: "center", gap: 6, marginBottom: 10
               }}>
                 <span style={{
@@ -180,7 +180,7 @@ function PreviewTab({ descHtml, compatCount, topModels, yearRange, onViewCompat 
                 }}>✓</span>
                 {compatCount} Compatible Vehicles
                 {yearRange ? (
-                  <span style={{ fontSize: 11, fontWeight: 400, color: "#6b7280", marginLeft: 4 }}>
+                  <span style={{ fontSize: 11, fontWeight: 400, color: "var(--text-muted)", marginLeft: 4 }}>
                     ({yearRange})
                   </span>
                 ) : null}
@@ -195,18 +195,18 @@ function PreviewTab({ descHtml, compatCount, topModels, yearRange, onViewCompat 
                   }}>
                     <span style={{
                       width: 5, height: 5, borderRadius: "50%",
-                      background: "#4ade80", flexShrink: 0, display: "inline-block"
+                      background: "var(--green)", flexShrink: 0, display: "inline-block"
                     }} />
                     {m}
                   </div>
                 ))}
                 {topModels.length === 0 && (
-                  <div style={{ fontSize: 12, color: "#6b7280" }}>
+                  <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
                     Fitment data available — click to view
                   </div>
                 )}
                 {topModels.length > 5 && (
-                  <div style={{ fontSize: 11, color: "#6b7280", marginTop: 2 }}>
+                  <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>
                     +{compatCount - 5} more vehicles in Compatibility tab
                   </div>
                 )}
@@ -219,7 +219,7 @@ function PreviewTab({ descHtml, compatCount, topModels, yearRange, onViewCompat 
               style={{
                 padding: "9px 14px", borderRadius: 10, fontSize: 12, fontWeight: 700,
                 cursor: "pointer", border: "1px solid rgba(74,222,128,0.25)",
-                background: "rgba(74,222,128,0.08)", color: "#4ade80",
+                background: "rgba(74,222,128,0.08)", color: "var(--green)",
                 transition: "all 0.15s ease", flexShrink: 0, whiteSpace: "nowrap",
                 lineHeight: 1.3
               }}
@@ -252,13 +252,13 @@ function CompatTab({ compatRows, compatHtml, count }) {
         {/* Summary bar */}
         <div style={{
           display: "flex", alignItems: "center", justifyContent: "space-between",
-          padding: "10px 16px", background: "#0F1E35",
-          border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12
+          padding: "10px 16px", background: "var(--bg-nav)",
+          border: "1px solid var(--border)", borderRadius: 12
         }}>
-          <span style={{ fontSize: 13, fontWeight: 700, color: "#fff" }}>
+          <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>
             {count} Compatible Vehicles
           </span>
-          <span style={{ fontSize: 11, color: "#6b7280" }}>
+          <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
             {makes.length} {makes.length === 1 ? "manufacturer" : "manufacturers"}
           </span>
         </div>
@@ -275,8 +275,8 @@ function CompatTab({ compatRows, compatHtml, count }) {
   if (compatHtml) {
     return (
       <div style={{
-        background: "#ffffff",
-        border: "1px solid rgba(255,255,255,0.08)",
+        background: "var(--text-on-dark)",
+        border: "1px solid var(--border)",
         borderRadius: 18, padding: 18, overflowX: "auto"
       }}>
         <div dangerouslySetInnerHTML={{ __html: compatHtml }} />
@@ -285,7 +285,7 @@ function CompatTab({ compatRows, compatHtml, count }) {
   }
 
   return (
-    <div style={{ padding: 48, textAlign: "center", color: "#6b7280", fontSize: 13 }}>
+    <div style={{ padding: 48, textAlign: "center", color: "var(--text-muted)", fontSize: 13 }}>
       No compatibility data available for this listing.
     </div>
   );
@@ -297,7 +297,7 @@ const TH = ({ children, left = false }) => (
   <th style={{
     border: "1px solid #000000", padding: "7px 8px",
     textAlign: left ? "left" : "center",
-    fontSize: 12, fontWeight: "bold", color: "#000000"
+    fontSize: 12, fontWeight: "bold", color: "var(--text)"
   }}>
     {children}
   </th>
@@ -316,7 +316,7 @@ const TD = ({ children, left = false }) => (
 function MakeTable({ make, rows }) {
   return (
     <div style={{
-      border: "1px solid rgba(255,255,255,0.08)",
+      border: "1px solid var(--border)",
       borderRadius: 12, overflow: "hidden"
     }}>
       <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: "Arial, sans-serif" }}>
@@ -324,7 +324,7 @@ function MakeTable({ make, rows }) {
           <tr>
             <th colSpan={6} style={{
               border: "1px solid #000000",
-              background: "#000000", color: "#cc0000",
+              background: "var(--text)", color: "#cc0000",
               fontWeight: "bold", textAlign: "center",
               padding: "9px 10px", fontSize: 15
             }}>
@@ -342,7 +342,7 @@ function MakeTable({ make, rows }) {
         </thead>
         <tbody>
           {rows.map((v, i) => (
-            <tr key={i} style={{ background: i % 2 === 0 ? "#ffffff" : "#f5f5f5" }}>
+            <tr key={i} style={{ background: i % 2 === 0 ? "var(--text-on-dark)" : "#f5f5f5" }}>
               <TD left>{v.vehicle}</TD>
               <TD>{v.production_years}</TD>
               <TD>{v.kw}</TD>
@@ -366,7 +366,7 @@ function HtmlTab({ html }) {
         display: "flex", alignItems: "center",
         justifyContent: "space-between", gap: 10
       }}>
-        <div style={{ fontSize: 12, color: "#6b7280" }}>
+        <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
           Full generated HTML — includes all sections and compatibility tables.
         </div>
         <CopyButton value={html} style={{ fontSize: 12, flexShrink: 0 }}>
