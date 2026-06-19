@@ -3,7 +3,7 @@ import AuthPageLayout from "./AuthPageLayout";
 
 export default function LoginPage() {
   return (
-    <AuthPageLayout title="Sign in" subtitle="Access your PartLister account">
+    <AuthPageLayout title="Welcome back" subtitle="Sign in to your account to continue generating listings.">
       <LoginForm />
     </AuthPageLayout>
   );
