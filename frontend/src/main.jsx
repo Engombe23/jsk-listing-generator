@@ -2,6 +2,8 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import "./index.css";
+import "./lib/posthogClient.js";
+import PostHogPageView from "./lib/PostHogPageView.jsx";
 import Providers from "./Providers.jsx";
 import HomeRoute from "./router/HomeRoute.jsx";
 import GuestOnlyRoute from "./router/GuestOnlyRoute.jsx";
@@ -17,6 +19,7 @@ import AuthCallback from "./callback/AuthCallback.jsx";
 createRoot(document.getElementById("root")).render(
   <StrictMode>
     <BrowserRouter>
+      <PostHogPageView />
       <Routes>
         <Route element={<Providers />}>
           <Route path="/" element={<HomeRoute />} />
