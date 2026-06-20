@@ -16,7 +16,8 @@
     "dotenv": "^17.3.1",
     "express": "^5.1.0",
     "json2csv": "^6.0.0-alpha.2",
-    "openai": "^5.20.0"
+    "openai": "^5.20.0",
+    "posthog-node": "^5.38.2"
   },
   "devDependencies": {
     "kill-port": "^2.0.1",
