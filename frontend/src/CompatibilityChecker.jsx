@@ -1,5 +1,6 @@
 ﻿import React, { useState, useEffect, useRef } from "react";
 import { useSessionState } from "./useSessionState.js";
+import { trackEvent } from "./lib/analytics";
 import {
   BUTTON_BASE,
   SMALL_BUTTON_STYLE,
@@ -847,6 +848,7 @@ export default function CompatibilityChecker({ onSendToListing }) {
     setResult(null);
     setVehicleOptions(null);
     startProgressSimulation();
+    trackEvent("compat_check_started", { oem_number: oemNumber.trim(), source: "compatibility_checker" });
 
     try {
       const res = await fetch(`${API_URL}/compatibility/check`, {
@@ -878,8 +880,15 @@ export default function CompatibilityChecker({ onSendToListing }) {
       }
 
       setResult(data);
+      trackEvent("compat_check_performed", { oem_number: oemNumber.trim(), status: data.status, source: "compatibility_checker" });
+      if (data.status === "compatible") {
+        trackEvent("compat_result_compatible", { oem_number: oemNumber.trim(), source: "compatibility_checker" });
+      } else if (data.status === "not_compatible") {
+        trackEvent("compat_result_not_compatible", { oem_number: oemNumber.trim(), source: "compatibility_checker" });
+      }
     } catch (err) {
       setError(String(err.message || err));
+      trackEvent("compat_check_failed", { oem_number: oemNumber.trim(), error: String(err.message || err), source: "compatibility_checker" });
     } finally {
       stopProgressSimulation();
       setCurrentStep(STEPS.length);

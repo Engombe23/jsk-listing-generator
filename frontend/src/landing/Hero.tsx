@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
+import { trackEvent } from "../lib/analytics";
 
 const T  = "#0d1f35";
 const M  = "#3d5a7a";
@@ -935,7 +936,7 @@ export default function Hero() {
             </p>
 
             <div style={{ display:"flex", gap:10, marginBottom:28, flexWrap:"wrap", alignItems:"center" }}>
-              <Link to="/auth/sign-up" style={{
+              <Link to="/auth/sign-up" onClick={() => trackEvent("signup_clicked", { cta_location: "hero" })} style={{
                 padding:"13px 26px",
                 background:`linear-gradient(135deg,${A} 0%,#0040cc 100%)`,
                 color:"#fff", textDecoration:"none",

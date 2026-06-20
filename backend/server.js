@@ -11,6 +11,7 @@ import {
 } from "./ebay-filter-rules.js";
 import OpenAI from "openai";
 import posthog from "./posthog.js";
+import analyticsRouter from "./routes/analytics.js";
 
 const openaiClient = process.env.OPENAI_API_KEY
   ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
@@ -21,6 +22,7 @@ const app = express();
 
 app.use(cors());
 app.use(express.json({ limit: "2mb" }));
+app.use("/api", analyticsRouter);
 
 const RAPIDAPI_KEY  = process.env.RAPIDAPI_KEY;
 const RAPIDAPI_HOST = "autodoc-parts-catalog.p.rapidapi.com";

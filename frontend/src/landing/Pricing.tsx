@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { trackEvent } from "../lib/analytics";
 
 const TEXT = "#132A46";
 const MUTED = "#4d6a8a";
@@ -214,6 +215,7 @@ export default function Pricing() {
                 {/* CTA */}
                 <a
                   href="/auth/sign-up"
+                  onClick={() => trackEvent("signup_clicked", { cta_location: "pricing_section", plan_name: plan.name })}
                   style={{
                     display: "block",
                     textAlign: "center",

@@ -1,7 +1,10 @@
-﻿import React from "react";
+﻿import React, { useEffect } from "react";
 import { Link } from "react-router-dom";
+import { trackEvent } from "../lib/analytics";
 
 export default function Pricing() {
+  useEffect(() => { trackEvent("pricing_page_viewed"); }, []);
+
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", color: "#fff", fontFamily: "Arial, sans-serif", display: "grid", placeItems: "center", textAlign: "center", padding: 40 }}>
       <div>

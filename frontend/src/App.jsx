@@ -25,6 +25,7 @@ import { useGeneratedListings } from "./useGeneratedListings.js";
 import { useSessionState } from "./useSessionState.js";
 import GeneratedListings from "./GeneratedListings.jsx";
 import { SPEC_SCHEMA, SECTION_TITLES, mapApiSpecsToSchema } from "./itemSpecificsSchema.js";
+import { trackEvent } from "./lib/analytics";
 
 // ─── Description themes (mirrors backend) ────────────────────────────────────
 
@@ -505,6 +506,8 @@ function ListingGenerator({
   const generateListing = async (articleNo) => {
     setPhase("generating");
     setError("");
+    const startedAt = Date.now();
+    trackEvent("listing_generation_started", { part_number: articleNo, source: "listing_generator" });
     try {
       const res  = await fetch(`${API_URL}/lookup`, {
         method: "POST",
@@ -516,9 +519,19 @@ function ListingGenerator({
       setResult(data);
       setPhase("done");
       setIsSaved(false);
+      trackEvent("listing_generated", {
+        part_number: articleNo,
+        generation_time_ms: Date.now() - startedAt,
+        source: "listing_generator",
+      });
     } catch (err) {
       setError(String(err.message || err));
       setPhase(searchResults.length > 0 ? "selecting" : "idle");
+      trackEvent("listing_generation_failed", {
+        part_number: articleNo,
+        error: String(err.message || err),
+        source: "listing_generator",
+      });
     }
   };
 
@@ -593,6 +606,7 @@ function ListingGenerator({
       a.href = url; a.download = "batch-listings.csv";
       document.body.appendChild(a); a.click(); a.remove();
       URL.revokeObjectURL(url);
+      trackEvent("listing_exported_csv", { row_count: rows.length, source: "listing_generator_batch" });
     } catch (err) { setError(String(err.message || err)); }
     finally { setBatchLoading(false); }
   };
@@ -604,6 +618,7 @@ function ListingGenerator({
     if (!result) return;
     onAutoSave?.({ ...result, sku: inputSku.trim() });
     setIsSaved(true);
+    trackEvent("listing_saved", { part_number: result.article_number, source: "listing_generator" });
   };
 
   const btnLabel =
@@ -896,7 +911,10 @@ function ListingGenerator({
 
               {/* Copy HTML */}
               <CopyButton
-                onCopy={() => navigator.clipboard.writeText(liveHtmlRef.current || "")}
+                onCopy={() => {
+                  navigator.clipboard.writeText(liveHtmlRef.current || "");
+                  trackEvent("listing_copied", { part_number: result.article_number, copy_type: "html", source: "listing_generator" });
+                }}
                 style={{ width: "100%", textAlign: "center", fontSize: 13, padding: "10px 16px", borderRadius: 10 }}
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline", verticalAlign: "middle", marginRight: 6 }}><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>

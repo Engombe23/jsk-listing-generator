@@ -1,3 +1,5 @@
+import { trackEvent } from "../lib/analytics";
+
 const ACCENT = "#135DFF";
 const TEXT = "#132A46";
 const MUTED = "#4d6a8a";
@@ -48,6 +50,7 @@ export default function FinalCTA() {
         >
           <a
             href="/auth/sign-up"
+            onClick={() => trackEvent("signup_clicked", { cta_location: "final_cta" })}
             style={{
               padding: "14px 32px",
               fontSize: "1rem",

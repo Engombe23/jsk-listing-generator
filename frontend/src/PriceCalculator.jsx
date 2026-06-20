@@ -2,6 +2,7 @@
 import { useSessionState } from "./useSessionState.js";
 import { BUTTON_BASE, SMALL_BUTTON_STYLE, INPUT_STYLE } from "./shared.jsx";
 import SavedProducts from "./SavedProducts.jsx";
+import { trackEvent } from "./lib/analytics";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
 
@@ -1680,11 +1681,13 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
     if (!hasResult || !onSave) return;
     onSave({ name: productName.trim() || "Unnamed Product", itemCost: cost, shippingCost: shipping, sellingPrice: price, fvfPct: fvf, fixedFee: fixed, promoPct: promo, vatRegistered, profit, margin, markup, ebayFVF, ebayPromo, vatAmount });
     setSavedFlash(true); setTimeout(() => setSavedFlash(false), 2000);
+    trackEvent("price_saved", { selling_price: price, margin, source: "smart_pricing" });
   };
 
   const handleFetch = async () => {
     if (!smQuery.trim()) return;
     setSmLoading(true); setSmError(""); setBinPanelData(null); setSoldCounts({});
+    trackEvent("ebay_search_performed", { query: smQuery.trim(), condition: smCondition, source: "smart_pricing" });
     try {
       const res  = await fetch(`${API_URL}/api/ebay/search-prices`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ query: smQuery.trim(), condition: smCondition }) });
       const json = await res.json();
@@ -1818,7 +1821,13 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
                   <SL>Selling Price</SL>
                   <div style={{ marginBottom: 8 }}>
                     <div style={{ fontSize: 10, color: "var(--text-muted)", marginBottom: 4 }}>{vatRegistered ? "Inc. VAT" : "Ex. VAT"}</div>
-                    <input type="number" value={sellingPrice} onChange={(e) => setSellingPrice(e.target.value)} placeholder="e.g. 29.99"
+                    <input type="number" value={sellingPrice} onChange={(e) => setSellingPrice(e.target.value)}
+                      onBlur={() => {
+                        if (!sellingPrice) return;
+                        trackEvent("price_entered", { selling_price: parseFloat(sellingPrice) || 0, source: "smart_pricing" });
+                        trackEvent("price_calculated", { selling_price: parseFloat(sellingPrice) || 0, margin, profit, source: "smart_pricing" });
+                      }}
+                      placeholder="e.g. 29.99"
                       style={{ ...CI, fontSize: 18, fontWeight: 700, width: "100%", background: "var(--blue-bg)", border: "1px solid var(--border-blue)" }} />
                   </div>
 

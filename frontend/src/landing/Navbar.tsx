@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useSession } from "../context/SessionContext";
 import { supabase } from "../lib/supabaseClient";
+import { trackEvent } from "../lib/analytics";
 
 const ACCENT = "#135DFF";
 const BORDER = "#e2e8f0";
@@ -229,6 +230,7 @@ export default function Navbar() {
               {/* CTA → sign up */}
               <Link
                 to="/auth/sign-up"
+                onClick={() => trackEvent("signup_clicked", { cta_location: "navbar" })}
                 style={{
                   display: "flex", alignItems: "center", gap: 6,
                   padding: "7px 18px", borderRadius: 8,
