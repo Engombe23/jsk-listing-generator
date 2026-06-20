@@ -1,30 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
+import { DEMO_OVERVIEW, DEMO_ACTION_TABLES, DEMO_RAW_EVENTS } from "./demoData";
 import {
-  AreaChart, Area, LineChart, Line, BarChart, Bar, Cell, XAxis, YAxis,
-  CartesianGrid, Tooltip, Legend, ResponsiveContainer,
-} from "recharts";
-import { DEMO_OVERVIEW, DEMO_ACTION_TABLES } from "./demoData";
-
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
-
-// ─── Dark navy command-centre palette — fixed regardless of app theme ─────────
-const T = {
-  bg:           "#0a1322",
-  sidebar:      "#0a1525",
-  card:         "#101f35",
-  cardAlt:      "#0d1c30",
-  border:       "rgba(59,130,246,0.16)",
-  borderStrong: "rgba(59,130,246,0.32)",
-  text:         "#e7edf7",
-  textMuted:    "#8995ad",
-  textDim:      "#4d5b75",
-  blue:         "#3b82f6",
-  purple:       "#a855f7",
-  green:        "#22c55e",
-  amber:        "#f59e0b",
-  red:          "#ef4444",
-  orange:       "#f97316",
-};
+  T, API_URL, fmtPct,
+  Panel, NorthStarCard, MidKpiCard, FunnelPanel, DailyToggleLineChart,
+  HorizontalBarChart, DataTable, ImpactDot, Trend, fmtDate, fmtDateTime,
+} from "./shared";
+import LandingPageSection from "./sections/LandingPageSection";
+import SignupFunnelSection from "./sections/SignupFunnelSection";
+import ProductUsageSection from "./sections/ProductUsageSection";
+import ListingGeneratorSection from "./sections/ListingGeneratorSection";
+import SmartPricingSection from "./sections/SmartPricingSection";
+import CompatibilityCheckerSection from "./sections/CompatibilityCheckerSection";
+import UsersTrialsSection from "./sections/UsersTrialsSection";
+import ApiUsageErrorsSection from "./sections/ApiUsageErrorsSection";
 
 const SECTIONS = [
   { key: "overview",       label: "Overview" },
@@ -62,172 +50,7 @@ function presetToRange(presetKey, customFrom, customTo) {
   return { from, to: now.toISOString() };
 }
 
-function fmtNum(v) {
-  if (v === null || v === undefined || isNaN(v)) return "—";
-  return v.toLocaleString();
-}
-function fmtPct(v, signed = false) {
-  if (v === null || v === undefined || isNaN(v)) return "—";
-  const pct = v * 100;
-  const sign = signed && pct > 0 ? "+" : "";
-  return `${sign}${pct.toFixed(1)}%`;
-}
-function fmtDate(iso) {
-  if (!iso) return "—";
-  try { return new Date(iso).toLocaleDateString("en-GB", { day: "2-digit", month: "short" }); }
-  catch { return "—"; }
-}
-function fmtDateTime(iso) {
-  if (!iso) return "—";
-  try { return new Date(iso).toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }); }
-  catch { return "—"; }
-}
-
-function Trend({ value }) {
-  if (value === null || value === undefined || isNaN(value)) {
-    return <span style={{ fontSize: 12, color: T.textDim }}>—</span>;
-  }
-  const up = value >= 0;
-  return (
-    <span style={{ fontSize: 12, fontWeight: 700, color: up ? T.green : T.red, display: "inline-flex", alignItems: "center", gap: 3 }}>
-      {up ? "▲" : "▼"} {Math.abs(value * 100).toFixed(1)}%
-    </span>
-  );
-}
-
-// ─── Reusable card shell ───────────────────────────────────────────────────────
-function Panel({ title, subtitle, right, children, style }) {
-  return (
-    <div style={{
-      background: T.card, border: `1px solid ${T.border}`, borderRadius: 16,
-      padding: "18px 20px", boxShadow: "0 0 0 1px rgba(59,130,246,0.04), 0 8px 24px rgba(0,0,0,0.35)",
-      ...style,
-    }}>
-      {(title || right) && (
-        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 16, gap: 12 }}>
-          <div>
-            {title && <div style={{ fontSize: 14, fontWeight: 700, color: T.text }}>{title}</div>}
-            {subtitle && <div style={{ fontSize: 12, color: T.textMuted, marginTop: 2 }}>{subtitle}</div>}
-          </div>
-          {right}
-        </div>
-      )}
-      {children}
-    </div>
-  );
-}
-
-// ─── North Star KPI card with sparkline ────────────────────────────────────────
-function NorthStarCard({ icon, label, value, delta, accent, series }) {
-  return (
-    <div style={{
-      background: `linear-gradient(135deg, ${T.card} 0%, ${T.cardAlt} 100%)`,
-      border: `1px solid ${T.border}`, borderRadius: 16, padding: "18px 20px",
-      boxShadow: `0 0 0 1px rgba(59,130,246,0.04), 0 0 28px ${accent}14`,
-      display: "flex", flexDirection: "column", gap: 10, minWidth: 0,
-    }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <div style={{
-          width: 34, height: 34, borderRadius: 10, background: `${accent}1f`,
-          border: `1px solid ${accent}40`, display: "flex", alignItems: "center", justifyContent: "center",
-          fontSize: 16, flexShrink: 0,
-        }}>
-          {icon}
-        </div>
-        <div style={{ fontSize: 12, fontWeight: 700, color: T.textMuted, textTransform: "uppercase", letterSpacing: 0.5 }}>
-          {label}
-        </div>
-      </div>
-      <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 10 }}>
-        <div>
-          <div style={{ fontSize: 28, fontWeight: 800, color: T.text, letterSpacing: -0.5, lineHeight: 1 }}>{fmtNum(value)}</div>
-          <div style={{ marginTop: 6 }}><Trend value={delta} /> <span style={{ fontSize: 11, color: T.textDim }}>vs previous period</span></div>
-        </div>
-        {series && series.length > 1 && (
-          <div style={{ width: 90, height: 36, flexShrink: 0 }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={series}>
-                <defs>
-                  <linearGradient id={`spark-${label}`} x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor={accent} stopOpacity={0.5} />
-                    <stop offset="100%" stopColor={accent} stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <Area type="monotone" dataKey="count" stroke={accent} strokeWidth={2} fill={`url(#spark-${label})`} isAnimationActive={false} />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ─── Medium KPI card (product usage row) ───────────────────────────────────────
-function MidKpiCard({ icon, label, value, delta, accent }) {
-  return (
-    <div style={{
-      background: T.card, border: `1px solid ${T.border}`, borderRadius: 14, padding: "14px 16px",
-      display: "flex", alignItems: "center", gap: 12, minWidth: 0,
-    }}>
-      <div style={{
-        width: 38, height: 38, borderRadius: 10, background: `${accent}1f`, border: `1px solid ${accent}40`,
-        display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0,
-      }}>
-        {icon}
-      </div>
-      <div style={{ minWidth: 0 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: T.textMuted, textTransform: "uppercase", letterSpacing: 0.4 }}>{label}</div>
-        <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-          <div style={{ fontSize: 20, fontWeight: 800, color: T.text }}>{fmtNum(value)}</div>
-          <Trend value={delta} />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── Activation Funnel ──────────────────────────────────────────────────────────
-function ActivationFunnel({ funnel, overallConversion }) {
-  const maxCount = funnel?.[0]?.count || 1;
-  return (
-    <Panel title="Activation Funnel" subtitle="Visitor → signup → trial → activated → paid" style={{ height: "100%" }}>
-      <div style={{ display: "flex", fontSize: 11, fontWeight: 700, color: T.textDim, textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 8, padding: "0 2px" }}>
-        <div style={{ flex: 1 }} />
-        <div style={{ width: 70, textAlign: "right" }}>Users</div>
-        <div style={{ width: 70, textAlign: "right" }}>Conv.</div>
-      </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
-        {(funnel || []).map((step, i) => {
-          const widthPct = Math.max(6, (step.count / maxCount) * 100);
-          return (
-            <div key={step.key} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 12, color: T.textMuted, marginBottom: 3 }}>{i + 1}. {step.label}</div>
-                <div style={{ height: 22, background: "rgba(59,130,246,0.08)", borderRadius: 6, overflow: "hidden" }}>
-                  <div style={{
-                    height: "100%", width: `${widthPct}%`, borderRadius: 6,
-                    background: `linear-gradient(90deg, ${T.blue} 0%, #60a5fa 100%)`,
-                    boxShadow: "0 0 12px rgba(59,130,246,0.35)",
-                    transition: "width 0.3s ease",
-                  }} />
-                </div>
-              </div>
-              <div style={{ width: 70, textAlign: "right", fontSize: 13, fontWeight: 700, color: T.text }}>{fmtNum(step.count)}</div>
-              <div style={{ width: 70, textAlign: "right", fontSize: 12, fontWeight: 600, color: T.textMuted }}>{fmtPct(step.rate)}</div>
-            </div>
-          );
-        })}
-      </div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 14, paddingTop: 14, borderTop: `1px solid ${T.border}` }}>
-        <span style={{ fontSize: 12, color: T.textMuted }}>Overall conversion (viewed → paid)</span>
-        <span style={{ fontSize: 15, fontWeight: 800, color: T.blue }}>{fmtPct(overallConversion)}</span>
-      </div>
-    </Panel>
-  );
-}
-
-// ─── Conversion Health ──────────────────────────────────────────────────────────
+// ─── Activation Funnel / Conversion Health / Insight (Overview-only) ───────────
 const STATUS_THRESHOLDS = {
   signup_click_rate:                { good: 0.10, warn: 0.05 },
   signup_completion_rate:           { good: 0.35, warn: 0.20 },
@@ -237,7 +60,6 @@ const STATUS_THRESHOLDS = {
   smart_pricing_usage_rate:         { good: 0.25, warn: 0.10 },
   compatibility_checker_usage_rate: { good: 0.25, warn: 0.10 },
 };
-
 function statusFor(key, value) {
   if (key === "error_rate") {
     if (value === null) return null;
@@ -251,7 +73,6 @@ function statusFor(key, value) {
   if (value >= t.warn) return "Needs attention";
   return "Problem";
 }
-
 const STATUS_COLOR = { "Good": T.green, "Needs attention": T.amber, "Problem": T.red };
 
 function ConversionHealth({ rates, rateDeltas }) {
@@ -294,9 +115,7 @@ function ConversionHealth({ rates, rateDeltas }) {
   );
 }
 
-// ─── Insight callout ────────────────────────────────────────────────────────────
 function InsightCallout({ funnel, onViewFunnel }) {
-  // Find the biggest step-over-step drop-off in the funnel.
   const biggestDrop = useMemo(() => {
     if (!funnel || funnel.length < 2) return null;
     let worst = null;
@@ -340,112 +159,6 @@ function InsightCallout({ funnel, onViewFunnel }) {
   );
 }
 
-// ─── Charts row ─────────────────────────────────────────────────────────────────
-function GeneratedVsSavedChart({ data }) {
-  const [granularity, setGranularity] = useState("Daily");
-  return (
-    <Panel
-      title="Listings Generated vs Listings Saved"
-      right={
-        <select value={granularity} onChange={(e) => setGranularity(e.target.value)} style={{
-          background: T.cardAlt, color: T.textMuted, border: `1px solid ${T.borderStrong}`,
-          borderRadius: 8, fontSize: 12, padding: "5px 10px", cursor: "pointer",
-        }}>
-          <option>Daily</option>
-          <option>Weekly</option>
-        </select>
-      }
-    >
-      <div style={{ width: "100%", height: 260 }}>
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={data || []} margin={{ top: 4, right: 8, left: -16, bottom: 0 }}>
-            <CartesianGrid stroke="rgba(255,255,255,0.06)" vertical={false} />
-            <XAxis dataKey="date" tick={{ fill: T.textDim, fontSize: 11 }} tickFormatter={fmtDate} axisLine={{ stroke: T.border }} tickLine={false} />
-            <YAxis tick={{ fill: T.textDim, fontSize: 11 }} axisLine={false} tickLine={false} />
-            <Tooltip
-              contentStyle={{ background: T.cardAlt, border: `1px solid ${T.borderStrong}`, borderRadius: 8, fontSize: 12 }}
-              labelStyle={{ color: T.textMuted }}
-              labelFormatter={fmtDate}
-            />
-            <Legend wrapperStyle={{ fontSize: 12, color: T.textMuted }} />
-            <Line type="monotone" dataKey="generated" name="Listings Generated" stroke={T.blue} strokeWidth={2.5} dot={false} />
-            <Line type="monotone" dataKey="saved"     name="Listings Saved"     stroke={T.green} strokeWidth={2.5} dot={false} />
-          </LineChart>
-        </ResponsiveContainer>
-      </div>
-    </Panel>
-  );
-}
-
-function FeatureUsageChart({ data }) {
-  const COLORS = [T.blue, T.purple, T.orange, T.amber, T.green];
-  return (
-    <Panel title="Feature Usage Split">
-      <div style={{ width: "100%", height: 260 }}>
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data || []} layout="vertical" margin={{ top: 4, right: 28, left: 8, bottom: 0 }}>
-            <CartesianGrid stroke="rgba(255,255,255,0.06)" horizontal={false} />
-            <XAxis type="number" tick={{ fill: T.textDim, fontSize: 11 }} axisLine={false} tickLine={false} />
-            <YAxis type="category" dataKey="label" tick={{ fill: T.textMuted, fontSize: 12 }} axisLine={false} tickLine={false} width={140} />
-            <Tooltip
-              contentStyle={{ background: T.cardAlt, border: `1px solid ${T.borderStrong}`, borderRadius: 8, fontSize: 12 }}
-              formatter={(value, _name, item) => [`${fmtNum(value)} (${fmtPct(item.payload.pctOfCore)})`, "Count"]}
-            />
-            <Bar dataKey="count" radius={[0, 6, 6, 0]}>
-              {(data || []).map((entry, i) => (
-                <Cell key={entry.key || i} fill={COLORS[i % COLORS.length]} />
-              ))}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
-    </Panel>
-  );
-}
-
-// ─── Bottom action tables ───────────────────────────────────────────────────────
-function ActionTable({ title, columns, rows, total, footerLabel }) {
-  return (
-    <Panel title={title}>
-      <div style={{ display: "flex", flexDirection: "column" }}>
-        <div style={{ display: "flex", fontSize: 11, fontWeight: 700, color: T.textDim, textTransform: "uppercase", letterSpacing: 0.4, paddingBottom: 8, borderBottom: `1px solid ${T.border}` }}>
-          {columns.map((c) => <div key={c.key} style={{ flex: c.flex || 1 }}>{c.label}</div>)}
-        </div>
-        {(!rows || rows.length === 0) ? (
-          <div style={{ padding: "20px 0", fontSize: 12.5, color: T.textDim, textAlign: "center" }}>No data for this range.</div>
-        ) : rows.map((r, i) => (
-          <div key={i} style={{ display: "flex", fontSize: 12.5, color: T.textMuted, padding: "9px 0", borderBottom: `1px solid ${T.border}` }}>
-            {columns.map((c) => (
-              <div key={c.key} style={{ flex: c.flex || 1, color: c.key === "user" || c.key === "event" ? T.text : T.textMuted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {c.render ? c.render(r[c.key], r) : (r[c.key] ?? "—")}
-              </div>
-            ))}
-          </div>
-        ))}
-      </div>
-      {total > (rows?.length || 0) && (
-        <div style={{ marginTop: 10, fontSize: 12, color: T.blue, fontWeight: 600, cursor: "pointer" }}>
-          View all ({fmtNum(total)}) →
-        </div>
-      )}
-      {!total && footerLabel && (
-        <div style={{ marginTop: 10, fontSize: 12, color: T.blue, fontWeight: 600, cursor: "pointer" }}>{footerLabel} →</div>
-      )}
-    </Panel>
-  );
-}
-
-const IMPACT_COLOR = { High: T.red, Medium: T.amber, Low: T.green };
-function ImpactDot({ impact }) {
-  return (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-      <span style={{ width: 7, height: 7, borderRadius: "50%", background: IMPACT_COLOR[impact] || T.textDim, display: "inline-block" }} />
-      {impact}
-    </span>
-  );
-}
-
-// ─── Empty state ────────────────────────────────────────────────────────────────
 function EmptyState({ onEnableDemo, onViewSetup, showSetup }) {
   return (
     <div style={{
@@ -476,6 +189,76 @@ function EmptyState({ onEnableDemo, onViewSetup, showSetup }) {
   );
 }
 
+function OverviewSection({ data, tableData }) {
+  return (
+    <>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 18 }}>
+        <NorthStarCard icon="👥" label="Visitors"        value={data.kpis.visitors}        delta={data.deltas?.visitors}        accent={T.blue}   series={data.series?.visitors} />
+        <NorthStarCard icon="🖱️" label="Signup Clicks"   value={data.kpis.signup_clicks}    delta={data.deltas?.signup_clicks}    accent={T.purple} series={data.series?.signups} />
+        <NorthStarCard icon="🚀" label="Trial Starts"    value={data.kpis.trial_starts}     delta={data.deltas?.trial_starts}     accent={T.green}  series={data.series?.trials} />
+        <NorthStarCard icon="⭐" label="Activated Users" value={data.kpis.activated_users}  delta={data.deltas?.activated_users}  accent={T.orange} series={data.series?.activated} />
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr 0.8fr", gap: 14, marginBottom: 18, alignItems: "stretch" }}>
+        <FunnelPanel title="Activation Funnel" subtitle="Visitor → signup → trial → activated → paid" funnel={data.funnel} overallConversion={data.overallConversion} overallLabel="Overall conversion (viewed → paid)" />
+        <ConversionHealth rates={data.rates} rateDeltas={data.rateDeltas} />
+        <InsightCallout funnel={data.funnel} onViewFunnel={() => {}} />
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 18 }}>
+        <MidKpiCard icon="📄" label="Listings Generated"             value={data.kpis.listings_generated}             delta={data.deltas?.listings_generated}             accent={T.blue} />
+        <MidKpiCard icon="💾" label="Listings Saved"                 value={data.kpis.listings_saved}                 delta={data.deltas?.listings_saved}                 accent={T.green} />
+        <MidKpiCard icon="🔍" label="eBay Searches Performed"        value={data.kpis.ebay_searches_performed}        delta={data.deltas?.ebay_searches_performed}        accent={T.purple} />
+        <MidKpiCard icon="🛡️" label="Compatibility Checks Performed" value={data.kpis.compatibility_checks_performed} delta={data.deltas?.compatibility_checks_performed} accent={T.orange} />
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1.3fr 1fr", gap: 14, marginBottom: 18 }}>
+        <DailyToggleLineChart title="Listings Generated vs Listings Saved" data={data.series?.generatedVsSaved} lines={[
+          { key: "generated", name: "Listings Generated", color: T.blue },
+          { key: "saved",     name: "Listings Saved",     color: T.green },
+        ]} />
+        <HorizontalBarChart title="Feature Usage Split" data={data.featureUsage} pctKey="pctOfCore" />
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
+        <DataTable
+          title="Users signed up but generated no listing"
+          columns={[
+            { key: "user", label: "User", flex: 1.6, emphasize: true },
+            { key: "signed_up", label: "Signed up", render: fmtDate },
+            { key: "last_seen", label: "Last seen", render: fmtDate },
+            { key: "plan", label: "Plan" },
+          ]}
+          rows={tableData?.usersNoListing}
+          total={tableData?.usersNoListingTotal}
+        />
+        <DataTable
+          title="Users generated a listing but did not save/export"
+          columns={[
+            { key: "user", label: "User", flex: 1.6, emphasize: true },
+            { key: "generated", label: "Generated", render: fmtDate },
+            { key: "last_seen", label: "Last seen", render: fmtDate },
+            { key: "plan", label: "Plan" },
+          ]}
+          rows={tableData?.usersNoSave}
+          total={tableData?.usersNoSaveTotal}
+        />
+        <DataTable
+          title="Recent failed events"
+          columns={[
+            { key: "event", label: "Event", flex: 1.6, emphasize: true },
+            { key: "count", label: "Count" },
+            { key: "last_occurred", label: "Last occurred", render: fmtDateTime },
+            { key: "impact", label: "Impact", render: (v) => <ImpactDot impact={v} /> },
+          ]}
+          rows={tableData?.recentFailedEvents}
+          footerLabel="View all errors"
+        />
+      </div>
+    </>
+  );
+}
+
 // ─── Main page ──────────────────────────────────────────────────────────────────
 export default function AdminAnalytics() {
   const [section, setSection] = useState("overview");
@@ -485,6 +268,7 @@ export default function AdminAnalytics() {
   const [plan, setPlan]       = useState("All plans");
   const [overview, setOverview] = useState(null);
   const [tables, setTables]     = useState(null);
+  const [rawEvents, setRawEvents] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState("");
   const [demoMode, setDemoMode] = useState(false);
@@ -493,7 +277,7 @@ export default function AdminAnalytics() {
   const range = useMemo(() => presetToRange(preset, customFrom, customTo), [preset, customFrom, customTo]);
 
   useEffect(() => {
-    if (section !== "overview" || demoMode) return;
+    if (demoMode) return;
     let cancelled = false;
     setLoading(true);
     setError("");
@@ -508,17 +292,24 @@ export default function AdminAnalytics() {
       fetch(`${API_URL}/api/analytics/action-tables?${params.toString()}`).then(async (r) => {
         const j = await r.json(); if (!r.ok) throw new Error(j.error || "Failed to load action tables"); return j;
       }),
+      fetch(`${API_URL}/api/analytics/raw-events?${params.toString()}`).then(async (r) => {
+        const j = await r.json(); if (!r.ok) throw new Error(j.error || "Failed to load raw events"); return j;
+      }),
     ])
-      .then(([ov, tb]) => { if (!cancelled) { setOverview(ov); setTables(tb); } })
+      .then(([ov, tb, rw]) => { if (!cancelled) { setOverview(ov); setTables(tb); setRawEvents(rw.events || []); } })
       .catch((err) => { if (!cancelled) setError(String(err.message || err)); })
       .finally(() => { if (!cancelled) setLoading(false); });
 
     return () => { cancelled = true; };
-  }, [section, range.from, range.to, plan, demoMode]);
+  }, [range.from, range.to, plan, demoMode]);
 
-  const data       = demoMode ? DEMO_OVERVIEW       : overview;
-  const tableData   = demoMode ? DEMO_ACTION_TABLES  : tables;
+  const data      = demoMode ? DEMO_OVERVIEW       : overview;
+  const tableData  = demoMode ? DEMO_ACTION_TABLES  : tables;
+  const events     = demoMode ? DEMO_RAW_EVENTS     : (rawEvents || []);
   const isEmpty = !loading && !error && !demoMode && data && data.kpis?.visitors === 0 && data.funnel?.every((f) => f.count === 0);
+  const ready   = data && (demoMode || (!loading && !error && !isEmpty));
+
+  const sectionProps = { events, range, plan, demoMode };
 
   return (
     <div style={{ height: "100vh", overflow: "hidden", background: T.bg, display: "flex", fontFamily: "Inter, system-ui, sans-serif" }}>
@@ -533,20 +324,16 @@ export default function AdminAnalytics() {
         <div style={{ display: "flex", flexDirection: "column", gap: 2, flex: 1 }}>
           {SECTIONS.map((s) => {
             const active = section === s.key;
-            const disabled = s.key !== "overview";
             return (
               <button
                 key={s.key}
-                onClick={() => !disabled && setSection(s.key)}
-                disabled={disabled}
-                title={disabled ? "Coming soon" : undefined}
+                onClick={() => setSection(s.key)}
                 style={{
                   display: "flex", alignItems: "center", textAlign: "left",
-                  padding: "9px 12px", borderRadius: 9, border: "none", cursor: disabled ? "default" : "pointer",
+                  padding: "9px 12px", borderRadius: 9, border: "none", cursor: "pointer",
                   background: active ? "rgba(59,130,246,0.14)" : "transparent",
-                  color: disabled ? T.textDim : active ? T.blue : T.textMuted,
+                  color: active ? T.blue : T.textMuted,
                   fontSize: 13, fontWeight: active ? 700 : 500,
-                  opacity: disabled ? 0.6 : 1,
                 }}
               >
                 {s.label}
@@ -620,104 +407,38 @@ export default function AdminAnalytics() {
           </div>
         )}
 
-        {section === "overview" && (
+        {!demoMode && loading && <div style={{ padding: 60, textAlign: "center", color: T.textMuted, fontSize: 14 }}>Loading analytics…</div>}
+
+        {!demoMode && !loading && error && (
           <>
-            {!demoMode && loading && <div style={{ padding: 60, textAlign: "center", color: T.textMuted, fontSize: 14 }}>Loading analytics…</div>}
-
-            {!demoMode && !loading && error && (
-              <>
-                <div style={{ background: "rgba(239,68,68,0.08)", border: `1px solid ${T.red}40`, borderRadius: 12, padding: "14px 18px", color: T.red, fontSize: 13, marginBottom: 18 }}>
-                  {error}
-                  {error.toLowerCase().includes("not configured") && (
-                    <div style={{ marginTop: 6, color: T.textMuted }}>
-                      Add <code>SUPABASE_SERVICE_ROLE_KEY</code> to backend/.env, then restart/redeploy the backend.
-                    </div>
-                  )}
+            <div style={{ background: "rgba(239,68,68,0.08)", border: `1px solid ${T.red}40`, borderRadius: 12, padding: "14px 18px", color: T.red, fontSize: 13, marginBottom: 18 }}>
+              {error}
+              {error.toLowerCase().includes("not configured") && (
+                <div style={{ marginTop: 6, color: T.textMuted }}>
+                  Add <code>SUPABASE_SERVICE_ROLE_KEY</code> to backend/.env, then restart/redeploy the backend.
                 </div>
-                <EmptyState onEnableDemo={() => setDemoMode(true)} onViewSetup={() => setShowSetup((v) => !v)} showSetup={showSetup} />
-              </>
-            )}
-
-            {!demoMode && !loading && !error && isEmpty && (
-              <EmptyState onEnableDemo={() => setDemoMode(true)} onViewSetup={() => setShowSetup((v) => !v)} showSetup={showSetup} />
-            )}
-
-            {data && (demoMode || (!loading && !error && !isEmpty)) && (
-              <>
-                {/* North Star KPI row */}
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 18 }}>
-                  <NorthStarCard icon="👥" label="Visitors"        value={data.kpis.visitors}        delta={data.deltas?.visitors}        accent={T.blue}   series={data.series?.visitors} />
-                  <NorthStarCard icon="🖱️" label="Signup Clicks"   value={data.kpis.signup_clicks}    delta={data.deltas?.signup_clicks}    accent={T.purple} series={data.series?.signups} />
-                  <NorthStarCard icon="🚀" label="Trial Starts"    value={data.kpis.trial_starts}     delta={data.deltas?.trial_starts}     accent={T.green}  series={data.series?.trials} />
-                  <NorthStarCard icon="⭐" label="Activated Users" value={data.kpis.activated_users}  delta={data.deltas?.activated_users}  accent={T.orange} series={data.series?.activated} />
-                </div>
-
-                {/* Main visual row: funnel / conversion health / insight */}
-                <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr 0.8fr", gap: 14, marginBottom: 18, alignItems: "stretch" }}>
-                  <ActivationFunnel funnel={data.funnel} overallConversion={data.overallConversion} />
-                  <ConversionHealth rates={data.rates} rateDeltas={data.rateDeltas} />
-                  <InsightCallout funnel={data.funnel} onViewFunnel={() => setSection("signup_funnel")} />
-                </div>
-
-                {/* Product usage KPI row */}
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 18 }}>
-                  <MidKpiCard icon="📄" label="Listings Generated"             value={data.kpis.listings_generated}             delta={data.deltas?.listings_generated}             accent={T.blue} />
-                  <MidKpiCard icon="💾" label="Listings Saved"                 value={data.kpis.listings_saved}                 delta={data.deltas?.listings_saved}                 accent={T.green} />
-                  <MidKpiCard icon="🔍" label="eBay Searches Performed"        value={data.kpis.ebay_searches_performed}        delta={data.deltas?.ebay_searches_performed}        accent={T.purple} />
-                  <MidKpiCard icon="🛡️" label="Compatibility Checks Performed" value={data.kpis.compatibility_checks_performed} delta={data.deltas?.compatibility_checks_performed} accent={T.orange} />
-                </div>
-
-                {/* Charts row */}
-                <div style={{ display: "grid", gridTemplateColumns: "1.3fr 1fr", gap: 14, marginBottom: 18 }}>
-                  <GeneratedVsSavedChart data={data.series?.generatedVsSaved} />
-                  <FeatureUsageChart data={data.featureUsage} />
-                </div>
-
-                {/* Bottom action tables */}
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
-                  <ActionTable
-                    title="Users signed up but generated no listing"
-                    columns={[
-                      { key: "user", label: "User", flex: 1.6 },
-                      { key: "signed_up", label: "Signed up", render: fmtDate },
-                      { key: "last_seen", label: "Last seen", render: fmtDate },
-                      { key: "plan", label: "Plan" },
-                    ]}
-                    rows={tableData?.usersNoListing}
-                    total={tableData?.usersNoListingTotal}
-                  />
-                  <ActionTable
-                    title="Users generated a listing but did not save/export"
-                    columns={[
-                      { key: "user", label: "User", flex: 1.6 },
-                      { key: "generated", label: "Generated", render: fmtDate },
-                      { key: "last_seen", label: "Last seen", render: fmtDate },
-                      { key: "plan", label: "Plan" },
-                    ]}
-                    rows={tableData?.usersNoSave}
-                    total={tableData?.usersNoSaveTotal}
-                  />
-                  <ActionTable
-                    title="Recent failed events"
-                    columns={[
-                      { key: "event", label: "Event", flex: 1.6 },
-                      { key: "count", label: "Count" },
-                      { key: "last_occurred", label: "Last occurred", render: fmtDateTime },
-                      { key: "impact", label: "Impact", render: (v) => <ImpactDot impact={v} /> },
-                    ]}
-                    rows={tableData?.recentFailedEvents}
-                    footerLabel="View all errors"
-                  />
-                </div>
-              </>
-            )}
+              )}
+            </div>
+            <EmptyState onEnableDemo={() => setDemoMode(true)} onViewSetup={() => setShowSetup((v) => !v)} showSetup={showSetup} />
           </>
         )}
 
-        {section !== "overview" && (
-          <div style={{ padding: 60, textAlign: "center", color: T.textMuted, fontSize: 14 }}>
-            {SECTIONS.find((s) => s.key === section)?.label} — coming soon.
-          </div>
+        {!demoMode && !loading && !error && isEmpty && (
+          <EmptyState onEnableDemo={() => setDemoMode(true)} onViewSetup={() => setShowSetup((v) => !v)} showSetup={showSetup} />
+        )}
+
+        {ready && (
+          <>
+            {section === "overview"          && <OverviewSection data={data} tableData={tableData} />}
+            {section === "landing"           && <LandingPageSection {...sectionProps} />}
+            {section === "signup_funnel"     && <SignupFunnelSection {...sectionProps} data={data} />}
+            {section === "product_usage"     && <ProductUsageSection {...sectionProps} data={data} />}
+            {section === "listing_generator" && <ListingGeneratorSection {...sectionProps} />}
+            {section === "smart_pricing"      && <SmartPricingSection {...sectionProps} />}
+            {section === "compatibility"      && <CompatibilityCheckerSection {...sectionProps} />}
+            {section === "users_trials"       && <UsersTrialsSection {...sectionProps} tableData={tableData} />}
+            {section === "api_usage"          && <ApiUsageErrorsSection {...sectionProps} tableData={tableData} />}
+          </>
         )}
       </div>
     </div>

@@ -99,3 +99,91 @@ export const DEMO_ACTION_TABLES = {
     { event: "Pricing service timeout",      count: 7,  last_occurred: "2026-05-20T12:31:00Z", impact: "Low" },
   ],
 };
+
+// ─── Synthetic raw event log — backs the per-section breakdowns in demo mode ──
+function makeId() { return Math.random().toString(36).slice(2, 10); }
+function randPick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+function randTimeInLastDays(days) {
+  return new Date(Date.now() - Math.random() * days * 86400000).toISOString();
+}
+
+const CTA_LOCATIONS = ["hero", "navbar", "pricing_section", "footer", "how_it_works", "final_cta"];
+const SECTIONS_VIEWED = ["hero", "problem", "how_it_works", "features", "smart_pricing", "who_its_for", "pricing", "faq", "final_cta"];
+const PART_NUMBERS = ["AOP858", "LR002465", "04D3601ACA", "JDE36769", "LR073640", "GR-1234", "BGA CH4205A"];
+const SEARCH_QUERIES = ["timing belt kit", "head gasket set", "brake disc front", "suspension arm", "radiator", "oil filter"];
+const CONDITIONS = ["new", "used", "remanufactured"];
+
+function buildDemoRawEvents() {
+  const events = [];
+  const userIds = Array.from({ length: 40 }, () => makeId());
+  const sessionIds = Array.from({ length: 200 }, () => makeId());
+
+  // Landing + CTA events
+  sessionIds.forEach((sid) => {
+    events.push({ event_name: "landing_page_viewed", session_id: sid, user_id: null, plan: null, created_at: randTimeInLastDays(30), metadata: {} });
+    if (Math.random() < 0.4) {
+      SECTIONS_VIEWED.forEach((s) => {
+        if (Math.random() < 0.6) events.push({ event_name: "section_viewed", session_id: sid, user_id: null, plan: null, created_at: randTimeInLastDays(30), metadata: { section: s } });
+      });
+    }
+    [25, 50, 75, 100].forEach((pct, i) => {
+      if (Math.random() < 0.7 - i * 0.15) {
+        events.push({ event_name: `scroll_${pct}`, session_id: sid, user_id: null, plan: null, created_at: randTimeInLastDays(30), metadata: { percent: pct } });
+      }
+    });
+    if (Math.random() < 0.14) {
+      events.push({ event_name: "signup_clicked", session_id: sid, user_id: null, plan: null, created_at: randTimeInLastDays(30), metadata: { cta_location: randPick(CTA_LOCATIONS) } });
+    }
+  });
+
+  // Signup / trial / product usage per user
+  userIds.forEach((uid) => {
+    const signupTime = randTimeInLastDays(30);
+    events.push({ event_name: "user_signed_up", session_id: makeId(), user_id: uid, plan: "free", created_at: signupTime, metadata: {} });
+    events.push({ event_name: "trial_started", session_id: makeId(), user_id: uid, plan: "free", created_at: signupTime, metadata: {} });
+
+    const genCount = Math.random() < 0.55 ? Math.ceil(Math.random() * 4) : 0;
+    for (let i = 0; i < genCount; i++) {
+      const t = randTimeInLastDays(28);
+      const part = randPick(PART_NUMBERS);
+      events.push({ event_name: "listing_generation_started", session_id: makeId(), user_id: uid, plan: "free", created_at: t, metadata: { part_number: part, source: "listing_generator" } });
+      if (Math.random() < 0.9) {
+        events.push({ event_name: "listing_generated", session_id: makeId(), user_id: uid, plan: "free", created_at: t, metadata: { part_number: part, generation_time_ms: Math.round(1500 + Math.random() * 4000), source: "listing_generator" } });
+        if (Math.random() < 0.78) events.push({ event_name: "listing_saved", session_id: makeId(), user_id: uid, plan: "free", created_at: t, metadata: { part_number: part } });
+        if (Math.random() < 0.5)  events.push({ event_name: "listing_copied", session_id: makeId(), user_id: uid, plan: "free", created_at: t, metadata: { part_number: part, copy_type: "html" } });
+        if (Math.random() < 0.5)  events.push({ event_name: "listing_exported_csv", session_id: makeId(), user_id: uid, plan: "free", created_at: t, metadata: { row_count: Math.ceil(Math.random() * 5) } });
+      } else {
+        events.push({ event_name: "listing_generation_failed", session_id: makeId(), user_id: uid, plan: "free", created_at: t, metadata: { part_number: part, error: "Lookup failed" } });
+      }
+    }
+
+    if (Math.random() < 0.33) {
+      const t = randTimeInLastDays(28);
+      const query = randPick(SEARCH_QUERIES);
+      const condition = randPick(CONDITIONS);
+      events.push({ event_name: "ebay_search_performed", session_id: makeId(), user_id: uid, plan: "free", created_at: t, metadata: { query, condition } });
+      if (Math.random() < 0.6) {
+        events.push({ event_name: "price_entered", session_id: makeId(), user_id: uid, plan: "free", created_at: t, metadata: { selling_price: Math.round(20 + Math.random() * 80) } });
+        events.push({ event_name: "price_calculated", session_id: makeId(), user_id: uid, plan: "free", created_at: t, metadata: { margin: Math.random() * 0.4 } });
+        if (Math.random() < 0.5) events.push({ event_name: "price_saved", session_id: makeId(), user_id: uid, plan: "free", created_at: t, metadata: {} });
+      }
+    }
+
+    if (Math.random() < 0.28) {
+      const t = randTimeInLastDays(28);
+      const oem = `OEM-${Math.floor(Math.random() * 90000)}`;
+      events.push({ event_name: "compat_check_started", session_id: makeId(), user_id: uid, plan: "free", created_at: t, metadata: { oem_number: oem } });
+      if (Math.random() < 0.85) {
+        const compatible = Math.random() < 0.65;
+        events.push({ event_name: "compat_check_performed", session_id: makeId(), user_id: uid, plan: "free", created_at: t, metadata: { oem_number: oem, status: compatible ? "compatible" : "not_compatible" } });
+        events.push({ event_name: compatible ? "compat_result_compatible" : "compat_result_not_compatible", session_id: makeId(), user_id: uid, plan: "free", created_at: t, metadata: { oem_number: oem } });
+      } else {
+        events.push({ event_name: "compat_check_failed", session_id: makeId(), user_id: uid, plan: "free", created_at: t, metadata: { oem_number: oem, error: "Vehicle not found" } });
+      }
+    }
+  });
+
+  return events.sort((a, b) => (a.created_at < b.created_at ? -1 : 1));
+}
+
+export const DEMO_RAW_EVENTS = buildDemoRawEvents();

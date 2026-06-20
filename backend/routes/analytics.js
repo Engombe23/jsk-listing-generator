@@ -428,4 +428,40 @@ router.get("/analytics/action-tables", async (req, res) => {
   }
 });
 
+// ─── GET /api/analytics/raw-events ─────────────────────────────────────────────
+// Metadata-rich event rows for the selected range — powers the per-section
+// breakdowns (CTA location, search queries, part numbers, etc.) that are too
+// bespoke to pre-aggregate server-side. Capped to keep payloads reasonable;
+// this is an internal admin tool, not a high-traffic public endpoint.
+const RAW_EVENTS_CAP = 8000;
+
+router.get("/analytics/raw-events", async (req, res) => {
+  if (!supabaseAdminReady) {
+    return res.status(503).json({ error: "Analytics storage is not configured (missing SUPABASE_SERVICE_ROLE_KEY)." });
+  }
+  try {
+    const now  = new Date();
+    const from = req.query.from || new Date(now.getTime() - 30 * 86400000).toISOString();
+    const to   = req.query.to   || now.toISOString();
+    const plan = req.query.plan || null;
+
+    let query = supabaseAdmin
+      .from("usage_events")
+      .select("event_name, event_category, user_id, session_id, plan, page_url, source, metadata, created_at")
+      .gte("created_at", from)
+      .lte("created_at", to)
+      .order("created_at", { ascending: true })
+      .limit(RAW_EVENTS_CAP);
+    if (plan) query = query.eq("plan", plan);
+
+    const { data, error } = await query;
+    if (error) throw new Error(error.message);
+
+    res.json({ events: data || [], truncated: (data || []).length >= RAW_EVENTS_CAP });
+  } catch (err) {
+    console.error("analytics/raw-events failed:", err.message);
+    res.status(500).json({ error: "Failed to fetch raw events" });
+  }
+});
+
 export default router;
