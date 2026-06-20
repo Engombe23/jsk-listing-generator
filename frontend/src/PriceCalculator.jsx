@@ -672,8 +672,8 @@ function PriceDistribution({ data, listings, price, onBinSelect, soldCounts = {}
 
   return (
     <div style={{
-      background: "linear-gradient(180deg, #020e1f 0%, #010c1a 55%, #010810 100%)",
-      border: "1px solid rgba(30,58,138,0.28)",
+      background: "var(--chart-bg)",
+      border: "1px solid var(--chart-border)",
       borderRadius: 16,
       overflow: "hidden",
       boxShadow: "0 8px 48px rgba(0,0,0,0.65), inset 0 1px 0 var(--border-light)",
@@ -696,7 +696,7 @@ function PriceDistribution({ data, listings, price, onBinSelect, soldCounts = {}
           </div>
         </div>
         {/* Volume / Cumulative % / Table tabs */}
-        <div style={{ display: "flex", gap: 2, background: "rgba(0,0,0,0.25)", borderRadius: 8, padding: "3px", flexShrink: 0 }}>
+        <div style={{ display: "flex", gap: 2, background: "var(--chart-tab-bg)", borderRadius: 8, padding: "3px", flexShrink: 0 }}>
           {[["volume", "Volume"], ["table", "Table"]].map(([mode, label]) => (
             <button key={mode} onClick={() => { setViewMode(mode); if (mode === "table" && onTableView) onTableView(); }} style={{
               padding: "5px 13px", fontSize: 10, fontWeight: 700,
@@ -744,7 +744,7 @@ function PriceDistribution({ data, listings, price, onBinSelect, soldCounts = {}
           <div style={{ position: "relative", height: CHART_H }}>
             {/* Rotated axis title */}
             <div style={{ position: "absolute", left: 1, top: 0, width: 14, height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <span style={{ fontSize: 7, fontWeight: 600, color: "#2d3f55", textTransform: "uppercase", letterSpacing: 1.8, writingMode: "vertical-rl", transform: "rotate(180deg)", whiteSpace: "nowrap", userSelect: "none" }}>
+              <span style={{ fontSize: 7, fontWeight: 600, color: "var(--chart-dim)", textTransform: "uppercase", letterSpacing: 1.8, writingMode: "vertical-rl", transform: "rotate(180deg)", whiteSpace: "nowrap", userSelect: "none" }}>
                 Listings
               </span>
             </div>
@@ -803,7 +803,7 @@ function PriceDistribution({ data, listings, price, onBinSelect, soldCounts = {}
             {/* ── Gridlines ── */}
             {yTicks.filter(t => t > 0).map(t => (
               <line key={t} x1={0} y1={toY(t)} x2={plotW} y2={toY(t)}
-                stroke="rgba(255,255,255,0.055)" strokeWidth={1}
+                stroke="var(--chart-grid)" strokeWidth={1}
                 vectorEffect="non-scaling-stroke" />
             ))}
 
@@ -846,7 +846,7 @@ function PriceDistribution({ data, listings, price, onBinSelect, soldCounts = {}
                   {/* Selected indicator — white outline */}
                   {isSel && (
                     <path d={roundedTopRect(barX, barY, barW, barH, 3)}
-                      fill="none" stroke="rgba(255,255,255,0.85)" strokeWidth={1.5}
+                      fill="none" stroke="var(--chart-contrast)" strokeWidth={1.5}
                       vectorEffect="non-scaling-stroke" style={{ pointerEvents: "none" }} />
                   )}
                 </g>
@@ -855,7 +855,7 @@ function PriceDistribution({ data, listings, price, onBinSelect, soldCounts = {}
 
             {/* Baseline */}
             <line x1={0} y1={baseline} x2={plotW} y2={baseline}
-              stroke="rgba(255,255,255,0.10)" strokeWidth={1}
+              stroke="var(--chart-baseline)" strokeWidth={1}
               vectorEffect="non-scaling-stroke" />
 
 
@@ -912,7 +912,7 @@ function PriceDistribution({ data, listings, price, onBinSelect, soldCounts = {}
             const rawPct = toPct((hb.s + hb.e) / 2);
             const leftPct = clamp(rawPct, 8, 82);
             return (
-              <div style={{ position: "absolute", left: `${leftPct}%`, top: 6, transform: "translateX(-50%)", background: "rgba(4,12,28,0.97)", border: "1px solid var(--border-blue)", borderRadius: 6, padding: "4px 10px", fontSize: 11, fontWeight: 600, color: "var(--text)", whiteSpace: "nowrap", pointerEvents: "none", zIndex: 20, boxShadow: "0 2px 14px rgba(0,0,0,0.6)" }}>
+              <div style={{ position: "absolute", left: `${leftPct}%`, top: 6, transform: "translateX(-50%)", background: "var(--chart-tooltip-bg)", border: "1px solid var(--border-blue)", borderRadius: 6, padding: "4px 10px", fontSize: 11, fontWeight: 600, color: "var(--text)", whiteSpace: "nowrap", pointerEvents: "none", zIndex: 20, boxShadow: "0 2px 14px rgba(0,0,0,0.6)" }}>
                 <span style={{ color: "var(--text-accent)" }}>{fmtRange(hb.s, hb.e)}</span>
                 <span style={{ color: "var(--blue)", marginLeft: 8 }}>{hb.count}</span>
                 <span style={{ color: "var(--text-muted)", marginLeft: 3, fontWeight: 400 }}>listing{hb.count !== 1 ? 's' : ''}</span>
@@ -997,7 +997,7 @@ function PriceDistribution({ data, listings, price, onBinSelect, soldCounts = {}
         const totalInRange = zBins.reduce((s, b) => s + b.count, 0);
 
         return (
-          <div style={{ borderTop: "1px solid var(--blue-bg)", background: "rgba(0,10,25,0.45)" }}>
+          <div style={{ borderTop: "1px solid var(--blue-bg)", background: "var(--chart-zoom-bg)" }}>
             {/* Zoom header */}
             <div style={{ padding: "12px 22px 4px", display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
               <div>
@@ -1031,7 +1031,7 @@ function PriceDistribution({ data, listings, price, onBinSelect, soldCounts = {}
               <div style={{ width: 44, flexShrink: 0 }}>
                 <div style={{ position: "relative", height: ZCH }}>
                   <div style={{ position: "absolute", left: 1, top: 0, width: 14, height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    <span style={{ fontSize: 7, fontWeight: 600, color: "#2d3f55", textTransform: "uppercase", letterSpacing: 1.8, writingMode: "vertical-rl", transform: "rotate(180deg)", whiteSpace: "nowrap", userSelect: "none" }}>
+                    <span style={{ fontSize: 7, fontWeight: 600, color: "var(--chart-dim)", textTransform: "uppercase", letterSpacing: 1.8, writingMode: "vertical-rl", transform: "rotate(180deg)", whiteSpace: "nowrap", userSelect: "none" }}>
                       Listings
                     </span>
                   </div>
@@ -1104,7 +1104,7 @@ function PriceDistribution({ data, listings, price, onBinSelect, soldCounts = {}
                           opacity={isSel ? 1.0 : 0.28 + 0.68 * ir} style={{ pointerEvents: "none" }} />
                         {isSel && (
                           <path d={roundedTopRect(bX, barY, bW, barH, 3)}
-                            fill="none" stroke="rgba(255,255,255,0.85)" strokeWidth={1.5}
+                            fill="none" stroke="var(--chart-contrast)" strokeWidth={1.5}
                             vectorEffect="non-scaling-stroke" style={{ pointerEvents: "none" }} />
                         )}
                       </g>
@@ -1136,7 +1136,7 @@ function PriceDistribution({ data, listings, price, onBinSelect, soldCounts = {}
 
                   {/* Baseline */}
                   <line x1={0} y1={zBaseline} x2={zPlotW} y2={zBaseline}
-                    stroke="rgba(255,255,255,0.10)" strokeWidth={1} vectorEffect="non-scaling-stroke" />
+                    stroke="var(--chart-baseline)" strokeWidth={1} vectorEffect="non-scaling-stroke" />
                 </svg>
 
                 {/* Zoom hover tooltip */}
@@ -1144,7 +1144,7 @@ function PriceDistribution({ data, listings, price, onBinSelect, soldCounts = {}
                   const hzb = zBins[hoveredZBin];
                   const midPctZ = Math.min(82, Math.max(8, (zBinMidX(hoveredZBin) / ZCW) * 100));
                   return (
-                    <div style={{ position: "absolute", left: `${midPctZ}%`, top: 4, transform: "translateX(-50%)", background: "rgba(4,12,28,0.97)", border: "1px solid var(--border-blue)", borderRadius: 6, padding: "4px 10px", fontSize: 11, fontWeight: 600, color: "var(--text)", whiteSpace: "nowrap", pointerEvents: "none", zIndex: 20, boxShadow: "0 2px 14px rgba(0,0,0,0.6)" }}>
+                    <div style={{ position: "absolute", left: `${midPctZ}%`, top: 4, transform: "translateX(-50%)", background: "var(--chart-tooltip-bg)", border: "1px solid var(--border-blue)", borderRadius: 6, padding: "4px 10px", fontSize: 11, fontWeight: 600, color: "var(--text)", whiteSpace: "nowrap", pointerEvents: "none", zIndex: 20, boxShadow: "0 2px 14px rgba(0,0,0,0.6)" }}>
                       <span style={{ color: "var(--text-accent)" }}>{fmtRange(hzb.s, hzb.e)}</span>
                       <span style={{ color: "var(--blue)", marginLeft: 8 }}>{hzb.count}</span>
                       <span style={{ color: "var(--text-muted)", marginLeft: 3, fontWeight: 400 }}>listing{hzb.count !== 1 ? 's' : ''}</span>
@@ -1252,7 +1252,7 @@ function PriceDistribution({ data, listings, price, onBinSelect, soldCounts = {}
               {sorted.map((item, i) => {
                 const pos      = posFor(item.price);
                 const isUser   = hasPrice && Math.abs(item.price - price) < 0.01;
-                const rowBg    = isUser ? "rgba(0,229,255,0.04)" : i % 2 === 0 ? "transparent" : "rgba(255,255,255,0.015)";
+                const rowBg    = isUser ? "rgba(0,229,255,0.04)" : i % 2 === 0 ? "transparent" : "var(--border-light)";
                 return (
                   <div key={i} style={{
                     display: "flex", alignItems: "center",
@@ -1373,7 +1373,7 @@ function PriceDistribution({ data, listings, price, onBinSelect, soldCounts = {}
           <div style={{
             width: 310, flexShrink: 0,
             borderLeft: "1px solid var(--border-blue)",
-            background: "rgba(1,7,18,0.98)",
+            background: "var(--chart-panel-bg)",
             display: "flex", flexDirection: "column",
             maxHeight: "100vh",
             overflow: "hidden",

@@ -418,6 +418,7 @@ function ListingGenerator({
   const [searchResults, setSearchResults] = useState([]);
   const [result,        setResult]        = useSessionState("jsk_gen_result", null);
   const [error,         setError]         = useState("");
+  const [isSaved,       setIsSaved]       = useState(false);
   const [themeId,       setThemeId]       = useState(getSavedTheme);
   const [customTemplates,    setCustomTemplates]    = useState(loadCustomTemplates);
   const [customTemplateHtml, setCustomTemplateHtml] = useState(null);
@@ -514,7 +515,7 @@ function ListingGenerator({
       if (!res.ok) throw new Error(data.error || "Lookup failed");
       setResult(data);
       setPhase("done");
-      onAutoSave?.({ ...data, sku: inputSku.trim() });
+      setIsSaved(false);
     } catch (err) {
       setError(String(err.message || err));
       setPhase(searchResults.length > 0 ? "selecting" : "idle");
@@ -554,7 +555,7 @@ function ListingGenerator({
         .then((data) => {
           if (data.error) throw new Error(data.error);
           setResult(data);
-          onAutoSave?.({ ...data, sku: inputSku.trim() }); // keep saved listing in sync
+          setIsSaved(false);
         })
         .catch((err) => setError(String(err.message || err)))
         .finally(() => setPhase("done"));
@@ -598,6 +599,13 @@ function ListingGenerator({
 
   const copyText = async (v) => { await navigator.clipboard.writeText(v || ""); };
 
+  // ── Save current listing to Saved Listings (explicit, button-triggered) ───
+  const handleSaveListing = () => {
+    if (!result) return;
+    onAutoSave?.({ ...result, sku: inputSku.trim() });
+    setIsSaved(true);
+  };
+
   const btnLabel =
     phase === "searching"  ? "Searching…"   :
     phase === "generating" ? "Generating…"  :
@@ -611,7 +619,7 @@ function ListingGenerator({
       <div style={{ display: "flex", gap: 0, marginBottom: 24, borderBottom: "1px solid var(--border)" }}>
         {[
           { key: "generate",  label: "Generate" },
-          { key: "generated", label: "Generated Listings", count: listingCount },
+          { key: "generated", label: "Saved Listings", count: listingCount },
         ].map(({ key, label, count }) => {
           const active = innerPage === key;
           return (
@@ -661,7 +669,7 @@ function ListingGenerator({
 
             {/* Single Listing */}
             <Card
-              title="Single Listing"
+              title="Listing Generator"
               subtitle="Enter a TecDoc article number or OEM / reference number."
               icon={
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -783,11 +791,8 @@ function ListingGenerator({
                 result={result}
                 apiUrl={API_URL}
                 onUseTitle={(title) => {
-                  setResult((prev) => {
-                    const updated = { ...prev, generated_title: title };
-                    onAutoSave?.({ ...updated, sku: inputSku.trim() });
-                    return updated;
-                  });
+                  setResult((prev) => ({ ...prev, generated_title: title }));
+                  setIsSaved(false);
                 }}
               />
             )}
@@ -865,6 +870,21 @@ function ListingGenerator({
                   </div>
                 )}
               </div>
+
+              {/* Save listing */}
+              <button
+                onClick={handleSaveListing}
+                style={{
+                  width: "100%", textAlign: "center", fontSize: 13, fontWeight: 700,
+                  padding: "10px 16px", borderRadius: 10, cursor: "pointer", border: "none",
+                  background: isSaved ? "rgba(74,222,128,0.16)" : "var(--blue)",
+                  color: isSaved ? "var(--green)" : "var(--text-on-dark)",
+                  boxShadow: isSaved ? "none" : "0 0 16px rgba(19,93,255,0.3)",
+                  transition: "all 0.15s ease",
+                }}
+              >
+                {isSaved ? "✓ Saved to Saved Listings" : "💾 Save Listing"}
+              </button>
 
               {/* Product Image */}
               {result.article_image && (
@@ -1725,6 +1745,60 @@ function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate, n
 
         <div style={{ padding: "16px 18px" }}>
 
+        {/* Edit / Save Template controls shown inline when noRightPanel */}
+        {noRightPanel && (
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
+            {!editMode ? (
+              <button
+                onClick={enterEdit}
+                style={{ ...SMALL_BUTTON_STYLE, fontSize: 13 }}
+              >
+                ✎ Edit Description
+              </button>
+            ) : (
+              <>
+                <button
+                  onClick={exitEdit}
+                  style={{ ...SMALL_BUTTON_STYLE, fontSize: 13, background: "#16a34a", boxShadow: "0 0 16px rgba(22,163,74,0.3)" }}
+                >
+                  ✓ Done Editing
+                </button>
+                {saveMode ? (
+                  <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                    <input
+                      value={saveName}
+                      onChange={(e) => setSaveName(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && doSaveTemplate()}
+                      placeholder="Template name…"
+                      autoFocus
+                      style={{
+                        padding: "6px 10px", borderRadius: 10, fontSize: 12,
+                        background: "var(--bg-surface2)", color: "var(--text)",
+                        border: "1px solid var(--border-strong)", outline: "none"
+                      }}
+                    />
+                    <button onClick={doSaveTemplate}
+                      style={{ ...SMALL_BUTTON_STYLE, fontSize: 12, background: "#b45309", boxShadow: "0 0 12px rgba(180,83,9,0.3)" }}>
+                      💾 Save
+                    </button>
+                    <button onClick={() => { setSaveMode(false); setSaveName(""); }}
+                      style={{ ...SMALL_BUTTON_STYLE, fontSize: 12, background: "var(--text-dim)", boxShadow: "none" }}>
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setSaveMode(true)}
+                    style={{ ...SMALL_BUTTON_STYLE, fontSize: 12, background: "#92400e", boxShadow: "0 0 12px rgba(146,64,14,0.3)" }}
+                  >
+                    📐 Save as Template
+                  </button>
+                )}
+              </>
+            )}
+          </div>
+        )}
+
         {/* Editor Toolbar (preview tab + edit mode only) */}
         {innerTab === "overview" && editMode && (
           <EditorToolbar
@@ -1855,7 +1929,7 @@ function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate, n
                 onClick={enterEdit}
                 style={{ ...SMALL_BUTTON_STYLE, width: "100%", textAlign: "center", fontSize: 13 }}
               >
-                ✎ Edit Preview
+                ✎ Edit Description
               </button>
             ) : (
               <>
@@ -1966,60 +2040,6 @@ function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate, n
             )}
           </div>
 
-        </div>
-      )}
-
-      {/* Edit / Save Template controls shown inline when noRightPanel */}
-      {noRightPanel && (
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: -6 }}>
-          {!editMode ? (
-            <button
-              onClick={enterEdit}
-              style={{ ...SMALL_BUTTON_STYLE, fontSize: 13 }}
-            >
-              ✎ Edit Preview
-            </button>
-          ) : (
-            <>
-              <button
-                onClick={exitEdit}
-                style={{ ...SMALL_BUTTON_STYLE, fontSize: 13, background: "#16a34a", boxShadow: "0 0 16px rgba(22,163,74,0.3)" }}
-              >
-                ✓ Done Editing
-              </button>
-              {saveMode ? (
-                <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                  <input
-                    value={saveName}
-                    onChange={(e) => setSaveName(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && doSaveTemplate()}
-                    placeholder="Template name…"
-                    autoFocus
-                    style={{
-                      padding: "6px 10px", borderRadius: 10, fontSize: 12,
-                      background: "var(--bg-surface2)", color: "var(--text)",
-                      border: "1px solid var(--border-strong)", outline: "none"
-                    }}
-                  />
-                  <button onClick={doSaveTemplate}
-                    style={{ ...SMALL_BUTTON_STYLE, fontSize: 12, background: "#b45309", boxShadow: "0 0 12px rgba(180,83,9,0.3)" }}>
-                    💾 Save
-                  </button>
-                  <button onClick={() => { setSaveMode(false); setSaveName(""); }}
-                    style={{ ...SMALL_BUTTON_STYLE, fontSize: 12, background: "var(--text-dim)", boxShadow: "none" }}>
-                    Cancel
-                  </button>
-                </div>
-              ) : (
-                <button
-                  onClick={() => setSaveMode(true)}
-                  style={{ ...SMALL_BUTTON_STYLE, fontSize: 12, background: "#92400e", boxShadow: "0 0 12px rgba(146,64,14,0.3)" }}
-                >
-                  📐 Save as Template
-                </button>
-              )}
-            </>
-          )}
         </div>
       )}
 

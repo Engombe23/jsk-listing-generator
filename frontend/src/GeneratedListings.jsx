@@ -369,7 +369,7 @@ function ListingsTable({
   return (
     <div style={{ borderRadius: 16, overflow: "hidden", border: "1px solid var(--border)" }}>
       <div style={{ overflowX: "auto" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 1020 }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 1160 }}>
           <thead>
             <tr>
               <th style={{ ...HDR, width: 40 }}>
@@ -380,6 +380,7 @@ function ListingsTable({
               <th style={HDR}>Title</th>
               <th style={{ ...HDR, width: 118 }}>Description</th>
               <th style={{ ...HDR, width: 120 }}>Type</th>
+              <th style={{ ...HDR, width: 140 }}>K Numbers</th>
               <th style={{ ...HDR, width: 170 }}>OEM Numbers</th>
               <th style={{ ...HDR, width: 96 }}>Date</th>
               <th style={{ ...HDR, width: 88 }}>Status</th>
@@ -392,6 +393,8 @@ function ListingsTable({
               const type     = l.product_type || "—";
               const oem      = (l.oem_numbers || []).slice(0, 2).join(", ") +
                                ((l.oem_numbers?.length || 0) > 2 ? ` +${l.oem_numbers.length - 2}` : "");
+              const kNums    = (l.k_number_list || []).slice(0, 2).join(", ") +
+                               ((l.k_number_list?.length || 0) > 2 ? ` +${l.k_number_list.length - 2}` : "");
               const hasDesc  = !!l.description_html?.trim();
               const isGen    = generatingIds.includes(l.id);
               const bg       = checked ? "rgba(19,93,255,0.07)" : idx % 2 === 0 ? "rgba(255,255,255,0.015)" : "transparent";
@@ -420,6 +423,11 @@ function ListingsTable({
                   </td>
                   <td style={{ ...COL, color: "var(--text)", maxWidth: 120, fontSize: 12 }}>
                     <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{type}</div>
+                  </td>
+                  <td style={{ ...COL, color: "var(--text-muted)", fontSize: 12, maxWidth: 140 }}>
+                    <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {kNums || "—"}
+                    </div>
                   </td>
                   <td style={{ ...COL, color: "var(--text-muted)", fontSize: 12, maxWidth: 170 }}>
                     <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -741,6 +749,20 @@ function ListingDetail({ listing, onClose, onSave }) {
               />
             </div>
           </div>
+
+          {/* K Numbers */}
+          {(listing.k_number_list || []).length > 0 && (
+            <div>
+              <div style={labelStyle}>K Numbers</div>
+              <div style={{
+                fontSize: 12, color: "var(--text-muted)", lineHeight: 1.7, wordBreak: "break-word",
+                background: "var(--border-light)", border: "1px solid var(--border)",
+                borderRadius: 8, padding: "8px 12px"
+              }}>
+                {(listing.k_number_list || []).join(", ")}
+              </div>
+            </div>
+          )}
 
           {/* Item Specifics */}
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -1218,9 +1240,9 @@ export default function GeneratedListings({
         border: "1px solid var(--border)"
       }}>
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 20, fontWeight: 800, color: "var(--text)" }}>Generated Listings</div>
+          <div style={{ fontSize: 20, fontWeight: 800, color: "var(--text)" }}>Saved Listings</div>
           <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 3 }}>
-            Auto-saved from the generator · manage, complete, and export from here
+            Saved from the generator · manage, complete, and export from here
           </div>
         </div>
         {[
