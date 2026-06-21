@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { trackEvent } from "../lib/analytics";
 
 // ─── Premium dark palette for this section only ────────────────────────────
@@ -81,9 +82,10 @@ const plans: Plan[] = [
   },
 ];
 
-function PlanCard({ plan }: { plan: Plan }) {
+function PlanCard({ plan, annual }: { plan: Plan; annual: boolean }) {
   const isGrowth = plan.tier === "growth";
   const isScale  = plan.tier === "scale";
+  const displayPrice = annual ? Math.round(plan.price * 0.8) : plan.price;
 
   return (
     <div
@@ -125,9 +127,14 @@ function PlanCard({ plan }: { plan: Plan }) {
 
       {/* Price */}
       <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginBottom: 6 }}>
-        <span style={{ fontSize: isGrowth ? 48 : 40, fontWeight: 800, color: TEXT, letterSpacing: "-0.02em" }}>£{plan.price}</span>
+        <span style={{ fontSize: isGrowth ? 48 : 40, fontWeight: 800, color: TEXT, letterSpacing: "-0.02em" }}>£{displayPrice}</span>
         <span style={{ fontSize: 14, color: DIM, fontWeight: 600 }}>/mo</span>
       </div>
+      {annual && (
+        <div style={{ fontSize: 12, color: DIM, marginBottom: 8 }}>
+          billed annually (£{displayPrice * 12}/yr) · was £{plan.price}/mo
+        </div>
+      )}
 
       {/* Listings badge */}
       <div style={{
@@ -153,7 +160,7 @@ function PlanCard({ plan }: { plan: Plan }) {
       {/* CTA */}
       <a
         href="/auth/sign-up"
-        onClick={() => trackEvent("signup_clicked", { cta_location: "pricing_section", plan_name: plan.name })}
+        onClick={() => trackEvent("signup_clicked", { cta_location: "pricing_section", plan_name: plan.name, billing_period: annual ? "annual" : "monthly" })}
         style={{
           display: "block", textAlign: "center", borderRadius: 10,
           padding: "13px 0", fontSize: 14, fontWeight: 700, textDecoration: "none",
@@ -206,11 +213,13 @@ function PlanCard({ plan }: { plan: Plan }) {
 }
 
 export default function Pricing() {
+  const [annual, setAnnual] = useState(false);
+
   return (
     <section id="pricing" style={{ background: BG, padding: "100px 24px 110px" }}>
       <div style={{ maxWidth: 1140, margin: "0 auto" }}>
         {/* Header */}
-        <div style={{ textAlign: "center", marginBottom: 64 }}>
+        <div style={{ textAlign: "center", marginBottom: 48 }}>
           <div style={{
             display: "inline-flex", alignItems: "center", gap: 8,
             background: ACCENT_SOFT, border: "1px solid rgba(19,93,255,0.25)",
@@ -222,11 +231,48 @@ export default function Pricing() {
             <span style={{ fontSize: 12, fontWeight: 600, color: ACCENT, letterSpacing: "0.04em" }}>PRICING</span>
           </div>
           <h2 style={{ fontSize: "clamp(28px, 4vw, 42px)", fontWeight: 800, color: TEXT, margin: "0 0 16px", letterSpacing: "-0.01em", lineHeight: 1.2 }}>
-            Simple, transparent pricing
+            Choose Your Plan
           </h2>
-          <p style={{ fontSize: 16, color: MUTED, maxWidth: 480, margin: "0 auto", lineHeight: 1.6 }}>
-            Start generating listings in minutes. Upgrade as your inventory grows.
+          <p style={{ fontSize: 16, color: MUTED, maxWidth: 480, margin: "0 auto 28px", lineHeight: 1.6 }}>
+            Generate professional listings in just a few clicks.
           </p>
+
+          {/* Monthly / Annual toggle */}
+          <div style={{
+            display: "inline-flex", alignItems: "center", gap: 4,
+            background: CARD_BG, border: `1px solid ${BORDER_SOFT}`, borderRadius: 30, padding: 5,
+          }}>
+            <button
+              onClick={() => setAnnual(false)}
+              style={{
+                background: !annual ? ACCENT : "transparent",
+                color: !annual ? "#fff" : MUTED,
+                border: "none", borderRadius: 24, padding: "8px 22px",
+                fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "all 0.2s",
+              }}
+            >
+              Monthly
+            </button>
+            <button
+              onClick={() => setAnnual(true)}
+              style={{
+                background: annual ? ACCENT : "transparent",
+                color: annual ? "#fff" : MUTED,
+                border: "none", borderRadius: 24, padding: "8px 22px",
+                fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "all 0.2s",
+                display: "flex", alignItems: "center", gap: 8,
+              }}
+            >
+              Yearly
+              <span style={{
+                background: annual ? "rgba(255,255,255,0.2)" : "rgba(74,222,128,0.15)",
+                color: annual ? "#fff" : "#4ade80",
+                borderRadius: 10, padding: "2px 8px", fontSize: 11, fontWeight: 700,
+              }}>
+                -20%
+              </span>
+            </button>
+          </div>
         </div>
 
         {/* Cards */}
@@ -237,7 +283,7 @@ export default function Pricing() {
           alignItems: "stretch",
           paddingTop: 14,
         }}>
-          {plans.map((plan) => <PlanCard key={plan.name} plan={plan} />)}
+          {plans.map((plan) => <PlanCard key={plan.name} plan={plan} annual={annual} />)}
         </div>
 
         {/* Footer note */}
