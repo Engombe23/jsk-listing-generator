@@ -61,7 +61,7 @@ const plans: Plan[] = [
     groups: [
       {
         label: "Advanced Tools",
-        items: ["Compatibility Checker", "Smart Pricing"],
+        items: ["Compatibility Checker", "Smart Pricing", "Priority Support"],
       },
     ],
   },
