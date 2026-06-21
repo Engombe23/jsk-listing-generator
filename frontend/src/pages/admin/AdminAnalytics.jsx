@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useSession } from "../../context/SessionContext";
 import { DEMO_OVERVIEW, DEMO_ACTION_TABLES, DEMO_RAW_EVENTS } from "./demoData";
 import {
   T, API_URL, fmtPct,
@@ -261,6 +262,8 @@ function OverviewSection({ data, tableData }) {
 
 // ─── Main page ──────────────────────────────────────────────────────────────────
 export default function AdminAnalytics() {
+  const { session } = useSession();
+  const accessToken = session?.access_token;
   const [section, setSection] = useState("overview");
   const [preset, setPreset]   = useState("30d");
   const [customFrom, setCustomFrom] = useState("");
@@ -278,21 +281,29 @@ export default function AdminAnalytics() {
 
   useEffect(() => {
     if (demoMode) return;
+    if (!accessToken) {
+      // No session (e.g. AdminRoute bypassed in a preview context, or session
+      // hasn't resolved yet) — surface that instead of spinning forever.
+      setLoading(false);
+      setError("Not signed in as an admin user — no access token available.");
+      return;
+    }
     let cancelled = false;
     setLoading(true);
     setError("");
 
     const params = new URLSearchParams({ from: range.from, to: range.to });
     if (plan !== "All plans") params.set("plan", plan.toLowerCase());
+    const authHeaders = { Authorization: `Bearer ${accessToken}` };
 
     Promise.all([
-      fetch(`${API_URL}/api/analytics/overview?${params.toString()}`).then(async (r) => {
+      fetch(`${API_URL}/api/analytics/overview?${params.toString()}`, { headers: authHeaders }).then(async (r) => {
         const j = await r.json(); if (!r.ok) throw new Error(j.error || "Failed to load overview"); return j;
       }),
-      fetch(`${API_URL}/api/analytics/action-tables?${params.toString()}`).then(async (r) => {
+      fetch(`${API_URL}/api/analytics/action-tables?${params.toString()}`, { headers: authHeaders }).then(async (r) => {
         const j = await r.json(); if (!r.ok) throw new Error(j.error || "Failed to load action tables"); return j;
       }),
-      fetch(`${API_URL}/api/analytics/raw-events?${params.toString()}`).then(async (r) => {
+      fetch(`${API_URL}/api/analytics/raw-events?${params.toString()}`, { headers: authHeaders }).then(async (r) => {
         const j = await r.json(); if (!r.ok) throw new Error(j.error || "Failed to load raw events"); return j;
       }),
     ])
@@ -301,7 +312,7 @@ export default function AdminAnalytics() {
       .finally(() => { if (!cancelled) setLoading(false); });
 
     return () => { cancelled = true; };
-  }, [range.from, range.to, plan, demoMode]);
+  }, [range.from, range.to, plan, demoMode, accessToken]);
 
   const data      = demoMode ? DEMO_OVERVIEW       : overview;
   const tableData  = demoMode ? DEMO_ACTION_TABLES  : tables;
