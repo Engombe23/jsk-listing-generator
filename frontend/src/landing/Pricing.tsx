@@ -263,7 +263,7 @@ export default function Pricing() {
                 display: "flex", alignItems: "center", gap: 8,
               }}
             >
-              Yearly
+              Annual
               <span style={{
                 background: annual ? "rgba(255,255,255,0.2)" : "rgba(74,222,128,0.15)",
                 color: annual ? "#fff" : "#4ade80",
