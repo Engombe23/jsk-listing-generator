@@ -149,10 +149,10 @@ function UsageBar({ used, total }) {
 function AccountPage({ onOpenBilling }) {
   const navigate = useNavigate();
   const { email, displayName, initials, memberSince, user } = useAuthUser();
-  const { plan, listingLimit, refreshPlan } = useSession();
+  const { plan, listingLimit, listingsUsed, refreshPlan } = useSession();
   const planInfo = getPlan(plan);
   const usageTotal = listingLimit ?? null;
-  const usageUsed = 0; // TODO: wire to usage tracking when available
+  const usageUsed = listingsUsed;
 
   useEffect(() => {
     if (user?.id) refreshPlan();

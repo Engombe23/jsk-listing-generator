@@ -28,6 +28,7 @@ import { useSessionState } from "./useSessionState.js";
 import GeneratedListings from "./GeneratedListings.jsx";
 import { SPEC_SCHEMA, SECTION_TITLES, mapApiSpecsToSchema } from "./itemSpecificsSchema.js";
 import { trackEvent } from "./lib/analytics";
+import { UpgradeBanner } from "./components/UpgradePrompt.jsx";
 
 // ─── Description themes (mirrors backend) ────────────────────────────────────
 
@@ -457,7 +458,7 @@ function ListingGenerator({
   prefilledArticle, onPrefilledConsumed, onAutoSave,
   listings, onUpdateStatus, onUpdateStatusBatch, onUpdateListing, onRemove, onRemoveBatch,
 }) {
-  const { hasFeature } = useSession();
+  const { session, hasFeature, listingLimit, listingsUsed, refreshPlan } = useSession();
   const canBulkGenerate = hasFeature("bulkListingGeneration");
   const canBulkCsvExport = hasFeature("bulkCsvExport");
   const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
@@ -472,6 +473,7 @@ function ListingGenerator({
   const [searchResults, setSearchResults] = useState([]);
   const [result,        setResult]        = useSessionState("jsk_gen_result", null);
   const [error,         setError]         = useState("");
+  const [limitMessage,  setLimitMessage]  = useState("");
   const [isSaved,       setIsSaved]       = useState(false);
   const [themeId,       setThemeId]       = useState(getSavedTheme);
   const [customTemplates,    setCustomTemplates]    = useState(loadCustomTemplates);
@@ -526,11 +528,20 @@ function ListingGenerator({
     }
   }, [prefilledArticle]);
 
+  // Surface the upgrade banner proactively once usage data loads, not just
+  // after a blocked attempt — so the user understands why the button is disabled.
+  useEffect(() => {
+    if (listingLimit != null && listingsUsed >= listingLimit) {
+      setLimitMessage("You have reached your listing limit. Upgrade your plan to continue generating listings.");
+    }
+  }, [listingLimit, listingsUsed]);
+
   // ── Search (OEM or article number → candidates) ──────────────────────────
   const handleSearch = async () => {
     if (!canSearch || isLoading) return;
     setPhase("searching");
     setError("");
+    setLimitMessage("");
     setSearchResults([]);
     setResult(null);
     try {
@@ -559,19 +570,31 @@ function ListingGenerator({
   const generateListing = async (articleNo) => {
     setPhase("generating");
     setError("");
+    setLimitMessage("");
     const startedAt = Date.now();
     trackEvent("listing_generation_started", { part_number: articleNo, source: "listing_generator" });
     try {
       const res  = await fetch(`${API_URL}/lookup`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+        },
         body: JSON.stringify({ articleNumber: String(articleNo), themeId })
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Lookup failed");
+      if (!res.ok) {
+        if (res.status === 403 && data.error === "limit_reached") {
+          setLimitMessage(data.message);
+          setPhase(searchResults.length > 0 ? "selecting" : "idle");
+          return;
+        }
+        throw new Error(data.error || "Lookup failed");
+      }
       setResult(data);
       setPhase("done");
       setIsSaved(false);
+      refreshPlan();
       trackEvent("listing_generated", {
         part_number: articleNo,
         generation_time_ms: Date.now() - startedAt,
@@ -614,7 +637,10 @@ function ListingGenerator({
       setPhase("generating");
       fetch(`${API_URL}/lookup`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+        },
         body: JSON.stringify({ articleNumber: result.article_number, themeId: newId })
       })
         .then((r) => r.json())
@@ -643,22 +669,31 @@ function ListingGenerator({
     if (!canBulkCsvExport || !canBatch || batchLoading) return;
     setBatchLoading(true);
     setError("");
+    setLimitMessage("");
     try {
       const rows = batchRows
         .filter((r) => r.articleNo.trim() && r.sku.trim() && r.binPrice.trim())
         .map(({ articleNo, sku, binPrice }) => ({ articleNumber: articleNo.trim(), sku: sku.trim(), binPrice: binPrice.trim() }));
       const res = await fetch(`${API_URL}/batch-export`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+        },
         body: JSON.stringify({ rows, themeId })
       });
-      if (!res.ok) { const d = await res.json(); throw new Error(d.error || "Batch export failed"); }
+      if (!res.ok) {
+        const d = await res.json();
+        if (res.status === 403 && d.error === "limit_reached") { setLimitMessage(d.message); return; }
+        throw new Error(d.error || "Batch export failed");
+      }
       const blob = await res.blob();
       const url  = URL.createObjectURL(blob);
       const a    = document.createElement("a");
       a.href = url; a.download = "batch-listings.csv";
       document.body.appendChild(a); a.click(); a.remove();
       URL.revokeObjectURL(url);
+      refreshPlan();
       trackEvent("listing_exported_csv", { row_count: rows.length, source: "listing_generator_batch" });
     } catch (err) { setError(String(err.message || err)); }
     finally { setBatchLoading(false); }
@@ -673,6 +708,11 @@ function ListingGenerator({
     setIsSaved(true);
     trackEvent("listing_saved", { part_number: result.article_number, source: "listing_generator" });
   };
+
+  const atLimit = listingLimit != null && listingsUsed >= listingLimit;
+  const remainingLabel = listingLimit == null
+    ? "Unlimited Listings"
+    : `${Math.max(0, listingLimit - listingsUsed)} Listings Remaining`;
 
   const btnLabel =
     phase === "searching"  ? "Searching…"   :
@@ -717,6 +757,9 @@ function ListingGenerator({
 
       {/* ── Generate tab ── */}
       {innerPage === "generate" && (<>
+        {limitMessage && (
+          <UpgradeBanner message={limitMessage} onDismiss={() => setLimitMessage("")} />
+        )}
         {error && (
           <div style={{
             display: "flex", alignItems: "flex-start", gap: 10,
@@ -845,11 +888,18 @@ function ListingGenerator({
 
                 <button
                   onClick={handleSearch}
-                  disabled={isLoading || !canSearch}
-                  style={primaryButtonStyle(isLoading || !canSearch)}
+                  disabled={isLoading || !canSearch || atLimit}
+                  style={primaryButtonStyle(isLoading || !canSearch || atLimit)}
                 >
                   {btnLabel}
                 </button>
+
+                <div style={{
+                  textAlign: "center", fontSize: 12, fontWeight: 600,
+                  color: atLimit ? "var(--red)" : "var(--text-muted)",
+                }}>
+                  {remainingLabel}
+                </div>
               </div>
             </Card>
 

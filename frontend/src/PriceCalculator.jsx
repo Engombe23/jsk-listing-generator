@@ -1749,9 +1749,19 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
     setSmLoading(true); setSmError(""); setBinPanelData(null); setSoldCounts({});
     trackEvent("ebay_search_performed", { query: smQuery.trim(), condition: smCondition, source: "smart_pricing" });
     try {
-      const res  = await fetch(`${API_URL}/api/ebay/search-prices`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ query: smQuery.trim(), condition: smCondition }) });
+      const res  = await fetch(`${API_URL}/api/ebay/search-prices`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+        },
+        body: JSON.stringify({ query: smQuery.trim(), condition: smCondition }),
+      });
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Failed to fetch prices.");
+      if (!res.ok) {
+        if (res.status === 403 && json.error === "feature_restricted") throw new Error(json.message);
+        throw new Error(json.error || "Failed to fetch prices.");
+      }
       if (json.priceCount === 0) throw new Error(json.zeroResultsMsg || "No listings found — try changing the condition or search term.");
       setSmData(json);
     } catch (err) { setSmError(err.message); setSmData(null); }

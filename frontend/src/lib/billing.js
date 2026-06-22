@@ -23,7 +23,7 @@ export async function refreshUserPlan(userId) {
 
   const { data, error } = await supabase
     .from("profiles")
-    .select("plan, stripe_customer_id, stripe_subscription_id, subscription_status, billing_interval")
+    .select("plan, stripe_customer_id, stripe_subscription_id, subscription_status, billing_interval, listings_used")
     .eq("id", userId)
     .maybeSingle();
 
