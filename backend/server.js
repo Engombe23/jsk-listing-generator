@@ -17,6 +17,7 @@ import { stripeReady } from "./lib/stripeConfig.js";
 import { supabaseAdminReady } from "./lib/supabaseAdmin.js";
 import { requireAuth } from "./middleware/requireAuth.js";
 import { canGenerateListing, incrementListingUsage, checkFeatureAccess } from "./lib/profiles.js";
+import authRouter from "./routes/auth.js";
 
 const openaiClient = process.env.OPENAI_API_KEY
   ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
@@ -25,12 +26,17 @@ const OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-4o-mini";
 
 const app = express();
 
+// Needed for req.ip to reflect the real client IP (X-Forwarded-For) rather
+// than Render's proxy — used by the signup-fingerprint abuse-detection check.
+app.set("trust proxy", true);
+
 registerStripeWebhook(app);
 
 app.use(cors());
 app.use(express.json({ limit: "2mb" }));
 app.use("/api", analyticsRouter);
 app.use("/api", stripeRouter);
+app.use("/api", authRouter);
 
 const RAPIDAPI_KEY  = process.env.RAPIDAPI_KEY;
 const RAPIDAPI_HOST = "autodoc-parts-catalog.p.rapidapi.com";

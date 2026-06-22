@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase, getAuthCallbackUrl } from "../lib/supabaseClient";
 import { trackEvent } from "../lib/analytics";
 import { redirectToStripeCheckout } from "../lib/billing";
+import { recordSignupFingerprint } from "../lib/signupGuard";
 import {
   getPlan,
   isValidPaidPlan,
@@ -74,6 +75,7 @@ export default function SignUpForm({ submitLabel }) {
       if (error) throw error;
 
       trackEvent("user_signed_up", { user_id: data?.user?.id });
+      recordSignupFingerprint(data?.session?.access_token);
 
       if (paidSignup && data?.session?.user) {
         await redirectToStripeCheckout({
