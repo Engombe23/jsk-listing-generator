@@ -1,5 +1,6 @@
 import express from "express";
 import { supabaseAdmin, supabaseAdminReady } from "../lib/supabaseAdmin.js";
+import { requireAdmin } from "../middleware/requireAdmin.js";
 
 const router = express.Router();
 
@@ -245,7 +246,7 @@ function mergeSeries(seriesA, keyA, seriesB, keyB) {
 }
 
 // ─── GET /api/analytics/overview ───────────────────────────────────────────────
-router.get("/analytics/overview", async (req, res) => {
+router.get("/analytics/overview", requireAdmin, async (req, res) => {
   if (!supabaseAdminReady) {
     return res.status(503).json({ error: "Analytics storage is not configured (missing SUPABASE_SERVICE_ROLE_KEY)." });
   }
@@ -333,7 +334,7 @@ router.get("/analytics/overview", async (req, res) => {
 });
 
 // ─── GET /api/analytics/action-tables ──────────────────────────────────────────
-router.get("/analytics/action-tables", async (req, res) => {
+router.get("/analytics/action-tables", requireAdmin, async (req, res) => {
   if (!supabaseAdminReady) {
     return res.status(503).json({ error: "Analytics storage is not configured (missing SUPABASE_SERVICE_ROLE_KEY)." });
   }
@@ -435,7 +436,7 @@ router.get("/analytics/action-tables", async (req, res) => {
 // this is an internal admin tool, not a high-traffic public endpoint.
 const RAW_EVENTS_CAP = 8000;
 
-router.get("/analytics/raw-events", async (req, res) => {
+router.get("/analytics/raw-events", requireAdmin, async (req, res) => {
   if (!supabaseAdminReady) {
     return res.status(503).json({ error: "Analytics storage is not configured (missing SUPABASE_SERVICE_ROLE_KEY)." });
   }

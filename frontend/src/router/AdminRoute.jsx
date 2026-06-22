@@ -3,8 +3,9 @@ import { useSession } from "../context/SessionContext";
 
 // No roles table exists yet — gate /admin/* on an email allowlist instead.
 // Configure via VITE_ADMIN_EMAILS="you@example.com,other@example.com" in
-// frontend/.env. Falls back to the original PartLister account email.
-const ADMIN_EMAILS = (import.meta.env.VITE_ADMIN_EMAILS || "aaronbutlerwm@gmail.com")
+// frontend/.env. This is a UX convenience only — the real security boundary
+// is the backend's ADMIN_EMAILS check in requireAdmin.js.
+const ADMIN_EMAILS = (import.meta.env.VITE_ADMIN_EMAILS || "aaron@partlister.app,engombe@partlister.app")
   .split(",")
   .map((e) => e.trim().toLowerCase())
   .filter(Boolean);
