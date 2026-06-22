@@ -1,6 +1,10 @@
 import express from "express";
 import { CLIENT_URL, resolvePriceId, stripe, stripeReady } from "../lib/stripeConfig.js";
-import { handleStripeWebhookEvent, syncCheckoutSession } from "../lib/stripeBilling.js";
+import {
+  handleStripeWebhookEvent,
+  syncCheckoutSession,
+  upgradeSubscription,
+} from "../lib/stripeBilling.js";
 
 const router = express.Router();
 
@@ -40,6 +44,27 @@ router.post("/stripe/create-checkout-session", requireStripe, async (req, res) =
   } catch (err) {
     console.error("[/api/stripe/create-checkout-session]", err.message);
     res.status(500).json({ error: err.message });
+  }
+});
+
+router.post("/stripe/upgrade-subscription", requireStripe, async (req, res) => {
+  try {
+    const { plan, interval = "monthly", userId } = req.body || {};
+    if (!userId) {
+      return res.status(401).json({ error: "Sign in before upgrading" });
+    }
+
+    const result = await upgradeSubscription({ userId, plan, interval });
+    res.json({ ok: true, ...result });
+  } catch (err) {
+    console.error("[/api/stripe/upgrade-subscription]", err.message);
+    const status = err.message.includes("No active subscription") ||
+      err.message.includes("must be higher") ||
+      err.message.includes("Invalid plan") ||
+      err.message.includes("Billing interval")
+      ? 400
+      : 500;
+    res.status(status).json({ error: err.message });
   }
 });
 

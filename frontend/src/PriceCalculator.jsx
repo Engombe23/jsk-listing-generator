@@ -1,6 +1,9 @@
 ﻿import React, { memo, useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSessionState } from "./useSessionState.js";
+import { useSession } from "./context/SessionContext";
+import { redirectToStripeCheckout, upgradeSubscription } from "./lib/billing";
+import { getNextPlan, getUpgradeTierForFeature, hasActiveSubscription } from "./lib/plans";
 import { BUTTON_BASE, SMALL_BUTTON_STYLE, INPUT_STYLE } from "./shared.jsx";
 import SavedProducts from "./SavedProducts.jsx";
 import { trackEvent } from "./lib/analytics";
@@ -1539,7 +1542,7 @@ function PriceDistribution({ data, listings, price, onBinSelect, soldCounts = {}
 }
 
 // ─── Locked state ─────────────────────────────────────────────────────────────
-function SmartPricingLocked({ onUpgrade }) {
+function SmartPricingLocked({ onUpgrade, upgrading = false, upgradeError = null }) {
   return (
     <div style={{ background: C.bg1, borderRadius: 14, border: C.borderBlue, position: "relative", overflow: "hidden", minHeight: 260, flex: 1 }}>
       <div style={{ padding: "28px", filter: "blur(4px)", userSelect: "none", pointerEvents: "none", opacity: 0.25 }}>
@@ -1565,7 +1568,26 @@ function SmartPricingLocked({ onUpgrade }) {
             <span style={{ fontSize: 9, fontWeight: 800, color: C.blue, background: "rgba(19,93,255,0.18)", border: "1px solid rgba(19,93,255,0.4)", borderRadius: 4, padding: "2px 7px", letterSpacing: 0.8 }}>GROWTH</span>
           </div>
           <div style={{ fontSize: 13, color: C.muted, marginBottom: 20, lineHeight: 1.6 }}>Live eBay UK market data to price listings competitively and maximise profit.</div>
-          <button onClick={onUpgrade} style={{ ...BUTTON_BASE, background: "linear-gradient(135deg,#135DFF,#0ea5e9)", color: "var(--text-on-dark)", fontSize: 14, fontWeight: 800, padding: "11px 30px", boxShadow: "0 0 22px rgba(19,93,255,0.45)" }}>Upgrade to Growth →</button>
+          {upgradeError && (
+            <div style={{ fontSize: 12, color: "var(--red)", marginBottom: 12 }}>{upgradeError}</div>
+          )}
+          <button
+            onClick={onUpgrade}
+            disabled={upgrading}
+            style={{
+              ...BUTTON_BASE,
+              background: "linear-gradient(135deg,#135DFF,#0ea5e9)",
+              color: "var(--text-on-dark)",
+              fontSize: 14,
+              fontWeight: 800,
+              padding: "11px 30px",
+              boxShadow: "0 0 22px rgba(19,93,255,0.45)",
+              opacity: upgrading ? 0.7 : 1,
+              cursor: upgrading ? "not-allowed" : "pointer",
+            }}
+          >
+            {upgrading ? "Upgrading…" : "Upgrade to Growth →"}
+          </button>
         </div>
       </div>
     </div>
@@ -1575,8 +1597,44 @@ function SmartPricingLocked({ onUpgrade }) {
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function PriceCalculator({ onSave, onLoadHandled, products, onDeleteProduct, onLoadProduct, hasSmartPricing = true }) {
   const navigate = useNavigate();
+  const { session, plan, profile, refreshPlan } = useSession();
+  const [upgrading, setUpgrading] = useState(false);
+  const [upgradeError, setUpgradeError] = useState(null);
   const [innerPage, setInnerPage] = useState("calculator");
   const savedCount = products?.length ?? 0;
+
+  const handleSmartPricingUpgrade = async () => {
+    const user = session?.user;
+    if (!user) return;
+
+    const interval = profile?.billing_interval || "monthly";
+    const targetPlan = getNextPlan(plan) || getUpgradeTierForFeature("smartPricing");
+    setUpgrading(true);
+    setUpgradeError(null);
+
+    try {
+      if (hasActiveSubscription(profile)) {
+        await upgradeSubscription({
+          plan: targetPlan,
+          interval,
+          userId: user.id,
+        });
+        await refreshPlan();
+        return;
+      }
+
+      await redirectToStripeCheckout({
+        plan: targetPlan,
+        interval,
+        userId: user.id,
+        email: user.email,
+      });
+    } catch (err) {
+      setUpgradeError(err instanceof Error ? err.message : "Could not upgrade plan");
+    } finally {
+      setUpgrading(false);
+    }
+  };
 
   // ── Input state ──────────────────────────────────────────────────────────────
   const [productName,    setProductName]    = useSessionState("jsk_calc_product_name", "");
@@ -2174,7 +2232,11 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
                   </div>
                 )}
               </div>
-              <SmartPricingLocked onUpgrade={() => navigate("/pricing")} />
+              <SmartPricingLocked
+                onUpgrade={handleSmartPricingUpgrade}
+                upgrading={upgrading}
+                upgradeError={upgradeError}
+              />
             </div>
           )}
 

@@ -55,6 +55,18 @@ export async function redirectToStripeCheckout({ plan, interval, userId, email }
   else throw new Error("No checkout URL returned");
 }
 
+export async function upgradeSubscription({ plan, interval, userId }) {
+  const res = await fetch(`${API_URL}/api/stripe/upgrade-subscription`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ plan, interval, userId }),
+  });
+
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "Upgrade failed");
+  return data;
+}
+
 export async function syncCheckoutSession({ sessionId, userId }) {
   const res = await fetch(`${API_URL}/api/stripe/sync-checkout`, {
     method: "POST",

@@ -70,6 +70,13 @@ export function checkoutSearchParams(plan, interval) {
   return new URLSearchParams({ plan, interval }).toString();
 }
 
+export function hasActiveSubscription(profile) {
+  const active = new Set(["active", "trialing", "past_due"]);
+  return Boolean(
+    profile?.stripe_subscription_id && active.has(profile.subscription_status)
+  );
+}
+
 export const PENDING_CHECKOUT_KEY = "jsk_pending_checkout";
 
 export function savePendingCheckout(plan, interval) {
