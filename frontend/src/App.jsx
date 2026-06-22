@@ -25,6 +25,7 @@ import { useGeneratedListings } from "./useGeneratedListings.js";
 import { useSessionState } from "./useSessionState.js";
 import GeneratedListings from "./GeneratedListings.jsx";
 import { SPEC_SCHEMA, SECTION_TITLES, mapApiSpecsToSchema } from "./itemSpecificsSchema.js";
+import { trackEvent } from "./lib/analytics";
 
 // ─── Description themes (mirrors backend) ────────────────────────────────────
 
@@ -418,6 +419,7 @@ function ListingGenerator({
   const [searchResults, setSearchResults] = useState([]);
   const [result,        setResult]        = useSessionState("jsk_gen_result", null);
   const [error,         setError]         = useState("");
+  const [isSaved,       setIsSaved]       = useState(false);
   const [themeId,       setThemeId]       = useState(getSavedTheme);
   const [customTemplates,    setCustomTemplates]    = useState(loadCustomTemplates);
   const [customTemplateHtml, setCustomTemplateHtml] = useState(null);
@@ -504,6 +506,8 @@ function ListingGenerator({
   const generateListing = async (articleNo) => {
     setPhase("generating");
     setError("");
+    const startedAt = Date.now();
+    trackEvent("listing_generation_started", { part_number: articleNo, source: "listing_generator" });
     try {
       const res  = await fetch(`${API_URL}/lookup`, {
         method: "POST",
@@ -514,10 +518,20 @@ function ListingGenerator({
       if (!res.ok) throw new Error(data.error || "Lookup failed");
       setResult(data);
       setPhase("done");
-      onAutoSave?.({ ...data, sku: inputSku.trim() });
+      setIsSaved(false);
+      trackEvent("listing_generated", {
+        part_number: articleNo,
+        generation_time_ms: Date.now() - startedAt,
+        source: "listing_generator",
+      });
     } catch (err) {
       setError(String(err.message || err));
       setPhase(searchResults.length > 0 ? "selecting" : "idle");
+      trackEvent("listing_generation_failed", {
+        part_number: articleNo,
+        error: String(err.message || err),
+        source: "listing_generator",
+      });
     }
   };
 
@@ -554,7 +568,7 @@ function ListingGenerator({
         .then((data) => {
           if (data.error) throw new Error(data.error);
           setResult(data);
-          onAutoSave?.({ ...data, sku: inputSku.trim() }); // keep saved listing in sync
+          setIsSaved(false);
         })
         .catch((err) => setError(String(err.message || err)))
         .finally(() => setPhase("done"));
@@ -592,11 +606,20 @@ function ListingGenerator({
       a.href = url; a.download = "batch-listings.csv";
       document.body.appendChild(a); a.click(); a.remove();
       URL.revokeObjectURL(url);
+      trackEvent("listing_exported_csv", { row_count: rows.length, source: "listing_generator_batch" });
     } catch (err) { setError(String(err.message || err)); }
     finally { setBatchLoading(false); }
   };
 
   const copyText = async (v) => { await navigator.clipboard.writeText(v || ""); };
+
+  // ── Save current listing to Saved Listings (explicit, button-triggered) ───
+  const handleSaveListing = () => {
+    if (!result) return;
+    onAutoSave?.({ ...result, sku: inputSku.trim() });
+    setIsSaved(true);
+    trackEvent("listing_saved", { part_number: result.article_number, source: "listing_generator" });
+  };
 
   const btnLabel =
     phase === "searching"  ? "Searching…"   :
@@ -611,7 +634,7 @@ function ListingGenerator({
       <div style={{ display: "flex", gap: 0, marginBottom: 24, borderBottom: "1px solid var(--border)" }}>
         {[
           { key: "generate",  label: "Generate" },
-          { key: "generated", label: "Generated Listings", count: listingCount },
+          { key: "generated", label: "Saved Listings", count: listingCount },
         ].map(({ key, label, count }) => {
           const active = innerPage === key;
           return (
@@ -661,7 +684,7 @@ function ListingGenerator({
 
             {/* Single Listing */}
             <Card
-              title="Single Listing"
+              title="Listing Generator"
               subtitle="Enter a TecDoc article number or OEM / reference number."
               icon={
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -783,11 +806,8 @@ function ListingGenerator({
                 result={result}
                 apiUrl={API_URL}
                 onUseTitle={(title) => {
-                  setResult((prev) => {
-                    const updated = { ...prev, generated_title: title };
-                    onAutoSave?.({ ...updated, sku: inputSku.trim() });
-                    return updated;
-                  });
+                  setResult((prev) => ({ ...prev, generated_title: title }));
+                  setIsSaved(false);
                 }}
               />
             )}
@@ -866,6 +886,21 @@ function ListingGenerator({
                 )}
               </div>
 
+              {/* Save listing */}
+              <button
+                onClick={handleSaveListing}
+                style={{
+                  width: "100%", textAlign: "center", fontSize: 13, fontWeight: 700,
+                  padding: "10px 16px", borderRadius: 10, cursor: "pointer", border: "none",
+                  background: isSaved ? "rgba(74,222,128,0.16)" : "var(--blue)",
+                  color: isSaved ? "var(--green)" : "var(--text-on-dark)",
+                  boxShadow: isSaved ? "none" : "0 0 16px rgba(19,93,255,0.3)",
+                  transition: "all 0.15s ease",
+                }}
+              >
+                {isSaved ? "✓ Saved to Saved Listings" : "💾 Save Listing"}
+              </button>
+
               {/* Product Image */}
               {result.article_image && (
                 <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 12, padding: 12, display: "flex", justifyContent: "center" }}>
@@ -876,7 +911,10 @@ function ListingGenerator({
 
               {/* Copy HTML */}
               <CopyButton
-                onCopy={() => navigator.clipboard.writeText(liveHtmlRef.current || "")}
+                onCopy={() => {
+                  navigator.clipboard.writeText(liveHtmlRef.current || "");
+                  trackEvent("listing_copied", { part_number: result.article_number, copy_type: "html", source: "listing_generator" });
+                }}
                 style={{ width: "100%", textAlign: "center", fontSize: 13, padding: "10px 16px", borderRadius: 10 }}
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline", verticalAlign: "middle", marginRight: 6 }}><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
@@ -1725,6 +1763,60 @@ function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate, n
 
         <div style={{ padding: "16px 18px" }}>
 
+        {/* Edit / Save Template controls shown inline when noRightPanel */}
+        {noRightPanel && (
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
+            {!editMode ? (
+              <button
+                onClick={enterEdit}
+                style={{ ...SMALL_BUTTON_STYLE, fontSize: 13 }}
+              >
+                ✎ Edit Description
+              </button>
+            ) : (
+              <>
+                <button
+                  onClick={exitEdit}
+                  style={{ ...SMALL_BUTTON_STYLE, fontSize: 13, background: "#16a34a", boxShadow: "0 0 16px rgba(22,163,74,0.3)" }}
+                >
+                  ✓ Done Editing
+                </button>
+                {saveMode ? (
+                  <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                    <input
+                      value={saveName}
+                      onChange={(e) => setSaveName(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && doSaveTemplate()}
+                      placeholder="Template name…"
+                      autoFocus
+                      style={{
+                        padding: "6px 10px", borderRadius: 10, fontSize: 12,
+                        background: "var(--bg-surface2)", color: "var(--text)",
+                        border: "1px solid var(--border-strong)", outline: "none"
+                      }}
+                    />
+                    <button onClick={doSaveTemplate}
+                      style={{ ...SMALL_BUTTON_STYLE, fontSize: 12, background: "#b45309", boxShadow: "0 0 12px rgba(180,83,9,0.3)" }}>
+                      💾 Save
+                    </button>
+                    <button onClick={() => { setSaveMode(false); setSaveName(""); }}
+                      style={{ ...SMALL_BUTTON_STYLE, fontSize: 12, background: "var(--text-dim)", boxShadow: "none" }}>
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setSaveMode(true)}
+                    style={{ ...SMALL_BUTTON_STYLE, fontSize: 12, background: "#92400e", boxShadow: "0 0 12px rgba(146,64,14,0.3)" }}
+                  >
+                    📐 Save as Template
+                  </button>
+                )}
+              </>
+            )}
+          </div>
+        )}
+
         {/* Editor Toolbar (preview tab + edit mode only) */}
         {innerTab === "overview" && editMode && (
           <EditorToolbar
@@ -1855,7 +1947,7 @@ function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate, n
                 onClick={enterEdit}
                 style={{ ...SMALL_BUTTON_STYLE, width: "100%", textAlign: "center", fontSize: 13 }}
               >
-                ✎ Edit Preview
+                ✎ Edit Description
               </button>
             ) : (
               <>
@@ -1966,60 +2058,6 @@ function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate, n
             )}
           </div>
 
-        </div>
-      )}
-
-      {/* Edit / Save Template controls shown inline when noRightPanel */}
-      {noRightPanel && (
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: -6 }}>
-          {!editMode ? (
-            <button
-              onClick={enterEdit}
-              style={{ ...SMALL_BUTTON_STYLE, fontSize: 13 }}
-            >
-              ✎ Edit Preview
-            </button>
-          ) : (
-            <>
-              <button
-                onClick={exitEdit}
-                style={{ ...SMALL_BUTTON_STYLE, fontSize: 13, background: "#16a34a", boxShadow: "0 0 16px rgba(22,163,74,0.3)" }}
-              >
-                ✓ Done Editing
-              </button>
-              {saveMode ? (
-                <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                  <input
-                    value={saveName}
-                    onChange={(e) => setSaveName(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && doSaveTemplate()}
-                    placeholder="Template name…"
-                    autoFocus
-                    style={{
-                      padding: "6px 10px", borderRadius: 10, fontSize: 12,
-                      background: "var(--bg-surface2)", color: "var(--text)",
-                      border: "1px solid var(--border-strong)", outline: "none"
-                    }}
-                  />
-                  <button onClick={doSaveTemplate}
-                    style={{ ...SMALL_BUTTON_STYLE, fontSize: 12, background: "#b45309", boxShadow: "0 0 12px rgba(180,83,9,0.3)" }}>
-                    💾 Save
-                  </button>
-                  <button onClick={() => { setSaveMode(false); setSaveName(""); }}
-                    style={{ ...SMALL_BUTTON_STYLE, fontSize: 12, background: "var(--text-dim)", boxShadow: "none" }}>
-                    Cancel
-                  </button>
-                </div>
-              ) : (
-                <button
-                  onClick={() => setSaveMode(true)}
-                  style={{ ...SMALL_BUTTON_STYLE, fontSize: 12, background: "#92400e", boxShadow: "0 0 12px rgba(146,64,14,0.3)" }}
-                >
-                  📐 Save as Template
-                </button>
-              )}
-            </>
-          )}
         </div>
       )}
 

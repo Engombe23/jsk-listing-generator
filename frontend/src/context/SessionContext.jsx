@@ -1,5 +1,6 @@
 ﻿import { createContext, useContext, useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
+import posthog from "../lib/posthogClient";
 
 const SessionContext = createContext({ session: null });
 
@@ -16,8 +17,17 @@ export function SessionProvider({ children }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    const syncIdentity = (s) => {
+      if (s?.user) {
+        posthog.identify(s.user.id, { email: s.user.email });
+      } else {
+        posthog.reset();
+      }
+    };
+
     supabase.auth.getSession().then(({ data: { session: initial } }) => {
       setSession(initial);
+      syncIdentity(initial);
       setIsLoading(false);
     });
 
@@ -25,6 +35,7 @@ export function SessionProvider({ children }) {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, nextSession) => {
       setSession(nextSession);
+      syncIdentity(nextSession);
       setIsLoading(false);
     });
 

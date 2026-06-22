@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import Logo from "./Logo";
+import { trackEvent } from "../lib/analytics";
 
 const TEXT = "#132A46";
 const MUTED = "#4d6a8a";
@@ -53,6 +54,7 @@ export default function Footer() {
                 <a
                   key={l.label}
                   href={l.href}
+                  onClick={l.href === "/auth/sign-up" ? () => trackEvent("signup_clicked", { cta_location: "footer" }) : undefined}
                   style={{
                     display: "block",
                     fontSize: 14,
@@ -80,6 +82,7 @@ export default function Footer() {
                 <a
                   key={l.label}
                   href={l.href}
+                  onClick={l.href === "/auth/sign-up" ? () => trackEvent("signup_clicked", { cta_location: "footer" }) : undefined}
                   style={{
                     display: "block",
                     fontSize: 14,

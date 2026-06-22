@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
+import { trackEvent } from "../lib/analytics";
 
 const EyeIcon = ({ off }) => (
   <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -42,7 +43,7 @@ export default function SignUpForm() {
     }
 
     try {
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -50,6 +51,11 @@ export default function SignUpForm() {
         },
       });
       if (error) throw error;
+      // No separate trial flow exists yet — signup IS the start of the free
+      // trial today, so both events fire together. Update this if/when a
+      // distinct trial lifecycle is introduced.
+      trackEvent("user_signed_up", { user_id: data?.user?.id });
+      trackEvent("trial_started", { user_id: data?.user?.id });
       navigate("/auth/sign-up-success", { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");

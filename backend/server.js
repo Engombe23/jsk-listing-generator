@@ -10,6 +10,8 @@ import {
   conditionOptions, EXCLUSION_REASONS,
 } from "./ebay-filter-rules.js";
 import OpenAI from "openai";
+import posthog from "./posthog.js";
+import analyticsRouter from "./routes/analytics.js";
 
 const openaiClient = process.env.OPENAI_API_KEY
   ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
@@ -20,6 +22,7 @@ const app = express();
 
 app.use(cors());
 app.use(express.json({ limit: "2mb" }));
+app.use("/api", analyticsRouter);
 
 const RAPIDAPI_KEY  = process.env.RAPIDAPI_KEY;
 const RAPIDAPI_HOST = "autodoc-parts-catalog.p.rapidapi.com";
@@ -830,6 +833,15 @@ app.post("/lookup", async (req, res) => {
     if (!articleNumber) return res.status(400).json({ error: "Missing articleNumber" });
 
     const result = await buildListingFromArticle(articleNumber, themeId);
+    posthog.capture({
+      distinctId: "server",
+      event: "listing_generated",
+      properties: {
+        article_number:      articleNumber,
+        template_id:         result.template_id,
+        compatibility_count: result.compatibility_count,
+      },
+    });
     res.json(result);
   } catch (err) {
     console.error(err);
@@ -920,6 +932,17 @@ app.post("/batch-export", async (req, res) => {
       ]
     });
 
+    const successCount = exportRows.filter(r => !r["Error"]).length;
+    posthog.capture({
+      distinctId: "server",
+      event: "batch_export_completed",
+      properties: {
+        total_rows:    cleanedRows.length,
+        success_count: successCount,
+        error_count:   cleanedRows.length - successCount,
+        template_id:   resolvedTheme,
+      },
+    });
     res.setHeader("Content-Type", "text/csv");
     res.setHeader("Content-Disposition", 'attachment; filename="adlister-batch-export.csv"');
     res.send(parser.parse(exportRows));
@@ -1067,6 +1090,15 @@ Respond with valid JSON only, no markdown:
       });
     }
 
+    posthog.capture({
+      distinctId: "server",
+      event: "ai_titles_generated",
+      properties: {
+        product_type:  productType,
+        model:         OPENAI_MODEL,
+        titles_count:  parsed.titles?.length ?? 0,
+      },
+    });
     res.json(parsed);
   } catch (err) {
     console.error("[/api/ai/generate-titles]", err.message);
@@ -1284,6 +1316,18 @@ app.post("/api/ebay/search-prices", async (req, res) => {
       `[eBay] "${query}" | ${condLabel} | fetched=${totalFetched} used=${n}`
     );
 
+    posthog.capture({
+      distinctId: "server",
+      event: "ebay_price_search",
+      properties: {
+        condition,
+        detected_type:   rule?.productType || null,
+        total_fetched:   totalFetched,
+        price_count:     n,
+        median_price:    +median.toFixed(2),
+      },
+    });
+
     const allExcluded = [];
 
     res.json({
@@ -1385,3 +1429,6 @@ app.listen(PORT, () => {
   console.log(`RapidAPI configured: ${RAPIDAPI_KEY ? "YES" : "NO"}`);
   console.log(`eBay configured: ${process.env.EBAY_CLIENT_ID ? "YES" : "NO — EBAY_CLIENT_ID/SECRET missing"}`);
 });
+
+process.on("SIGTERM", () => posthog.shutdown());
+process.on("SIGINT",  () => posthog.shutdown());

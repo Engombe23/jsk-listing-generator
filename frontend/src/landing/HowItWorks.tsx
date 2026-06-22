@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { trackEvent } from "../lib/analytics";
 
 const TEXT = "#132A46";
 const MUTED = "#4d6a8a";
@@ -295,6 +296,7 @@ export default function HowItWorks() {
         <div style={{ textAlign: "center", marginTop: 48 }}>
           <Link
             to="/auth/sign-up"
+            onClick={() => trackEvent("signup_clicked", { cta_location: "how_it_works" })}
             style={{
               display: "inline-block",
               padding: "14px 32px",
