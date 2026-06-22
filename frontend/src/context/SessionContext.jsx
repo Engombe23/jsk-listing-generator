@@ -1,8 +1,17 @@
-﻿import { createContext, useContext, useEffect, useState } from "react";
+﻿import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 import posthog from "../lib/posthogClient";
+import { getCachedProfile, refreshUserPlan } from "../lib/billing";
+import { getListingLimit, hasPlanFeature } from "../lib/plans";
 
-const SessionContext = createContext({ session: null });
+const SessionContext = createContext({
+  session: null,
+  plan: "free",
+  profile: null,
+  refreshPlan: async () => "free",
+  hasFeature: () => false,
+  listingLimit: 0,
+});
 
 export function useSession() {
   const context = useContext(SessionContext);
@@ -14,14 +23,25 @@ export function useSession() {
 
 export function SessionProvider({ children }) {
   const [session, setSession] = useState(null);
+  const [plan, setPlan] = useState("free");
+  const [profile, setProfile] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  const syncPlan = useCallback(async (userId) => {
+    const nextPlan = await refreshUserPlan(userId);
+    setPlan(nextPlan);
+    setProfile(getCachedProfile());
+    return nextPlan;
+  }, []);
 
   useEffect(() => {
     const syncIdentity = (s) => {
       if (s?.user) {
         posthog.identify(s.user.id, { email: s.user.email });
+        syncPlan(s.user.id);
       } else {
         posthog.reset();
+        syncPlan(null);
       }
     };
 
@@ -40,7 +60,16 @@ export function SessionProvider({ children }) {
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [syncPlan]);
+
+  const value = useMemo(() => ({
+    session,
+    plan,
+    profile,
+    refreshPlan: () => syncPlan(session?.user?.id ?? null),
+    hasFeature: (feature) => hasPlanFeature(plan, feature),
+    listingLimit: getListingLimit(plan),
+  }), [session, plan, profile, syncPlan]);
 
   if (isLoading) {
     return (
@@ -61,7 +90,7 @@ export function SessionProvider({ children }) {
   }
 
   return (
-    <SessionContext.Provider value={{ session }}>
+    <SessionContext.Provider value={value}>
       {children}
     </SessionContext.Provider>
   );
