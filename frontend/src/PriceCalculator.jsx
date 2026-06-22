@@ -1,4 +1,5 @@
 ﻿import React, { memo, useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { useSessionState } from "./useSessionState.js";
 import { BUTTON_BASE, SMALL_BUTTON_STYLE, INPUT_STYLE } from "./shared.jsx";
 import SavedProducts from "./SavedProducts.jsx";
@@ -1538,9 +1539,9 @@ function PriceDistribution({ data, listings, price, onBinSelect, soldCounts = {}
 }
 
 // ─── Locked state ─────────────────────────────────────────────────────────────
-function Locked() {
+function SmartPricingLocked({ onUpgrade }) {
   return (
-    <div style={{ background: C.bg1, borderRadius: 14, border: C.borderBlue, position: "relative", overflow: "hidden", minHeight: 260 }}>
+    <div style={{ background: C.bg1, borderRadius: 14, border: C.borderBlue, position: "relative", overflow: "hidden", minHeight: 260, flex: 1 }}>
       <div style={{ padding: "28px", filter: "blur(4px)", userSelect: "none", pointerEvents: "none", opacity: 0.25 }}>
         <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
           <div style={{ flex: 1, height: 36, background: "var(--bg-surface2)", borderRadius: 8 }} />
@@ -1561,10 +1562,10 @@ function Locked() {
           </div>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 6 }}>
             <span style={{ fontSize: 18, fontWeight: 800, color: "var(--text-on-dark)" }}>Smart eBay Pricing</span>
-            <span style={{ fontSize: 9, fontWeight: 800, color: C.blue, background: "rgba(19,93,255,0.18)", border: "1px solid rgba(19,93,255,0.4)", borderRadius: 4, padding: "2px 7px", letterSpacing: 0.8 }}>PRO</span>
+            <span style={{ fontSize: 9, fontWeight: 800, color: C.blue, background: "rgba(19,93,255,0.18)", border: "1px solid rgba(19,93,255,0.4)", borderRadius: 4, padding: "2px 7px", letterSpacing: 0.8 }}>GROWTH</span>
           </div>
           <div style={{ fontSize: 13, color: C.muted, marginBottom: 20, lineHeight: 1.6 }}>Live eBay UK market data to price listings competitively and maximise profit.</div>
-          <button style={{ ...BUTTON_BASE, background: "linear-gradient(135deg,#135DFF,#0ea5e9)", color: "var(--text-on-dark)", fontSize: 14, fontWeight: 800, padding: "11px 30px", boxShadow: "0 0 22px rgba(19,93,255,0.45)" }}>Upgrade to Pro →</button>
+          <button onClick={onUpgrade} style={{ ...BUTTON_BASE, background: "linear-gradient(135deg,#135DFF,#0ea5e9)", color: "var(--text-on-dark)", fontSize: 14, fontWeight: 800, padding: "11px 30px", boxShadow: "0 0 22px rgba(19,93,255,0.45)" }}>Upgrade to Growth →</button>
         </div>
       </div>
     </div>
@@ -1572,7 +1573,8 @@ function Locked() {
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
-export default function PriceCalculator({ onSave, onLoadHandled, products, onDeleteProduct, onLoadProduct, isPro = true }) {
+export default function PriceCalculator({ onSave, onLoadHandled, products, onDeleteProduct, onLoadProduct, hasSmartPricing = true }) {
+  const navigate = useNavigate();
   const [innerPage, setInnerPage] = useState("calculator");
   const savedCount = products?.length ?? 0;
 
@@ -1758,14 +1760,10 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
 
       {/* ── Calculator tab ── */}
       {innerPage === "calculator" && (
-        <>
-          {!isPro && <Locked />}
+        <div style={{ display: "grid", gridTemplateColumns: hasSmartPricing ? "290px 1fr 340px" : "290px 1fr", gap: 16, alignItems: "stretch" }}>
 
-          {isPro && (
-            <div style={{ display: "grid", gridTemplateColumns: "290px 1fr 340px", gap: 16, alignItems: "stretch" }}>
-
-              {/* ═══ LEFT SIDEBAR: Cost & Pricing Inputs ═══ */}
-              <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 16, overflow: "hidden", display: "flex", flexDirection: "column", boxShadow: "var(--shadow)" }}>
+          {/* ═══ LEFT SIDEBAR: Cost & Pricing Inputs ═══ */}
+          <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 16, overflow: "hidden", display: "flex", flexDirection: "column", boxShadow: "var(--shadow)" }}>
                 <div style={{ padding: "14px 16px 12px", borderBottom: "1px solid var(--border)" }}>
                   <div style={{ fontSize: 10, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: 1.2 }}>Cost &amp; Pricing Inputs</div>
                 </div>
@@ -1861,6 +1859,8 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
                 </div>
               </div>
 
+          {hasSmartPricing ? (
+            <>
               {/* ═══ CENTER: Main Pricing Dashboard ═══ */}
               <div style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 16 }}>
 
@@ -2130,10 +2130,55 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
                   );
                 })()}
               </div>
-
+            </>
+          ) : (
+            <div style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 16 }}>
+              <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 16, overflow: "hidden", boxShadow: "var(--shadow)" }}>
+                <div style={{ padding: "14px 18px 12px", borderBottom: "1px solid var(--border)" }}>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text)", marginBottom: 4 }}>Profit Summary</div>
+                  <div style={{ fontSize: 12, color: "var(--text-muted)" }}>Enter your costs and selling price on the left to see margin and profit.</div>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)" }}>
+                  {[
+                    { label: "Selling Price", value: price > 0 ? fmtGBP(price) : "—", color: price > 0 ? "var(--text)" : "var(--text-dim)", sub: buyerShip > 0 ? `+ ${fmtGBP(buyerShip)} p&p` : "Item price", icon: "£" },
+                    { label: "Net Profit", value: hasResult ? fmt(profit) : "—", color: hasResult ? profitColor : "var(--text-dim)", sub: hasResult ? "after all fees" : "Enter cost & price", icon: "↑" },
+                    { label: "Margin", value: hasResult ? fmtPct(margin) : "—", color: hasResult ? profitColor : "var(--text-dim)", sub: "of revenue", icon: "%" },
+                    { label: "Markup", value: hasResult ? fmtPct(markup) : "—", color: hasResult ? profitColor : "var(--text-dim)", sub: "on cost", icon: "×" },
+                  ].map(({ label, value, color, sub, icon }, i) => (
+                    <div key={label} style={{ padding: "12px 16px", borderLeft: i > 0 ? "1px solid var(--border-light)" : "none", borderTop: "1px solid var(--border-light)" }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 5 }}>
+                        <div style={{ fontSize: 9, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: 0.8 }}>{label}</div>
+                        <span style={{ fontSize: 11, color: "var(--text-dim)" }}>{icon}</span>
+                      </div>
+                      <div style={{ fontSize: 22, fontWeight: 900, color, lineHeight: 1, letterSpacing: -0.5, fontVariantNumeric: "tabular-nums", marginBottom: 3 }}>{value}</div>
+                      <div style={{ fontSize: 10, color: "var(--text-muted)" }}>{sub}</div>
+                    </div>
+                  ))}
+                </div>
+                {hasResult && (
+                  <div style={{ padding: "10px 18px 12px", borderTop: "1px solid var(--border-light)" }}>
+                    {!isNaN(breakEven) && (
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, padding: "5px 10px", background: "rgba(251,191,36,0.05)", border: "1px solid rgba(251,191,36,0.12)", borderRadius: 7 }}>
+                        <span style={{ fontSize: 12, color: "var(--text-muted)" }}>Break-even selling price</span>
+                        <span style={{ fontSize: 15, fontWeight: 800, color: "var(--yellow)" }}>{fmt(breakEven)}</span>
+                      </div>
+                    )}
+                    <div style={{ fontSize: 10, fontWeight: 700, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 4 }}>Cost Breakdown</div>
+                    {buyerShip > 0 && <BR label="Buyer shipping (income)" value={`+${fmt(buyerShip)}`} color="var(--text-accent)" />}
+                    {cost > 0 && <BR label="Product cost" value={`-${fmt(cost)}`} color="var(--red)" />}
+                    {(shipping + packaging) > 0 && <BR label="Postage & packaging" value={`-${fmt(shipping + packaging)}`} color="var(--red)" />}
+                    {other > 0 && <BR label="Other costs" value={`-${fmt(other)}`} color="var(--red)" />}
+                    <BR label={`eBay fees (${fvf}% + £${fixed.toFixed(2)}${promo > 0 ? ` + ${promo}% ad` : ""})`} value={`-${fmt(ebayFVF + ebayPromo)}`} color="var(--red)" />
+                    {vatRegistered && <BR label="VAT collected → HMRC" value={`-${fmt(vatAmount)}`} color="var(--red)" note="You keep none of this" />}
+                    <BR label="Net Profit" value={fmt(profit)} color={profitColor} strong />
+                  </div>
+                )}
+              </div>
+              <SmartPricingLocked onUpgrade={() => navigate("/pricing")} />
             </div>
           )}
-        </>
+
+            </div>
       )}
     </div>
   );
