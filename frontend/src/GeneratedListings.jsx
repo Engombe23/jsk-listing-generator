@@ -4,7 +4,7 @@ import { mapApiSpecsToSchema, SPEC_SCHEMA, SECTION_TITLES } from "./itemSpecific
 
 // ─── API URL (mirrors ListingGenerator) ──────────────────────────────────────
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
+const API_URL = import.meta.env.VITE_API_URL;
 
 // ─── Theme list (mirrors App.jsx) ─────────────────────────────────────────────
 
@@ -978,6 +978,7 @@ export default function GeneratedListings({
   onUpdateListing,
   onRemove,
   onRemoveBatch,
+  canBulkGenerate = false,
 }) {
   const [innerTab,           setInnerTab]           = useState("listings");
   const [dateFilter,         setDateFilter]         = useState("all");
@@ -1062,6 +1063,7 @@ export default function GeneratedListings({
   };
 
   const generateBulkDescriptions = async () => {
+    if (!canBulkGenerate) return;
     // Only target listings that are missing descriptions
     const ids = activeIds().filter((id) => {
       const l = listings.find((x) => x.id === id);
@@ -1326,7 +1328,7 @@ export default function GeneratedListings({
               )}
 
               {/* ⚡ Bulk generate descriptions */}
-              {missingDescCount > 0 && !bulkGenProgress && (
+              {canBulkGenerate && missingDescCount > 0 && !bulkGenProgress && (
                 <button onClick={generateBulkDescriptions} style={{
                   ...SMALL_BUTTON_STYLE, fontSize: 12, padding: "6px 14px",
                   background: "rgba(99,102,241,0.16)", color: "#a5b4fc",
@@ -1336,7 +1338,7 @@ export default function GeneratedListings({
                 </button>
               )}
 
-              {bulkGenProgress && (
+              {canBulkGenerate && bulkGenProgress && (
                 <div style={{
                   fontSize: 12, color: "#a5b4fc",
                   background: "rgba(99,102,241,0.12)", borderRadius: 8,

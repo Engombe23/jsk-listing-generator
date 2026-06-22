@@ -1,6 +1,9 @@
 import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
+import { redirectToStripeCheckout } from "../lib/billing";
+import { isValidPaidPlan } from "../lib/plans";
+import { checkoutAuthHref } from "../pages/checkout/CheckoutSteps";
 
 const EyeIcon = ({ off }) => (
   <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -22,6 +25,11 @@ const EyeIcon = ({ off }) => (
 
 export default function LoginForm() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const plan = searchParams.get("plan") || "";
+  const interval = searchParams.get("interval") || "monthly";
+  const paidLogin = isValidPaidPlan(plan, interval);
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -34,11 +42,22 @@ export default function LoginForm() {
     setError(null);
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
       if (error) throw error;
+
+      if (paidLogin && data?.user) {
+        await redirectToStripeCheckout({
+          plan,
+          interval,
+          userId: data.user.id,
+          email: data.user.email,
+        });
+        return;
+      }
+
       navigate("/", { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
@@ -46,6 +65,9 @@ export default function LoginForm() {
       setIsLoading(false);
     }
   };
+
+  const signUpHref = paidLogin ? checkoutAuthHref("/auth/sign-up", plan, interval) : "/auth/sign-up";
+  const signUpLabel = paidLogin ? "Create account" : "Start free trial";
 
   return (
     <form onSubmit={handleLogin}>
@@ -90,9 +112,9 @@ export default function LoginForm() {
         </div>
         {error && <p className="text-sm text-red-500">{error}</p>}
         <button type="submit" disabled={isLoading}>
-          {isLoading ? "Signing in…" : (
+          {isLoading ? (paidLogin ? "Continuing to payment…" : "Signing in…") : (
             <>
-              Sign In
+              {paidLogin ? "Sign in & continue to payment" : "Sign In"}
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
             </>
           )}
@@ -103,7 +125,7 @@ export default function LoginForm() {
 
       <div className="text-center text-sm">
         <span className="auth-footer-text">Don&apos;t have an account? </span>
-        <Link to="/auth/sign-up">Start free trial</Link>
+        <Link to={signUpHref}>{signUpLabel}</Link>
       </div>
     </form>
   );

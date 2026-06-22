@@ -12,6 +12,9 @@ import {
 import OpenAI from "openai";
 import posthog from "./posthog.js";
 import analyticsRouter from "./routes/analytics.js";
+import stripeRouter, { registerStripeWebhook } from "./routes/stripe.js";
+import { stripeReady } from "./lib/stripeConfig.js";
+import { supabaseAdminReady } from "./lib/supabaseAdmin.js";
 
 const openaiClient = process.env.OPENAI_API_KEY
   ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
@@ -20,9 +23,12 @@ const OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-4o-mini";
 
 const app = express();
 
+registerStripeWebhook(app);
+
 app.use(cors());
 app.use(express.json({ limit: "2mb" }));
 app.use("/api", analyticsRouter);
+app.use("/api", stripeRouter);
 
 const RAPIDAPI_KEY  = process.env.RAPIDAPI_KEY;
 const RAPIDAPI_HOST = "autodoc-parts-catalog.p.rapidapi.com";
@@ -1422,12 +1428,14 @@ app.post("/api/ebay/sold-counts", async (req, res) => {
   }
 });
 
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`OpenAI configured: ${openaiClient ? "YES" : "NO — OPENAI_API_KEY is missing"}`);
   console.log(`RapidAPI configured: ${RAPIDAPI_KEY ? "YES" : "NO"}`);
   console.log(`eBay configured: ${process.env.EBAY_CLIENT_ID ? "YES" : "NO — EBAY_CLIENT_ID/SECRET missing"}`);
+  console.log(`Stripe configured: ${stripeReady ? "YES" : "NO — STRIPE_API_KEY is missing"}`);
+  console.log(`Supabase admin configured: ${supabaseAdminReady ? "YES" : "NO — SUPABASE_SERVICE_ROLE_KEY is missing"}`);
 });
 
 process.on("SIGTERM", () => posthog.shutdown());
