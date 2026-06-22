@@ -12,7 +12,7 @@ export const WHITELISTED_EMAILS = [
 
 // null = unlimited (Scale plan). Mirrors PLAN_LISTING_LIMITS in plans.js.
 export const PLAN_LISTING_LIMITS = {
-  free:   0,
+  free:   10,
   lite:   50,
   growth: 200,
   scale:  null,

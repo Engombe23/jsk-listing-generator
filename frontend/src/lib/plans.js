@@ -112,7 +112,7 @@ export const FEATURE_MIN_TIER = {
 export const PLAN_RANK = { free: 0, lite: 1, growth: 2, scale: 3 };
 
 export const PLAN_LISTING_LIMITS = {
-  free: 0,
+  free: 10,
   lite: 50,
   growth: 200,
   scale: null, // unlimited
