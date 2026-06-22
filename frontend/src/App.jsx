@@ -1,6 +1,8 @@
 ﻿import React, { memo, useState, useRef, useEffect, useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
 import { supabase } from "./lib/supabaseClient";
 import { useSession } from "./context/SessionContext";
+import { syncCheckoutSession } from "./lib/billing";
 import {
   BUTTON_BASE,
   SMALL_BUTTON_STYLE,
@@ -217,11 +219,58 @@ function makeRowId() {
 // ─── App ──────────────────────────────────────────────────────────────────────
 
 export default function App() {
-  const { session } = useSession();
+  const { session, hasFeature, refreshPlan } = useSession();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [page, setPage] = useState(
     () => sessionStorage.getItem("jsk_active_page") || "listing"
   );
   const [accountSubPage, setAccountSubPage] = useState("account");
+
+  const canUseCompatibility = hasFeature("compatibilityChecker");
+  const canUseSmartPricing = hasFeature("smartPricing");
+  const canBulkGenerate = hasFeature("bulkListingGeneration");
+  const canBulkCsvExport = hasFeature("bulkCsvExport");
+
+  useEffect(() => {
+    const checkout = searchParams.get("checkout");
+    const billing = searchParams.get("billing");
+    const sessionId = searchParams.get("session_id");
+    if (checkout !== "success" && billing !== "1") return;
+
+    setAccountSubPage("billing");
+    sessionStorage.setItem("jsk_active_page", "account");
+    setPage("account");
+
+    let cancelled = false;
+
+    (async () => {
+      if (checkout === "success" && session?.user?.id && sessionId) {
+        try {
+          await syncCheckoutSession({ sessionId, userId: session.user.id });
+        } catch (err) {
+          console.warn("[checkout] sync failed, falling back to profile refresh:", err);
+        }
+      }
+      if (!cancelled && session?.user?.id) {
+        await refreshPlan();
+      }
+    })();
+
+    const next = new URLSearchParams(searchParams);
+    next.delete("checkout");
+    next.delete("billing");
+    next.delete("session_id");
+    setSearchParams(next, { replace: true });
+
+    return () => { cancelled = true; };
+  }, [searchParams, session?.user?.id, setSearchParams, refreshPlan]);
+
+  useEffect(() => {
+    if (page === "compatibility" && !canUseCompatibility) {
+      sessionStorage.setItem("jsk_active_page", "listing");
+      setPage("listing");
+    }
+  }, [page, canUseCompatibility]);
 
   // Session-state key prefixes per page — used to wipe state on navigation away
   const PAGE_SS_PREFIXES = {
@@ -314,7 +363,7 @@ export default function App() {
             {[
               { key: "listing",       label: "Listing Generator" },
               { key: "calculator",    label: "Price Calculator" },
-              { key: "compatibility", label: "Compatibility Checker" },
+              ...(canUseCompatibility ? [{ key: "compatibility", label: "Compatibility Checker" }] : []),
               { key: "account",       label: "Account" },
             ].map(({ key, label }) => {
               const active = page === key;
@@ -380,6 +429,7 @@ export default function App() {
             products={products}
             onDeleteProduct={remove}
             onLoadProduct={handleLoadProduct}
+            hasSmartPricing={canUseSmartPricing}
           />
         )}
         {page === "compatibility" && (
@@ -407,6 +457,9 @@ function ListingGenerator({
   prefilledArticle, onPrefilledConsumed, onAutoSave,
   listings, onUpdateStatus, onUpdateStatusBatch, onUpdateListing, onRemove, onRemoveBatch,
 }) {
+  const { hasFeature } = useSession();
+  const canBulkGenerate = hasFeature("bulkListingGeneration");
+  const canBulkCsvExport = hasFeature("bulkCsvExport");
   const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
 
   // ── Inner page ────────────────────────────────────────────────────────────
@@ -587,7 +640,7 @@ function ListingGenerator({
 
   // ── Batch export ──────────────────────────────────────────────────────────
   const handleBatchExport = async () => {
-    if (!canBatch || batchLoading) return;
+    if (!canBulkCsvExport || !canBatch || batchLoading) return;
     setBatchLoading(true);
     setError("");
     try {
@@ -979,6 +1032,7 @@ function ListingGenerator({
           onUpdateListing={onUpdateListing}
           onRemove={onRemove}
           onRemoveBatch={onRemoveBatch}
+          canBulkGenerate={canBulkGenerate}
         />
       )}
     </>
@@ -2374,6 +2428,8 @@ function loadSavedFromStorage() {
 // SPEC_SCHEMA, SECTION_TITLES, and mapApiSpecsToSchema are imported from ./itemSpecificsSchema.js
 
 function ItemSpecificsTab({ result, copyText }) {
+  const { hasFeature } = useSession();
+  const canBulkCsvExport = hasFeature("bulkCsvExport");
   const buildInitialRows = (res) => mapApiSpecsToSchema(res);
 
   const [rows,        setRows]        = useState(() => buildInitialRows(result));
@@ -2434,6 +2490,7 @@ function ItemSpecificsTab({ result, copyText }) {
   };
 
   const exportBatch = () => {
+    if (!canBulkCsvExport) return;
     const prods = getBatchProds();
     if (!prods.length) return;
 
@@ -2483,16 +2540,18 @@ function ItemSpecificsTab({ result, copyText }) {
         >
           ↓ CSV (This Listing)
         </button>
-        <button
-          onClick={() => { setBatchOpen((v) => !v); }}
-          style={{
-            ...SMALL_BUTTON_STYLE, fontSize: 12,
-            background: batchOpen ? "#164e63" : "var(--blue)",
-            boxShadow: "0 0 14px rgba(14,116,144,0.25)"
-          }}
-        >
-          ↓ CSV (Batch){batchOpen ? " ▲" : " ▼"}
-        </button>
+        {canBulkCsvExport && (
+          <button
+            onClick={() => { setBatchOpen((v) => !v); }}
+            style={{
+              ...SMALL_BUTTON_STYLE, fontSize: 12,
+              background: batchOpen ? "#164e63" : "var(--blue)",
+              boxShadow: "0 0 14px rgba(14,116,144,0.25)"
+            }}
+          >
+            ↓ CSV (Batch){batchOpen ? " ▲" : " ▼"}
+          </button>
+        )}
         <div style={{ flex: 1 }} />
         <button
           onClick={() => setShowAddRow((v) => !v)}
@@ -2534,7 +2593,7 @@ function ItemSpecificsTab({ result, copyText }) {
       )}
 
       {/* Batch export panel */}
-      {batchOpen && (
+      {canBulkCsvExport && batchOpen && (
         <div style={{
           background: "var(--bg-surface3)", border: "1px solid rgba(14,116,144,0.35)",
           borderRadius: 16, padding: 16
