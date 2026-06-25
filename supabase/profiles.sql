@@ -1,5 +1,5 @@
 -- User billing profile — one row per auth.users account.
--- Profiles for users on the app (not service roles).
+-- Profiles for users on the app.
 create table if not exists public.profiles (
   id                     uuid primary key references auth.users (id) on delete cascade,
   plan                   text not null default 'free',
@@ -10,6 +10,7 @@ create table if not exists public.profiles (
   updated_at             timestamptz not null default now()
 );
 
+alter table public.profiles add column if not exists email text;
 alter table public.profiles enable row level security;
 
 -- Service role (backend webhooks) bypasses RLS. Users read their own row from the client.
