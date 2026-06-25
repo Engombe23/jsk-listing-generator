@@ -1760,7 +1760,7 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
       const json = await res.json();
       if (!res.ok) {
         if (res.status === 403 && json.error === "feature_restricted") throw new Error(json.message);
-        throw new Error(json.error || "Failed to fetch prices.");
+        throw new Error(json.message || json.error || "Failed to fetch prices.");
       }
       if (json.priceCount === 0) throw new Error(json.zeroResultsMsg || "No listings found — try changing the condition or search term.");
       setSmData(json);

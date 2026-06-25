@@ -589,7 +589,7 @@ function ListingGenerator({
           setPhase(searchResults.length > 0 ? "selecting" : "idle");
           return;
         }
-        throw new Error(data.error || "Lookup failed");
+        throw new Error(data.message || data.error || "Lookup failed");
       }
       setResult(data);
       setPhase("done");
@@ -685,7 +685,7 @@ function ListingGenerator({
       if (!res.ok) {
         const d = await res.json();
         if (res.status === 403 && d.error === "limit_reached") { setLimitMessage(d.message); return; }
-        throw new Error(d.error || "Batch export failed");
+        throw new Error(d.message || d.error || "Batch export failed");
       }
       const blob = await res.blob();
       const url  = URL.createObjectURL(blob);
@@ -1392,6 +1392,7 @@ const STYLE_LABELS = {
 };
 
 function AiTitleSuggestions({ result, apiUrl, onUseTitle }) {
+  const { session } = useSession();
   const [titles,   setTitles]   = useState(null);
   const [loading,  setLoading]  = useState(false);
   const [error,    setError]    = useState("");
@@ -1416,7 +1417,10 @@ function AiTitleSuggestions({ result, apiUrl, onUseTitle }) {
       };
       const res = await fetch(`${apiUrl}/api/ai/generate-titles`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+        },
         body: JSON.stringify(payload)
       });
       const contentType = res.headers.get("content-type") || "";
@@ -1424,7 +1428,7 @@ function AiTitleSuggestions({ result, apiUrl, onUseTitle }) {
         throw new Error(`AI title generation failed (HTTP ${res.status}). Please try again.`);
       }
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "AI title generation failed.");
+      if (!res.ok) throw new Error(data.message || data.error || "AI title generation failed.");
       if (!Array.isArray(data.titles) || data.titles.length === 0) {
         throw new Error("No titles returned.");
       }
