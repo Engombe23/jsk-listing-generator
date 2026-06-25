@@ -33,10 +33,10 @@ supabase.auth.onAuthStateChange((_event, session) => {
   currentUserId = session?.user?.id || null;
 });
 
-// No billing/subscription system exists yet — every account is effectively on
-// the free tier today. This is the one place to update once real plans exist.
+import { getCachedPlan } from "./billing";
+
 function getCurrentPlan() {
-  return "free";
+  return getCachedPlan();
 }
 
 /**

@@ -12,6 +12,12 @@ import {
 import OpenAI from "openai";
 import posthog from "./posthog.js";
 import analyticsRouter from "./routes/analytics.js";
+import stripeRouter, { registerStripeWebhook } from "./routes/stripe.js";
+import { stripeReady } from "./lib/stripeConfig.js";
+import { supabaseAdminReady } from "./lib/supabaseAdmin.js";
+import { requireAuth } from "./middleware/requireAuth.js";
+import { canGenerateListing, incrementListingUsage, checkFeatureAccess } from "./lib/profiles.js";
+import authRouter from "./routes/auth.js";
 
 const openaiClient = process.env.OPENAI_API_KEY
   ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
@@ -20,9 +26,17 @@ const OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-4o-mini";
 
 const app = express();
 
+// Needed for req.ip to reflect the real client IP (X-Forwarded-For) rather
+// than Render's proxy — used by the signup-fingerprint abuse-detection check.
+app.set("trust proxy", true);
+
+registerStripeWebhook(app);
+
 app.use(cors());
 app.use(express.json({ limit: "2mb" }));
 app.use("/api", analyticsRouter);
+app.use("/api", stripeRouter);
+app.use("/api", authRouter);
 
 const RAPIDAPI_KEY  = process.env.RAPIDAPI_KEY;
 const RAPIDAPI_HOST = "autodoc-parts-catalog.p.rapidapi.com";
@@ -825,14 +839,29 @@ app.post("/search", async (req, res) => {
   }
 });
 
-app.post("/lookup", async (req, res) => {
+app.post("/lookup", requireAuth, async (req, res) => {
   try {
     const articleNumber = String(req.body.articleNumber || "").trim().replace(/\s+/g, "");
     const themeId       = req.body.themeId || req.body.templateId || "clean-default";
 
     if (!articleNumber) return res.status(400).json({ error: "Missing articleNumber" });
 
+    // Listing limit check — happens BEFORE generation, never consumes a
+    // credit on its own. The credit is only spent after a successful result.
+    const access = await canGenerateListing(req.user.id, req.user.email);
+    if (!access.allowed) {
+      return res.status(403).json({
+        error: "limit_reached",
+        message: "You have reached your listing limit. Upgrade your plan to continue generating listings.",
+      });
+    }
+
     const result = await buildListingFromArticle(articleNumber, themeId);
+
+    // Only increment usage once a real result has been returned — failures,
+    // not-found, and server errors above never reach this line.
+    await incrementListingUsage(req.user.id, req.user.email);
+
     posthog.capture({
       distinctId: "server",
       event: "listing_generated",
@@ -849,7 +878,7 @@ app.post("/lookup", async (req, res) => {
   }
 });
 
-app.post("/batch-export", async (req, res) => {
+app.post("/batch-export", requireAuth, async (req, res) => {
   try {
     const { rows, themeId = "clean-default", templateId } = req.body;
     const resolvedTheme = themeId || templateId || "clean-default";
@@ -870,9 +899,40 @@ app.post("/batch-export", async (req, res) => {
       return res.status(400).json({ error: "No valid rows found" });
     }
 
+    // Check the limit up-front so a user with zero credits left gets a clear
+    // error instead of a CSV full of blank/errored rows.
+    const initialAccess = await canGenerateListing(req.user.id, req.user.email);
+    if (!initialAccess.allowed) {
+      return res.status(403).json({
+        error: "limit_reached",
+        message: "You have reached your listing limit. Upgrade your plan to continue generating listings.",
+      });
+    }
+
     const exportRows = [];
 
     for (const row of cleanedRows) {
+      // Re-check before each row — a capped plan stops generating once the
+      // limit is hit mid-batch rather than over-counting past it.
+      const rowAccess = await canGenerateListing(req.user.id, req.user.email);
+      if (!rowAccess.allowed) {
+        exportRows.push({
+          "Title": "", "SKU": row.sku, "BIN Price": row.binPrice,
+          "Description": "",
+          "Custom Specifics 1 Name": "Brand", "Custom Specifics 1 Value": "JSK",
+          "Custom Specifics 2 Name": "Reference OE/OEM Number", "Custom Specifics 2 Value": "",
+          "Custom Specifics 3 Name": "Manufacturer Part Number", "Custom Specifics 3 Value": row.sku,
+          "Custom Specifics 4 Name": "Product Type", "Custom Specifics 4 Value": "",
+          "Custom Specifics 5 Name": "Country of Manufacture", "Custom Specifics 5 Value": "United Kingdom",
+          "Custom Specifics 6 Name": "Compatible Engine Codes", "Custom Specifics 6 Value": "",
+          "Custom Specifics 7 Name": "K Numbers", "Custom Specifics 7 Value": "",
+          "Article Number": row.articleNumber,
+          "Template": "",
+          "Error": "Listing limit reached — upgrade your plan to generate more.",
+        });
+        continue;
+      }
+
       try {
         console.log(`Batch processing ${row.articleNumber}...`);
         const result = await buildListingFromArticle(row.articleNumber, resolvedTheme);
@@ -900,6 +960,8 @@ app.post("/batch-export", async (req, res) => {
           "Template":                    result.template_name || "",
           "Error":                       ""
         });
+
+        await incrementListingUsage(req.user.id, req.user.email);
       } catch (err) {
         exportRows.push({
           "Title": "", "SKU": row.sku, "BIN Price": row.binPrice,
@@ -952,8 +1014,16 @@ app.post("/batch-export", async (req, res) => {
   }
 });
 
-app.post("/compatibility/check", async (req, res) => {
+app.post("/compatibility/check", requireAuth, async (req, res) => {
   try {
+    const feature = await checkFeatureAccess(req.user.id, req.user.email, "compatibilityChecker");
+    if (!feature.allowed) {
+      return res.status(403).json({
+        error: "feature_restricted",
+        message: "This feature is available on Growth and Scale plans.",
+      });
+    }
+
     const {
       vin, oemNumber, partType, engineCode,
       make, model, year, fuelType, engineSize,
@@ -1189,8 +1259,16 @@ async function getEbayAccessToken() {
 //   7. Multiplier outlier filter  (per-rule high/low thresholds)
 //   8. Recalculate final stats from clean set
 //   9. Return enriched response with per-reason exclusion counts
-app.post("/api/ebay/search-prices", async (req, res) => {
+app.post("/api/ebay/search-prices", requireAuth, async (req, res) => {
   try {
+    const feature = await checkFeatureAccess(req.user.id, req.user.email, "smartPricing");
+    if (!feature.allowed) {
+      return res.status(403).json({
+        error: "feature_restricted",
+        message: "This feature is available on Growth and Scale plans.",
+      });
+    }
+
     const { query, condition = "new" } = req.body;
     if (!query?.trim()) {
       return res.status(400).json({ error: "query is required" });
@@ -1422,12 +1500,14 @@ app.post("/api/ebay/sold-counts", async (req, res) => {
   }
 });
 
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`OpenAI configured: ${openaiClient ? "YES" : "NO — OPENAI_API_KEY is missing"}`);
   console.log(`RapidAPI configured: ${RAPIDAPI_KEY ? "YES" : "NO"}`);
   console.log(`eBay configured: ${process.env.EBAY_CLIENT_ID ? "YES" : "NO — EBAY_CLIENT_ID/SECRET missing"}`);
+  console.log(`Stripe configured: ${stripeReady ? "YES" : "NO — STRIPE_API_KEY is missing"}`);
+  console.log(`Supabase admin configured: ${supabaseAdminReady ? "YES" : "NO — SUPABASE_SERVICE_ROLE_KEY is missing"}`);
 });
 
 process.on("SIGTERM", () => posthog.shutdown());

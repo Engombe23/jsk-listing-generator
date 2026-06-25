@@ -5,6 +5,8 @@ import { loadPreferences, savePreferences, PREF_DEFAULTS } from "./useListingPre
 import { useSession } from "./context/SessionContext";
 import { useTheme } from "./context/ThemeContext";
 import { supabase } from "./lib/supabaseClient";
+import { formatPlanLabel, openBillingPortal } from "./lib/billing";
+import { getBillingLabel, getDisplayPrice, getNextPlan, getPlan } from "./lib/plans";
 
 function useAuthUser() {
   const { session } = useSession();
@@ -144,9 +146,17 @@ function UsageBar({ used, total }) {
 }
 
 // ─── PAGE: Account ────────────────────────────────────────────────────────────
-function AccountPage() {
+function AccountPage({ onOpenBilling }) {
   const navigate = useNavigate();
   const { email, displayName, initials, memberSince, user } = useAuthUser();
+  const { plan, listingLimit, listingsUsed, refreshPlan } = useSession();
+  const planInfo = getPlan(plan);
+  const usageTotal = listingLimit ?? null;
+  const usageUsed = listingsUsed;
+
+  useEffect(() => {
+    if (user?.id) refreshPlan();
+  }, [user?.id, refreshPlan]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -177,11 +187,17 @@ function AccountPage() {
         <div style={{ marginBottom: 0 }}>
           <InfoRow label="Member since" value={memberSince} />
           <div style={{ borderBottom: "none" }}>
-            <InfoRow label="Monthly usage" value={
-              <div style={{ flex: 1, maxWidth: 260 }}>
-                <UsageBar used={312} total={500} />
-              </div>
-            } />
+            <InfoRow label="Current plan" value={formatPlanLabel(plan)} />
+            {usageTotal != null && (
+              <InfoRow label="Monthly usage" value={
+                <div style={{ flex: 1, maxWidth: 260 }}>
+                  <UsageBar used={usageUsed} total={usageTotal} />
+                </div>
+              } />
+            )}
+            {usageTotal == null && planInfo?.listings && (
+              <InfoRow label="Monthly allowance" value={planInfo.listings} />
+            )}
           </div>
         </div>
       </Card>
@@ -208,7 +224,11 @@ function AccountPage() {
             <ActionRow
               label="Manage Subscription"
               note="Billing, plan changes, and invoices"
-              action={<Btn variant="primary">Open Billing →</Btn>}
+              action={
+                <Btn variant="primary" onClick={onOpenBilling}>
+                  Open Billing →
+                </Btn>
+              }
             />
           </div>
         </div>
@@ -220,6 +240,39 @@ function AccountPage() {
 
 // ─── PAGE: Billing ────────────────────────────────────────────────────────────
 function BillingPage() {
+  const navigate = useNavigate();
+  const { plan, profile, refreshPlan } = useSession();
+  const [portalLoading, setPortalLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const planInfo = getPlan(plan);
+  const interval = profile?.billing_interval || "monthly";
+  const displayPrice = plan !== "free" && planInfo ? getDisplayPrice(plan, interval) : null;
+  const status = profile?.subscription_status;
+  const isActive = ["active", "trialing"].includes(status);
+  const nextPlan = getNextPlan(plan);
+
+  useEffect(() => {
+    refreshPlan();
+  }, [refreshPlan]);
+
+  const openPortal = async () => {
+    if (!profile?.stripe_customer_id) {
+      navigate("/pricing");
+      return;
+    }
+    setPortalLoading(true);
+    setError("");
+    try {
+      const { url } = await openBillingPortal(profile.stripe_customer_id);
+      if (url) window.location.href = url;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not open billing portal");
+    } finally {
+      setPortalLoading(false);
+    }
+  };
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
 
@@ -227,55 +280,79 @@ function BillingPage() {
       <Card>
         <SL>Current Plan</SL>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
-          <span style={{ fontSize: 16, fontWeight: 900, color: C.text }}>Pro Plan</span>
-          <Badge color={C.green}>Active</Badge>
+          <span style={{ fontSize: 16, fontWeight: 900, color: C.text }}>
+            {plan === "free" ? "No active plan" : `${planInfo?.name || formatPlanLabel(plan)} Plan`}
+          </span>
+          {plan !== "free" && (
+            <Badge color={isActive ? C.green : status === "past_due" ? C.amber : C.red}>
+              {isActive ? "Active" : status ? status.replace(/_/g, " ") : "Pending"}
+            </Badge>
+          )}
         </div>
         <div>
-          <InfoRow label="Renewal date"     value="15 June 2026" />
-          <InfoRow label="Billing cycle"    value="Monthly" />
+          {plan !== "free" && displayPrice && (
+            <InfoRow label="Price" value={`${displayPrice}/mo · ${getBillingLabel(interval)}`} />
+          )}
+          {planInfo?.listings && (
+            <InfoRow label="Listings" value={planInfo.listings} />
+          )}
+          {interval && plan !== "free" && (
+            <InfoRow label="Billing cycle" value={interval === "annual" ? "Annual" : "Monthly"} />
+          )}
           <div style={{ borderBottom: "none" }}>
-            <InfoRow label="Payment method" value="Visa ending in 4242" />
+            <InfoRow
+              label="Payment & invoices"
+              value={profile?.stripe_customer_id ? "Managed via Stripe" : "Not set up yet"}
+            />
           </div>
         </div>
-        <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
-          <Btn variant="primary">Manage Billing →</Btn>
-          <Btn>View Invoices</Btn>
+        {error && (
+          <div style={{ marginTop: 12, fontSize: 11, color: C.red }}>{error}</div>
+        )}
+        <div style={{ display: "flex", gap: 8, marginTop: 16, flexWrap: "wrap" }}>
+          {profile?.stripe_customer_id ? (
+            <>
+              <Btn variant="primary" onClick={openPortal} disabled={portalLoading}>
+                {portalLoading ? "Opening…" : "Manage Billing →"}
+              </Btn>
+              <Btn onClick={openPortal} disabled={portalLoading}>View Invoices</Btn>
+            </>
+          ) : (
+            <Btn variant="primary" onClick={() => navigate("/pricing")}>Choose a Plan →</Btn>
+          )}
         </div>
       </Card>
 
       {/* Upgrade */}
-      <div style={{
-        background: "linear-gradient(135deg, rgba(19,93,255,0.10), rgba(14,165,233,0.06))",
-        border: "1px solid var(--border-blue)", borderRadius: 12, padding: "16px 20px",
-      }}>
-        <div style={{ fontSize: 13, fontWeight: 800, color: C.text, marginBottom: 4 }}>Need more capacity?</div>
-        <div style={{ fontSize: 11, color: C.muted, marginBottom: 14, lineHeight: 1.6 }}>
-          Upgrade to Business for unlimited listings, priority support, and team access.
+      {nextPlan && (
+        <div style={{
+          background: "linear-gradient(135deg, rgba(19,93,255,0.10), rgba(14,165,233,0.06))",
+          border: "1px solid var(--border-blue)", borderRadius: 12, padding: "16px 20px",
+        }}>
+          <div style={{ fontSize: 13, fontWeight: 800, color: C.text, marginBottom: 4 }}>
+            Need more capacity?
+          </div>
+          <div style={{ fontSize: 11, color: C.muted, marginBottom: 14, lineHeight: 1.6 }}>
+            Upgrade to {getPlan(nextPlan)?.name} for {getPlan(nextPlan)?.listings?.toLowerCase()}
+            {nextPlan === "growth" ? ", compatibility checker, smart pricing, and priority support" : ", bulk tools, and early access features"}.
+          </div>
+          <Btn variant="primary" onClick={() => navigate("/pricing")}>View Plans →</Btn>
         </div>
-        <Btn variant="primary">View Plans →</Btn>
-      </div>
+      )}
 
-      {/* Billing history */}
+      {/* Billing note */}
       <Card>
         <SL>Billing History</SL>
-        {[
-          { date: "15 May 2026", desc: "Pro Plan — Monthly", amount: "£19.99" },
-          { date: "15 Apr 2026", desc: "Pro Plan — Monthly", amount: "£19.99" },
-          { date: "15 Mar 2026", desc: "Pro Plan — Monthly", amount: "£19.99" },
-        ].map((inv, i, arr) => (
-          <div key={i} style={{
-            display: "flex", alignItems: "center", gap: 12,
-            padding: "9px 0",
-            borderBottom: i < arr.length - 1 ? `1px solid ${C.border2}` : "none",
-          }}>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 11, fontWeight: 600, color: C.text }}>{inv.desc}</div>
-              <div style={{ fontSize: 10, color: C.muted, marginTop: 1 }}>{inv.date}</div>
-            </div>
-            <span style={{ fontSize: 12, fontWeight: 800, color: C.text }}>{inv.amount}</span>
-            <Badge color={C.green}>Paid</Badge>
+        <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.6 }}>
+          {profile?.stripe_customer_id
+            ? "Invoices and payment history are available in the Stripe billing portal."
+            : "Subscribe to a plan to start billing. Your plan details will appear here after checkout."}
+        </div>
+        {profile?.stripe_customer_id && (
+          <div style={{ marginTop: 14 }}>
+            <Btn onClick={openPortal} disabled={portalLoading}>Open Billing Portal →</Btn>
           </div>
-        ))}
+        )}
       </Card>
 
     </div>
@@ -545,6 +622,10 @@ const PAGE_SUBS = {
 export default function Account({ initialPage = "account" }) {
   const [page, setPage] = useState(initialPage);
 
+  useEffect(() => {
+    setPage(initialPage);
+  }, [initialPage]);
+
   return (
     <div style={{ display: "flex", gap: 18, alignItems: "flex-start" }}>
       <Sidebar active={page} onChange={setPage} />
@@ -557,7 +638,7 @@ export default function Account({ initialPage = "account" }) {
           )}
         </div>
 
-        {page === "account"     && <AccountPage />}
+        {page === "account"     && <AccountPage onOpenBilling={() => setPage("billing")} />}
         {page === "billing"     && <BillingPage />}
         {page === "appearance"  && <AppearancePage />}
         {page === "templates"   && <ListingTemplates />}

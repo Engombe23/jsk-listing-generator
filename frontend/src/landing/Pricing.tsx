@@ -1,6 +1,7 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { trackEvent } from "../lib/analytics";
-
+import { checkoutSearchParams } from "../lib/plans";
 // ─── Premium dark palette for this section only ────────────────────────────
 const BG          = "#0a0e17";
 const CARD_BG     = "#11151f";
@@ -83,9 +84,22 @@ const plans: Plan[] = [
 ];
 
 function PlanCard({ plan, annual }: { plan: Plan; annual: boolean }) {
+  const navigate = useNavigate();
   const isGrowth = plan.tier === "growth";
   const isScale  = plan.tier === "scale";
   const displayPrice = annual ? Math.round(plan.price * 0.8) : plan.price;
+  const interval = annual ? "annual" : "monthly";
+  const checkoutHref = `/checkout?${checkoutSearchParams(plan.tier, interval)}`;
+
+  function handleCtaClick(e: React.MouseEvent) {
+    e.preventDefault();
+    trackEvent("signup_clicked", {
+      cta_location: "pricing_section",
+      plan_name: plan.name,
+      billing_period: interval,
+    });
+    navigate(checkoutHref);
+  }
 
   return (
     <div
@@ -159,8 +173,8 @@ function PlanCard({ plan, annual }: { plan: Plan; annual: boolean }) {
 
       {/* CTA */}
       <a
-        href="/auth/sign-up"
-        onClick={() => trackEvent("signup_clicked", { cta_location: "pricing_section", plan_name: plan.name, billing_period: annual ? "annual" : "monthly" })}
+        href={checkoutHref}
+        onClick={handleCtaClick}
         style={{
           display: "block", textAlign: "center", borderRadius: 10,
           padding: "13px 0", fontSize: 14, fontWeight: 700, textDecoration: "none",

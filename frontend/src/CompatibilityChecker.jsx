@@ -1,6 +1,7 @@
 ﻿import React, { useState, useEffect, useRef } from "react";
 import { useSessionState } from "./useSessionState.js";
 import { trackEvent } from "./lib/analytics";
+import { useSession } from "./context/SessionContext.jsx";
 import {
   BUTTON_BASE,
   SMALL_BUTTON_STYLE,
@@ -800,6 +801,7 @@ function VehicleSelectionStep({ options, onSelect, onBack }) {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function CompatibilityChecker({ onSendToListing }) {
+  const { session, hasFeature } = useSession();
   const [vin, setVin] = useSessionState("jsk_compat_vin", "");
   const [oemNumber, setOemNumber] = useSessionState("jsk_compat_oem", "");
   const [partType, setPartType] = useState("");
@@ -841,7 +843,7 @@ export default function CompatibilityChecker({ onSendToListing }) {
 
   // handleCheck: pass selectedVehicleId after user picks from vehicle selection
   const handleCheck = async (selectedVehicleId = null) => {
-    if (!canCheck || loading) return;
+    if (!canCheck || loading || !hasFeature("compatibilityChecker")) return;
 
     setLoading(true);
     setError("");
@@ -853,7 +855,10 @@ export default function CompatibilityChecker({ onSendToListing }) {
     try {
       const res = await fetch(`${API_URL}/compatibility/check`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+        },
         body: JSON.stringify({
           vin: vin.trim() || undefined,
           oemNumber: oemNumber.trim(),
@@ -876,6 +881,9 @@ export default function CompatibilityChecker({ onSendToListing }) {
       }
 
       if (!res.ok) {
+        if (res.status === 403 && data.error === "feature_restricted") {
+          throw new Error(data.message);
+        }
         throw new Error(data.error || "Compatibility check failed");
       }
 

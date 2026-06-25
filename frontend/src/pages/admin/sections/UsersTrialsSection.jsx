@@ -1,5 +1,5 @@
-import { useMemo } from "react";
-import { T, MidKpiCard, DailyToggleLineChart, HorizontalBarChart, DataTable, fmtDate, SectionEmpty } from "../shared";
+import { useEffect, useMemo, useState } from "react";
+import { T, API_URL, MidKpiCard, DailyToggleLineChart, HorizontalBarChart, DataTable, fmtDate, SectionEmpty } from "../shared";
 
 function dailySeries(events, names) {
   const byDay = new Map();
@@ -11,7 +11,19 @@ function dailySeries(events, names) {
   return [...byDay.entries()].sort(([a], [b]) => (a < b ? -1 : 1)).map(([date, count]) => ({ date, count }));
 }
 
-export default function UsersTrialsSection({ events }) {
+export default function UsersTrialsSection({ events, accessToken, demoMode }) {
+  const [dupClusters, setDupClusters] = useState(null);
+
+  useEffect(() => {
+    if (demoMode || !accessToken) return;
+    fetch(`${API_URL}/api/analytics/duplicate-accounts`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    })
+      .then((r) => r.json())
+      .then((j) => setDupClusters(j.clusters || []))
+      .catch(() => setDupClusters([]));
+  }, [accessToken, demoMode]);
+
   const stats = useMemo(() => {
     const signupEvents = events.filter((e) => e.event_name === "user_signed_up" && e.user_id);
     const newUsers  = signupEvents.length;
@@ -90,6 +102,22 @@ export default function UsersTrialsSection({ events }) {
         ]}
         rows={stats.recentSignups}
       />
+
+      {dupClusters && dupClusters.length > 0 && (
+        <div style={{ marginTop: 18 }}>
+          <DataTable
+            title="Possible duplicate accounts"
+            subtitle="IPs with 2+ signups — a review signal, not an automatic block. Shared IPs (offices, universities, VPNs) can be legitimate."
+            columns={[
+              { key: "ip_address", label: "IP Address", flex: 1.1, emphasize: true },
+              { key: "account_count", label: "Accounts" },
+              { key: "emails", label: "Emails", flex: 2.2, render: (v) => (v || []).join(", ") },
+              { key: "last_signup", label: "Last signup", render: fmtDate },
+            ]}
+            rows={dupClusters}
+          />
+        </div>
+      )}
     </>
   );
 }

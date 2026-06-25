@@ -1,7 +1,16 @@
 import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { supabase } from "../lib/supabaseClient";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { supabase, getAuthCallbackUrl } from "../lib/supabaseClient";
 import { trackEvent } from "../lib/analytics";
+import { redirectToStripeCheckout } from "../lib/billing";
+import { recordSignupFingerprint } from "../lib/signupGuard";
+import {
+  getPlan,
+  isValidPaidPlan,
+  savePendingCheckout,
+} from "../lib/plans";
+import { checkoutAuthHref } from "../pages/checkout/CheckoutSteps";
+import CheckoutSteps from "../pages/checkout/CheckoutSteps";
 
 const EyeIcon = ({ off }) => (
   <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -21,8 +30,14 @@ const EyeIcon = ({ off }) => (
   </svg>
 );
 
-export default function SignUpForm() {
+export default function SignUpForm({ submitLabel }) {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const plan = searchParams.get("plan") || "";
+  const interval = searchParams.get("interval") || "monthly";
+  const paidSignup = isValidPaidPlan(plan, interval);
+  const planInfo = paidSignup ? getPlan(plan) : null;
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [repeatPassword, setRepeatPassword] = useState("");
@@ -43,20 +58,45 @@ export default function SignUpForm() {
     }
 
     try {
+      if (paidSignup) savePendingCheckout(plan, interval);
+
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          data: paidSignup
+            ? { pending_plan: plan, pending_interval: interval }
+            : undefined,
+          emailRedirectTo: paidSignup
+            ? getAuthCallbackUrl({ plan, interval })
+            : getAuthCallbackUrl(),
         },
       });
       if (error) throw error;
-      // No separate trial flow exists yet — signup IS the start of the free
-      // trial today, so both events fire together. Update this if/when a
-      // distinct trial lifecycle is introduced.
+
       trackEvent("user_signed_up", { user_id: data?.user?.id });
-      trackEvent("trial_started", { user_id: data?.user?.id });
-      navigate("/auth/sign-up-success", { replace: true });
+      recordSignupFingerprint(data?.session?.access_token);
+
+      if (paidSignup && data?.session?.user) {
+        await redirectToStripeCheckout({
+          plan,
+          interval,
+          userId: data.session.user.id,
+          email: data.session.user.email,
+        });
+        return;
+      }
+
+      if (!paidSignup) {
+        trackEvent("trial_started", { user_id: data?.user?.id });
+      }
+
+      navigate("/auth/sign-up-success", {
+        replace: true,
+        state: paidSignup
+          ? { pendingPayment: { plan, interval, planName: planInfo?.name } }
+          : undefined,
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
     } finally {
@@ -64,8 +104,12 @@ export default function SignUpForm() {
     }
   };
 
+  const loginHref = paidSignup ? checkoutAuthHref("/auth/login", plan, interval) : "/auth/login";
+
   return (
     <form onSubmit={handleSignUp}>
+      {paidSignup && <CheckoutSteps activeStep={2} />}
+
       <div className="flex flex-col gap-6">
         <div className="grid gap-2">
           <label htmlFor="email">Email address</label>
@@ -128,7 +172,7 @@ export default function SignUpForm() {
         <button type="submit" disabled={isLoading}>
           {isLoading ? "Creating account…" : (
             <>
-              Start free trial
+              {submitLabel}
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
             </>
           )}
@@ -139,7 +183,7 @@ export default function SignUpForm() {
 
       <div className="text-center text-sm">
         <span className="auth-footer-text">Already have an account? </span>
-        <Link to="/auth/login">Sign in</Link>
+        <Link to={loginHref}>Sign in</Link>
       </div>
     </form>
   );

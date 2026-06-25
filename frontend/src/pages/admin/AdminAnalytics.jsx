@@ -320,7 +320,7 @@ export default function AdminAnalytics() {
   const isEmpty = !loading && !error && !demoMode && data && data.kpis?.visitors === 0 && data.funnel?.every((f) => f.count === 0);
   const ready   = data && (demoMode || (!loading && !error && !isEmpty));
 
-  const sectionProps = { events, range, plan, demoMode };
+  const sectionProps = { events, range, plan, demoMode, accessToken };
 
   return (
     <div style={{ height: "100vh", overflow: "hidden", background: T.bg, display: "flex", fontFamily: "Inter, system-ui, sans-serif" }}>
