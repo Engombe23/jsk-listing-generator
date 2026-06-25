@@ -1,4 +1,5 @@
 -- User billing profile — one row per auth.users account.
+-- Profiles for users on the app (not service roles).
 create table if not exists public.profiles (
   id                     uuid primary key references auth.users (id) on delete cascade,
   plan                   text not null default 'free',
