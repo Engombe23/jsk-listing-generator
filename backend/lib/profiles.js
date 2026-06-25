@@ -1,29 +1,17 @@
 import { supabaseAdmin } from "./supabaseAdmin.js";
 import { isWhitelisted, isUnlimited, hasPlanFeature, listingLimitForPlan } from "./planLimits.js";
 
-// Fetch a user's profile row. The signup trigger (see supabase/profiles.sql)
-// creates this automatically, but fall back to creating a default Free row
-// defensively in case it's ever missing (e.g. accounts created before the
-// trigger existed).
+// Fetch a user's profile row, resetting listings_used if a full month has
+// elapsed since usage_period_start. The reset logic lives in a single
+// Postgres function (see supabase/usage_period_reset.sql) so the backend and
+// the frontend's direct Supabase read (billing.js) can't drift out of sync.
 export async function getOrCreateProfile(userId) {
-  const { data: existing, error: selectErr } = await supabaseAdmin
-    .from("profiles")
-    .select("plan, listings_used")
-    .eq("id", userId)
+  const { data, error } = await supabaseAdmin
+    .rpc("get_or_create_profile_with_reset", { p_user_id: userId })
     .maybeSingle();
 
-  if (selectErr) throw new Error(selectErr.message);
-  if (existing) return existing;
-
-  const defaults = { id: userId, plan: "free", listings_used: 0 };
-  const { data: created, error: insertErr } = await supabaseAdmin
-    .from("profiles")
-    .insert(defaults)
-    .select("plan, listings_used")
-    .single();
-
-  if (insertErr) throw new Error(insertErr.message);
-  return created;
+  if (error) throw new Error(error.message);
+  return data;
 }
 
 // Call BEFORE generating a listing. Does not mutate usage — only answers

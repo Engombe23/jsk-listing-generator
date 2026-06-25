@@ -21,10 +21,13 @@ export async function refreshUserPlan(userId) {
     return cachedPlan;
   }
 
+  // Goes through the same Postgres function the backend uses for limit
+  // checks (get_or_create_profile_with_reset) instead of a raw select, so
+  // the usage shown here can never drift from what's actually enforced —
+  // in particular, this is what resets listings_used once a billing month
+  // has elapsed (see supabase/usage_period_reset.sql).
   const { data, error } = await supabase
-    .from("profiles")
-    .select("plan, stripe_customer_id, stripe_subscription_id, subscription_status, billing_interval, listings_used")
-    .eq("id", userId)
+    .rpc("get_or_create_profile_with_reset", { p_user_id: userId })
     .maybeSingle();
 
   if (error) {
