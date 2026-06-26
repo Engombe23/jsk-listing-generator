@@ -11,6 +11,8 @@ import AdminRoute from "./router/AdminRoute.jsx";
 import AdminAnalytics from "./pages/admin/AdminAnalytics.jsx";
 import About from "./pages/About.jsx";
 import Pricing from "./pages/Pricing.jsx";
+import TermsPage from "./pages/TermsPage.jsx";
+import PrivacyPage from "./pages/PrivacyPage.jsx";
 import CheckoutSummaryPage from "./pages/checkout/CheckoutSummaryPage.jsx";
 import LoginPage from "./pages/auth/LoginPage.jsx";
 import SignUpPage from "./pages/auth/SignUpPage.jsx";
@@ -29,6 +31,8 @@ createRoot(document.getElementById("root")).render(
 
           <Route path="/about" element={<About />} />
           <Route path="/pricing" element={<Pricing />} />
+          <Route path="/terms" element={<TermsPage />} />
+          <Route path="/privacy" element={<PrivacyPage />} />
           <Route path="/checkout" element={<CheckoutSummaryPage />} />
 
           <Route element={<AdminRoute />}>
