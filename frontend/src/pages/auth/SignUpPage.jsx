@@ -1,9 +1,17 @@
+import { useEffect } from "react";
 import SignUpForm from "../../components/SignUpForm";
 import AuthPageLayout from "./AuthPageLayout";
 import { useSearchParams } from "react-router-dom";
 import { getDisplayPrice, getPlan, isValidPaidPlan } from "../../lib/plans";
 
 export default function SignUpPage() {
+  useEffect(() => {
+    window.gtag?.("event", "conversion", {
+      send_to: "AW-18273467195/sEHWCJyby8UcELv2u4lE",
+      value: 1.0,
+      currency: "GBP",
+    });
+  }, []);
   const [searchParams] = useSearchParams();
   const plan = searchParams.get("plan") || "";
   const interval = searchParams.get("interval") || "monthly";
