@@ -29,6 +29,7 @@ import GeneratedListings from "./GeneratedListings.jsx";
 import { SPEC_SCHEMA, SECTION_TITLES, mapApiSpecsToSchema } from "./itemSpecificsSchema.js";
 import { trackEvent } from "./lib/analytics";
 import { UpgradeBanner } from "./components/UpgradePrompt.jsx";
+import { useTheme } from "./context/ThemeContext";
 
 // ─── Description themes (mirrors backend) ────────────────────────────────────
 
@@ -221,6 +222,9 @@ function makeRowId() {
 
 export default function App() {
   const { session, hasFeature, refreshPlan } = useSession();
+  const { theme } = useTheme();
+  const isDark = theme === "dark" || (theme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+  const logoSrc = isDark ? "/logo-white.svg" : "/logo.png";
   const [searchParams, setSearchParams] = useSearchParams();
   const [page, setPage] = useState(
     () => sessionStorage.getItem("jsk_active_page") || "listing"
@@ -356,7 +360,7 @@ export default function App() {
 
           {/* Logo */}
           <div style={{ display: "flex", alignItems: "center", paddingRight: 32, borderRight: "1px solid var(--border)", marginRight: 8 }}>
-            <img src="/logo.png" alt="PartLister" style={{ height: 30, width: "auto" }} />
+            <img src={logoSrc} alt="PartLister" style={{ height: 30, width: "auto" }} />
           </div>
 
           {/* Nav tabs */}
