@@ -884,7 +884,7 @@ export default function CompatibilityChecker({ onSendToListing }) {
         if (res.status === 403 && data.error === "feature_restricted") {
           throw new Error(data.message);
         }
-        throw new Error(data.error || "Compatibility check failed");
+        throw new Error(data.message || data.error || "Compatibility check failed");
       }
 
       setResult(data);

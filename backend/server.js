@@ -18,6 +18,7 @@ import { supabaseAdminReady } from "./lib/supabaseAdmin.js";
 import { requireAuth } from "./middleware/requireAuth.js";
 import { canGenerateListing, incrementListingUsage, checkFeatureAccess } from "./lib/profiles.js";
 import authRouter from "./routes/auth.js";
+import { listingGenerationLimiter, compatibilityLimiter, ebaySearchLimiter, aiTitlesLimiter } from "./middleware/rateLimiter.js";
 
 const openaiClient = process.env.OPENAI_API_KEY
   ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
@@ -839,7 +840,7 @@ app.post("/search", async (req, res) => {
   }
 });
 
-app.post("/lookup", requireAuth, async (req, res) => {
+app.post("/lookup", requireAuth, listingGenerationLimiter, async (req, res) => {
   try {
     const articleNumber = String(req.body.articleNumber || "").trim().replace(/\s+/g, "");
     const themeId       = req.body.themeId || req.body.templateId || "clean-default";
@@ -878,7 +879,7 @@ app.post("/lookup", requireAuth, async (req, res) => {
   }
 });
 
-app.post("/batch-export", requireAuth, async (req, res) => {
+app.post("/batch-export", requireAuth, listingGenerationLimiter, async (req, res) => {
   try {
     const { rows, themeId = "clean-default", templateId } = req.body;
     const resolvedTheme = themeId || templateId || "clean-default";
@@ -1014,7 +1015,7 @@ app.post("/batch-export", requireAuth, async (req, res) => {
   }
 });
 
-app.post("/compatibility/check", requireAuth, async (req, res) => {
+app.post("/compatibility/check", requireAuth, compatibilityLimiter, async (req, res) => {
   try {
     const feature = await checkFeatureAccess(req.user.id, req.user.email, "compatibilityChecker");
     if (!feature.allowed) {
@@ -1057,7 +1058,7 @@ app.post("/compatibility/check", requireAuth, async (req, res) => {
 // POST /api/ai/generate-titles
 // Calls OpenAI to produce 3 eBay-style listing titles from structured part data.
 
-app.post("/api/ai/generate-titles", async (req, res) => {
+app.post("/api/ai/generate-titles", requireAuth, aiTitlesLimiter, async (req, res) => {
   if (!openaiClient) {
     return res.status(503).json({ error: "OpenAI API key is not configured." });
   }
@@ -1259,7 +1260,7 @@ async function getEbayAccessToken() {
 //   7. Multiplier outlier filter  (per-rule high/low thresholds)
 //   8. Recalculate final stats from clean set
 //   9. Return enriched response with per-reason exclusion counts
-app.post("/api/ebay/search-prices", requireAuth, async (req, res) => {
+app.post("/api/ebay/search-prices", requireAuth, ebaySearchLimiter, async (req, res) => {
   try {
     const feature = await checkFeatureAccess(req.user.id, req.user.email, "smartPricing");
     if (!feature.allowed) {

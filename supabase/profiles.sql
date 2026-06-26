@@ -10,6 +10,7 @@ create table if not exists public.profiles (
   updated_at             timestamptz not null default now()
 );
 
+alter table public.profiles add column if not exists email text;
 alter table public.profiles enable row level security;
 
 -- Service role (backend webhooks) bypasses RLS. Users read their own row from the client.
