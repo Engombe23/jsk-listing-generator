@@ -1,8 +1,11 @@
 ﻿import React, { memo, useState, useRef, useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { supabase } from "./lib/supabaseClient";
 import { useSession } from "./context/SessionContext";
 import { syncCheckoutSession } from "./lib/billing";
+import { loadPreferences } from "./useListingPreferences.js";
+import { getMarketplaceById } from "./i18n/marketplaces.js";
 import {
   BUTTON_BASE,
   SMALL_BUTTON_STYLE,
@@ -43,9 +46,12 @@ const THEMES = [
 
 // ─── LocalStorage helpers ─────────────────────────────────────────────────────
 
-const LS_THEME_KEY     = "jsk_theme_v2";
-const LS_TEMPLATES_KEY     = "jsk_custom_templates_v1";
-const LS_ACCOUNT_TEMPLATES = "jsk_listing_templates_v1";
+const LS_THEME_KEY        = "jsk_theme_v2";
+const LS_TEMPLATES_KEY    = "jsk_custom_templates_v1";
+const LS_ACCOUNT_TEMPLATES= "jsk_listing_templates_v1";
+const LS_OPTIONS_KEY      = "jsk_listing_options_v1";
+
+const DEFAULT_OPTIONS = { showCompatibilityTable: true, showInterchangeableNumbers: true, showEngineCodes: true };
 
 function getSavedTheme() {
   try { return localStorage.getItem(LS_THEME_KEY) || "clean-default"; }
@@ -53,6 +59,13 @@ function getSavedTheme() {
 }
 function saveTheme(id) {
   try { localStorage.setItem(LS_THEME_KEY, id); } catch {}
+}
+function getSavedOptions() {
+  try { return { ...DEFAULT_OPTIONS, ...JSON.parse(localStorage.getItem(LS_OPTIONS_KEY) || "{}") }; }
+  catch { return { ...DEFAULT_OPTIONS }; }
+}
+function saveOptions(opts) {
+  try { localStorage.setItem(LS_OPTIONS_KEY, JSON.stringify(opts)); } catch {}
 }
 
 // ── Custom template storage ───────────────────────────────────────────────────
@@ -221,6 +234,7 @@ function makeRowId() {
 // ─── App ──────────────────────────────────────────────────────────────────────
 
 export default function App() {
+  const { t } = useTranslation();
   const { session, hasFeature, refreshPlan } = useSession();
   const { theme } = useTheme();
   const isDark = theme === "dark" || (theme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
@@ -236,9 +250,11 @@ export default function App() {
   const canBulkGenerate = hasFeature("bulkListingGeneration");
   const canBulkCsvExport = hasFeature("bulkCsvExport");
 
+  // Effect A: detect return from Stripe, clean URL immediately, stash pending sync
+  // in sessionStorage so it survives the race between URL params and session load.
   useEffect(() => {
-    const checkout = searchParams.get("checkout");
-    const billing = searchParams.get("billing");
+    const checkout  = searchParams.get("checkout");
+    const billing   = searchParams.get("billing");
     const sessionId = searchParams.get("session_id");
     if (checkout !== "success" && billing !== "1") return;
 
@@ -246,29 +262,39 @@ export default function App() {
     sessionStorage.setItem("jsk_active_page", "account");
     setPage("account");
 
-    let cancelled = false;
-
-    (async () => {
-      if (checkout === "success" && session?.user?.id && sessionId) {
-        try {
-          await syncCheckoutSession({ sessionId, userId: session.user.id });
-        } catch (err) {
-          console.warn("[checkout] sync failed, falling back to profile refresh:", err);
-        }
-      }
-      if (!cancelled && session?.user?.id) {
-        await refreshPlan();
-      }
-    })();
+    if (checkout === "success" && sessionId) {
+      sessionStorage.setItem("jsk_pending_checkout_id", sessionId);
+    }
 
     const next = new URLSearchParams(searchParams);
     next.delete("checkout");
     next.delete("billing");
     next.delete("session_id");
     setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
+
+  // Effect B: runs whenever the session becomes available.
+  // Picks up any pending checkout session ID left by Effect A and syncs it.
+  useEffect(() => {
+    const userId    = session?.user?.id;
+    const pendingId = sessionStorage.getItem("jsk_pending_checkout_id");
+    if (!userId || !pendingId) return;
+
+    // Claim the ID immediately so a second effect fire can't double-sync.
+    sessionStorage.removeItem("jsk_pending_checkout_id");
+
+    let cancelled = false;
+    (async () => {
+      try {
+        await syncCheckoutSession({ sessionId: pendingId, userId });
+      } catch (err) {
+        console.warn("[checkout] sync failed, falling back to profile refresh:", err.message);
+      }
+      if (!cancelled) await refreshPlan();
+    })();
 
     return () => { cancelled = true; };
-  }, [searchParams, session?.user?.id, setSearchParams, refreshPlan]);
+  }, [session?.user?.id, refreshPlan]);
 
   useEffect(() => {
     if (page === "compatibility" && !canUseCompatibility) {
@@ -276,6 +302,17 @@ export default function App() {
       setPage("listing");
     }
   }, [page, canUseCompatibility]);
+
+  // Effect C: ?goto=<page> deep-link — used by "View Market Analysis" button in new tab
+  useEffect(() => {
+    const goto = searchParams.get("goto");
+    if (!goto) return;
+    const next = new URLSearchParams(searchParams);
+    next.delete("goto");
+    setSearchParams(next, { replace: true });
+    sessionStorage.setItem("jsk_active_page", goto);
+    setPage(goto);
+  }, [searchParams, setSearchParams]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Session-state key prefixes per page — used to wipe state on navigation away
   const PAGE_SS_PREFIXES = {
@@ -366,10 +403,10 @@ export default function App() {
           {/* Nav tabs */}
           <div style={{ display: "flex", flex: 1, alignItems: "stretch" }}>
             {[
-              { key: "listing",       label: "Listing Generator" },
-              { key: "calculator",    label: "Price Calculator" },
-              ...(canUseCompatibility ? [{ key: "compatibility", label: "Compatibility Checker" }] : []),
-              { key: "account",       label: "Account" },
+              { key: "listing",       label: t("nav.listingGenerator") },
+              { key: "calculator",    label: t("nav.priceCalculator") },
+              ...(canUseCompatibility ? [{ key: "compatibility", label: t("nav.compatibility") }] : []),
+              { key: "account",       label: t("nav.account") },
             ].map(({ key, label }) => {
               const active = page === key;
               return (
@@ -462,9 +499,11 @@ function ListingGenerator({
   prefilledArticle, onPrefilledConsumed, onAutoSave,
   listings, onUpdateStatus, onUpdateStatusBatch, onUpdateListing, onRemove, onRemoveBatch,
 }) {
+  const { t } = useTranslation();
   const { session, hasFeature, listingLimit, listingsUsed, refreshPlan } = useSession();
   const canBulkGenerate = hasFeature("bulkListingGeneration");
   const canBulkCsvExport = hasFeature("bulkCsvExport");
+  const targetMarketplace = useMemo(() => loadPreferences().targetMarketplace || "ebay-uk", []);
   const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
 
   // ── Inner page ────────────────────────────────────────────────────────────
@@ -479,7 +518,9 @@ function ListingGenerator({
   const [error,         setError]         = useState("");
   const [limitMessage,  setLimitMessage]  = useState("");
   const [isSaved,       setIsSaved]       = useState(false);
-  const [themeId,       setThemeId]       = useState(getSavedTheme);
+  const [marketPrice,   setMarketPrice]   = useState(null);
+  const [themeId,        setThemeId]        = useState(getSavedTheme);
+  const [listingOptions, setListingOptions] = useState(getSavedOptions);
   const [customTemplates,    setCustomTemplates]    = useState(loadCustomTemplates);
   const [customTemplateHtml, setCustomTemplateHtml] = useState(null);
 
@@ -493,6 +534,90 @@ function ListingGenerator({
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);
   }, []);
+
+  // Reset market price preview whenever a new generation begins
+  useEffect(() => {
+    if (phase === "generating") setMarketPrice(null);
+  }, [phase]);
+
+  // Background market price fetch — fires after listing lands, non-blocking
+  useEffect(() => {
+    if (phase !== "done" || !result) return;
+    const oemNums   = result.oem_numbers || [];
+    const articleNo = result.article_number;
+    const marketplace = result.target_marketplace || targetMarketplace;
+    let cancelled = false;
+
+    setMarketPrice({ status: "loading" });
+
+    const call = async (query) => {
+      const res = await fetch(`${API_URL}/api/ebay/search-prices`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+        },
+        body: JSON.stringify({ query, condition: "used", targetMarketplace: marketplace }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        const err  = new Error(`HTTP ${res.status}`);
+        err.status = res.status; err.body = body;
+        throw err;
+      }
+      return res.json();
+    };
+
+    (async () => {
+      try {
+        const primary = oemNums[0] || articleNo;
+        let data = await call(primary);
+        let usedQuery = primary;
+
+        // Insufficient results on OEM → retry with article number
+        if ((data.priceCount ?? 0) < 3 && oemNums[0] && articleNo) {
+          const fallback = await call(articleNo);
+          if ((fallback.priceCount ?? 0) > (data.priceCount ?? 0)) {
+            data = fallback; usedQuery = articleNo;
+          }
+        }
+
+        if (cancelled) return;
+        if (!data.priceCount || data.low == null) {
+          setMarketPrice({ status: "none" });
+        } else {
+          // IQR-trim the raw listing prices to remove outlier results that
+          // are completely unrelated items which happened to match on OEM number.
+          const rawPrices = (data.listings || [])
+            .map((l) => l.price)
+            .filter((p) => typeof p === "number" && isFinite(p))
+            .sort((a, b) => a - b);
+
+          let low = data.low, high = data.high;
+          if (rawPrices.length >= 4) {
+            const q1 = rawPrices[Math.floor(rawPrices.length * 0.25)];
+            const q3 = rawPrices[Math.floor(rawPrices.length * 0.75)];
+            const fence = 1.5 * (q3 - q1);
+            const trimmed = rawPrices.filter((p) => p >= q1 - fence && p <= q3 + fence);
+            if (trimmed.length >= 2) { low = trimmed[0]; high = trimmed[trimmed.length - 1]; }
+          }
+
+          const SYM = { GBP: "£", EUR: "€", USD: "$", AED: "د.إ", TRY: "₺" };
+          setMarketPrice({
+            status: "done",
+            low, high,
+            symbol: SYM[data.currency] || data.currency || "£",
+            query: usedQuery, marketplace,
+          });
+        }
+      } catch (err) {
+        if (cancelled) return;
+        setMarketPrice({ status: err.status === 403 ? "restricted" : "error" });
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [result?.article_number, phase]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Batch state ───────────────────────────────────────────────────────────
   const [batchRows,    setBatchRows]    = useSessionState("jsk_gen_batch_rows", [{ id: makeRowId(), articleNo: "", sku: "", binPrice: "" }]);
@@ -584,7 +709,7 @@ function ListingGenerator({
           "Content-Type": "application/json",
           ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
         },
-        body: JSON.stringify({ articleNumber: String(articleNo), themeId })
+        body: JSON.stringify({ articleNumber: String(articleNo), themeId, listingOptions, targetMarketplace })
       });
       const data = await res.json();
       if (!res.ok) {
@@ -645,7 +770,7 @@ function ListingGenerator({
           "Content-Type": "application/json",
           ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
         },
-        body: JSON.stringify({ articleNumber: result.article_number, themeId: newId })
+        body: JSON.stringify({ articleNumber: result.article_number, themeId: newId, listingOptions, targetMarketplace })
       })
         .then((r) => r.json())
         .then((data) => {
@@ -719,9 +844,9 @@ function ListingGenerator({
     : `${Math.max(0, listingLimit - listingsUsed)} Listings Remaining`;
 
   const btnLabel =
-    phase === "searching"  ? "Searching…"   :
-    phase === "generating" ? "Generating…"  :
-    "Search & Generate";
+    phase === "searching"  ? t("generator.searching")  :
+    phase === "generating" ? t("generator.generating") :
+    t("generator.searchGenerate");
 
   const listingCount = listings?.length ?? 0;
 
@@ -730,8 +855,8 @@ function ListingGenerator({
       {/* ── Inner tab bar ── */}
       <div style={{ display: "flex", gap: 0, marginBottom: 24, borderBottom: "1px solid var(--border)" }}>
         {[
-          { key: "generate",  label: "Generate" },
-          { key: "generated", label: "Saved Listings", count: listingCount },
+          { key: "generate",  label: t("nav.listingGenerator") },
+          { key: "generated", label: t("nav.savedListings"), count: listingCount },
         ].map(({ key, label, count }) => {
           const active = innerPage === key;
           return (
@@ -784,8 +909,8 @@ function ListingGenerator({
 
             {/* Single Listing */}
             <Card
-              title="Listing Generator"
-              subtitle="Enter a TecDoc article number or OEM / reference number."
+              title={t("generator.title")}
+              subtitle={t("generator.subtitle")}
               icon={
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
@@ -796,7 +921,7 @@ function ListingGenerator({
               <div style={{ display: "grid", gap: 14 }}>
 
                 <div>
-                  <FieldLabel>Article No. or OEM Number</FieldLabel>
+                  <FieldLabel>{t("generator.articleLabel")}</FieldLabel>
                   <TextInput
                     value={query}
                     onChange={(e) => {
@@ -804,26 +929,26 @@ function ListingGenerator({
                       if (phase !== "idle") { setPhase("idle"); setSearchResults([]); setResult(null); }
                     }}
                     onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                    placeholder="e.g. AOP858 or LR002465"
+                    placeholder={t("generator.articlePlaceholder")}
                   />
                 </div>
 
                 <div>
                   <FieldLabel>
-                    SKU{" "}
-                    <span style={{ fontWeight: 400, color: "var(--text-muted)", fontSize: 11 }}>(optional)</span>
+                    {t("generator.skuLabel")}{" "}
+                    <span style={{ fontWeight: 400, color: "var(--text-muted)", fontSize: 11 }}>{t("generator.skuOptional")}</span>
                   </FieldLabel>
                   <TextInput
                     value={inputSku}
                     onChange={(e) => setInputSku(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                    placeholder="Your internal SKU"
+                    placeholder={t("generator.skuPlaceholder")}
                   />
                 </div>
 
                 {/* Description Theme / Preset selector */}
                 <div>
-                  <FieldLabel>Templates</FieldLabel>
+                  <FieldLabel>{t("generator.templatesLabel")}</FieldLabel>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 4 }}>
                     {THEMES.map((t) => {
                       const active = themeId === t.id && !customTemplateHtml;
@@ -888,6 +1013,46 @@ function ListingGenerator({
                       </div>
                     </div>
                   )}
+                </div>
+
+                {/* Listing Content Toggles */}
+                <div>
+                  <FieldLabel>{t("generator.contentOptions")}</FieldLabel>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 6 }}>
+                    {[
+                      { key: "showCompatibilityTable",     label: t("generator.compatibilityTable") },
+                      { key: "showInterchangeableNumbers", label: t("generator.interchangeableNumbers") },
+                      { key: "showEngineCodes",            label: t("generator.engineCodes") },
+                    ].map(({ key, label }) => {
+                      const on = listingOptions[key] !== false;
+                      return (
+                        <div key={key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                          <span style={{ fontSize: 13, color: "var(--text-muted)" }}>{label}</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const next = { ...listingOptions, [key]: !on };
+                              setListingOptions(next);
+                              saveOptions(next);
+                            }}
+                            style={{
+                              position: "relative", width: 38, height: 20, borderRadius: 10, border: "none",
+                              cursor: "pointer", padding: 0, flexShrink: 0,
+                              background: on ? "var(--blue)" : "var(--border)",
+                              transition: "background 0.2s",
+                            }}
+                            aria-label={`${on ? "Disable" : "Enable"} ${label}`}
+                          >
+                            <span style={{
+                              position: "absolute", top: 3, left: on ? 20 : 3,
+                              width: 14, height: 14, borderRadius: "50%", background: "#ffffff",
+                              transition: "left 0.2s",
+                            }} />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
 
                 <button
@@ -976,9 +1141,39 @@ function ListingGenerator({
           {phase === "done" && result && (
             <div style={{ display: "flex", flexDirection: "column", gap: 12, position: "sticky", top: 16, maxHeight: "calc(100vh - 80px)", overflowY: "auto" }}>
 
+              {/* Product image — always shown; placeholder when TecDoc has no image */}
+              <div style={{
+                background: "var(--bg-surface)", border: "1px solid var(--border)",
+                borderRadius: 12, overflow: "hidden", boxShadow: "var(--shadow)",
+              }}>
+                {result.article_image ? (
+                  <img
+                    src={result.article_image}
+                    alt={result.product_type || result.generated_title || "Product image"}
+                    style={{ width: "100%", maxHeight: 200, objectFit: "contain", display: "block", padding: "12px 16px", boxSizing: "border-box" }}
+                    onError={(e) => {
+                      e.currentTarget.style.display = "none";
+                      const ph = e.currentTarget.parentElement.querySelector("[data-img-ph]");
+                      if (ph) ph.style.display = "flex";
+                    }}
+                  />
+                ) : null}
+                {/* Shown when image is absent or the img tag errors */}
+                <div
+                  data-img-ph="1"
+                  style={{
+                    display: result.article_image ? "none" : "flex",
+                    alignItems: "center", justifyContent: "center",
+                    height: 110, background: "var(--bg-surface2)",
+                  }}
+                >
+                  <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase", color: "var(--text-dim)" }}>No Image</span>
+                </div>
+              </div>
+
               {/* Article */}
               <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 12, padding: "14px 16px", boxShadow: "var(--shadow)" }}>
-                <div style={{ fontSize: 10, color: "var(--text-dim)", fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>Article</div>
+                <div style={{ fontSize: 10, color: "var(--text-dim)", fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>{t("generator.article")}</div>
                 <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text)", marginBottom: 2 }}>
                   {result.product_type || result.article_number || "—"}
                 </div>
@@ -988,8 +1183,76 @@ function ListingGenerator({
                 {result.compatibility_count > 0 && (
                   <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: "var(--green)", fontWeight: 600, marginTop: 4 }}>
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                    {result.compatibility_count} compatible vehicles
+                    {t("generator.compatibleVehicles", { count: result.compatibility_count })}
                   </div>
+                )}
+                {result.target_marketplace && result.target_marketplace !== "ebay-uk" && (() => {
+                  const mp = getMarketplaceById(result.target_marketplace);
+                  return (
+                    <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: "var(--blue)", fontWeight: 600, marginTop: 6 }}>
+                      {mp.flag} {t("generator.translatedFor", { marketplace: mp.label })}
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {/* Market Price preview */}
+              <div style={{
+                background: "var(--bg-surface)", border: "1px solid var(--border)",
+                borderRadius: 12, padding: "14px 16px", boxShadow: "var(--shadow)",
+              }}>
+                <div style={{ fontSize: 10, color: "var(--text-dim)", fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", marginBottom: 10 }}>Market Price</div>
+
+                {(!marketPrice || marketPrice.status === "loading") ? (
+                  <div style={{ display: "flex", alignItems: "center", gap: 7, color: "var(--text-muted)", fontSize: 12, paddingBottom: 2 }}>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ animation: "ogSpin 1s linear infinite", flexShrink: 0 }}>
+                      <line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/>
+                      <line x1="4.93" y1="4.93" x2="7.76" y2="7.76"/><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"/>
+                      <line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/>
+                      <line x1="4.93" y1="19.07" x2="7.76" y2="16.24"/><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"/>
+                    </svg>
+                    Searching…
+                  </div>
+                ) : marketPrice.status === "done" ? (
+                  <>
+                    <div style={{ fontSize: 24, fontWeight: 900, color: "var(--text)", letterSpacing: -0.5, lineHeight: 1, marginBottom: 14 }}>
+                      {marketPrice.symbol}{Math.round(marketPrice.low)}&thinsp;–&thinsp;{marketPrice.symbol}{Math.round(marketPrice.high)}
+                    </div>
+                    {/* Button sits inside its own padded row so it never touches the card edge */}
+                    <div style={{ margin: "0 -16px -14px", padding: "12px 16px 14px", borderTop: "1px solid var(--border)", background: "var(--bg-surface2)" }}>
+                      <button
+                        onClick={() => {
+                          try {
+                            localStorage.setItem("jsk_pc_autorun", JSON.stringify({
+                              query: marketPrice.query,
+                              marketplace: marketPrice.marketplace,
+                              timestamp: Date.now(),
+                            }));
+                          } catch {}
+                          window.open(window.location.origin + "/?goto=calculator", "_blank");
+                        }}
+                        style={{
+                          width: "100%", fontSize: 12, fontWeight: 700, padding: "9px 14px",
+                          borderRadius: 8, border: "none", cursor: "pointer",
+                          background: "var(--blue)", color: "#fff",
+                          display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
+                          boxShadow: "0 2px 8px rgba(19,93,255,0.3)",
+                          transition: "opacity 0.15s",
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.opacity = "0.85"}
+                        onMouseLeave={(e) => e.currentTarget.style.opacity = "1"}
+                      >
+                        View Market Analysis
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                      </button>
+                    </div>
+                  </>
+                ) : marketPrice.status === "restricted" ? (
+                  <div style={{ fontSize: 12, color: "var(--text-muted)" }}>Upgrade your plan to see market prices</div>
+                ) : marketPrice.status === "none" ? (
+                  <div style={{ fontSize: 12, color: "var(--text-muted)" }}>No listings found for this part</div>
+                ) : (
+                  <div style={{ fontSize: 12, color: "var(--text-muted)" }}>Unable to fetch pricing</div>
                 )}
               </div>
 
@@ -1005,16 +1268,8 @@ function ListingGenerator({
                   transition: "all 0.15s ease",
                 }}
               >
-                {isSaved ? "✓ Saved to Saved Listings" : "💾 Save Listing"}
+                {isSaved ? t("generator.saved") : t("generator.save")}
               </button>
-
-              {/* Product Image */}
-              {result.article_image && (
-                <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 12, padding: 12, display: "flex", justifyContent: "center" }}>
-                  <img src={result.article_image} alt={result.generated_title || "Product"}
-                    style={{ maxWidth: "100%", maxHeight: 140, objectFit: "contain", borderRadius: 8 }} />
-                </div>
-              )}
 
               {/* Copy HTML */}
               <CopyButton
@@ -1409,15 +1664,16 @@ function AiTitleSuggestions({ result, apiUrl, onUseTitle }) {
     setTitles(null);
     try {
       const payload = {
-        productType:    result.product_type    || "",
-        brand:          result.brand           || "",
-        oemNumbers:     result.oem_numbers     || [],
-        topModels:      result.top_models      || [],
-        engineCodes:    result.engine_codes    || [],
-        engineSizes:    result.engine_sizes    || [],
-        fuelType:       result.fuel_type       || "",
-        yearRange:      result.year_range      || "",
-        maxTitleLength: 80
+        productType:      result.product_type    || "",
+        brand:            result.brand           || "",
+        oemNumbers:       result.oem_numbers     || [],
+        topModels:        result.top_models      || [],
+        engineCodes:      result.engine_codes    || [],
+        engineSizes:      result.engine_sizes    || [],
+        fuelType:         result.fuel_type       || "",
+        yearRange:        result.year_range      || "",
+        maxTitleLength:   80,
+        targetMarketplace: loadPreferences().targetMarketplace || "ebay-uk",
       };
       const res = await fetch(`${apiUrl}/api/ai/generate-titles`, {
         method: "POST",

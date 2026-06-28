@@ -73,6 +73,20 @@ export default function Footer() {
 
             <div>
               <p style={{ fontSize: 12, fontWeight: 700, color: DIM, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 16 }}>
+                Contact
+              </p>
+              <a
+                href="mailto:enquiries@partlister.app"
+                style={{ display: "block", fontSize: 14, color: MUTED, textDecoration: "none", marginBottom: 10, transition: "color 0.15s" }}
+                onMouseEnter={e => (e.currentTarget.style.color = ACCENT)}
+                onMouseLeave={e => (e.currentTarget.style.color = MUTED)}
+              >
+                enquiries@partlister.app
+              </a>
+            </div>
+
+            <div>
+              <p style={{ fontSize: 12, fontWeight: 700, color: DIM, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 16 }}>
                 Account
               </p>
               {[

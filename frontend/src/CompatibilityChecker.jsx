@@ -1,4 +1,5 @@
 ﻿import React, { useState, useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { useSessionState } from "./useSessionState.js";
 import { trackEvent } from "./lib/analytics";
 import { useSession } from "./context/SessionContext.jsx";
@@ -801,6 +802,7 @@ function VehicleSelectionStep({ options, onSelect, onBack }) {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function CompatibilityChecker({ onSendToListing }) {
+  const { t } = useTranslation();
   const { session, hasFeature } = useSession();
   const [vin, setVin] = useSessionState("jsk_compat_vin", "");
   const [oemNumber, setOemNumber] = useSessionState("jsk_compat_oem", "");
@@ -944,7 +946,7 @@ export default function CompatibilityChecker({ onSendToListing }) {
         </div>
       )}
 
-      <Card title="Compatibility Checker" subtitle="Enter a VIN and OEM / part number to check compatibility." centeredTitle>
+      <Card title={t("compat.title")} subtitle={t("compat.subtitle")} centeredTitle>
         <div
           style={{
             display: "grid",
@@ -974,7 +976,7 @@ export default function CompatibilityChecker({ onSendToListing }) {
             disabled={!canCheck || loading}
             style={{ ...primaryButtonStyle(!canCheck || loading), whiteSpace: "nowrap" }}
           >
-            {loading ? "Checking..." : "Check Compatibility"}
+            {loading ? t("compat.checking") : t("compat.check")}
           </button>
         </div>
 

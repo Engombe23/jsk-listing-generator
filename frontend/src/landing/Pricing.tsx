@@ -303,7 +303,7 @@ export default function Pricing() {
         {/* Footer note */}
         <p style={{ textAlign: "center", fontSize: 13, color: DIM, marginTop: 56 }}>
           All plans include VAT. Cancel anytime. Questions?{" "}
-          <a href="mailto:hello@partlister.app" style={{ color: ACCENT, textDecoration: "none" }}>hello@partlister.app</a>
+          <a href="mailto:enquiries@partlister.app" style={{ color: ACCENT, textDecoration: "none" }}>enquiries@partlister.app</a>
         </p>
       </div>
     </section>
