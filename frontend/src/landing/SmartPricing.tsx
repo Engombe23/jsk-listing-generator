@@ -28,9 +28,9 @@ const listings = [
 
 export default function SmartPricing() {
   return (
-    <section style={{ background: BG_ALT, padding: "90px 24px", borderTop: "1px solid #dde7f5" }}>
+    <section className="lp-section" style={{ background: BG_ALT, padding: "90px 24px", borderTop: "1px solid #dde7f5" }}>
       <div style={{ maxWidth: 1100, margin: "0 auto" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 64, alignItems: "center" }}>
+        <div className="smart-pricing-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 64, alignItems: "center" }}>
 
           {/* Left — Copy */}
           <div>

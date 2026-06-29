@@ -39,6 +39,7 @@ export default function FAQ() {
   return (
     <section
       id="faq"
+      className="lp-section"
       style={{
         padding: "96px 24px",
         background: "#f4f7fc",

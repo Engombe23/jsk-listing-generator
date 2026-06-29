@@ -41,6 +41,7 @@ export default function HowItWorks() {
   return (
     <section
       id="how-it-works"
+      className="lp-section"
       style={{
         padding: "96px 24px",
         background: "#f7f9fc",
@@ -84,6 +85,7 @@ export default function HowItWorks() {
 
         {/* Two columns */}
         <div
+          className="how-it-works-grid"
           style={{
             display: "grid",
             gridTemplateColumns: "1fr 1fr",
@@ -177,6 +179,7 @@ export default function HowItWorks() {
 
           {/* RIGHT — Part Lister */}
           <div
+            className="how-it-works-partlister"
             style={{
               background: "#fff",
               border: `1px solid ${BORDER}`,

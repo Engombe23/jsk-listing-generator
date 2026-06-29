@@ -333,7 +333,7 @@ function CSVVisual() {
 // ─── Main Section ─────────────────────────────────────────────────────────────
 export default function Features() {
   return (
-    <section id="features" style={{ background: "#ffffff", padding: "90px 24px", fontFamily: "Plus Jakarta Sans, sans-serif" }}>
+    <section id="features" className="lp-section" style={{ background: "#ffffff", padding: "90px 24px", fontFamily: "Plus Jakarta Sans, sans-serif" }}>
       <div style={{ maxWidth: 1120, margin: "0 auto" }}>
 
         {/* Header */}
@@ -355,7 +355,7 @@ export default function Features() {
         {/* Row 1 — Listing Generator full width */}
         <div style={{ marginBottom: 24 }}>
           <div style={{ background: "#fff", border: `2px solid ${ACCENT}`, borderRadius: 22, padding: "36px 40px", boxShadow: "0 8px 40px rgba(19,93,255,0.11)" }}>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1.6fr", gap: 40, alignItems: "start" }}>
+            <div className="features-main-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1.6fr", gap: 40, alignItems: "start" }}>
               {/* Left — text */}
               <div>
                 <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: ACCENT_LIGHT, border: `1px solid #c7d9ff`, borderRadius: 8, padding: "4px 12px", marginBottom: 18 }}>
@@ -403,7 +403,7 @@ export default function Features() {
         </div>
 
         {/* Row 2 — Smart Pricing + 3 smaller */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, marginBottom: 24 }}>
+        <div className="features-row2-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, marginBottom: 24 }}>
 
           {/* Smart Pricing */}
           <div style={{ background: "#fff", border: `1px solid ${BORDER}`, borderRadius: 20, padding: 30, boxShadow: "0 4px 24px rgba(19,93,255,0.07)" }}>
@@ -445,7 +445,7 @@ export default function Features() {
         </div>
 
         {/* Row 3 — Item Specifics + CSV */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
+        <div className="features-row3-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
 
           {/* eBay Item Specifics */}
           <div style={{ background: "#fff", border: `1px solid ${BORDER}`, borderRadius: 18, padding: 26 }}>

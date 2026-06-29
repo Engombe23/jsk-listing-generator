@@ -791,6 +791,82 @@ function HeroCarousel() {
 }
 
 /* ═══════════════════════════════════════
+   MOBILE HERO PREVIEW
+   Shown instead of HeroCarousel on small screens
+═══════════════════════════════════════ */
+function MobileHeroPreview() {
+  return (
+    <div style={{
+      background: "#fff",
+      border: "2px solid rgba(19,93,255,0.25)",
+      borderRadius: 20,
+      overflow: "hidden",
+      boxShadow: "0 8px 32px rgba(19,93,255,0.18), 0 2px 8px rgba(0,0,0,0.06)",
+      fontFamily: "Plus Jakarta Sans, sans-serif",
+    }}>
+      <div style={{ height: 3, background: "linear-gradient(to right, #135DFF, #6366f1)" }} />
+
+      {/* Input row */}
+      <div style={{ padding: "14px 16px 12px", borderBottom: "1px solid #dde7f5" }}>
+        <div style={{ fontSize: 9, fontWeight: 800, color: "#7a96b0", textTransform: "uppercase" as const, letterSpacing: ".1em", marginBottom: 6 }}>OE / Article Number</div>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <div style={{ flex: 1, background: "#f8faff", border: "1.5px solid #135DFF", borderRadius: 8, padding: "8px 12px", fontSize: 13, fontWeight: 700, color: "#0d1f35", boxShadow: "0 0 0 3px rgba(19,93,255,0.06)" }}>LR073640</div>
+          <div style={{ background: "linear-gradient(135deg,#135DFF,#0040cc)", color: "#fff", borderRadius: 8, padding: "9px 14px", fontSize: 11, fontWeight: 800, whiteSpace: "nowrap" as const, flexShrink: 0 }}>Generate →</div>
+        </div>
+      </div>
+
+      {/* Listing output */}
+      <div style={{ padding: "14px 16px" }}>
+        {/* Status pills */}
+        <div style={{ display: "flex", gap: 10, marginBottom: 10, flexWrap: "wrap" as const }}>
+          {[{ label: "TecDoc: Connected", dot: "#22c55e" }, { label: "OE: Matched", dot: "#22c55e" }].map((s) => (
+            <div key={s.label} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+              <div style={{ width: 6, height: 6, borderRadius: "50%", background: s.dot, flexShrink: 0 }} />
+              <span style={{ fontSize: 9, fontWeight: 700, color: "#4d6a8a" }}>{s.label}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Listing title */}
+        <div style={{ fontSize: 14, fontWeight: 800, color: "#0d1f35", lineHeight: 1.4, marginBottom: 10 }}>
+          Gasket Cylinder Head — Jaguar XE XF<br/>
+          2.0D 204DTD 2015–2021
+        </div>
+
+        {/* OE number tags */}
+        <div style={{ display: "flex", gap: 5, flexWrap: "wrap" as const, marginBottom: 10 }}>
+          {["G4D3601ACA", "JDE36769", "LR073640"].map(t => (
+            <span key={t} style={{ fontFamily: "'Courier New',monospace", fontSize: 9, fontWeight: 700, background: "#eef2ff", color: "#3730a3", border: "1px solid #c7d2fe", borderRadius: 4, padding: "2px 7px", display: "inline-block" }}>{t}</span>
+          ))}
+          <span style={{ fontFamily: "'Courier New',monospace", fontSize: 9, fontWeight: 700, background: "#fff7ed", color: "#9a3412", border: "1px solid #fed7aa", borderRadius: 4, padding: "2px 7px", display: "inline-block" }}>AJUSA 1023720</span>
+          <span style={{ fontFamily: "'Courier New',monospace", fontSize: 9, fontWeight: 700, background: "#f0fdf4", color: "#166534", border: "1px solid #bbf7d0", borderRadius: 4, padding: "2px 7px", display: "inline-block" }}>107640</span>
+        </div>
+
+        {/* Compatibility box */}
+        <div style={{ background: "linear-gradient(135deg,#eef4ff,#dceaff)", border: "1.5px solid rgba(19,93,255,0.18)", borderRadius: 10, padding: "10px 12px", display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+          <div style={{ fontSize: 24, fontWeight: 900, color: "#135DFF", lineHeight: 1, flexShrink: 0 }}>75</div>
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: "#0d1f35" }}>compatible vehicles</div>
+            <div style={{ fontSize: 10, color: "#3d5a7a" }}>Land Rover · Jaguar · 2014–</div>
+          </div>
+        </div>
+
+        {/* Action buttons */}
+        <div style={{ display: "flex", gap: 6 }}>
+          {[
+            { label: "Copy HTML", bg: "#4338ca" },
+            { label: "Export CSV", bg: "#059669" },
+            { label: "Saved", bg: "#3d5a7a" },
+          ].map(btn => (
+            <div key={btn.label} style={{ flex: 1, background: btn.bg, color: "#fff", borderRadius: 8, padding: "10px 0", fontSize: 9.5, fontWeight: 800, textAlign: "center" as const }}>{btn.label}</div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════
    HERO
 ═══════════════════════════════════════ */
 export default function Hero() {
@@ -884,7 +960,7 @@ export default function Hero() {
 
 
 
-        <div style={{
+        <div className="hero-section-grid" style={{
           maxWidth:1440, margin:"0 auto", width:"100%",
           display:"grid",
           gridTemplateColumns:"390px 1fr",
@@ -993,9 +1069,12 @@ export default function Hero() {
 
           </div>
 
-          {/* ── RIGHT: CAROUSEL ── */}
-          <div className="hero-panel-float" style={{ minWidth:0, paddingLeft:8 }}>
+          {/* ── RIGHT: CAROUSEL (desktop) / mobile preview ── */}
+          <div className="hero-carousel-desktop hero-panel-float" style={{ minWidth:0, paddingLeft:8 }}>
             <HeroCarousel/>
+          </div>
+          <div className="hero-mobile-preview">
+            <MobileHeroPreview/>
           </div>
 
         </div>

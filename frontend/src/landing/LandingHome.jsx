@@ -21,7 +21,7 @@ export default function LandingHome() {
   useScrollDepthTracking();
 
   return (
-    <div style={{ minHeight: "100vh", background: "#ffffff", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+    <div className="landing-root" style={{ minHeight: "100vh", background: "#ffffff", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
       <Navbar />
       <Hero />
       <ProblemSection />

@@ -277,7 +277,7 @@ const problems = [
 
 export default function ProblemSection() {
   return (
-    <section style={{ background: BG, padding: "100px 24px" }}>
+    <section className="lp-section" style={{ background: BG, padding: "100px 24px" }}>
       <div style={{ maxWidth: 1100, margin: "0 auto" }}>
 
         {/* Header */}
@@ -300,7 +300,7 @@ export default function ProblemSection() {
         </div>
 
         {/* Cards */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 24 }}>
+        <div className="problem-cards-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 24 }}>
           {problems.map((p) => (
             <div key={p.num} style={{
               background: "#fff",

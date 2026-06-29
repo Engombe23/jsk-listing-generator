@@ -103,6 +103,7 @@ function PlanCard({ plan, annual }: { plan: Plan; annual: boolean }) {
 
   return (
     <div
+      className={isGrowth ? "pricing-growth-card" : ""}
       style={{
         position: "relative",
         background: isScale ? SCALE_BG : CARD_BG,
@@ -290,7 +291,7 @@ export default function Pricing() {
         </div>
 
         {/* Cards */}
-        <div style={{
+        <div className="pricing-grid" style={{
           display: "grid",
           gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
           gap: 28,
