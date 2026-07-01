@@ -3,7 +3,7 @@
 
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap');
 
-/* Reveal-on-scroll animation used by several landing sections */
+/* Reveal-on-scroll animation */
 .reveal {
   opacity: 0;
   transform: translateY(28px);
@@ -35,13 +35,12 @@
    NAVBAR — hamburger + mobile drawer
 ══════════════════════════════════════════════════════════════ */
 
-/* Hamburger button — hidden on desktop, shown on mobile */
 .nav-hamburger {
   display: none;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  width: 38px;
+  height: 38px;
   border: 1px solid #e2e8f0;
   border-radius: 10px;
   background: #fff;
@@ -55,14 +54,12 @@
   border-color: #cbd5e1;
 }
 
-/* Desktop nav links container */
 .nav-desktop-links {
   display: flex;
   flex: 1;
   align-items: stretch;
 }
 
-/* Desktop right-side buttons */
 .nav-desktop-right {
   display: flex;
   align-items: center;
@@ -71,7 +68,6 @@
   flex-shrink: 0;
 }
 
-/* Logo divider — hidden on mobile */
 .nav-logo-divider {
   padding-right: 28px;
   border-right: 1px solid #e2e8f0;
@@ -81,7 +77,6 @@
   align-items: center;
 }
 
-/* Mobile slide-down drawer */
 .nav-mobile-drawer {
   display: none;
   position: fixed;
@@ -90,18 +85,18 @@
   right: 0;
   background: #fff;
   border-bottom: 1px solid #e2e8f0;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.10);
+  box-shadow: 0 12px 32px rgba(0,0,0,0.10);
   z-index: 99;
   padding: 8px 20px 20px;
   animation: drawerSlideDown 0.2s ease;
 }
-.nav-mobile-drawer.open {
-  display: block;
-}
+.nav-mobile-drawer.open { display: block; }
+
 @keyframes drawerSlideDown {
   from { opacity: 0; transform: translateY(-6px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+
 .nav-mobile-drawer .drawer-nav-item {
   display: flex;
   align-items: center;
@@ -115,18 +110,16 @@
   cursor: pointer;
   transition: color 0.15s;
 }
-.nav-mobile-drawer .drawer-nav-item:hover {
-  color: #135DFF;
-}
-.nav-mobile-drawer .drawer-nav-item:last-of-type {
-  border-bottom: none;
-}
+.nav-mobile-drawer .drawer-nav-item:hover { color: #135DFF; }
+.nav-mobile-drawer .drawer-nav-item:last-of-type { border-bottom: none; }
+
 .nav-mobile-drawer .drawer-actions {
   margin-top: 16px;
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
+
 .nav-mobile-drawer .drawer-login {
   display: block;
   padding: 12px;
@@ -139,9 +132,8 @@
   text-decoration: none;
   transition: background 0.15s;
 }
-.nav-mobile-drawer .drawer-login:hover {
-  background: #f8fafc;
-}
+.nav-mobile-drawer .drawer-login:hover { background: #f8fafc; }
+
 .nav-mobile-drawer .drawer-cta {
   display: block;
   padding: 14px;
@@ -152,149 +144,273 @@
   font-weight: 700;
   color: #fff;
   text-decoration: none;
-  box-shadow: 0 4px 14px rgba(19, 93, 255, 0.30);
+  box-shadow: 0 4px 14px rgba(19,93,255,0.30);
 }
 
 /* ══════════════════════════════════════════════════════════════
-   HERO
+   HERO — desktop base states
 ══════════════════════════════════════════════════════════════ */
-.hero-section-grid {
-  /* base layout handled via inline style on desktop */
-}
-.hero-carousel-desktop {
-  /* shown by default */
-}
-.hero-mobile-preview {
-  display: none;
-}
+
+/* Product preview moved inline — hidden on desktop, shown on mobile */
+.hero-product-early { display: none; }
+
+.hero-section-grid { /* base layout handled via inline style on desktop */ }
+.hero-carousel-desktop { /* shown by default */ }
+.hero-mobile-preview { display: none; }
+
+/* Step connectors — default (desktop): invisible */
+.hero-step { /* inline flex styles */ }
+.hero-step-num { /* inline styles */ }
 
 /* ══════════════════════════════════════════════════════════════
-   SECTION GRIDS — CSS class names for mobile overrides.
-   Desktop layout is set via inline styles; !important here
-   overrides inline on mobile without touching component JS.
+   SECTION GRIDS — placeholder names for mobile overrides
 ══════════════════════════════════════════════════════════════ */
-
-/* Problem section cards */
-.problem-cards-grid { /* 3-col on desktop via inline */ }
-
-/* How It Works — 2-col */
-.how-it-works-grid  { /* 2-col on desktop via inline */ }
-.how-it-works-partlister { /* PartLister column — moved first on mobile */ }
-
-/* Before / After — 2-col */
-.before-after-grid       { /* 2-col on desktop via inline */ }
-.before-after-partlister { /* moved first on mobile */ }
-
-/* Features */
-.features-main-grid { /* listing gen 2-col */ }
-.features-row2-grid { /* SP + compat 2-col */ }
-.features-row3-grid { /* item specifics + CSV 2-col */ }
-
-/* Smart Pricing — 2-col */
-.smart-pricing-grid { /* 2-col on desktop via inline */ }
-
-/* Pricing — 3-col */
-.pricing-grid { /* 3-col via auto-fit on desktop */ }
-.pricing-growth-card { /* translateY(-14px) on desktop */ }
-
-/* FinalCTA buttons */
-.final-cta-btns { /* horizontal flex on desktop */ }
-
-/* Footer */
-.footer-top   { /* horizontal flex on desktop */ }
-.footer-links { /* horizontal flex on desktop */ }
+.problem-cards-grid  { }
+.how-it-works-grid   { }
+.how-it-works-partlister { }
+.before-after-grid   { }
+.before-after-partlister { }
+.features-main-grid  { }
+.features-row2-grid  { }
+.features-row3-grid  { }
+.smart-pricing-grid  { }
+.pricing-grid        { }
+.pricing-growth-card { }
+.pricing-plan-card   { }
+.final-cta-btns      { }
+.footer-top          { }
+.footer-links        { }
 
 /* ══════════════════════════════════════════════════════════════
    MOBILE — max-width: 768px  (tablets + phones)
 ══════════════════════════════════════════════════════════════ */
 @media (max-width: 768px) {
 
-  /* ── Navbar ── */
-  .nav-hamburger { display: flex; }
-  .nav-desktop-links { display: none !important; }
-  .nav-logo-divider {
-    border-right: none !important;
-    padding-right: 0 !important;
-    margin-right: 0 !important;
-  }
-  /* Login button hidden on mobile — in drawer instead */
-  .nav-login-btn { display: none !important; }
-  /* CTA shrinks a little on mobile */
-  .nav-cta-btn {
-    padding: 7px 13px !important;
-    font-size: 12px !important;
-  }
-  .nav-cta-text-long  { display: none   !important; }
-  .nav-cta-text-short { display: inline !important; }
+  /* ────────────────────────────────────────
+     NAVBAR: ~20% more compact
+  ──────────────────────────────────────── */
+  .nav-inner { height: 50px !important; }
 
-  /* ── Hero ── */
+  /* Logo slightly smaller */
+  .nav-logo-divider img { height: 26px !important; }
+
+  /* Hamburger shrinks to match */
+  .nav-hamburger {
+    display: flex;
+    width: 34px !important;
+    height: 34px !important;
+    border-radius: 8px !important;
+  }
+
+  /* Drawer offset matches new nav height */
+  .nav-mobile-drawer { top: 50px !important; }
+
+  /* Desktop links/login hidden */
+  .nav-desktop-links   { display: none !important; }
+  .nav-logo-divider    { border-right: none !important; padding-right: 0 !important; margin-right: 0 !important; }
+  .nav-login-btn       { display: none !important; }
+  .nav-cta-btn         { padding: 6px 12px !important; font-size: 12px !important; }
+  .nav-cta-text-long   { display: none   !important; }
+  .nav-cta-text-short  { display: inline !important; }
+
+  /* ────────────────────────────────────────
+     HERO: tighter padding, product appears early
+  ──────────────────────────────────────── */
+
+  /* Section itself: shorter on mobile */
+  .hero-section {
+    min-height: 0 !important;
+    padding-top: 52px !important;
+  }
+
+  /* Grid becomes single column, tight padding */
   .hero-section-grid {
     grid-template-columns: 1fr !important;
-    padding: 28px 20px 52px !important;
-    gap: 32px !important;
-  }
-  .hero-carousel-desktop { display: none !important; }
-  .hero-mobile-preview   { display: block !important; }
-
-  /* ── Section padding reduction ── */
-  .lp-section {
-    padding-top: 60px !important;
-    padding-bottom: 60px !important;
-    padding-left: 20px !important;
-    padding-right: 20px !important;
+    padding: 22px 20px 40px !important;
+    gap: 0 !important;
   }
 
-  /* ── Problem cards: 3-col → 1-col ── */
+  /* Background: reduce blueprint pattern, add vertical white fade */
+  .hero-pattern   { opacity: 0.06 !important; }
+  .hero-bg-mask   {
+    background: linear-gradient(
+      180deg,
+      rgba(248,250,252,0.97) 0%,
+      rgba(248,250,252,0.92) 50%,
+      rgba(248,250,252,0.78) 100%
+    ) !important;
+  }
+
+  /* Badge: tighter gap below */
+  .hero-badge { margin-bottom: 12px !important; }
+
+  /* Headline: optimised for mobile viewport */
+  .hero-h1 {
+    font-size: clamp(30px, 9vw, 42px) !important;
+    letter-spacing: -1.8px !important;
+    margin-bottom: 16px !important;
+    line-height: 1.07 !important;
+  }
+
+  /* Product preview: appears right after headline */
+  .hero-product-early {
+    display: block !important;
+    margin-bottom: 16px !important;
+  }
+  /* Hide the old right-column version (product now shown earlier) */
+  .hero-mobile-preview    { display: none !important; }
+  .hero-carousel-desktop  { display: none !important; }
+
+  /* Paragraph: tighter */
+  .hero-para {
+    font-size: 14px !important;
+    line-height: 1.72 !important;
+    margin-bottom: 16px !important;
+  }
+
+  /* CTAs: stacked, primary is full-width and dominant */
+  .hero-ctas {
+    flex-direction: column !important;
+    gap: 10px !important;
+    margin-bottom: 22px !important;
+  }
+  .hero-primary-cta {
+    width: 100% !important;
+    justify-content: center !important;
+    font-size: 15.5px !important;
+    padding: 15px 24px !important;
+    border-radius: 14px !important;
+    box-shadow:
+      0 10px 44px rgba(19,93,255,0.46),
+      0 4px 12px rgba(19,93,255,0.24),
+      inset 0 1px 0 rgba(255,255,255,0.22) !important;
+  }
+  .hero-secondary-cta {
+    width: 100% !important;
+    justify-content: center !important;
+    font-size: 13.5px !important;
+    padding: 12px 20px !important;
+  }
+
+  /* 3-step process: proper vertical flow with connectors */
+  .hero-steps {
+    gap: 0 !important;
+    margin-bottom: 4px !important;
+  }
+  .hero-step {
+    align-items: flex-start !important;
+    padding: 0 0 18px !important;
+    position: relative;
+  }
+  .hero-step:last-child { padding-bottom: 0 !important; }
+
+  /* Connector line between steps */
+  .hero-step:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    left: 13px;
+    top: 28px;
+    bottom: 0;
+    width: 2px;
+    background: linear-gradient(to bottom, #c7d9ff 0%, transparent 100%);
+    border-radius: 99px;
+  }
+
+  /* Step number: circular shape emphasises progression */
+  .hero-step-num {
+    border-radius: 50% !important;
+    width: 28px  !important;
+    height: 28px !important;
+    flex-shrink: 0;
+  }
+
+  /* ────────────────────────────────────────
+     PROBLEM SECTION
+  ──────────────────────────────────────── */
   .problem-cards-grid {
+    grid-template-columns: 1fr !important;
+    gap: 14px !important;
+  }
+
+  /* Transition/bridge card: more premium */
+  .hiw-bridge {
+    padding: 20px 28px !important;
+    margin-top: 44px !important;
+    border-radius: 14px !important;
+    box-shadow: 0 4px 20px rgba(19,45,70,0.08) !important;
+  }
+  .hiw-bridge-text {
+    font-size: 15px !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.2px !important;
+  }
+
+  /* ────────────────────────────────────────
+     HOW IT WORKS
+  ──────────────────────────────────────── */
+  .how-it-works-grid {
     grid-template-columns: 1fr !important;
     gap: 16px !important;
   }
-
-  /* ── How It Works: 2-col → 1-col, PartLister first ── */
-  .how-it-works-grid {
-    grid-template-columns: 1fr !important;
-    gap: 20px !important;
-  }
   .how-it-works-partlister { order: -1 !important; }
 
-  /* ── Before/After: 2-col → 1-col, PartLister first ── */
+  /* ────────────────────────────────────────
+     BEFORE / AFTER
+  ──────────────────────────────────────── */
   .before-after-grid {
     grid-template-columns: 1fr !important;
-    gap: 20px !important;
+    gap: 16px !important;
   }
   .before-after-partlister { order: -1 !important; }
 
-  /* ── Features: all grids → 1-col ── */
+  /* ────────────────────────────────────────
+     FEATURES
+  ──────────────────────────────────────── */
   .features-main-grid {
     grid-template-columns: 1fr !important;
-    gap: 24px !important;
+    gap: 20px !important;
   }
   .features-row2-grid {
     grid-template-columns: 1fr !important;
-    margin-bottom: 16px !important;
+    margin-bottom: 14px !important;
   }
-  .features-row3-grid {
-    grid-template-columns: 1fr !important;
-  }
+  .features-row3-grid { grid-template-columns: 1fr !important; }
 
-  /* ── Smart Pricing: 2-col → 1-col ── */
+  /* ────────────────────────────────────────
+     SMART PRICING
+  ──────────────────────────────────────── */
   .smart-pricing-grid {
     grid-template-columns: 1fr !important;
-    gap: 32px !important;
+    gap: 28px !important;
   }
 
-  /* ── Pricing: Growth card no float ── */
+  /* ────────────────────────────────────────
+     PRICING CARDS: less vertical padding
+  ──────────────────────────────────────── */
   .pricing-grid {
     grid-template-columns: 1fr !important;
     padding-top: 14px !important;
+    gap: 16px !important;
   }
-  .pricing-growth-card { transform: none !important; }
+  .pricing-plan-card {
+    padding: 22px 18px !important;
+  }
+  /* Growth card: no float, slightly more padding for badge room */
+  .pricing-growth-card {
+    transform: none !important;
+  }
+  .pricing-growth-card.pricing-plan-card {
+    padding: 28px 18px 22px !important;
+  }
 
-  /* ── Final CTA: buttons stack ── */
+  /* ────────────────────────────────────────
+     FINAL CTA
+  ──────────────────────────────────────── */
   .final-cta-btns {
     flex-direction: column !important;
     align-items: stretch !important;
     width: 100%;
+    gap: 12px !important;
   }
   .final-cta-btns > a,
   .final-cta-btns > button {
@@ -303,31 +419,32 @@
     box-sizing: border-box;
   }
 
-  /* ── Footer: columns stack ── */
-  .footer-top {
-    flex-direction: column !important;
-    gap: 24px !important;
-  }
-  .footer-links {
-    flex-direction: column !important;
-    gap: 24px !important;
+  /* ────────────────────────────────────────
+     FOOTER
+  ──────────────────────────────────────── */
+  .footer-top   { flex-direction: column !important; gap: 24px !important; }
+  .footer-links { flex-direction: column !important; gap: 24px !important; }
+
+  /* ────────────────────────────────────────
+     AUDIENCE / WHO IT'S FOR
+  ──────────────────────────────────────── */
+  .audience-grid { grid-template-columns: 1fr !important; }
+
+  /* ────────────────────────────────────────
+     SECTION PADDING (all lp-section)
+  ──────────────────────────────────────── */
+  .lp-section {
+    padding-top: 56px !important;
+    padding-bottom: 56px !important;
+    padding-left: 20px !important;
+    padding-right: 20px !important;
   }
 
-  /* ── Audience grid: 2-col min → 1-col ── */
-  .audience-grid {
-    grid-template-columns: 1fr !important;
-  }
-
-  /* ── Global image safety ── */
-  img {
-    max-width: 100%;
-    height: auto;
-  }
-
-  /* ── Overflow safety ── */
-  .landing-root {
-    overflow-x: hidden !important;
-  }
+  /* ────────────────────────────────────────
+     OVERFLOW + IMAGE SAFETY
+  ──────────────────────────────────────── */
+  img { max-width: 100%; height: auto; }
+  .landing-root { overflow-x: hidden !important; }
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -335,11 +452,11 @@
 ══════════════════════════════════════════════════════════════ */
 @media (max-width: 430px) {
   .hero-section-grid {
-    padding: 24px 16px 44px !important;
+    padding: 18px 16px 36px !important;
   }
   .lp-section {
-    padding-top: 52px !important;
-    padding-bottom: 52px !important;
+    padding-top: 48px !important;
+    padding-bottom: 48px !important;
     padding-left: 16px !important;
     padding-right: 16px !important;
   }
@@ -350,7 +467,7 @@
 ══════════════════════════════════════════════════════════════ */
 @media (max-width: 375px) {
   .hero-section-grid {
-    padding: 20px 16px 40px !important;
+    padding: 16px 14px 32px !important;
   }
   .lp-section {
     padding-left: 14px !important;

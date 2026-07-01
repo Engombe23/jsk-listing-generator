@@ -342,11 +342,11 @@ export default function ProblemSection() {
 
         {/* Bridge */}
         <div style={{ textAlign: "center", marginTop: 56 }}>
-          <div style={{ display: "inline-flex", alignItems: "center", gap: 10, background: "#fff", border: `1px solid ${BORDER}`, borderRadius: 12, padding: "14px 28px", boxShadow: "0 2px 12px rgba(19,45,70,0.06)" }}>
+          <div className="hiw-bridge" style={{ display: "inline-flex", alignItems: "center", gap: 10, background: "#fff", border: `1px solid ${BORDER}`, borderRadius: 12, padding: "14px 28px", boxShadow: "0 2px 12px rgba(19,45,70,0.06)" }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={ACCENT} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M12 5v14M5 12l7 7 7-7"/>
             </svg>
-            <span style={{ fontSize: 14, fontWeight: 600, color: TEXT, fontFamily: "Plus Jakarta Sans, sans-serif" }}>PartLister automates all of this — part number in, ready-to-list out.</span>
+            <span className="hiw-bridge-text" style={{ fontSize: 14, fontWeight: 600, color: TEXT, fontFamily: "Plus Jakarta Sans, sans-serif" }}>PartLister automates all of this — part number in, ready-to-list out.</span>
           </div>
         </div>
 

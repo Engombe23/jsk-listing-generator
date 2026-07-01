@@ -874,7 +874,7 @@ export default function Hero() {
     <>
       <style>{globalStyles}</style>
 
-      <section style={{
+      <section className="hero-section" style={{
         minHeight:"100vh",
         paddingTop: 68,
         /* ── LAYER 1: base gradient — bright centre, darker outer edges ── */
@@ -943,7 +943,7 @@ export default function Hero() {
 
         {/* ── LAYER 6: angled parts pattern ── */}
         {/* pattern tile, rotated */}
-        <div style={{
+        <div className="hero-pattern" style={{
           position:"absolute", inset:"-60%", pointerEvents:"none",
           backgroundImage:"url(/parts-pattern-outline.png?v=2)",
           backgroundSize:"820px 820px",
@@ -953,7 +953,7 @@ export default function Hero() {
           mixBlendMode:"multiply",
         } as any}/>
         {/* fade mask over the pattern — covers left ~55% in screen space so text is clear */}
-        <div style={{
+        <div className="hero-bg-mask" style={{
           position:"absolute", inset:0, pointerEvents:"none",
           background:"linear-gradient(to right, #f0f4fa 0%, #f0f4fa 28%, rgba(240,244,250,0.85) 38%, rgba(240,244,250,0) 58%)",
         }}/>
@@ -973,7 +973,7 @@ export default function Hero() {
           {/* ── LEFT COPY ── */}
           <div>
             {/* badge */}
-            <div style={{
+            <div className="hero-badge" style={{
               display:"inline-flex", alignItems:"center", gap:8,
               background:"#fff", border:`1.5px solid ${B}`, borderRadius:999,
               padding:"6px 14px 6px 8px", marginBottom:28,
@@ -996,7 +996,7 @@ export default function Hero() {
               </div>
             </div>
 
-            <h1 style={{
+            <h1 className="hero-h1" style={{
               margin:"0 0 20px", fontSize:"clamp(40px,3.8vw,56px)",
               fontWeight:900, lineHeight:1.04, letterSpacing:"-2.5px", color:T,
             }}>
@@ -1005,14 +1005,19 @@ export default function Hero() {
               <span style={{ color:T }}> out.</span>
             </h1>
 
-            <p style={{ fontSize:14.5, color:M, lineHeight:1.8, marginBottom:28, maxWidth:360 }}>
+            {/* Product preview shown early on mobile — hidden on desktop via CSS */}
+            <div className="hero-product-early">
+              <MobileHeroPreview/>
+            </div>
+
+            <p className="hero-para" style={{ fontSize:14.5, color:M, lineHeight:1.8, marginBottom:28, maxWidth:360 }}>
               Enter an OE, OEM or article number. We fetch fitment data,
               generate your title, pull interchangeable, OE and K numbers,
               and export your eBay listing — instantly.
             </p>
 
-            <div style={{ display:"flex", gap:10, marginBottom:28, flexWrap:"wrap", alignItems:"center" }}>
-              <Link to="/auth/sign-up" onClick={() => trackEvent("signup_clicked", { cta_location: "hero" })} style={{
+            <div className="hero-ctas" style={{ display:"flex", gap:10, marginBottom:28, flexWrap:"wrap", alignItems:"center" }}>
+              <Link className="hero-primary-cta" to="/auth/sign-up" onClick={() => trackEvent("signup_clicked", { cta_location: "hero" })} style={{
                 padding:"13px 26px",
                 background:`linear-gradient(135deg,${A} 0%,#0040cc 100%)`,
                 color:"#fff", textDecoration:"none",
@@ -1026,7 +1031,7 @@ export default function Hero() {
                   <path d="M2 7h10M8 3l4 4-4 4" stroke="#fff" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
               </Link>
-              <a href="#how-it-works" style={{
+              <a className="hero-secondary-cta" href="#how-it-works" style={{
                 padding:"13px 20px", background:"rgba(255,255,255,0.8)", color:T,
                 textDecoration:"none", fontWeight:700, fontSize:13.5,
                 borderRadius:12, border:`1.5px solid ${B}`,
@@ -1042,14 +1047,14 @@ export default function Hero() {
               </a>
             </div>
 
-            <div style={{ display:"flex", flexDirection:"column", gap:8, marginBottom:28 }}>
+            <div className="hero-steps" style={{ display:"flex", flexDirection:"column", gap:8, marginBottom:28 }}>
               {[
                 { n:"1", label:"Enter OE / article number",    sub:"Any part — we handle the lookup." },
                 { n:"2", label:"Pull listing data automatically", sub:"Item specifics, OE references, supplier part numbers, compatibility and K numbers are fetched from catalogue data." },
                 { n:"3", label:"Export to eBay in one click",    sub:"Copy HTML or export CSV." },
               ].map((s,i)=>(
-                <div key={i} style={{ display:"flex", alignItems:"center", gap:10 }}>
-                  <div style={{
+                <div key={i} className="hero-step" style={{ display:"flex", alignItems:"center", gap:10 }}>
+                  <div className="hero-step-num" style={{
                     width:26, height:26, borderRadius:8, flexShrink:0,
                     background: i===0 ? `linear-gradient(135deg,${A},#0040cc)` : AL,
                     border: i===0 ? "none" : `1.5px solid ${B}`,

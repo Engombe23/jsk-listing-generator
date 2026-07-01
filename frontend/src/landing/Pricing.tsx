@@ -103,7 +103,7 @@ function PlanCard({ plan, annual }: { plan: Plan; annual: boolean }) {
 
   return (
     <div
-      className={isGrowth ? "pricing-growth-card" : ""}
+      className={`pricing-plan-card${isGrowth ? " pricing-growth-card" : ""}`}
       style={{
         position: "relative",
         background: isScale ? SCALE_BG : CARD_BG,

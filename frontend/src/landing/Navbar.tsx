@@ -94,7 +94,7 @@ export default function Navbar() {
           fontFamily: "'Plus Jakarta Sans', Inter, system-ui, sans-serif",
         }}
       >
-        <div style={{ maxWidth: 1440, margin: "0 auto", padding: "0 20px", display: "flex", alignItems: "stretch", height: 62 }}>
+        <div className="nav-inner" style={{ maxWidth: 1440, margin: "0 auto", padding: "0 20px", display: "flex", alignItems: "stretch", height: 62 }}>
 
           {/* Logo */}
           <div className="nav-logo-divider">
