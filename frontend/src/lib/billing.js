@@ -31,6 +31,23 @@ export async function refreshUserPlan(userId) {
     .maybeSingle();
 
   if (error) {
+    const rpcMissing =
+      error.code === "PGRST202" || /not find the function/i.test(error.message || "");
+    if (rpcMissing) {
+      // Fallback if usage_period_reset.sql isn't deployed yet — no monthly reset.
+      const { data: fallback, error: selectErr } = await supabase
+        .from("profiles")
+        .select(
+          "plan, listings_used, usage_period_start, stripe_customer_id, stripe_subscription_id, subscription_status, billing_interval"
+        )
+        .eq("id", userId)
+        .maybeSingle();
+      if (!selectErr && fallback) {
+        cachedProfile = fallback;
+        cachedPlan = fallback.plan || "free";
+        return cachedPlan;
+      }
+    }
     console.warn("[billing] profile fetch failed:", error.message);
     return cachedPlan;
   }

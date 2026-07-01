@@ -50,8 +50,12 @@ export function SessionProvider({ children }) {
 
         // PostHog: identify the person and register internal_user as a super
         // property so it's automatically included on every subsequent capture.
-        posthog.identify(s.user.id, { email, internal_user: internal });
-        posthog.register({ internal_user: internal });
+        try {
+          posthog.identify(s.user.id, { email, internal_user: internal });
+          posthog.register({ internal_user: internal });
+        } catch (err) {
+          console.warn("[session] PostHog identify failed:", err?.message);
+        }
 
         // GA4: set as a user property so it persists across all events in the
         // session and can be used as an audience filter in GA4 reports.

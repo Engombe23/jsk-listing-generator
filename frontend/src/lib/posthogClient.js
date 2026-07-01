@@ -19,6 +19,7 @@ try {
 const safePosthog = {
   capture:    (...args) => { try { posthog.capture(...args);    } catch {} },
   identify:   (...args) => { try { posthog.identify(...args);   } catch {} },
+  register:   (...args) => { try { posthog.register(...args);   } catch {} },
   reset:      (...args) => { try { posthog.reset(...args);      } catch {} },
   alias:      (...args) => { try { posthog.alias(...args);      } catch {} },
   group:      (...args) => { try { posthog.group(...args);      } catch {} },
