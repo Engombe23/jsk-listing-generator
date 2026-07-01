@@ -1,6 +1,27 @@
 import { supabaseAdmin } from "./supabaseAdmin.js";
 import { isWhitelisted, isUnlimited, hasPlanFeature, listingLimitForPlan } from "./planLimits.js";
 
+const PROFILE_COLS =
+  "plan, listings_used, usage_period_start, stripe_customer_id, stripe_subscription_id, subscription_status, billing_interval";
+
+function isRpcNotDeployed(error) {
+  return error?.code === "PGRST202" || /not find the function/i.test(error?.message || "");
+}
+
+// Fallback if usage_period_reset.sql isn't deployed yet — no monthly reset.
+async function getOrCreateProfileFallback(userId) {
+  const { data } = await supabaseAdmin.from("profiles").select(PROFILE_COLS).eq("id", userId).maybeSingle();
+  if (data) return data;
+
+  const { data: created, error } = await supabaseAdmin
+    .from("profiles")
+    .insert({ id: userId, plan: "free" })
+    .select(PROFILE_COLS)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return created;
+}
+
 // Fetch a user's profile row, resetting listings_used if a full month has
 // elapsed since usage_period_start. The reset logic lives in a single
 // Postgres function (see supabase/usage_period_reset.sql) so the backend and
@@ -10,8 +31,9 @@ export async function getOrCreateProfile(userId) {
     .rpc("get_or_create_profile_with_reset", { p_user_id: userId })
     .maybeSingle();
 
-  if (error) throw new Error(error.message);
-  return data;
+  if (!error) return data;
+  if (isRpcNotDeployed(error)) return getOrCreateProfileFallback(userId);
+  throw new Error(error.message);
 }
 
 // Call BEFORE generating a listing. Does not mutate usage — only answers
