@@ -7,6 +7,7 @@ const MUTED = "#4d6a8a";
 export default function FinalCTA() {
   return (
     <section
+      className="lp-section"
       style={{
         background: `linear-gradient(135deg, #0d1f35 0%, #135DFF 100%)`,
         padding: "100px 24px",
@@ -41,6 +42,7 @@ export default function FinalCTA() {
         </p>
 
         <div
+          className="final-cta-btns"
           style={{
             display: "flex",
             gap: 16,

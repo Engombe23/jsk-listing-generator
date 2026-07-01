@@ -104,11 +104,11 @@ const STEPS = [
 
 export default function BeforeAfter() {
   return (
-    <section style={{ padding: "100px 24px", background: "#fff", fontFamily: "Plus Jakarta Sans, sans-serif" }}>
+    <section className="lp-section" style={{ padding: "100px 24px", background: "#fff", fontFamily: "Plus Jakarta Sans, sans-serif" }}>
       <div style={{ maxWidth: 1120, margin: "0 auto" }}>
 
         {/* ── Two columns ── */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1.15fr", gap: 20, alignItems: "stretch" }}>
+        <div className="before-after-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1.15fr", gap: 20, alignItems: "stretch" }}>
 
           {/* ── LEFT: Manual Workflow ── */}
           <div style={{
@@ -160,7 +160,7 @@ export default function BeforeAfter() {
           </div>
 
           {/* ── RIGHT: With PartLister ── */}
-          <div style={{
+          <div className="before-after-partlister" style={{
             background: "#EEF5FF",
             border: `1.5px solid ${ACCENT}`,
             borderRadius: 20,

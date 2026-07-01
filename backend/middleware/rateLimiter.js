@@ -1,12 +1,9 @@
-import rateLimit from "express-rate-limit";
+import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 
-// Caps exposure on endpoints that call paid third-party APIs (RapidAPI/TecDoc,
-// OpenAI, eBay). Keyed by the authenticated user (req.user.id, set by
-// requireAuth) rather than IP — these routes already require auth, so this
-// protects against one account hammering the API regardless of which IP/VPN
-// it's coming from. Falls back to IP only if somehow called before auth.
+// Keyed by authenticated user ID (set by requireAuth). Falls back to the
+// express-rate-limit ipKeyGenerator helper which handles IPv6 correctly.
 function keyByUser(req) {
-  return req.user?.id || req.ip;
+  return req.user?.id || ipKeyGenerator(req);
 }
 
 function makeLimiter({ max, windowMinutes, message }) {

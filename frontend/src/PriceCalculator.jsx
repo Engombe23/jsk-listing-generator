@@ -1,5 +1,6 @@
-﻿import React, { memo, useState, useEffect, useRef } from "react";
+﻿import React, { memo, useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useSessionState } from "./useSessionState.js";
 import { useSession } from "./context/SessionContext";
 import { redirectToStripeCheckout, upgradeSubscription } from "./lib/billing";
@@ -7,13 +8,23 @@ import { getNextPlan, getUpgradeTierForFeature, hasActiveSubscription } from "./
 import { BUTTON_BASE, SMALL_BUTTON_STYLE, INPUT_STYLE } from "./shared.jsx";
 import SavedProducts from "./SavedProducts.jsx";
 import { trackEvent } from "./lib/analytics";
+import { loadPreferences } from "./useListingPreferences.js";
+import { MARKETPLACES } from "./i18n/marketplaces.js";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
 
-// ─── Formatters ───────────────────────────────────────────────────────────────
-const fmt    = (n) => (n === null || isNaN(n)) ? "—" : (n < 0 ? `-£${Math.abs(n).toFixed(2)}` : `£${n.toFixed(2)}`);
+// ─── Currency helpers ─────────────────────────────────────────────────────────
+const CURRENCY_SYMBOLS = { GBP: "£", EUR: "€", USD: "$", TRY: "₺", AED: "د.إ" };
+function currencySymbol(code) { return CURRENCY_SYMBOLS[code] || code || "£"; }
+function fmtCurrency(n, sym) {
+  if (n === null || isNaN(n)) return "—";
+  return n < 0 ? `-${sym}${Math.abs(n).toFixed(2)}` : `${sym}${n.toFixed(2)}`;
+}
+
+// ─── Formatters (GBP — for the left-panel calculator which uses user-entered values) ───
+const fmt    = (n) => fmtCurrency(n, "£");
 const fmtPct = (n) => (n === null || isNaN(n)) ? "—" : `${n.toFixed(1)}%`;
-const fmtGBP = (v) => (v != null && !isNaN(v)) ? `£${Number(v).toFixed(2)}` : "—";
+const fmtGBP = (v, sym = "£") => (v != null && !isNaN(v)) ? `${sym}${Number(v).toFixed(2)}` : "—";
 
 // ─── Keyframes ────────────────────────────────────────────────────────────────
 (function () {
@@ -286,7 +297,7 @@ function SourceListings({ listings, excludedListings, show, onToggle, tab, onTab
 }
 
 // ─── Pricing Band ─────────────────────────────────────────────────────────────
-function PricingBand({ data, price }) {
+function PricingBand({ data, price, sym = "£" }) {
   if (!data) return null;
   const range = data.high - data.low;
   if (range <= 0) return null;
@@ -359,7 +370,7 @@ function PricingBand({ data, price }) {
                 boxShadow: `0 0 16px ${MARKER}99, 0 2px 8px rgba(0,0,0,0.5)`,
                 letterSpacing: -0.2,
               }}>
-                {fmtGBP(price)}
+                {fmtGBP(price, sym)}
               </div>
               <div style={{ width: 2, height: 14, background: `linear-gradient(to bottom, ${MARKER}cc, transparent)` }} />
             </div>
@@ -392,7 +403,7 @@ function PricingBand({ data, price }) {
 
           {/* LOW — always shown */}
           <div style={{ position: "absolute", left: 0 }}>
-            <div style={{ fontSize: 13, fontWeight: 800, color: "var(--text-accent)", lineHeight: 1 }}>{fmtGBP(data.low)}</div>
+            <div style={{ fontSize: 13, fontWeight: 800, color: "var(--text-accent)", lineHeight: 1 }}>{fmtGBP(data.low, sym)}</div>
             <div style={{ fontSize: 11, color: C.muted, marginTop: 3 }}>Low</div>
           </div>
 
@@ -400,7 +411,7 @@ function PricingBand({ data, price }) {
           {showMergedLabel && (
             <div style={{ position: "absolute", left: `${mergedMidPct}%`, transform: "translateX(-50%)", textAlign: "center", whiteSpace: "nowrap" }}>
               <div style={{ fontSize: 13, fontWeight: 800, color: "#c4d4e8", lineHeight: 1 }}>
-                {fmtGBP(data.average)} / {fmtGBP(data.median)}
+                {fmtGBP(data.average, sym)} / {fmtGBP(data.median, sym)}
               </div>
               <div style={{ fontSize: 11, color: C.muted, marginTop: 3 }}>Avg / Med</div>
             </div>
@@ -409,7 +420,7 @@ function PricingBand({ data, price }) {
           {/* MEDIAN (only when not merged and not too close to Low or High) */}
           {showMedLabel && (
             <div style={{ position: "absolute", left: `${medPct}%`, transform: "translateX(-50%)", textAlign: "center", whiteSpace: "nowrap" }}>
-              <div style={{ fontSize: 13, fontWeight: 800, color: "#c4d4e8", lineHeight: 1 }}>{fmtGBP(data.median)}</div>
+              <div style={{ fontSize: 13, fontWeight: 800, color: "#c4d4e8", lineHeight: 1 }}>{fmtGBP(data.median, sym)}</div>
               <div style={{ fontSize: 11, color: C.muted, marginTop: 3 }}>Median</div>
             </div>
           )}
@@ -417,14 +428,14 @@ function PricingBand({ data, price }) {
           {/* AVERAGE (only when not merged and not too close to Low or High) */}
           {showAvgLabel && (
             <div style={{ position: "absolute", left: `${avgPct}%`, transform: "translateX(-50%)", textAlign: "center", whiteSpace: "nowrap" }}>
-              <div style={{ fontSize: 13, fontWeight: 800, color: "#c4d4e8", lineHeight: 1 }}>{fmtGBP(data.average)}</div>
+              <div style={{ fontSize: 13, fontWeight: 800, color: "#c4d4e8", lineHeight: 1 }}>{fmtGBP(data.average, sym)}</div>
               <div style={{ fontSize: 11, color: C.muted, marginTop: 3 }}>Average</div>
             </div>
           )}
 
           {/* HIGH — always shown */}
           <div style={{ position: "absolute", right: 0, textAlign: "right" }}>
-            <div style={{ fontSize: 13, fontWeight: 800, color: "var(--text-accent)", lineHeight: 1 }}>{fmtGBP(data.high)}</div>
+            <div style={{ fontSize: 13, fontWeight: 800, color: "var(--text-accent)", lineHeight: 1 }}>{fmtGBP(data.high, sym)}</div>
             <div style={{ fontSize: 11, color: C.muted, marginTop: 3 }}>High</div>
           </div>
         </div>
@@ -475,7 +486,8 @@ function thinLabels(ticks) {
 }
 
 // ─── Price Distribution — Market Intelligence Chart ───────────────────────────
-function PriceDistribution({ data, listings, price, onBinSelect, soldCounts = {}, soldCountsFetching = false, onTableView }) {
+function PriceDistribution({ data, listings, price, onBinSelect, soldCounts = {}, soldCountsFetching = false, onTableView, sym = "£", marketplaceLabel = "eBay UK" }) {
+  const { t } = useTranslation();
   const svgRef       = useRef(null);
   const [hoveredBin,  setHoveredBin]  = useState(null);
   const [clickedBin,  setClickedBin]  = useState(null); // index of clicked bar → opens zoom + right panel
@@ -514,10 +526,10 @@ function PriceDistribution({ data, listings, price, onBinSelect, soldCounts = {}
     .filter(p => p != null && p > 0)
     .sort((a, b) => a - b);
 
-  if (prices.length < 2 || !data) return <PricingBand data={data} price={price} />;
+  if (prices.length < 2 || !data) return <PricingBand data={data} price={price} sym={sym} />;
   const { low, high, median, average } = data;
   const range = high - low;
-  if (range <= 0) return <PricingBand data={data} price={price} />;
+  if (range <= 0) return <PricingBand data={data} price={price} sym={sym} />;
   const n = prices.length;
   nRef.current = n;
   const hasPrice = price > 0;
@@ -627,9 +639,9 @@ function PriceDistribution({ data, listings, price, onBinSelect, soldCounts = {}
   }
 
   const CARD_H = 72;
-  const fmtX = v => v >= 10000 ? `£${Math.round(v / 1000)}k`
-                  : v >= 1000  ? `£${+(v / 1000).toFixed(1)}k`.replace('.0k', 'k')
-                  : `£${Math.round(v)}`;
+  const fmtX = v => v >= 10000 ? `${sym}${Math.round(v / 1000)}k`
+                  : v >= 1000  ? `${sym}${+(v / 1000).toFixed(1)}k`.replace('.0k', 'k')
+                  : `${sym}${Math.round(v)}`;
   // Compact range label: £20–40, £1k–1.2k, £800–£1k
   const fmtRange = (s, e) => `${fmtX(s)}–${fmtX(e)}`;
   fmtXRef.current = fmtX;
@@ -694,15 +706,15 @@ function PriceDistribution({ data, listings, price, onBinSelect, soldCounts = {}
       <div style={{ padding: "18px 22px 12px", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 18, fontWeight: 800, color: "var(--text)", letterSpacing: -0.4, lineHeight: 1.2 }}>
-            Price Distribution
+            {t("pricing.priceDistribution")}
           </div>
           <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4 }}>
-            <strong style={{ color: "var(--text-accent)" }}>{n}</strong> listings analysed
+            {t("pricing.listingsAnalysed", { count: n })}
           </div>
         </div>
         {/* Volume / Cumulative % / Table tabs */}
         <div style={{ display: "flex", gap: 2, background: "var(--chart-tab-bg)", borderRadius: 8, padding: "3px", flexShrink: 0 }}>
-          {[["volume", "Volume"], ["table", "Table"]].map(([mode, label]) => (
+          {[["volume", t("pricing.volume")], ["table", t("pricing.table")]].map(([mode, label]) => (
             <button key={mode} onClick={() => { setViewMode(mode); if (mode === "table" && onTableView) onTableView(); }} style={{
               padding: "5px 13px", fontSize: 10, fontWeight: 700,
               letterSpacing: 0.5,
@@ -734,7 +746,7 @@ function PriceDistribution({ data, listings, price, onBinSelect, soldCounts = {}
             <div style={{ fontSize: 20, fontWeight: 900, color: m.col, letterSpacing: -0.5, lineHeight: 1, fontVariantNumeric: "tabular-nums",
               textShadow: m.hero ? `0 0 18px ${m.col}66` : "none",
             }}>
-              {fmtGBP(m.v)}
+              {fmtGBP(m.v, sym)}
               {m.outside && <span style={{ fontSize: 10, marginLeft: 5, opacity: 0.5 }}>{m.v < viewMin ? "◀" : "▶"}</span>}
             </div>
           </div>
@@ -1008,7 +1020,7 @@ function PriceDistribution({ data, listings, price, onBinSelect, soldCounts = {}
               <div>
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   <span style={{ fontSize: 9, fontWeight: 800, color: "var(--blue)", textTransform: "uppercase", letterSpacing: 1.4, background: "var(--blue-bg)", border: "1px solid var(--border-blue)", borderRadius: 4, padding: "2px 8px" }}>
-                    Zoomed
+                    {t("pricing.zoomed")}
                   </span>
                   <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>
                     {fmtX(zMin)} – {fmtX(zMax)}
@@ -1018,7 +1030,7 @@ function PriceDistribution({ data, listings, price, onBinSelect, soldCounts = {}
                   </span>
                 </div>
                 <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4 }}>
-                  <strong style={{ color: "var(--text-accent)" }}>{totalInRange}</strong> listings in range
+                  {t("pricing.listingsInRange", { count: totalInRange })}
                 </div>
               </div>
               <button onClick={() => { setClickedBin(null); setZoomRange(null); }} style={{
@@ -1026,7 +1038,7 @@ function PriceDistribution({ data, listings, price, onBinSelect, soldCounts = {}
                 borderRadius: 5, color: "var(--text-muted)", cursor: "pointer",
                 fontSize: 10, fontWeight: 600, padding: "3px 10px", letterSpacing: 0.3,
               }}>
-                ← Back
+                ← {t("pricing.back")}
               </button>
             </div>
 
@@ -1200,7 +1212,7 @@ function PriceDistribution({ data, listings, price, onBinSelect, soldCounts = {}
 
         const fmtShipping = (cost, type) => {
           if (type === "FREE" || cost === 0) return "Free";
-          if (cost != null) return `+£${cost.toFixed(2)}`;
+          if (cost != null) return `+${sym}${cost.toFixed(2)}`;
           return "—";
         };
 
@@ -1226,7 +1238,7 @@ function PriceDistribution({ data, listings, price, onBinSelect, soldCounts = {}
           <div style={{ padding: "0 22px 18px" }}>
             {/* Sort bar */}
             <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12 }}>
-              <span style={{ fontSize: 9, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: 1, fontWeight: 700 }}>Sort</span>
+              <span style={{ fontSize: 9, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: 1, fontWeight: 700 }}>{t("pricing.sort")}</span>
               {SORTS.map(s => (
                 <button key={s.key} onClick={() => setTableSort(s.key)} style={{
                   padding: "3px 10px", fontSize: 10, fontWeight: 600,
@@ -1295,7 +1307,7 @@ function PriceDistribution({ data, listings, price, onBinSelect, soldCounts = {}
                     </div>
                     {/* Price */}
                     <div style={{ width: 62, flexShrink: 0, fontSize: 12, fontWeight: 800, color: isUser ? "#00e5ff" : "var(--text)", fontVariantNumeric: "tabular-nums" }}>
-                      {fmtGBP(item.price)}
+                      {fmtGBP(item.price, sym)}
                     </div>
                     {/* Sold qty */}
                     <div style={{ width: 48, flexShrink: 0, fontSize: 11, fontVariantNumeric: "tabular-nums" }}>
@@ -1349,7 +1361,7 @@ function PriceDistribution({ data, listings, price, onBinSelect, soldCounts = {}
       {/* ── Footer ── */}
       <div style={{ padding: "10px 20px 14px", borderTop: "1px solid var(--border-light)", fontSize: 10, color: "var(--text-dim)", display: "flex", alignItems: "center", gap: 7 }}>
         <span style={{ fontSize: 13, opacity: 0.5 }}>ⓘ</span>
-        Prices analysed from active eBay UK listings only. Data updates every 24 hours.
+        Prices analysed from active {marketplaceLabel} listings only. Data updates every 24 hours.
       </div>
 
       </div>{/* end main chart column */}
@@ -1366,7 +1378,7 @@ function PriceDistribution({ data, listings, price, onBinSelect, soldCounts = {}
         const displayRange = zoomRange ? zoomRange : b;
         const fmtShip = (cost, type) => {
           if (type === "FREE" || cost === 0) return "Free delivery";
-          if (cost != null) return `+£${cost.toFixed(2)} postage`;
+          if (cost != null) return `+${sym}${cost.toFixed(2)} postage`;
           return "";
         };
         const sorted = [...bl].sort((a, z) => {
@@ -1412,14 +1424,14 @@ function PriceDistribution({ data, listings, price, onBinSelect, soldCounts = {}
 
             {/* Sort bar */}
             <div style={{ padding: "8px 14px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 7 }}>
-              <span style={{ fontSize: 10, color: "var(--text-muted)", whiteSpace: "nowrap" }}>Sort by:</span>
+              <span style={{ fontSize: 10, color: "var(--text-muted)", whiteSpace: "nowrap" }}>{t("pricing.sort")}:</span>
               <select value={panelSort} onChange={e => setPanelSort(e.target.value)} style={{
                 background: "var(--bg-surface2)", border: "1px solid var(--border)",
                 borderRadius: 5, color: "var(--text-muted)", fontSize: 10, padding: "3px 8px",
                 cursor: "pointer", flex: 1,
               }}>
-                <option value="asc">Price: Low to High</option>
-                <option value="desc">Price: High to Low</option>
+                <option value="asc">{t("pricing.priceLowHigh")}</option>
+                <option value="desc">{t("pricing.priceHighLow")}</option>
                 <option value="feedback">Most Feedback</option>
               </select>
             </div>
@@ -1451,7 +1463,7 @@ function PriceDistribution({ data, listings, price, onBinSelect, soldCounts = {}
                     </div>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                       <span style={{ fontSize: 13, fontWeight: 800, color: "var(--text)", fontVariantNumeric: "tabular-nums" }}>
-                        {fmtGBP(l.price)}
+                        {fmtGBP(l.price, sym)}
                         <span style={{ fontSize: 9, marginLeft: 4, opacity: 0.5 }}>↗</span>
                       </span>
                     </div>
@@ -1567,7 +1579,7 @@ function SmartPricingLocked({ onUpgrade, upgrading = false, upgradeError = null 
             <span style={{ fontSize: 18, fontWeight: 800, color: "var(--text-on-dark)" }}>Smart eBay Pricing</span>
             <span style={{ fontSize: 9, fontWeight: 800, color: C.blue, background: "rgba(19,93,255,0.18)", border: "1px solid rgba(19,93,255,0.4)", borderRadius: 4, padding: "2px 7px", letterSpacing: 0.8 }}>GROWTH</span>
           </div>
-          <div style={{ fontSize: 13, color: C.muted, marginBottom: 20, lineHeight: 1.6 }}>Live eBay UK market data to price listings competitively and maximise profit.</div>
+          <div style={{ fontSize: 13, color: C.muted, marginBottom: 20, lineHeight: 1.6 }}>Live eBay market data to price listings competitively and maximise profit.</div>
           {upgradeError && (
             <div style={{ fontSize: 12, color: "var(--red)", marginBottom: 12 }}>{upgradeError}</div>
           )}
@@ -1596,6 +1608,7 @@ function SmartPricingLocked({ onUpgrade, upgrading = false, upgradeError = null 
 
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function PriceCalculator({ onSave, onLoadHandled, products, onDeleteProduct, onLoadProduct, hasSmartPricing = true }) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { session, plan, profile, refreshPlan } = useSession();
   const [upgrading, setUpgrading] = useState(false);
@@ -1654,6 +1667,13 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
   const [editingMargin,  setEditingMargin]  = useState(false);
   const [savedFlash,     setSavedFlash]     = useState(false);
 
+  // ── Marketplace / currency ───────────────────────────────────────────────────
+  const targetMarketplace = useMemo(() => loadPreferences().targetMarketplace || "ebay-uk", []);
+  const marketplaceInfo   = useMemo(() => MARKETPLACES.find(m => m.id === targetMarketplace) || MARKETPLACES[0], [targetMarketplace]);
+  // Currency symbol from last successful search result (falls back to marketplace default)
+  const [resultCurrency, setResultCurrency] = useState(null);
+  const ebaySymbol = currencySymbol(resultCurrency || marketplaceInfo.currency);
+
   // ── Market pricing state ─────────────────────────────────────────────────────
   const [smQuery,        setSmQuery]        = useSessionState("jsk_calc_sm_query",     "");
   const [smCondition,    setSmCondition]    = useSessionState("jsk_calc_sm_condition", "new");
@@ -1678,7 +1698,7 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
       const res  = await fetch(`${API_URL}/api/ebay/sold-counts`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ itemIds: toFetch }),
+        body: JSON.stringify({ itemIds: toFetch, targetMarketplace }),
       });
       const data = await res.json();
       setSoldCounts(prev => ({ ...prev, ...data }));
@@ -1744,10 +1764,11 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
     trackEvent("price_saved", { selling_price: price, margin, source: "smart_pricing" });
   };
 
-  const handleFetch = async () => {
-    if (!smQuery.trim()) return;
+  const handleFetch = async (queryOverride) => {
+    const q = (queryOverride ?? smQuery).trim();
+    if (!q) return;
     setSmLoading(true); setSmError(""); setBinPanelData(null); setSoldCounts({});
-    trackEvent("ebay_search_performed", { query: smQuery.trim(), condition: smCondition, source: "smart_pricing" });
+    trackEvent("ebay_search_performed", { query: q, condition: smCondition, source: "smart_pricing" });
     try {
       const res  = await fetch(`${API_URL}/api/ebay/search-prices`, {
         method: "POST",
@@ -1755,7 +1776,7 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
           "Content-Type": "application/json",
           ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
         },
-        body: JSON.stringify({ query: smQuery.trim(), condition: smCondition }),
+        body: JSON.stringify({ query: q, condition: smCondition, targetMarketplace }),
       });
       const json = await res.json();
       if (!res.ok) {
@@ -1763,10 +1784,24 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
         throw new Error(json.message || json.error || "Failed to fetch prices.");
       }
       if (json.priceCount === 0) throw new Error(json.zeroResultsMsg || "No listings found — try changing the condition or search term.");
+      if (json.currency) setResultCurrency(json.currency);
       setSmData(json);
     } catch (err) { setSmError(err.message); setSmData(null); }
     finally       { setSmLoading(false); }
   };
+
+  // Autorun: launched from "View Market Analysis" button in Listing Generator (new tab)
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("jsk_pc_autorun");
+      if (!raw) return;
+      const { query, timestamp } = JSON.parse(raw);
+      if (!query || Date.now() - timestamp > 10_000) return;
+      localStorage.removeItem("jsk_pc_autorun");
+      setSmQuery(query);
+      handleFetch(query);
+    } catch {}
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Reset legacy "any" condition (removed in favour of explicit condition-first flow)
   useEffect(() => {
@@ -1801,7 +1836,7 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
 
       {/* ── Inner tab bar ── */}
       <div style={{ display: "flex", gap: 0, marginBottom: 24, borderBottom: "1px solid var(--border)" }}>
-        {[{ key: "calculator", label: "Calculator" }, { key: "saved", label: "Saved Products", count: savedCount }].map(({ key, label, count }) => {
+        {[{ key: "calculator", label: t("calculator.title") }, { key: "saved", label: t("saved.title"), count: savedCount }].map(({ key, label, count }) => {
           const active = innerPage === key;
           return (
             <button key={key} onClick={() => setInnerPage(key)} style={{
@@ -1833,60 +1868,60 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
           {/* ═══ LEFT SIDEBAR: Cost & Pricing Inputs ═══ */}
           <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 16, overflow: "hidden", display: "flex", flexDirection: "column", boxShadow: "var(--shadow)" }}>
                 <div style={{ padding: "14px 16px 12px", borderBottom: "1px solid var(--border)" }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: 1.2 }}>Cost &amp; Pricing Inputs</div>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: 1.2 }}>{t("calculator.costInputs")}</div>
                 </div>
                 <div style={{ padding: "10px 16px 16px" }}>
 
-                  <SL mt={0}>Product</SL>
-                  <Row label="Product / SKU">
+                  <SL mt={0}>{t("calculator.product")}</SL>
+                  <Row label={t("calculator.productSku")}>
                     <input value={productName} onChange={(e) => setProductName(e.target.value)} placeholder="e.g. Timing Belt Kit" style={CI} />
                   </Row>
 
-                  <SL>Your Costs</SL>
-                  <Row label="Item cost (£)" note={vatRegistered ? "Enter ex-VAT if you reclaim" : ""}>
+                  <SL>{t("calculator.yourCosts")}</SL>
+                  <Row label={t("calculator.itemCost")} note={vatRegistered ? t("calculator.itemCostNote") : ""}>
                     <input type="number" value={itemCost} onChange={(e) => setItemCost(e.target.value)} placeholder="0.00" style={CI} />
                   </Row>
-                  <Row label="Postage (£)" note="Your outgoing courier cost">
+                  <Row label={t("calculator.postage")} note={t("calculator.postageNote")}>
                     <input type="number" value={shippingCost} onChange={(e) => setShippingCost(e.target.value)} placeholder="0.00" style={CI} />
                   </Row>
-                  <Row label="Packaging (£)">
+                  <Row label={t("calculator.packaging")}>
                     <input type="number" value={packagingCost} onChange={(e) => setPackagingCost(e.target.value)} placeholder="0.00" style={CI} />
                   </Row>
-                  <Row label="Other costs (£)" note="Handling, overheads, etc." last>
+                  <Row label={t("calculator.otherCosts")} note={t("calculator.otherCostsNote")} last>
                     <input type="number" value={otherCosts} onChange={(e) => setOtherCosts(e.target.value)} placeholder="0.00" style={CI} />
                   </Row>
 
-                  <SL>eBay Fees</SL>
-                  <Row label="Final value (%)">
+                  <SL>{t("calculator.ebayFees")}</SL>
+                  <Row label={t("calculator.finalValue")}>
                     <input type="number" value={fvfPct} onChange={(e) => setFvfPct(e.target.value)} placeholder="12.8" style={CI} />
                   </Row>
-                  <Row label="Fixed fee (£)">
+                  <Row label={t("calculator.fixedFee")}>
                     <input type="number" value={fixedFee} onChange={(e) => setFixedFee(e.target.value)} placeholder="0.30" style={CI} />
                   </Row>
-                  <Row label="Ad rate (%)" last>
+                  <Row label={t("calculator.adRate")} last>
                     <input type="number" value={promoPct} onChange={(e) => setPromoPct(e.target.value)} placeholder="0" style={CI} />
                   </Row>
 
                   {/* VAT toggle */}
                   <div style={{ padding: "6px 0", marginTop: 2 }}>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                      <span style={{ fontSize: 12, color: C.muted }}>VAT registered (20%)</span>
+                      <span style={{ fontSize: 12, color: C.muted }}>{t("calculator.vatRegistered")}</span>
                       <button onClick={() => setVatRegistered(v => !v)} style={{ ...BUTTON_BASE, padding: "3px 12px", fontSize: 11, background: vatRegistered ? C.blue : "var(--bg-surface2)", color: vatRegistered ? "var(--text-on-dark)" : "var(--text-muted)", boxShadow: vatRegistered ? "0 0 10px rgba(19,93,255,0.3)" : "none" }}>
                         {vatRegistered ? "ON" : "OFF"}
                       </button>
                     </div>
                     {vatRegistered && (
                       <div style={{ fontSize: 10, color: C.dim, marginTop: 3, lineHeight: 1.4 }}>
-                        Selling price treated as VAT-inclusive.
+                        {t("calculator.vatNote")}
                       </div>
                     )}
                   </div>
 
                   <HD />
 
-                  <SL>Selling Price</SL>
+                  <SL>{t("calculator.sellingPrice")}</SL>
                   <div style={{ marginBottom: 8 }}>
-                    <div style={{ fontSize: 10, color: "var(--text-muted)", marginBottom: 4 }}>{vatRegistered ? "Inc. VAT" : "Ex. VAT"}</div>
+                    <div style={{ fontSize: 10, color: "var(--text-muted)", marginBottom: 4 }}>{vatRegistered ? t("calculator.sellingPriceNote") : "Ex. VAT"}</div>
                     <input type="number" value={sellingPrice} onChange={(e) => setSellingPrice(e.target.value)}
                       onBlur={() => {
                         if (!sellingPrice) return;
@@ -1897,24 +1932,24 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
                       style={{ ...CI, fontSize: 18, fontWeight: 700, width: "100%", background: "var(--blue-bg)", border: "1px solid var(--border-blue)" }} />
                   </div>
 
-                  <Row label="Buyer shipping" note="Charged to buyer" last>
+                  <Row label={t("calculator.buyerShipping")} note={t("calculator.buyerShippingNote")} last>
                     <input type="number" value={buyerShipping} onChange={(e) => setBuyerShipping(e.target.value)} placeholder="0.00" style={CI} />
                   </Row>
 
-                  <SL>Target Profit</SL>
+                  <SL>{t("calculator.targetProfit")}</SL>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 7, marginBottom: 6 }}>
                     <div>
-                      <div style={{ fontSize: 10, color: C.dim, marginBottom: 3 }}>Target margin %</div>
+                      <div style={{ fontSize: 10, color: C.dim, marginBottom: 3 }}>{t("calculator.targetMarginPct")}</div>
                       <div style={{ display: "flex", gap: 3 }}>
                         <input type="number" value={targetMargin} onChange={(e) => setTargetMargin(e.target.value)} onFocus={() => setEditingMargin(true)} onBlur={() => setEditingMargin(false)} onKeyDown={(e) => e.key === "Enter" && calcFromMargin()} placeholder="20" style={{ ...CI, flex: 1, padding: "6px 8px" }} />
-                        <button onClick={calcFromMargin} style={{ ...SMALL_BUTTON_STYLE, padding: "6px 8px", fontSize: 11 }}>Set</button>
+                        <button onClick={calcFromMargin} style={{ ...SMALL_BUTTON_STYLE, padding: "6px 8px", fontSize: 11 }}>{t("calculator.set")}</button>
                       </div>
                     </div>
                     <div>
-                      <div style={{ fontSize: 10, color: C.dim, marginBottom: 3 }}>Target markup %</div>
+                      <div style={{ fontSize: 10, color: C.dim, marginBottom: 3 }}>{t("calculator.targetMarkupPct")}</div>
                       <div style={{ display: "flex", gap: 3 }}>
                         <input type="number" value={targetMarkup} onChange={(e) => setTargetMarkup(e.target.value)} onFocus={() => setEditingMarkup(true)} onBlur={() => setEditingMarkup(false)} onKeyDown={(e) => e.key === "Enter" && calcFromMarkup()} placeholder="50" style={{ ...CI, flex: 1, padding: "6px 8px" }} />
-                        <button onClick={calcFromMarkup} style={{ ...SMALL_BUTTON_STYLE, padding: "6px 8px", fontSize: 11 }}>Set</button>
+                        <button onClick={calcFromMarkup} style={{ ...SMALL_BUTTON_STYLE, padding: "6px 8px", fontSize: 11 }}>{t("calculator.set")}</button>
                       </div>
                     </div>
                   </div>
@@ -1937,9 +1972,9 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
                   <div style={{ padding: "14px 18px 12px", borderBottom: "1px solid var(--border)" }}>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <span style={{ fontSize: 15, fontWeight: 700, color: "var(--text)", letterSpacing: -0.2 }}>Smart eBay Pricing</span>
+                        <span style={{ fontSize: 15, fontWeight: 700, color: "var(--text)", letterSpacing: -0.2 }}>{t("pricing.title")}</span>
                         <span style={{ fontSize: 9, fontWeight: 800, color: "var(--blue)", background: "var(--blue-bg)", border: "1px solid var(--border-blue)", borderRadius: 4, padding: "2px 7px", letterSpacing: 0.8 }}>PRO</span>
-                        <span style={{ fontSize: 12, color: "var(--text-muted)" }}>Compare market pricing, fees and profit in one place.</span>
+                        <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{t("pricing.subtitle")}</span>
                       </div>
                       {smData && (
                         <div style={{ display: "flex", alignItems: "center", gap: 7, background: "rgba(19,93,255,0.08)", border: "1px solid var(--border-blue)", borderRadius: 8, padding: "5px 12px", flexShrink: 0 }}>
@@ -1951,7 +1986,7 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                       <div style={{ display: "flex", gap: 2, background: "var(--bg-surface3)", borderRadius: 8, padding: 3, border: "1px solid var(--border)", flexShrink: 0 }}>
-                        {[{ key: "new", label: "New" }, { key: "used", label: "Used" }, { key: "remanufactured", label: "Remfd." }].map(({ key, label }) => {
+                        {[{ key: "new", label: t("pricing.new") }, { key: "used", label: t("pricing.used") }, { key: "remanufactured", label: t("pricing.refurbished") }].map(({ key, label }) => {
                           const active = smCondition === key;
                           return (
                             <button key={key} onClick={() => { setSmCondition(key); if (smData) { setSmData(null); setBinPanelData(null); } }}
@@ -1967,7 +2002,7 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
                         {smLoading && (
                           <div style={{ width: 13, height: 13, borderRadius: "50%", border: "2px solid rgba(147,197,253,0.2)", borderTop: "2px solid #93c5fd", animation: "pcSpin 0.75s linear infinite", flexShrink: 0 }} />
                         )}
-                        {smLoading ? "Fetching prices…" : "Fetch Prices"}
+                        {smLoading ? t("pricing.searching") : t("pricing.search")}
                       </button>
                     </div>
                     {smError && <div style={{ marginTop: 8, padding: "7px 12px", background: "var(--bg-surface2)", color: "var(--red)", border: "1px solid rgba(220,38,38,0.25)", borderRadius: 8, fontSize: 12 }}>⚠ {smError}</div>}
@@ -1976,10 +2011,10 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
                   {/* 4 KPI cards */}
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)" }}>
                     {[
-                      { label: "Selling Price", value: price > 0 ? fmtGBP(price) : "—", color: price > 0 ? "var(--text)" : "var(--text-dim)", sub: buyerShip > 0 ? `+ ${fmtGBP(buyerShip)} p&p` : "Item price",       icon: "£" },
-                      { label: "Net Profit",    value: hasResult ? fmt(profit)    : "—", color: hasResult ? profitColor : "var(--text-dim)", sub: hasResult ? "after all fees" : "Enter cost & price", icon: "↑" },
-                      { label: "Margin",        value: hasResult ? fmtPct(margin) : "—", color: hasResult ? profitColor : "var(--text-dim)", sub: "of revenue",     icon: "%" },
-                      { label: "Markup",        value: hasResult ? fmtPct(markup) : "—", color: hasResult ? profitColor : "var(--text-dim)", sub: "on cost",         icon: "×" },
+                      { label: t("calculator.sellingPriceLabel"), value: price > 0 ? fmtGBP(price) : "—", color: price > 0 ? "var(--text)" : "var(--text-dim)", sub: buyerShip > 0 ? `+ ${fmtGBP(buyerShip)} p&p` : t("calculator.itemPrice"),       icon: "£" },
+                      { label: t("calculator.netProfit"),    value: hasResult ? fmt(profit)    : "—", color: hasResult ? profitColor : "var(--text-dim)", sub: hasResult ? "after all fees" : t("calculator.enterCostPrice"), icon: "↑" },
+                      { label: t("calculator.margin"),        value: hasResult ? fmtPct(margin) : "—", color: hasResult ? profitColor : "var(--text-dim)", sub: "of revenue",     icon: "%" },
+                      { label: t("calculator.markup"),        value: hasResult ? fmtPct(markup) : "—", color: hasResult ? profitColor : "var(--text-dim)", sub: "on cost",         icon: "×" },
                     ].map(({ label, value, color, sub, icon }, i) => (
                       <div key={label} style={{ padding: "12px 16px", borderLeft: i > 0 ? "1px solid var(--border-light)" : "none", borderTop: "1px solid var(--border-light)" }}>
                         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 5 }}>
@@ -2017,9 +2052,9 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
                 <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 16, overflow: "hidden", flex: 1, display: "flex", flexDirection: "column", boxShadow: "var(--shadow)" }}>
                   <div style={{ padding: "12px 18px 10px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                     <div>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", marginBottom: 2 }}>Market Intelligence</div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", marginBottom: 2 }}>{t("pricing.marketIntelligence")}</div>
                       <div style={{ fontSize: 11, color: C.muted }}>
-                        {smData ? `eBay UK Market · ${smData.conditionLabel} · ${smData.priceCount} listings` : "Live eBay UK pricing insights for your search."}
+                        {smData ? `${marketplaceInfo.label} · ${smData.conditionLabel} · ${smData.priceCount} listings` : `Live ${marketplaceInfo.label} pricing insights for your search.`}
                       </div>
                     </div>
                     {smData && (
@@ -2052,7 +2087,7 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
                       {/* Text */}
                       <div style={{ textAlign: "center" }}>
                         <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-accent)", marginBottom: 5, letterSpacing: -0.2 }}>
-                          Scanning eBay UK listings
+                          Scanning {marketplaceInfo.label} listings
                         </div>
                         <div style={{ fontSize: 11, color: "var(--text-muted)", lineHeight: 1.55 }}>
                           Fetching live <span style={{ color: "var(--text-muted)", fontWeight: 600 }}>{smCondition}</span> condition pricing data…
@@ -2069,7 +2104,7 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
                         </svg>
                       </div>
                       <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-dim)", marginBottom: 6 }}>No market data yet</div>
-                      <div style={{ fontSize: 12, color: C.dim, lineHeight: 1.6 }}>Search a part number above to load live eBay UK pricing.</div>
+                      <div style={{ fontSize: 12, color: C.dim, lineHeight: 1.6 }}>Search a part number above to load live {marketplaceInfo.label} pricing.</div>
                     </div>
                   )}
                   {!smLoading && smData && (
@@ -2082,6 +2117,8 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
                         soldCounts={soldCounts}
                         soldCountsFetching={soldCountsFetching}
                         onTableView={() => fetchSoldCounts(smData.listings)}
+                        sym={ebaySymbol}
+                        marketplaceLabel={marketplaceInfo.label}
                       />
                     </div>
                   )}
@@ -2094,7 +2131,7 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
                   <>
                     {/* Persistent header */}
                     <div style={{ padding: "12px 16px 10px", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
-                      <div style={{ fontSize: 10, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: 1.2 }}>Listings in Selected Range</div>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: 1.2 }}>{t("pricing.priceDistribution")}</div>
                     </div>
                     {/* Empty state */}
                     <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14, padding: "32px 24px", textAlign: "center" }}>
@@ -2120,7 +2157,7 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
                   const displayRange = zoomRange ? zoomRange : bin;
                   const fmtShip = (cost, type) => {
                     if (type === "FREE" || cost === 0) return "Free delivery";
-                    if (cost != null) return `+£${cost.toFixed(2)} postage`;
+                    if (cost != null) return `+${ebaySymbol}${cost.toFixed(2)} postage`;
                     return "";
                   };
                   const sorted = [...bl].sort((a, z) => {
@@ -2147,7 +2184,7 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
                         </div>
                       </div>
                       <div style={{ padding: "6px 12px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 7, flexShrink: 0 }}>
-                        <span style={{ fontSize: 10, color: "var(--text-muted)", whiteSpace: "nowrap" }}>Sort:</span>
+                        <span style={{ fontSize: 10, color: "var(--text-muted)", whiteSpace: "nowrap" }}>{t("pricing.sort")}:</span>
                         <select value={panelSort} onChange={e => setPanelSort(e.target.value)} style={{ background: "var(--bg-surface2)", border: "1px solid var(--border)", borderRadius: 5, color: "var(--text-muted)", fontSize: 10, padding: "3px 8px", cursor: "pointer", flex: 1 }}>
                           <option value="asc">Price: Low to High</option>
                           <option value="desc">Price: High to Low</option>
@@ -2167,7 +2204,7 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
                             <div style={{ flex: 1, minWidth: 0 }}>
                               <div style={{ fontSize: 10.5, color: "var(--text-accent)", lineHeight: 1.35, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", marginBottom: 3 }}>{l.title}</div>
                               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
-                                <div style={{ fontSize: 13, fontWeight: 800, color: "var(--text)", fontVariantNumeric: "tabular-nums" }}>{fmtGBP(l.price)}</div>
+                                <div style={{ fontSize: 13, fontWeight: 800, color: "var(--text)", fontVariantNumeric: "tabular-nums" }}>{fmtGBP(l.price, ebaySymbol)}</div>
                                 {l.itemId && soldCounts[l.itemId] != null && (
                                   <span style={{ fontSize: 9, fontWeight: 700, color: "var(--green)", background: "rgba(74,222,128,0.08)", border: "1px solid rgba(74,222,128,0.2)", borderRadius: 3, padding: "1px 6px", whiteSpace: "nowrap" }}>
                                     {soldCounts[l.itemId]} sold
@@ -2203,15 +2240,15 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
             <div style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 16 }}>
               <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 16, overflow: "hidden", boxShadow: "var(--shadow)" }}>
                 <div style={{ padding: "14px 18px 12px", borderBottom: "1px solid var(--border)" }}>
-                  <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text)", marginBottom: 4 }}>Profit Summary</div>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text)", marginBottom: 4 }}>{t("calculator.netProfit")}</div>
                   <div style={{ fontSize: 12, color: "var(--text-muted)" }}>Enter your costs and selling price on the left to see margin and profit.</div>
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)" }}>
                   {[
-                    { label: "Selling Price", value: price > 0 ? fmtGBP(price) : "—", color: price > 0 ? "var(--text)" : "var(--text-dim)", sub: buyerShip > 0 ? `+ ${fmtGBP(buyerShip)} p&p` : "Item price", icon: "£" },
-                    { label: "Net Profit", value: hasResult ? fmt(profit) : "—", color: hasResult ? profitColor : "var(--text-dim)", sub: hasResult ? "after all fees" : "Enter cost & price", icon: "↑" },
-                    { label: "Margin", value: hasResult ? fmtPct(margin) : "—", color: hasResult ? profitColor : "var(--text-dim)", sub: "of revenue", icon: "%" },
-                    { label: "Markup", value: hasResult ? fmtPct(markup) : "—", color: hasResult ? profitColor : "var(--text-dim)", sub: "on cost", icon: "×" },
+                    { label: t("calculator.sellingPriceLabel"), value: price > 0 ? fmtGBP(price) : "—", color: price > 0 ? "var(--text)" : "var(--text-dim)", sub: buyerShip > 0 ? `+ ${fmtGBP(buyerShip)} p&p` : t("calculator.itemPrice"), icon: "£" },
+                    { label: t("calculator.netProfit"),    value: hasResult ? fmt(profit)    : "—", color: hasResult ? profitColor : "var(--text-dim)", sub: hasResult ? "after all fees" : t("calculator.enterCostPrice"), icon: "↑" },
+                    { label: t("calculator.margin"),        value: hasResult ? fmtPct(margin) : "—", color: hasResult ? profitColor : "var(--text-dim)", sub: "of revenue",     icon: "%" },
+                    { label: t("calculator.markup"),        value: hasResult ? fmtPct(markup) : "—", color: hasResult ? profitColor : "var(--text-dim)", sub: "on cost",         icon: "×" },
                   ].map(({ label, value, color, sub, icon }, i) => (
                     <div key={label} style={{ padding: "12px 16px", borderLeft: i > 0 ? "1px solid var(--border-light)" : "none", borderTop: "1px solid var(--border-light)" }}>
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 5 }}>

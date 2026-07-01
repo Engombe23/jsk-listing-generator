@@ -39,6 +39,7 @@ export default function FAQ() {
   return (
     <section
       id="faq"
+      className="lp-section"
       style={{
         padding: "96px 24px",
         background: "#f4f7fc",
@@ -147,6 +148,19 @@ export default function FAQ() {
           </div>
         ))}
       </div>
+      </div>
+
+      {/* Still have questions */}
+      <div style={{ textAlign: "center", marginTop: 48 }}>
+        <p style={{ fontSize: 15, color: MUTED, margin: "0 0 8px" }}>
+          Still have questions?
+        </p>
+        <a
+          href="mailto:enquiries@partlister.app"
+          style={{ fontSize: 15, fontWeight: 600, color: ACCENT, textDecoration: "none" }}
+        >
+          enquiries@partlister.app
+        </a>
       </div>
     </section>
   );

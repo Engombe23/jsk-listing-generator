@@ -1,4 +1,5 @@
 ﻿import React, { memo, useState, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { SMALL_BUTTON_STYLE, BUTTON_BASE } from "./shared.jsx";
 
 // ─── Formatters ───────────────────────────────────────────────────────────────
@@ -94,6 +95,7 @@ function todayStr() { return new Date().toISOString().slice(0, 10); }
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function SavedProducts({ products, onDelete, onLoad }) {
+  const { t } = useTranslation();
   const [confirmId,   setConfirmId]   = useState(null);
   const [period,      setPeriod]      = useState("all");
   const [customFrom,  setCustomFrom]  = useState("");
@@ -166,9 +168,9 @@ export default function SavedProducts({ products, onDelete, onLoad }) {
               <path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/>
             </svg>
           </div>
-          <div style={{ fontWeight: 700, color: "var(--text)", marginBottom: 8 }}>No saved products yet</div>
+          <div style={{ fontWeight: 700, color: "var(--text)", marginBottom: 8 }}>{t("saved.empty")}</div>
           <div style={{ fontSize: 14, color: "var(--text-muted)" }}>
-            Open the Calculator tab, fill in your costs and selling price, then click Save Product.
+            {t("saved.subtitle")}
           </div>
         </div>
       </div>
@@ -207,7 +209,7 @@ export default function SavedProducts({ products, onDelete, onLoad }) {
       }}>
         {/* Title + count */}
         <div style={{ flex: 1, minWidth: 160 }}>
-          <div style={{ fontSize: 20, fontWeight: 800, color: "var(--text)" }}>Saved Products</div>
+          <div style={{ fontSize: 20, fontWeight: 800, color: "var(--text)" }}>{t("saved.title")}</div>
           <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 3 }}>
             {filtered.length === products.length
               ? `${products.length} product${products.length !== 1 ? "s" : ""} saved`
@@ -318,8 +320,8 @@ export default function SavedProducts({ products, onDelete, onLoad }) {
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr>
-                {["Product","Item Cost","Shipping","Sell Price","eBay Fees","VAT",
-                  "Profit","Margin","Markup","Saved","Actions"].map((h) => (
+                {[t("saved.columns.title"),t("calculator.itemCost"),t("calculator.postage"),t("calculator.sellingPrice"),t("calculator.ebayFees"),"VAT",
+                  t("calculator.netProfit"),t("calculator.margin"),t("calculator.markup"),t("saved.columns.date"),t("saved.columns.actions")].map((h) => (
                   <th key={h} style={{ ...HEADER_STYLE, textAlign: "left" }}>{h}</th>
                 ))}
               </tr>
@@ -379,7 +381,7 @@ export default function SavedProducts({ products, onDelete, onLoad }) {
                           border: "1px solid var(--border-strong)"
                         }}
                       >
-                        Load
+                        {t("saved.loadMore")}
                       </button>
                       <button
                         onClick={() => {
@@ -393,7 +395,7 @@ export default function SavedProducts({ products, onDelete, onLoad }) {
                           border: "1px solid rgba(248,113,113,0.25)"
                         }}
                       >
-                        {confirmId === product.id ? "Confirm?" : "Delete"}
+                        {confirmId === product.id ? "Confirm?" : t("saved.delete")}
                       </button>
                     </div>
                   </td>

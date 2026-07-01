@@ -1,5 +1,6 @@
-﻿import React, { useState, useEffect, useMemo } from "react";
+﻿import React, { useState, useEffect, useMemo, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import ListingTemplates from "./ListingTemplates.jsx";
 import { loadPreferences, savePreferences, PREF_DEFAULTS } from "./useListingPreferences.js";
 import { useSession } from "./context/SessionContext";
@@ -7,6 +8,8 @@ import { useTheme } from "./context/ThemeContext";
 import { supabase } from "./lib/supabaseClient";
 import { formatPlanLabel, openBillingPortal } from "./lib/billing";
 import { getBillingLabel, getDisplayPrice, getNextPlan, getPlan } from "./lib/plans";
+import i18n from "./i18n/index.js";
+import { MARKETPLACES, SITE_LANGUAGES } from "./i18n/marketplaces.js";
 
 function useAuthUser() {
   const { session } = useSession();
@@ -243,6 +246,8 @@ function BillingPage() {
   const navigate = useNavigate();
   const { plan, profile, refreshPlan } = useSession();
   const [portalLoading, setPortalLoading] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [justActivated, setJustActivated] = useState(false);
   const [error, setError] = useState("");
 
   const planInfo = getPlan(plan);
@@ -253,8 +258,34 @@ function BillingPage() {
   const nextPlan = getNextPlan(plan);
 
   useEffect(() => {
-    refreshPlan();
-  }, [refreshPlan]);
+    // If a checkout sync is still pending in sessionStorage, show a syncing indicator
+    // while App.jsx Effect B runs. Once refreshPlan() resolves, the plan state updates
+    // and this component re-renders with the real plan.
+    const hasPending = !!sessionStorage.getItem("jsk_pending_checkout_id");
+    if (hasPending) {
+      setSyncing(true);
+    }
+
+    let cancelled = false;
+    refreshPlan().then(() => {
+      if (!cancelled) {
+        setSyncing(false);
+        // If the plan is now paid after the refresh, show a brief success banner.
+        setJustActivated((prev) => !prev && plan !== "free" ? false : false);
+      }
+    });
+    return () => { cancelled = true; };
+  }, [refreshPlan]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Show "activated" banner once the plan flips from free to a paid plan.
+  const prevPlanRef = React.useRef(plan);
+  useEffect(() => {
+    if (prevPlanRef.current === "free" && plan !== "free") {
+      setJustActivated(true);
+      setTimeout(() => setJustActivated(false), 6000);
+    }
+    prevPlanRef.current = plan;
+  }, [plan]);
 
   const openPortal = async () => {
     if (!profile?.stripe_customer_id) {
@@ -276,12 +307,42 @@ function BillingPage() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
 
+      {/* Post-checkout success banner */}
+      {justActivated && (
+        <div style={{
+          display: "flex", alignItems: "center", gap: 10,
+          background: "rgba(74,222,128,0.10)", border: "1px solid rgba(74,222,128,0.3)",
+          borderRadius: 10, padding: "12px 16px",
+        }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--green)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: "var(--green)" }}>Subscription activated!</div>
+            <div style={{ fontSize: 11, color: C.muted, marginTop: 1 }}>Your {planInfo?.name} plan is now live. All features are unlocked.</div>
+          </div>
+        </div>
+      )}
+
+      {/* Syncing indicator — shown while checkout session is being confirmed */}
+      {syncing && !justActivated && (
+        <>
+          <style>{`@keyframes blSpin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}`}</style>
+          <div style={{
+            display: "flex", alignItems: "center", gap: 10,
+            background: "rgba(19,93,255,0.07)", border: "1px solid rgba(19,93,255,0.2)",
+            borderRadius: 10, padding: "12px 16px",
+          }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ animation: "blSpin 1s linear infinite" }}><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+            <span style={{ fontSize: 12, color: "var(--blue)", fontWeight: 600 }}>Confirming your subscription…</span>
+          </div>
+        </>
+      )}
+
       {/* Plan */}
       <Card>
         <SL>Current Plan</SL>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
           <span style={{ fontSize: 16, fontWeight: 900, color: C.text }}>
-            {plan === "free" ? "No active plan" : `${planInfo?.name || formatPlanLabel(plan)} Plan`}
+            {syncing && plan === "free" ? "Activating…" : plan === "free" ? "No active plan" : `${planInfo?.name || formatPlanLabel(plan)} Plan`}
           </span>
           {plan !== "free" && (
             <Badge color={isActive ? C.green : status === "past_due" ? C.amber : C.red}>
@@ -404,7 +465,6 @@ function AppearancePage() {
 
 // ─── PAGE: Listing Preferences ────────────────────────────────────────────────
 const CONDITIONS = ["", "New", "New other (see details)", "Manufacturer refurbished", "Used", "Parts only"];
-const LANGUAGES  = ["English (UK)", "English (US)", "German", "French", "Spanish", "Italian", "Dutch", "Polish"];
 const CURRENCIES = ["GBP", "USD", "EUR", "AUD", "CAD", "CHF", "SEK", "NOK", "DKK"];
 const COUNTRIES  = [
   "", "United Kingdom", "Germany", "France", "Italy", "Spain", "China", "Japan",
@@ -455,6 +515,72 @@ function PrefSelect({ value, onChange, options, narrow }) {
   );
 }
 
+function FlagSelect({ value, onChange, options }) {
+  const [open, setOpen] = useState(false);
+  const [hovered, setHovered] = useState(null);
+  const ref = useRef(null);
+  const selected = options.find(o => o.value === value) || options[0];
+
+  useEffect(() => {
+    const handler = (e) => { if (!ref.current?.contains(e.target)) setOpen(false); };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  return (
+    <div ref={ref} style={{ position: "relative", display: "inline-block", minWidth: 180 }}>
+      <div
+        onClick={() => setOpen(o => !o)}
+        style={{
+          ...inputBase, display: "flex", alignItems: "center", gap: 8,
+          cursor: "pointer", userSelect: "none", width: "auto", paddingRight: 28,
+        }}
+      >
+        <span style={{ fontSize: 18, lineHeight: 1 }}>{selected?.flag}</span>
+        <span style={{ fontSize: 12, color: C.text }}>{selected?.label}</span>
+        <span style={{
+          position: "absolute", right: 9, fontSize: 9, color: C.muted,
+          transform: open ? "rotate(180deg)" : "none", transition: "transform 0.15s",
+        }}>▾</span>
+      </div>
+
+      {open && (
+        <div style={{
+          position: "absolute", top: "calc(100% + 4px)", left: 0, zIndex: 200,
+          background: "var(--bg-surface)", border: `1px solid ${C.border}`,
+          borderRadius: 10, boxShadow: "0 8px 24px rgba(0,0,0,0.18)",
+          overflow: "hidden", minWidth: 210,
+        }}>
+          {options.map(o => {
+            const isActive = o.value === value;
+            const isHov = hovered === o.value;
+            return (
+              <div
+                key={o.value}
+                onClick={() => { onChange(o.value); setOpen(false); }}
+                onMouseEnter={() => setHovered(o.value)}
+                onMouseLeave={() => setHovered(null)}
+                style={{
+                  display: "flex", alignItems: "center", gap: 10,
+                  padding: "9px 14px", cursor: "pointer", fontSize: 12,
+                  background: isActive ? "rgba(19,93,255,0.1)" : isHov ? "var(--bg-surface2)" : "transparent",
+                  color: isActive ? "var(--blue)" : C.text,
+                  fontWeight: isActive ? 700 : 400,
+                  transition: "background 0.1s",
+                }}
+              >
+                <span style={{ fontSize: 20, lineHeight: 1, minWidth: 24 }}>{o.flag}</span>
+                {o.label}
+                {isActive && <span style={{ marginLeft: "auto", fontSize: 10, color: "var(--blue)" }}>✓</span>}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function PrefTextarea({ value, onChange, placeholder }) {
   return (
     <textarea value={value} onChange={e => onChange(e.target.value)}
@@ -481,6 +607,7 @@ function PrefGroup({ title, children }) {
 }
 
 function ListingPreferencesPage() {
+  const { t } = useTranslation();
   const [prefs,     setPrefs]     = useState(loadPreferences);
   const [saved,     setSaved]     = useState(false);
   const [templates, setTemplates] = useState([]);
@@ -501,48 +628,65 @@ function ListingPreferencesPage() {
   };
 
   const templateOptions = [
-    { value: "", label: "— No default —" },
-    ...templates.map(t => ({ value: t.id, label: t.name })),
+    { value: "", label: t("prefs.noDefault") },
+    ...templates.map(tmpl => ({ value: tmpl.id, label: tmpl.name })),
   ];
 
   return (
     <div>
 
-      <PrefGroup title="General Defaults">
-        <PrefRow label="Default Brand">
-          <PrefInput value={prefs.brand} onChange={v => set("brand", v)} placeholder="e.g. Aftermarket" />
+      <PrefGroup title={t("prefs.general")}>
+        <PrefRow label={t("prefs.defaultBrand")}>
+          <PrefInput value={prefs.brand} onChange={v => set("brand", v)} placeholder={t("prefs.defaultBrandPlaceholder")} />
         </PrefRow>
-        <PrefRow label="Default Warranty">
-          <PrefInput value={prefs.warranty} onChange={v => set("warranty", v)} placeholder="e.g. 12 Months" />
+        <PrefRow label={t("prefs.defaultWarranty")}>
+          <PrefInput value={prefs.warranty} onChange={v => set("warranty", v)} placeholder={t("prefs.defaultWarrantyPlaceholder")} />
         </PrefRow>
-        <PrefRow label="Country of Manufacture">
+        <PrefRow label={t("prefs.countryOfMfr")}>
           <PrefSelect value={prefs.countryOfMfr} onChange={v => set("countryOfMfr", v)} options={COUNTRIES} />
         </PrefRow>
-        <PrefRow label="Default Condition">
+        <PrefRow label={t("prefs.defaultCondition")}>
           <PrefSelect value={prefs.condition} onChange={v => set("condition", v)} options={CONDITIONS} />
         </PrefRow>
       </PrefGroup>
 
-      <PrefGroup title="Localisation">
-        <PrefRow label="Language">
-          <PrefSelect value={prefs.language} onChange={v => set("language", v)} options={LANGUAGES} narrow />
+      <PrefGroup title={t("prefs.localization")}>
+        <PrefRow label={t("prefs.siteLanguage")} hint={t("prefs.siteLanguageHint")}>
+          <FlagSelect
+            value={prefs.siteLanguage}
+            onChange={v => {
+              set("siteLanguage", v);
+              i18n.changeLanguage(v);
+              const lang = SITE_LANGUAGES.find(l => l.code === v);
+              document.documentElement.dir = lang?.dir || "ltr";
+              document.documentElement.lang = v;
+            }}
+            options={SITE_LANGUAGES.map(l => ({ value: l.code, label: l.label, flag: l.flag }))}
+          />
         </PrefRow>
-        <PrefRow label="Currency">
+        <PrefRow label={t("prefs.targetMarketplace")} hint={t("prefs.targetMarketplaceHint")}>
+          <FlagSelect
+            value={prefs.targetMarketplace}
+            onChange={v => set("targetMarketplace", v)}
+            options={MARKETPLACES.map(m => ({ value: m.id, label: m.label, flag: m.flag }))}
+          />
+        </PrefRow>
+        <PrefRow label={t("prefs.currency")}>
           <PrefSelect value={prefs.currency} onChange={v => set("currency", v)} options={CURRENCIES} narrow />
         </PrefRow>
       </PrefGroup>
 
-      <PrefGroup title="Template Defaults">
-        <PrefRow label="Default Template" hint="Applied when generating listings">
+      <PrefGroup title={t("prefs.templateDefaults")}>
+        <PrefRow label={t("prefs.defaultTemplate")} hint={t("prefs.defaultTemplateHint")}>
           <PrefSelect value={prefs.defaultTemplateId} onChange={v => set("defaultTemplateId", v)} options={templateOptions} />
         </PrefRow>
-        <PrefRow label="Default Shipping">
+        <PrefRow label={t("prefs.defaultShipping")}>
           <PrefTextarea value={prefs.shippingText} onChange={v => set("shippingText", v)}
-            placeholder="e.g. Free UK delivery. Dispatched within 1 business day." />
+            placeholder={t("prefs.defaultShippingPlaceholder")} />
         </PrefRow>
-        <PrefRow label="Default Returns">
+        <PrefRow label={t("prefs.defaultReturns")}>
           <PrefTextarea value={prefs.returnsText} onChange={v => set("returnsText", v)}
-            placeholder="e.g. 30-day returns accepted. Buyer pays return postage." />
+            placeholder={t("prefs.defaultReturnsPlaceholder")} />
         </PrefRow>
       </PrefGroup>
 
@@ -552,11 +696,11 @@ function ListingPreferencesPage() {
         padding: "12px 18px", background: C.card2, border: `1px solid ${C.border}`, borderRadius: 10,
       }}>
         <span style={{ fontSize: 11, color: saved ? C.green : C.muted }}>
-          {saved ? "✓ Saved" : "Unsaved changes"}
+          {saved ? t("prefs.saved") : t("prefs.unsaved")}
         </span>
         <div style={{ display: "flex", gap: 8 }}>
-          <Btn onClick={() => { setPrefs({ ...PREF_DEFAULTS }); setSaved(false); }}>Reset</Btn>
-          <Btn variant="primary" onClick={handleSave}>Save Preferences</Btn>
+          <Btn onClick={() => { setPrefs({ ...PREF_DEFAULTS }); setSaved(false); }}>{t("prefs.reset")}</Btn>
+          <Btn variant="primary" onClick={handleSave}>{t("prefs.save")}</Btn>
         </div>
       </div>
 
@@ -566,14 +710,15 @@ function ListingPreferencesPage() {
 
 // ─── Sidebar ──────────────────────────────────────────────────────────────────
 const NAV_ITEMS = [
-  { key: "account",    label: "Account",            icon: "○" },
-  { key: "billing",    label: "Billing",            icon: "◈" },
-  { key: "appearance", label: "Appearance",         icon: "◑" },
-  { key: "templates",  label: "Listing Templates",  icon: "⬚" },
-  { key: "preferences",label: "Listing Preferences",icon: "⚙" },
+  { key: "account",     tKey: "account.title",       icon: "○" },
+  { key: "billing",     tKey: "account.billing",     icon: "◈" },
+  { key: "appearance",  tKey: "account.appearance",  icon: "◑" },
+  { key: "templates",   tKey: "account.templates",   icon: "⬚" },
+  { key: "preferences", tKey: "account.preferences", icon: "⚙" },
 ];
 
 function Sidebar({ active, onChange }) {
+  const { t } = useTranslation();
   return (
     <div style={{
       width: 180, flexShrink: 0,
@@ -583,9 +728,9 @@ function Sidebar({ active, onChange }) {
     }}>
       <div style={{ fontSize: 9, fontWeight: 800, color: C.muted, textTransform: "uppercase",
         letterSpacing: 1.4, padding: "2px 10px 10px" }}>
-        Account
+        {t("account.title")}
       </div>
-      {NAV_ITEMS.map(({ key, label, icon }) => {
+      {NAV_ITEMS.map(({ key, tKey, icon }) => {
         const active_ = active === key;
         return (
           <button key={key} onClick={() => onChange(key)} style={{
@@ -597,7 +742,7 @@ function Sidebar({ active, onChange }) {
             cursor: "pointer", textAlign: "left", transition: "all 0.12s",
           }}>
             <span style={{ fontSize: 11, opacity: 0.65 }}>{icon}</span>
-            {label}
+            {t(tKey)}
           </button>
         );
       })}
@@ -606,20 +751,21 @@ function Sidebar({ active, onChange }) {
 }
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
-const PAGE_TITLES = {
-  account:    "Account",
-  billing:    "Billing",
-  appearance: "Appearance",
-  templates:  "Listing Templates",
-  preferences:"Listing Preferences",
+const PAGE_TITLE_KEYS = {
+  account:     "account.title",
+  billing:     "account.billing",
+  appearance:  "account.appearance",
+  templates:   "account.templates",
+  preferences: "account.preferences",
 };
 
-const PAGE_SUBS = {
-  preferences: "Default values applied to every generated listing. Override per listing as needed.",
-  templates:   "Reusable listing templates with placeholder support.",
+const PAGE_SUB_KEYS = {
+  preferences: "prefs.subtitle",
+  templates:   "prefs.templatesSubtitle",
 };
 
 export default function Account({ initialPage = "account" }) {
+  const { t } = useTranslation();
   const [page, setPage] = useState(initialPage);
 
   useEffect(() => {
@@ -632,9 +778,9 @@ export default function Account({ initialPage = "account" }) {
 
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ marginBottom: 20 }}>
-          <div style={{ fontSize: 18, fontWeight: 900, color: C.text }}>{PAGE_TITLES[page]}</div>
-          {PAGE_SUBS[page] && (
-            <div style={{ fontSize: 11, color: C.muted, marginTop: 3 }}>{PAGE_SUBS[page]}</div>
+          <div style={{ fontSize: 18, fontWeight: 900, color: C.text }}>{t(PAGE_TITLE_KEYS[page])}</div>
+          {PAGE_SUB_KEYS[page] && (
+            <div style={{ fontSize: 11, color: C.muted, marginTop: 3 }}>{t(PAGE_SUB_KEYS[page])}</div>
           )}
         </div>
 
@@ -650,6 +796,7 @@ export default function Account({ initialPage = "account" }) {
 
 // ─── Profile dropdown (used in App.jsx navbar) ────────────────────────────────
 export function ProfileDropdown({ onNavigate, onClose }) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { email, displayName } = useAuthUser();
 
@@ -664,12 +811,12 @@ export function ProfileDropdown({ onNavigate, onClose }) {
     onClose();
   };
   const items = [
-    { label: "Account",              icon: "○", page: "account" },
-    { label: "Billing",              icon: "◈", page: "billing" },
-    { label: "Listing Templates",    icon: "⬚", page: "templates" },
-    { label: "Listing Preferences",  icon: "⚙", page: "preferences" },
+    { label: t("account.title"),       icon: "○", page: "account" },
+    { label: t("account.billing"),     icon: "◈", page: "billing" },
+    { label: t("account.templates"),   icon: "⬚", page: "templates" },
+    { label: t("account.preferences"), icon: "⚙", page: "preferences" },
     null,
-    { label: "Log out", icon: "→", page: "logout", danger: true },
+    { label: t("auth.logout"),         icon: "→", page: "logout", danger: true },
   ];
 
   return (

@@ -39,6 +39,7 @@ export default function WhoItsFor() {
       }}
     >
       <section
+        className="lp-section"
         style={{
           padding: "96px 24px",
           maxWidth: 1200,
@@ -78,6 +79,7 @@ export default function WhoItsFor() {
         </div>
 
         <div
+          className="audience-grid"
           style={{
             display: "grid",
             gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",

@@ -53,11 +53,12 @@ const NAV_ITEMS = [
 ];
 
 export default function Navbar() {
-  const [scrolled, setScrolled] = useState(false);
-  const [active, setActive]     = useState(null);
-  const { session }             = useSession();
-  const navigate                = useNavigate();
-  const authed                  = !!session;
+  const [scrolled,  setScrolled]  = useState(false);
+  const [active,    setActive]    = useState<string | null>(null);
+  const [menuOpen,  setMenuOpen]  = useState(false);
+  const { session }               = useSession();
+  const navigate                  = useNavigate();
+  const authed                    = !!session;
 
   useEffect(() => {
     const handler = () => setScrolled(window.scrollY > 10);
@@ -65,202 +66,271 @@ export default function Navbar() {
     return () => window.removeEventListener("scroll", handler);
   }, []);
 
+  /* Close drawer if user scrolls (UX) */
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handler = () => setMenuOpen(false);
+    window.addEventListener("scroll", handler, { passive: true });
+    return () => window.removeEventListener("scroll", handler);
+  }, [menuOpen]);
+
   async function handleLogout() {
+    setMenuOpen(false);
     await supabase.auth.signOut();
     navigate("/");
   }
 
   return (
-    <nav
-      style={{
-        position: "fixed",
-        top: 0, left: 0, right: 0,
-        zIndex: 100,
-        background: "#ffffff",
-        borderBottom: `1px solid ${scrolled ? "rgba(19,45,70,0.12)" : BORDER}`,
-        boxShadow: scrolled ? "0 1px 3px rgba(0,0,0,0.06)" : "none",
-        transition: "box-shadow 0.3s ease, border-color 0.3s ease",
-        fontFamily: "'Plus Jakarta Sans', Inter, system-ui, sans-serif",
-      }}
-    >
-      <div style={{ maxWidth: 1440, margin: "0 auto", padding: "0 28px", display: "flex", alignItems: "stretch", height: 62 }}>
+    <>
+      <nav
+        style={{
+          position: "fixed",
+          top: 0, left: 0, right: 0,
+          zIndex: 100,
+          background: "#ffffff",
+          borderBottom: `1px solid ${scrolled ? "rgba(19,45,70,0.12)" : BORDER}`,
+          boxShadow: scrolled ? "0 1px 3px rgba(0,0,0,0.06)" : "none",
+          transition: "box-shadow 0.3s ease, border-color 0.3s ease",
+          fontFamily: "'Plus Jakarta Sans', Inter, system-ui, sans-serif",
+        }}
+      >
+        <div style={{ maxWidth: 1440, margin: "0 auto", padding: "0 20px", display: "flex", alignItems: "stretch", height: 62 }}>
 
-        {/* Logo → / */}
-        <div style={{ display: "flex", alignItems: "center", paddingRight: 28, borderRight: `1px solid ${BORDER}`, marginRight: 8, flexShrink: 0 }}>
-          <Link to="/" style={{ textDecoration: "none", display: "flex", alignItems: "center" }}>
-            <img src="/logo.png" alt="PartLister" style={{ height: 32, width: "auto", display: "block" }} />
-          </Link>
-        </div>
+          {/* Logo */}
+          <div className="nav-logo-divider">
+            <Link to="/" style={{ textDecoration: "none", display: "flex", alignItems: "center" }}>
+              <img src="/logo.png" alt="PartLister" style={{ height: 32, width: "auto", display: "block" }} />
+            </Link>
+          </div>
 
-        {/* Nav tabs */}
-        <div style={{ display: "flex", flex: 1, alignItems: "stretch" }}>
-          {NAV_ITEMS.map((item) => {
-            const isActive = active === item.label;
-            return (
-              <a
-                key={item.label}
-                href={item.href}
-                onClick={() => setActive(item.label)}
-                style={{
-                  display: "flex", alignItems: "center", gap: 7,
-                  padding: "0 16px",
-                  fontSize: 13, fontWeight: isActive ? 700 : 500,
-                  color: isActive ? ACCENT : MUTED,
-                  textDecoration: "none",
-                  borderBottom: isActive ? `2px solid ${ACCENT}` : "2px solid transparent",
-                  transition: "all 0.15s ease",
-                  whiteSpace: "nowrap",
-                  cursor: "pointer",
-                }}
-                onMouseEnter={e => {
-                  if (!isActive) {
+          {/* Desktop nav tabs */}
+          <div className="nav-desktop-links">
+            {NAV_ITEMS.map((item) => {
+              const isActive = active === item.label;
+              return (
+                <a
+                  key={item.label}
+                  href={item.href}
+                  onClick={() => setActive(item.label)}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 7,
+                    padding: "0 16px",
+                    fontSize: 13, fontWeight: isActive ? 700 : 500,
+                    color: isActive ? ACCENT : MUTED,
+                    textDecoration: "none",
+                    borderBottom: isActive ? `2px solid ${ACCENT}` : "2px solid transparent",
+                    transition: "all 0.15s ease",
+                    whiteSpace: "nowrap",
+                    cursor: "pointer",
+                  }}
+                  onMouseEnter={e => {
+                    if (!isActive) {
+                      e.currentTarget.style.color = TEXT;
+                      e.currentTarget.style.borderBottomColor = "#cbd5e1";
+                    }
+                  }}
+                  onMouseLeave={e => {
+                    if (!isActive) {
+                      e.currentTarget.style.color = MUTED;
+                      e.currentTarget.style.borderBottomColor = "transparent";
+                    }
+                  }}
+                >
+                  <span style={{ color: isActive ? ACCENT : DIM, display: "flex" }}>{item.icon}</span>
+                  {item.label}
+                </a>
+              );
+            })}
+          </div>
+
+          {/* Right side — auth-aware desktop buttons */}
+          <div className="nav-desktop-right">
+            {authed ? (
+              <>
+                <Link
+                  to="/"
+                  style={{
+                    display: "flex", alignItems: "center", gap: 6,
+                    padding: "6px 14px", borderRadius: 8,
+                    border: `1px solid ${BORDER}`, background: "transparent",
+                    textDecoration: "none",
+                    fontSize: 13, fontWeight: 600, color: MUTED,
+                    transition: "all 0.15s ease",
+                  }}
+                  onMouseEnter={e => {
                     e.currentTarget.style.color = TEXT;
-                    e.currentTarget.style.borderBottomColor = "#cbd5e1";
-                  }
-                }}
-                onMouseLeave={e => {
-                  if (!isActive) {
+                    e.currentTarget.style.borderColor = "#cbd5e1";
+                    e.currentTarget.style.background = "#f8fafc";
+                  }}
+                  onMouseLeave={e => {
                     e.currentTarget.style.color = MUTED;
-                    e.currentTarget.style.borderBottomColor = "transparent";
-                  }
-                }}
-              >
-                <span style={{ color: isActive ? ACCENT : DIM, display: "flex" }}>
-                  {item.icon}
-                </span>
-                {item.label}
-              </a>
-            );
-          })}
+                    e.currentTarget.style.borderColor = BORDER;
+                    e.currentTarget.style.background = "transparent";
+                  }}
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+                    <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+                  </svg>
+                  Dashboard
+                </Link>
+                <button
+                  className="nav-login-btn"
+                  onClick={handleLogout}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 6,
+                    padding: "6px 14px", borderRadius: 8,
+                    border: "1px solid #fca5a5", background: "#fff5f5",
+                    cursor: "pointer",
+                    fontSize: 13, fontWeight: 600, color: "#dc2626",
+                    transition: "all 0.15s ease",
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.background = "#fee2e2";
+                    e.currentTarget.style.borderColor = "#f87171";
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.background = "#fff5f5";
+                    e.currentTarget.style.borderColor = "#fca5a5";
+                  }}
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+                  </svg>
+                  Log out
+                </button>
+              </>
+            ) : (
+              <>
+                <Link
+                  to="/auth/login"
+                  className="nav-login-btn"
+                  style={{
+                    display: "flex", alignItems: "center", gap: 6,
+                    padding: "6px 14px", borderRadius: 8,
+                    border: `1px solid ${BORDER}`, background: "transparent",
+                    textDecoration: "none",
+                    fontSize: 13, fontWeight: 600, color: MUTED,
+                    transition: "all 0.15s ease",
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.color = TEXT;
+                    e.currentTarget.style.borderColor = "#cbd5e1";
+                    e.currentTarget.style.background = "#f8fafc";
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.color = MUTED;
+                    e.currentTarget.style.borderColor = BORDER;
+                    e.currentTarget.style.background = "transparent";
+                  }}
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/>
+                  </svg>
+                  Login
+                </Link>
+
+                <Link
+                  to="/auth/sign-up"
+                  className="nav-cta-btn"
+                  onClick={() => trackEvent("signup_clicked", { cta_location: "navbar" })}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 6,
+                    padding: "7px 18px", borderRadius: 8,
+                    background: ACCENT,
+                    boxShadow: "0 2px 10px rgba(19,93,255,0.28)",
+                    textDecoration: "none",
+                    fontSize: 13, fontWeight: 700, color: "#ffffff",
+                    whiteSpace: "nowrap",
+                    transition: "box-shadow 0.15s, transform 0.15s",
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.boxShadow = "0 4px 18px rgba(19,93,255,0.42)";
+                    e.currentTarget.style.transform = "translateY(-1px)";
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.boxShadow = "0 2px 10px rgba(19,93,255,0.28)";
+                    e.currentTarget.style.transform = "translateY(0)";
+                  }}
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                  </svg>
+                  <span className="nav-cta-text-long">Generate 10 Listings Free</span>
+                  <span className="nav-cta-text-short" style={{ display: "none" }}>Get Started</span>
+                </Link>
+              </>
+            )}
+          </div>
+
+          {/* Hamburger — only visible on mobile via CSS */}
+          <button
+            className="nav-hamburger"
+            onClick={() => setMenuOpen(o => !o)}
+            aria-label={menuOpen ? "Close menu" : "Open menu"}
+          >
+            {menuOpen ? (
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                <path d="M2 2l14 14M16 2L2 16" stroke={TEXT} strokeWidth="1.8" strokeLinecap="round"/>
+              </svg>
+            ) : (
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                <path d="M2 4h14M2 9h14M2 14h14" stroke={TEXT} strokeWidth="1.8" strokeLinecap="round"/>
+              </svg>
+            )}
+          </button>
+
         </div>
+      </nav>
 
-        {/* Right side — changes based on auth state */}
-        <div style={{ display: "flex", alignItems: "center", gap: 8, paddingLeft: 16, flexShrink: 0 }}>
+      {/* Mobile drawer — rendered outside nav so it can be full-width */}
+      <div className={`nav-mobile-drawer${menuOpen ? " open" : ""}`}>
+        {/* Nav links */}
+        {NAV_ITEMS.map(item => (
+          <a
+            key={item.label}
+            href={item.href}
+            className="drawer-nav-item"
+            onClick={() => { setActive(item.label); setMenuOpen(false); }}
+          >
+            <span style={{ color: DIM, display: "flex", flexShrink: 0 }}>{item.icon}</span>
+            {item.label}
+            <svg style={{ marginLeft: "auto" }} width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="M5 3l4 4-4 4" stroke={DIM} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </a>
+        ))}
 
+        {/* Auth actions */}
+        <div className="drawer-actions">
           {authed ? (
             <>
-              {/* Dashboard button */}
-              <Link
-                to="/"
-                style={{
-                  display: "flex", alignItems: "center", gap: 6,
-                  padding: "6px 14px", borderRadius: 8,
-                  border: `1px solid ${BORDER}`, background: "transparent",
-                  textDecoration: "none",
-                  fontSize: 13, fontWeight: 600, color: MUTED,
-                  transition: "all 0.15s ease",
-                }}
-                onMouseEnter={e => {
-                  e.currentTarget.style.color = TEXT;
-                  e.currentTarget.style.borderColor = "#cbd5e1";
-                  e.currentTarget.style.background = "#f8fafc";
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.color = MUTED;
-                  e.currentTarget.style.borderColor = BORDER;
-                  e.currentTarget.style.background = "transparent";
-                }}
-              >
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                  strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
-                  <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
-                </svg>
+              <Link to="/" className="drawer-login" onClick={() => setMenuOpen(false)}>
                 Dashboard
               </Link>
-
-              {/* Log out */}
               <button
                 onClick={handleLogout}
-                style={{
-                  display: "flex", alignItems: "center", gap: 6,
-                  padding: "6px 14px", borderRadius: 8,
-                  border: "1px solid #fca5a5", background: "#fff5f5",
-                  cursor: "pointer",
-                  fontSize: 13, fontWeight: 600, color: "#dc2626",
-                  transition: "all 0.15s ease",
-                }}
-                onMouseEnter={e => {
-                  e.currentTarget.style.background = "#fee2e2";
-                  e.currentTarget.style.borderColor = "#f87171";
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.background = "#fff5f5";
-                  e.currentTarget.style.borderColor = "#fca5a5";
-                }}
+                style={{ display: "block", width: "100%", padding: "12px", textAlign: "center", border: "1px solid #fca5a5", borderRadius: 10, fontSize: 14, fontWeight: 600, color: "#dc2626", background: "#fff5f5", cursor: "pointer" }}
               >
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                  strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
-                </svg>
                 Log out
               </button>
             </>
           ) : (
             <>
-              {/* Login */}
-              <Link
-                to="/auth/login"
-                style={{
-                  display: "flex", alignItems: "center", gap: 6,
-                  padding: "6px 14px", borderRadius: 8,
-                  border: `1px solid ${BORDER}`, background: "transparent",
-                  textDecoration: "none",
-                  fontSize: 13, fontWeight: 600, color: MUTED,
-                  transition: "all 0.15s ease",
-                }}
-                onMouseEnter={e => {
-                  e.currentTarget.style.color = TEXT;
-                  e.currentTarget.style.borderColor = "#cbd5e1";
-                  e.currentTarget.style.background = "#f8fafc";
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.color = MUTED;
-                  e.currentTarget.style.borderColor = BORDER;
-                  e.currentTarget.style.background = "transparent";
-                }}
-              >
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                  strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/>
-                </svg>
+              <Link to="/auth/login" className="drawer-login" onClick={() => setMenuOpen(false)}>
                 Login
               </Link>
-
-              {/* CTA → sign up */}
               <Link
                 to="/auth/sign-up"
-                onClick={() => trackEvent("signup_clicked", { cta_location: "navbar" })}
-                style={{
-                  display: "flex", alignItems: "center", gap: 6,
-                  padding: "7px 18px", borderRadius: 8,
-                  background: ACCENT,
-                  boxShadow: "0 2px 10px rgba(19,93,255,0.28)",
-                  textDecoration: "none",
-                  fontSize: 13, fontWeight: 700, color: "#ffffff",
-                  whiteSpace: "nowrap",
-                  transition: "box-shadow 0.15s, transform 0.15s",
-                }}
-                onMouseEnter={e => {
-                  e.currentTarget.style.boxShadow = "0 4px 18px rgba(19,93,255,0.42)";
-                  e.currentTarget.style.transform = "translateY(-1px)";
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.boxShadow = "0 2px 10px rgba(19,93,255,0.28)";
-                  e.currentTarget.style.transform = "translateY(0)";
-                }}
+                className="drawer-cta"
+                onClick={() => { trackEvent("signup_clicked", { cta_location: "mobile_nav" }); setMenuOpen(false); }}
               >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                  strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
-                </svg>
-                Generate 10 Listings Free
+                Generate 10 Listings Free →
               </Link>
             </>
           )}
         </div>
-
       </div>
-    </nav>
+    </>
   );
 }

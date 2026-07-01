@@ -3,6 +3,7 @@ import express from "express";
 import cors from "cors";
 import { Parser } from "json2csv";
 import { buildHtml } from "./html-builder.js";
+import { getEbayCategory } from "./lib/ebay-categories.js";
 import { getTemplateById, THEME_LIST } from "./templates/index.js";
 import { checkCompatibility } from "./compatibility/checker.js";
 import {
@@ -439,17 +440,30 @@ async function fetchEngineDataByModelIds(cars) {
 
 function extractFirstImageUrl(mediaResponse) {
   if (!mediaResponse) return "";
+
+  // Try the documented TecDoc articleImages array first (largest available size)
+  const imgArr = mediaResponse.articleImages ?? mediaResponse.data?.articleImages ?? null;
+  if (Array.isArray(imgArr) && imgArr.length > 0) {
+    for (const img of imgArr) {
+      const url = img.imageURL4 || img.imageURL3 || img.imageURL2 || img.imageURL1 || "";
+      if (url && url.startsWith("http")) return url;
+    }
+  }
+
+  // Fallback: walk the entire response tree for any tecalliance/tecdoc URL or image extension
   const urls = [];
-  const walk = (obj) => {
-    if (!obj) return;
+  const walk = (obj, depth = 0) => {
+    if (!obj || depth > 8) return;
     if (typeof obj === "string") {
-      if (obj.startsWith("http") && (obj.includes("img.tecalliance") || /\.(jpg|jpeg|png|webp)/i.test(obj))) {
-        urls.push(obj);
-      }
+      if (obj.startsWith("http") && (
+        obj.includes("tecalliance") ||
+        obj.includes("tecdoc") ||
+        /\.(jpg|jpeg|png|webp)/i.test(obj)
+      )) { urls.push(obj); }
       return;
     }
-    if (Array.isArray(obj)) { obj.forEach(walk); return; }
-    if (typeof obj === "object") Object.values(obj).forEach(walk);
+    if (Array.isArray(obj)) { obj.forEach((x) => walk(x, depth + 1)); return; }
+    if (typeof obj === "object") Object.values(obj).forEach((v) => walk(v, depth + 1));
   };
   walk(mediaResponse);
   return urls[0] || "";
@@ -503,7 +517,14 @@ function normalizeTecdoc(articleResponse, engineDataByModelId) {
       engine_codes: uniq(splitEngineCodes(rawCodes)),
       k_number:     String(vid)
     };
-  }).filter(Boolean); // remove ghost rows
+  }).filter(Boolean) // remove ghost rows
+    .sort((a, b) => {
+      const m = a.make.localeCompare(b.make);
+      if (m !== 0) return m;
+      const n = a.model.localeCompare(b.model);
+      if (n !== 0) return n;
+      return a.engine.localeCompare(b.engine);
+    });
 
   const specifications = uniq(
     (article.allSpecifications || [])
@@ -538,18 +559,19 @@ function normalizeTecdoc(articleResponse, engineDataByModelId) {
 
 // ─── Main listing builder (optimised) ────────────────────────────────────────
 
-async function buildListingFromArticle(articleNumber, themeId = "clean-default") {
+async function buildListingFromArticle(articleNumber, themeId = "clean-default", opts = {}) {
   const template = getTemplateById(themeId);
 
   // ── Cache hit: skip all data fetching, just rebuild HTML ──────────────────
   if (articleNormCache.has(articleNumber)) {
-    const cached = articleNormCache.get(articleNumber);
-    const html   = buildHtml(cached.normalized, template);
+    const cached  = articleNormCache.get(articleNumber);
+    const html = buildHtml(cached.normalized, template, opts);
     return {
       ...cached.baseResult,
-      generated_html: html,
-      template_id:    template.id,
-      template_name:  template.name
+      generated_html:    html,
+      target_marketplace: opts.targetMarketplace || "ebay-uk",
+      template_id:        template.id,
+      template_name:      template.name
     };
   }
 
@@ -653,7 +675,7 @@ async function buildListingFromArticle(articleNumber, themeId = "clean-default")
   console.log(`[Listing] ${articleNumber}: own=${ownRef.length} oemSearch=${fromOemSearch.length} crossRefs=${crossRefs.length} total=${interchangeableParts.length} brand="${articleBrand}"`);
 
   // ── Build HTML ────────────────────────────────────────────────────────────
-  const html = buildHtml({ ...normalized, engine_codes: engineCodes, k_numbers: kNumbers, interchangeable_parts: interchangeableParts }, template);
+  const html = buildHtml({ ...normalized, engine_codes: engineCodes, k_numbers: kNumbers, interchangeable_parts: interchangeableParts }, template, opts);
 
   // ── Derive summary fields for AI title generation ─────────────────────────
   const modelCounts = {};
@@ -692,6 +714,8 @@ async function buildListingFromArticle(articleNumber, themeId = "clean-default")
   });
   const fuelType = Object.entries(fuelCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || "";
 
+  const ebayCategory = getEbayCategory(normalized.product_name, opts.targetMarketplace);
+
   const baseResult = {
     article_number:       articleNumber,
     article_id:           articleId,
@@ -709,7 +733,9 @@ async function buildListingFromArticle(articleNumber, themeId = "clean-default")
     top_models:           topModels,
     year_range:           yearRange,
     engine_sizes:         engineSizes,
-    fuel_type:            fuelType
+    fuel_type:            fuelType,
+    ebay_category_id:     ebayCategory?.id   || null,
+    ebay_category_name:   ebayCategory?.name || null,
   };
 
   // Cache by both the input key and the resolved article number (OEM searches benefit from this)
@@ -719,9 +745,10 @@ async function buildListingFromArticle(articleNumber, themeId = "clean-default")
 
   return {
     ...baseResult,
-    generated_html: html,
-    template_id:    template.id,
-    template_name:  template.name
+    generated_html:    html,
+    target_marketplace: opts.targetMarketplace || "ebay-uk",
+    template_id:        template.id,
+    template_name:      template.name
   };
 }
 
@@ -842,8 +869,10 @@ app.post("/search", async (req, res) => {
 
 app.post("/lookup", requireAuth, listingGenerationLimiter, async (req, res) => {
   try {
-    const articleNumber = String(req.body.articleNumber || "").trim().replace(/\s+/g, "");
-    const themeId       = req.body.themeId || req.body.templateId || "clean-default";
+    const articleNumber     = String(req.body.articleNumber || "").trim().replace(/\s+/g, "");
+    const themeId           = req.body.themeId || req.body.templateId || "clean-default";
+    const listingOptions    = req.body.listingOptions || {};
+    const targetMarketplace = req.body.targetMarketplace || "ebay-uk";
 
     if (!articleNumber) return res.status(400).json({ error: "Missing articleNumber" });
 
@@ -857,7 +886,7 @@ app.post("/lookup", requireAuth, listingGenerationLimiter, async (req, res) => {
       });
     }
 
-    const result = await buildListingFromArticle(articleNumber, themeId);
+    const result = await buildListingFromArticle(articleNumber, themeId, { ...listingOptions, targetMarketplace });
 
     // Only increment usage once a real result has been returned — failures,
     // not-found, and server errors above never reach this line.
@@ -918,7 +947,7 @@ app.post("/batch-export", requireAuth, listingGenerationLimiter, async (req, res
       const rowAccess = await canGenerateListing(req.user.id, req.user.email);
       if (!rowAccess.allowed) {
         exportRows.push({
-          "Title": "", "SKU": row.sku, "BIN Price": row.binPrice,
+          "Title": "", "Category": "", "SKU": row.sku, "BIN Price": row.binPrice,
           "Description": "",
           "Custom Specifics 1 Name": "Brand", "Custom Specifics 1 Value": "JSK",
           "Custom Specifics 2 Name": "Reference OE/OEM Number", "Custom Specifics 2 Value": "",
@@ -940,6 +969,7 @@ app.post("/batch-export", requireAuth, listingGenerationLimiter, async (req, res
 
         exportRows.push({
           "Title":                       result.generated_title || "",
+          "Category":                    result.ebay_category_id || "",
           "SKU":                         row.sku,
           "BIN Price":                   row.binPrice,
           "Description":                 result.generated_html || "",
@@ -965,7 +995,7 @@ app.post("/batch-export", requireAuth, listingGenerationLimiter, async (req, res
         await incrementListingUsage(req.user.id, req.user.email);
       } catch (err) {
         exportRows.push({
-          "Title": "", "SKU": row.sku, "BIN Price": row.binPrice,
+          "Title": "", "Category": "", "SKU": row.sku, "BIN Price": row.binPrice,
           "Description": "",
           "Custom Specifics 1 Name": "Brand", "Custom Specifics 1 Value": "JSK",
           "Custom Specifics 2 Name": "Reference OE/OEM Number", "Custom Specifics 2 Value": "",
@@ -1064,30 +1094,45 @@ app.post("/api/ai/generate-titles", requireAuth, aiTitlesLimiter, async (req, re
   }
 
   const {
-    productType  = "",
-    brand        = "",
-    oemNumbers   = [],
-    topModels    = [],
-    engineCodes  = [],
-    engineSizes  = [],
-    fuelType     = "",
-    yearRange    = "",
-    maxTitleLength = 80
+    productType       = "",
+    brand             = "",
+    oemNumbers        = [],
+    topModels         = [],
+    engineCodes       = [],
+    engineSizes       = [],
+    fuelType          = "",
+    yearRange         = "",
+    maxTitleLength    = 80,
+    targetMarketplace = "ebay-uk",
   } = req.body;
 
   if (!productType) {
     return res.status(400).json({ error: "productType is required" });
   }
 
+  const TITLE_LANG_NAMES = {
+    "ebay-uk": "English", "ebay-de": "German", "ebay-fr": "French",
+    "ebay-it": "Italian", "ebay-es": "Spanish", "ebay-ae": "Arabic", "ebay-tr": "Turkish",
+  };
+  const TITLE_EBAY_SITES = {
+    "ebay-uk": "eBay UK", "ebay-de": "eBay Germany", "ebay-fr": "eBay France",
+    "ebay-it": "eBay Italy", "ebay-es": "eBay Spain", "ebay-ae": "eBay UAE", "ebay-tr": "eBay Turkey",
+  };
+  const titleLang     = TITLE_LANG_NAMES[targetMarketplace] || "English";
+  const titleEbaySite = TITLE_EBAY_SITES[targetMarketplace] || "eBay UK";
+  const langInstruction = titleLang === "English"
+    ? ""
+    : `- Write the product name / part type in ${titleLang} as used by professional sellers on ${titleEbaySite}. Do NOT translate: make names, model names, engine codes, OEM numbers, year ranges, or power figures.\n`;
+
   // Strip "L" suffix from engine sizes — display as "2.5", "3.0" not "2.5L"
   const cleanEngSizes = engineSizes.map((s) => s.replace(/L$/i, "")).slice(0, 4);
 
-  const prompt = `You are an expert eBay automotive parts listing writer specialising in UK automotive parts.
+  const prompt = `You are an expert ${titleEbaySite} automotive parts listing writer.
 
 Generate exactly 3 listing titles using the templates and rules below.
 
 ═══ GLOBAL RULES ═══
-- MINIMUM 70 characters, MAXIMUM 80 characters. Titles under 70 characters are not acceptable.
+${langInstruction}- MINIMUM 70 characters, MAXIMUM 80 characters. Titles under 70 characters are not acceptable.
 - To reach 70–80 characters: add more models, additional engine codes, extra engine sizes, or extend the year range until you hit the target. If still short, add the next most relevant model or engine code from the data.
 - Never exceed 80 characters. Never cut off mid-word.
 - Count characters carefully before finalising each title.
@@ -1260,6 +1305,16 @@ async function getEbayAccessToken() {
 //   7. Multiplier outlier filter  (per-rule high/low thresholds)
 //   8. Recalculate final stats from clean set
 //   9. Return enriched response with per-reason exclusion counts
+const EBAY_MARKETPLACE_IDS = {
+  "ebay-uk": "EBAY_GB",
+  "ebay-de": "EBAY_DE",
+  "ebay-fr": "EBAY_FR",
+  "ebay-it": "EBAY_IT",
+  "ebay-es": "EBAY_ES",
+  "ebay-ae": "EBAY_UAE",
+  "ebay-tr": "EBAY_GB", // eBay Turkey closed — fallback to eBay UK
+};
+
 app.post("/api/ebay/search-prices", requireAuth, ebaySearchLimiter, async (req, res) => {
   try {
     const feature = await checkFeatureAccess(req.user.id, req.user.email, "smartPricing");
@@ -1270,7 +1325,8 @@ app.post("/api/ebay/search-prices", requireAuth, ebaySearchLimiter, async (req, 
       });
     }
 
-    const { query, condition = "new" } = req.body;
+    const { query, condition = "new", targetMarketplace = "ebay-uk" } = req.body;
+    const ebayMarketplaceId = EBAY_MARKETPLACE_IDS[targetMarketplace] || "EBAY_GB";
     if (!query?.trim()) {
       return res.status(400).json({ error: "query is required" });
     }
@@ -1295,7 +1351,7 @@ app.post("/api/ebay/search-prices", requireAuth, ebaySearchLimiter, async (req, 
     const ebayRes = await fetchWithTimeout(url, {
       headers: {
         Authorization:             `Bearer ${token}`,
-        "X-EBAY-C-MARKETPLACE-ID": "EBAY_GB",
+        "X-EBAY-C-MARKETPLACE-ID": ebayMarketplaceId,
         "Content-Type":            "application/json",
       },
     }, 20000);
@@ -1363,6 +1419,8 @@ app.post("/api/ebay/search-prices", requireAuth, ebaySearchLimiter, async (req, 
       return res.json({
         low: null, high: null, average: null, median: null,
         currency,
+        targetMarketplace,
+        ebayMarketplaceId,
         condition,
         conditionLabel: condLabel,
         priceCount:          0,
@@ -1415,6 +1473,8 @@ app.post("/api/ebay/search-prices", requireAuth, ebaySearchLimiter, async (req, 
       average: +average.toFixed(2),
       median:  +median.toFixed(2),
       currency,
+      targetMarketplace,
+      ebayMarketplaceId,
       condition,
       conditionLabel: condLabel,
       priceCount:          n,
@@ -1460,9 +1520,10 @@ app.post("/api/ebay/search-prices", requireAuth, ebaySearchLimiter, async (req, 
 // Fetches item details in parallel (max 10 concurrent) with a 5-second timeout.
 app.post("/api/ebay/sold-counts", async (req, res) => {
   try {
-    const { itemIds } = req.body;
+    const { itemIds, targetMarketplace = "ebay-uk" } = req.body;
     if (!Array.isArray(itemIds) || itemIds.length === 0) return res.json({});
 
+    const ebayMarketplaceId = EBAY_MARKETPLACE_IDS[targetMarketplace] || "EBAY_GB";
     const token   = await getEbayAccessToken();
     const results = {};
     const CONCURRENCY = 10;
@@ -1478,7 +1539,7 @@ app.post("/api/ebay/sold-counts", async (req, res) => {
               method: "GET",
               headers: {
                 "Authorization":            `Bearer ${token}`,
-                "X-EBAY-C-MARKETPLACE-ID":  "EBAY_GB",
+                "X-EBAY-C-MARKETPLACE-ID":  ebayMarketplaceId,
                 "Content-Type":             "application/json",
               },
             },

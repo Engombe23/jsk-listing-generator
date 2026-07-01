@@ -103,6 +103,7 @@ function PlanCard({ plan, annual }: { plan: Plan; annual: boolean }) {
 
   return (
     <div
+      className={isGrowth ? "pricing-growth-card" : ""}
       style={{
         position: "relative",
         background: isScale ? SCALE_BG : CARD_BG,
@@ -290,7 +291,7 @@ export default function Pricing() {
         </div>
 
         {/* Cards */}
-        <div style={{
+        <div className="pricing-grid" style={{
           display: "grid",
           gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
           gap: 28,
@@ -303,7 +304,7 @@ export default function Pricing() {
         {/* Footer note */}
         <p style={{ textAlign: "center", fontSize: 13, color: DIM, marginTop: 56 }}>
           All plans include VAT. Cancel anytime. Questions?{" "}
-          <a href="mailto:hello@partlister.app" style={{ color: ACCENT, textDecoration: "none" }}>hello@partlister.app</a>
+          <a href="mailto:enquiries@partlister.app" style={{ color: ACCENT, textDecoration: "none" }}>enquiries@partlister.app</a>
         </p>
       </div>
     </section>
