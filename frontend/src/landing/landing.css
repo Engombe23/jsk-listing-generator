@@ -194,12 +194,14 @@
   /* Logo slightly smaller */
   .nav-logo-divider img { height: 26px !important; }
 
-  /* Hamburger shrinks to match */
+  /* Hamburger shrinks to match, centred vertically in the stretch container */
   .nav-hamburger {
     display: flex;
     width: 34px !important;
     height: 34px !important;
     border-radius: 8px !important;
+    align-self: center !important;
+    margin-left: auto !important;
   }
 
   /* Drawer offset matches new nav height */
