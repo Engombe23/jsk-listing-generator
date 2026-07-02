@@ -25,6 +25,7 @@ import PriceCalculator from "./PriceCalculator.jsx";
 import SavedProducts from "./SavedProducts.jsx";
 import CompatibilityChecker from "./CompatibilityChecker.jsx";
 import Account, { ProfileDropdown } from "./Account.jsx";
+import PartIdentifier from "./PartIdentifier.jsx";
 import { useSavedProducts } from "./useSavedProducts.js";
 import { useGeneratedListings } from "./useGeneratedListings.js";
 import { useSessionState } from "./useSessionState.js";
@@ -386,6 +387,12 @@ export default function App() {
         <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
       </svg>
     ),
+    partidentifier: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        <line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/>
+      </svg>
+    ),
   };
 
   return (
@@ -397,7 +404,12 @@ export default function App() {
 
           {/* Logo */}
           <div style={{ display: "flex", alignItems: "center", paddingRight: 32, borderRight: "1px solid var(--border)", marginRight: 8 }}>
-            <img src={logoSrc} alt="PartLister" style={{ height: 30, width: "auto" }} />
+            <button
+              onClick={() => navigateTo("listing")}
+              style={{ background: "none", border: "none", padding: 0, cursor: "pointer", display: "flex", alignItems: "center" }}
+            >
+              <img src={logoSrc} alt="PartLister" style={{ height: 30, width: "auto" }} />
+            </button>
           </div>
 
           {/* Nav tabs */}
@@ -406,8 +418,9 @@ export default function App() {
               { key: "listing",       label: t("nav.listingGenerator") },
               { key: "calculator",    label: t("nav.priceCalculator") },
               ...(canUseCompatibility ? [{ key: "compatibility", label: t("nav.compatibility") }] : []),
+              // { key: "partidentifier", label: "Part Identifier", badge: "BETA" }, // hidden — feature paused
               { key: "account",       label: t("nav.account") },
-            ].map(({ key, label }) => {
+            ].map(({ key, label, badge }) => {
               const active = page === key;
               return (
                 <button key={key} onClick={() => navigateTo(key)} style={{
@@ -422,6 +435,11 @@ export default function App() {
                     {NAV_ICONS[key]}
                   </span>
                   {label}
+                  {badge && (
+                    <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.06em", color: "var(--blue)", background: "var(--blue-bg)", border: "1px solid rgba(19,93,255,0.2)", borderRadius: 4, padding: "1px 5px", marginLeft: 2 }}>
+                      {badge}
+                    </span>
+                  )}
                 </button>
               );
             })}
@@ -479,6 +497,20 @@ export default function App() {
             onSendToListing={({ articleNumber }) => {
               setPrefilledArticle(articleNumber || "");
               navigateTo("listing");
+            }}
+          />
+        )}
+        {page === "partidentifier" && (
+          <PartIdentifier
+            onSendToListing={({ articleNumber }) => {
+              setPrefilledArticle(articleNumber || "");
+              navigateTo("listing");
+            }}
+            onSendToPricing={({ query }) => {
+              try {
+                localStorage.setItem("jsk_pc_autorun", JSON.stringify({ query, timestamp: Date.now() }));
+              } catch {}
+              navigateTo("calculator");
             }}
           />
         )}

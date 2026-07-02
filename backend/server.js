@@ -19,6 +19,7 @@ import { supabaseAdminReady } from "./lib/supabaseAdmin.js";
 import { requireAuth } from "./middleware/requireAuth.js";
 import { canGenerateListing, incrementListingUsage, checkFeatureAccess } from "./lib/profiles.js";
 import authRouter from "./routes/auth.js";
+import partIdentifierRouter from "./routes/partIdentifier.js";
 import { listingGenerationLimiter, compatibilityLimiter, ebaySearchLimiter, aiTitlesLimiter } from "./middleware/rateLimiter.js";
 
 const openaiClient = process.env.OPENAI_API_KEY
@@ -39,6 +40,7 @@ app.use(express.json({ limit: "2mb" }));
 app.use("/api", analyticsRouter);
 app.use("/api", stripeRouter);
 app.use("/api", authRouter);
+app.use("/api", partIdentifierRouter);
 
 const RAPIDAPI_KEY  = process.env.RAPIDAPI_KEY;
 const RAPIDAPI_HOST = "autodoc-parts-catalog.p.rapidapi.com";
