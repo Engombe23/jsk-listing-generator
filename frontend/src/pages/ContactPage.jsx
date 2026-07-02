@@ -153,12 +153,12 @@ export default function ContactPage() {
             Contact Us
           </h1>
           <p style={{ fontSize: 16, color: MUTED, margin: 0, maxWidth: 460, marginLeft: "auto", marginRight: "auto", lineHeight: 1.7 }}>
-            Have a question, feature request or need help with PartLister? We'd love to hear from you.
+            Have a question, feedback or need support? We'd love to hear from you.
           </p>
         </div>
 
         {/* ── Card ── */}
-        <div style={{ maxWidth: 600, margin: "0 auto", padding: "0 20px 96px" }}>
+        <div style={{ maxWidth: 720, margin: "0 auto", padding: "0 20px 96px" }}>
           <div style={{
             background: "#fff", border: `1px solid ${BORDER}`, borderRadius: 20,
             padding: "40px 44px",
@@ -238,7 +238,7 @@ export default function ContactPage() {
                   {/* Name + Email */}
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
                     <div>
-                      <Label required>Full Name</Label>
+                      <Label required>Your Name</Label>
                       <input
                         type="text" value={name} onChange={e => setName(e.target.value)}
                         placeholder="e.g. Aaron Butler"
@@ -247,10 +247,10 @@ export default function ContactPage() {
                       />
                     </div>
                     <div>
-                      <Label required>Email Address</Label>
+                      <Label required>Your Email</Label>
                       <input
                         type="email" value={email} onChange={e => setEmail(e.target.value)}
-                        placeholder="you@example.com"
+                        placeholder="e.g. aaron@partlister.app"
                         style={inputStyle("email")}
                         onFocus={() => setFocused("email")} onBlur={() => setFocused(null)}
                       />
@@ -285,36 +285,22 @@ export default function ContactPage() {
                   {/* Message */}
                   <div>
                     <Label required>Message</Label>
-                    <div style={{ position: "relative" }}>
-                      <textarea
-                        ref={textareaRef}
-                        value={message} onChange={handleMessageChange}
-                        placeholder="How can we help you?"
-                        style={{
-                          ...inputStyle("message"),
-                          resize: "none", minHeight: 140, overflow: "hidden",
-                          lineHeight: 1.65, paddingBottom: 30,
-                          ...(focused === "message" ? { borderColor: ACCENT, boxShadow: "0 0 0 3px rgba(19,93,255,0.1)" } : {}),
-                        }}
-                        onFocus={() => setFocused("message")} onBlur={() => setFocused(null)}
-                      />
-                      <span style={{
-                        position: "absolute", bottom: 9, right: 13,
-                        fontSize: 11, fontWeight: message.length > MAX_CHARS * 0.9 ? 600 : 400,
-                        color: message.length > MAX_CHARS * 0.9 ? RED : DIM,
-                        pointerEvents: "none",
-                      }}>
-                        {message.length.toLocaleString()} / {MAX_CHARS.toLocaleString()}
-                      </span>
-                    </div>
+                    <textarea
+                      ref={textareaRef}
+                      value={message} onChange={handleMessageChange}
+                      placeholder="How can we help you?"
+                      style={{
+                        ...inputStyle("message"),
+                        resize: "vertical", minHeight: 140,
+                        lineHeight: 1.65,
+                        ...(focused === "message" ? { borderColor: ACCENT, boxShadow: "0 0 0 3px rgba(19,93,255,0.1)" } : {}),
+                      }}
+                      onFocus={() => setFocused("message")} onBlur={() => setFocused(null)}
+                    />
                   </div>
 
                   {/* Attachment */}
                   <div>
-                    <Label>
-                      Attachment{" "}
-                      <span style={{ fontWeight: 400, color: DIM, fontSize: 12 }}>(optional)</span>
-                    </Label>
                     {attachment ? (
                       <div style={{
                         display: "flex", alignItems: "center", gap: 10,
@@ -338,23 +324,24 @@ export default function ContactPage() {
                         </button>
                       </div>
                     ) : (
-                      <button type="button" onClick={() => fileRef.current?.click()}
-                        style={{
-                          width: "100%", padding: "11px 14px",
-                          border: `1.5px dashed ${BORDER}`, borderRadius: 10,
-                          background: "transparent", cursor: "pointer",
-                          display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-                          color: DIM, fontSize: 13, transition: "all 0.15s",
-                          fontFamily: "inherit",
-                        }}
-                        onMouseEnter={e => { e.currentTarget.style.borderColor = ACCENT; e.currentTarget.style.color = ACCENT; e.currentTarget.style.background = "rgba(19,93,255,0.03)"; }}
-                        onMouseLeave={e => { e.currentTarget.style.borderColor = BORDER; e.currentTarget.style.color = DIM; e.currentTarget.style.background = "transparent"; }}
-                      >
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
-                        </svg>
-                        Attach a file — images, PDF or ZIP · Max 10 MB
-                      </button>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                        <button type="button" onClick={() => fileRef.current?.click()}
+                          style={{
+                            background: "none", border: "none", cursor: "pointer", padding: 0,
+                            display: "flex", alignItems: "center", gap: 7,
+                            color: DIM, fontSize: 13, fontFamily: "inherit",
+                            transition: "color 0.15s",
+                          }}
+                          onMouseEnter={e => e.currentTarget.style.color = ACCENT}
+                          onMouseLeave={e => e.currentTarget.style.color = DIM}
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+                          </svg>
+                          Attach a file (optional)
+                        </button>
+                        <span style={{ fontSize: 12, color: DIM }}>Max file size: 10MB</span>
+                      </div>
                     )}
                     <input ref={fileRef} type="file" accept="image/*,.pdf,.zip"
                       onChange={handleFileChange} style={{ display: "none" }} />
@@ -425,13 +412,29 @@ export default function ContactPage() {
 
           {/* Help Centre link */}
           {!success && (
-            <p style={{ textAlign: "center", fontSize: 13, color: MUTED, marginTop: 28 }}>
-              Looking for an answer first?{" "}
-              <Link to="/help" style={{ color: ACCENT, textDecoration: "none", fontWeight: 600 }}>
-                Visit our Help Centre
-              </Link>{" "}
-              for guides, FAQs and tutorials.
-            </p>
+            <div style={{ textAlign: "center", marginTop: 32 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 6 }}>
+                <div style={{
+                  width: 28, height: 28, borderRadius: "50%",
+                  background: "rgba(19,93,255,0.08)", border: "1px solid rgba(19,93,255,0.15)",
+                  display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+                }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={ACCENT} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10"/>
+                    <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+                    <line x1="12" y1="17" x2="12.01" y2="17"/>
+                  </svg>
+                </div>
+                <span style={{ fontSize: 14, fontWeight: 600, color: TEXT }}>Looking for help with something specific?</span>
+              </div>
+              <p style={{ fontSize: 13, color: MUTED, margin: 0 }}>
+                Visit our{" "}
+                <Link to="/help" style={{ color: ACCENT, textDecoration: "none", fontWeight: 600 }}>
+                  Help Centre
+                </Link>{" "}
+                for guides and answers to common questions. →
+              </p>
+            </div>
           )}
         </div>
       </main>
