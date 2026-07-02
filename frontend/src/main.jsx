@@ -30,7 +30,8 @@ import HomeRoute from "./router/HomeRoute.jsx";
 import GuestOnlyRoute from "./router/GuestOnlyRoute.jsx";
 import AdminRoute from "./router/AdminRoute.jsx";
 import AdminAnalytics from "./pages/admin/AdminAnalytics.jsx";
-import About from "./pages/About.jsx";
+import About       from "./pages/About.jsx";
+import ContactPage from "./pages/ContactPage.jsx";
 import Pricing from "./pages/Pricing.jsx";
 import TermsPage from "./pages/TermsPage.jsx";
 import PrivacyPage from "./pages/PrivacyPage.jsx";
@@ -51,7 +52,8 @@ createRoot(document.getElementById("root")).render(
         <Route element={<Providers />}>
           <Route path="/" element={<HomeRoute />} />
 
-          <Route path="/about" element={<About />} />
+          <Route path="/about"   element={<About />} />
+          <Route path="/contact" element={<ContactPage />} />
           <Route path="/pricing" element={<Pricing />} />
           <Route path="/terms" element={<TermsPage />} />
           <Route path="/privacy" element={<PrivacyPage />} />

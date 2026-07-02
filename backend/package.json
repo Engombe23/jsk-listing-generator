@@ -21,6 +21,7 @@
     "multer": "^2.2.0",
     "openai": "^5.20.0",
     "posthog-node": "^5.38.2",
+    "resend": "^6.16.0",
     "stripe": "^22.2.2"
   },
   "devDependencies": {
