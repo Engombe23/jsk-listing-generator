@@ -7,6 +7,7 @@ import {
   getArticleDetailsById,
   getOemsByArticleIds,
   getCompatibleCarsByArticleNo,
+  getVehiclesByOem,
   searchPartsByVehicle,
   getEquivalentOems,
   getArticleMedia
@@ -720,7 +721,15 @@ export async function checkCompatibility({
     }
   }
 
-  result.matchReasoning  = { matched: false, score: 0, matchedBy: null, notes: [`Vehicle ID ${vehicleId} not found in compatible vehicles list`] };
+  const compatCount = compatibleVehicles.length;
+  result.matchReasoning  = {
+    matched: false, score: 0, matchedBy: null,
+    notes: [
+      compatCount > 0
+        ? `This part is listed for ${compatCount} vehicle${compatCount !== 1 ? "s" : ""} but this vehicle (TecDoc ID ${vehicleId}) is not among them.`
+        : `No compatible vehicles found in TecDoc for part "${oemNumber}". The part may not be in the database or may use a different reference format.`
+    ]
+  };
   result.confidenceScore = 0;
   result.confidenceLabel = getConfidenceLabel(0);
 
@@ -737,6 +746,13 @@ export async function checkCompatibility({
 
     if (oemPartsForVehicle.length === 0) {
       console.log(`[STEP6] no OEM parts found for vehicle ${vehicleId} with any search term`);
+      result.matchReasoning = {
+        ...(result.matchReasoning || {}),
+        notes: [
+          ...(result.matchReasoning?.notes || []),
+          `No parts were found in the TecDoc database for this vehicle (ID ${vehicleId}). The vehicle may not be covered by the data source.`
+        ]
+      };
       result.status = "not_compatible";
       return result;
     }
@@ -758,6 +774,13 @@ export async function checkCompatibility({
         )
       )];
       console.log(`[STEP6] available part types from "${usedTerm}": ${available.join(", ")}`);
+      result.matchReasoning = {
+        ...(result.matchReasoning || {}),
+        notes: [
+          ...(result.matchReasoning?.notes || []),
+          `No "${productType || "matching"}" parts found for this vehicle in TecDoc.${available.length ? ` Available categories: ${available.slice(0, 5).join(", ")}.` : ""}`
+        ]
+      };
       result.status = "not_compatible";
       return result;
     }
@@ -771,6 +794,13 @@ export async function checkCompatibility({
 
     if (oemNosFromVehicle.length === 0) {
       console.log(`[STEP6] no OEM numbers found in matching parts`);
+      result.matchReasoning = {
+        ...(result.matchReasoning || {}),
+        notes: [
+          ...(result.matchReasoning?.notes || []),
+          `A matching part category was found for this vehicle but no OEM reference numbers are listed in the database.`
+        ]
+      };
       result.status = "not_compatible";
       return result;
     }
@@ -792,6 +822,13 @@ export async function checkCompatibility({
 
     if (allAltCandidates.length === 0) {
       console.log(`[STEP6] no aftermarket articles found for any OEM numbers`);
+      result.matchReasoning = {
+        ...(result.matchReasoning || {}),
+        notes: [
+          ...(result.matchReasoning?.notes || []),
+          `OEM reference${oemNosFromVehicle.length > 1 ? "s" : ""} found for this vehicle (${oemNosFromVehicle.slice(0, 3).join(", ")}${oemNosFromVehicle.length > 3 ? "…" : ""}) but no aftermarket articles are listed for ${oemNosFromVehicle.length > 1 ? "these numbers" : "this number"}.`
+        ]
+      };
       result.status = "not_compatible";
       return result;
     }
@@ -806,6 +843,13 @@ export async function checkCompatibility({
 
     if (altArticles.length === 0) {
       console.log(`[STEP6] no articles with exact product type "${productType}" found`);
+      result.matchReasoning = {
+        ...(result.matchReasoning || {}),
+        notes: [
+          ...(result.matchReasoning?.notes || []),
+          `Aftermarket articles were found for OEM${oemNosFromVehicle.length > 1 ? "s" : ""} ${oemNosFromVehicle.slice(0, 2).join(", ")} but none matched the part type "${productType || "unknown"}".`
+        ]
+      };
       result.status = "not_compatible";
       return result;
     }
