@@ -96,7 +96,13 @@ function extractSpecLabel(spec) {
 }
 
 function extractSpecValue(spec) {
-  return spec?.formattedValue || spec?.criteriaValue || spec?.displayValue || spec?.value || spec?.valueText || "";
+  let v = spec?.formattedValue || spec?.criteriaValue || spec?.displayValue || spec?.value || spec?.valueText || "";
+  // TecDoc uses European decimal comma — normalise to period
+  v = String(v).replace(/(\d),(\d)/g, "$1.$2");
+  // Append unit if present and not already included
+  const unit = spec?.criteriaUnitDescription || spec?.unitDescription || spec?.unit || "";
+  if (unit && !v.includes(unit)) v = `${v} ${unit}`.trim();
+  return v;
 }
 
 function apiHeaders(contentType = false) {
