@@ -7,22 +7,22 @@ const BG_ALT = "#f4f7fc";
 
 const AUDIENCE = [
   {
-    icon: "🛒",
+    icon: "→",
     title: "eBay Parts Sellers",
     desc: "Speed up listing creation and keep your catalogue consistent across hundreds of parts.",
   },
   {
-    icon: "🏭",
+    icon: "→",
     title: "Aftermarket Parts Suppliers",
     desc: "Generate structured listings across a broad catalogue without manual data entry.",
   },
   {
-    icon: "🔩",
+    icon: "→",
     title: "Breakers & Dismantlers",
     desc: "List salvage parts quickly with accurate compatibility and condition data.",
   },
   {
-    icon: "📦",
+    icon: "→",
     title: "Small Parts Businesses",
     desc: "Compete with larger sellers using professional listings, without a dedicated team.",
   },

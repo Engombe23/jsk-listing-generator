@@ -1235,57 +1235,33 @@ function ListingGenerator({
               }}>
                 <div style={{ fontSize: 10, color: "var(--text-dim)", fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", marginBottom: 10 }}>Market Price</div>
 
-                {(!marketPrice || marketPrice.status === "loading") ? (
-                  <div style={{ display: "flex", alignItems: "center", gap: 7, color: "var(--text-muted)", fontSize: 12, paddingBottom: 2 }}>
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ animation: "ogSpin 1s linear infinite", flexShrink: 0 }}>
-                      <line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/>
-                      <line x1="4.93" y1="4.93" x2="7.76" y2="7.76"/><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"/>
-                      <line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/>
-                      <line x1="4.93" y1="19.07" x2="7.76" y2="16.24"/><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"/>
-                    </svg>
-                    Searching…
-                  </div>
-                ) : marketPrice.status === "done" ? (
-                  <>
-                    <div style={{ fontSize: 24, fontWeight: 900, color: "var(--text)", letterSpacing: -0.5, lineHeight: 1, marginBottom: 14 }}>
-                      {marketPrice.symbol}{Math.round(marketPrice.low)}&thinsp;–&thinsp;{marketPrice.symbol}{Math.round(marketPrice.high)}
-                    </div>
-                    {/* Button sits inside its own padded row so it never touches the card edge */}
-                    <div style={{ margin: "0 -16px -14px", padding: "12px 16px 14px", borderTop: "1px solid var(--border)", background: "var(--bg-surface2)" }}>
-                      <button
-                        onClick={() => {
-                          try {
-                            localStorage.setItem("jsk_pc_autorun", JSON.stringify({
-                              query: marketPrice.query,
-                              marketplace: marketPrice.marketplace,
-                              timestamp: Date.now(),
-                            }));
-                          } catch {}
-                          window.open(window.location.origin + "/?goto=calculator", "_blank");
-                        }}
-                        style={{
-                          width: "100%", fontSize: 12, fontWeight: 700, padding: "9px 14px",
-                          borderRadius: 8, border: "none", cursor: "pointer",
-                          background: "var(--blue)", color: "#fff",
-                          display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
-                          boxShadow: "0 2px 8px rgba(19,93,255,0.3)",
-                          transition: "opacity 0.15s",
-                        }}
-                        onMouseEnter={(e) => e.currentTarget.style.opacity = "0.85"}
-                        onMouseLeave={(e) => e.currentTarget.style.opacity = "1"}
-                      >
-                        View Market Analysis
-                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-                      </button>
-                    </div>
-                  </>
-                ) : marketPrice.status === "restricted" ? (
-                  <div style={{ fontSize: 12, color: "var(--text-muted)" }}>Upgrade your plan to see market prices</div>
-                ) : marketPrice.status === "none" ? (
-                  <div style={{ fontSize: 12, color: "var(--text-muted)" }}>No listings found for this part</div>
-                ) : (
-                  <div style={{ fontSize: 12, color: "var(--text-muted)" }}>Unable to fetch pricing</div>
-                )}
+                <button
+                  onClick={() => {
+                    const oem = (result.oem_numbers || [])[0] || result.article_number;
+                    try {
+                      localStorage.setItem("jsk_pc_autorun", JSON.stringify({
+                        query: oem,
+                        marketplace: result.target_marketplace || targetMarketplace,
+                        timestamp: Date.now(),
+                      }));
+                    } catch {}
+                    window.open(window.location.origin + "/?goto=calculator", "_blank");
+                  }}
+                  style={{
+                    width: "100%", fontSize: 12, fontWeight: 700, padding: "9px 14px",
+                    borderRadius: 8, border: "none", cursor: "pointer",
+                    background: "var(--blue)", color: "#fff",
+                    display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
+                    boxShadow: "0 2px 8px rgba(19,93,255,0.3)",
+                    transition: "opacity 0.15s",
+                    margin: "0 -16px -14px", width: "calc(100% + 32px)", borderRadius: "0 0 12px 12px",
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.opacity = "0.85"}
+                  onMouseLeave={(e) => e.currentTarget.style.opacity = "1"}
+                >
+                  Check Market Prices
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                </button>
               </div>
 
               {/* Save listing */}
@@ -2334,13 +2310,13 @@ function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate, n
               value={result.generated_title}
               style={{ width: "100%", textAlign: "center", fontSize: 13 }}
             >
-              📋 Copy Title
+              Copy Title
             </CopyButton>
             <CopyButton
               value={editedHtml}
               style={{ width: "100%", textAlign: "center", fontSize: 13 }}
             >
-              📋 Copy HTML
+              Copy HTML
             </CopyButton>
             {!editMode ? (
               <button

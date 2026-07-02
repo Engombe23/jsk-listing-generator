@@ -456,7 +456,7 @@ function ResultSection({ result, onSendToListing }) {
       }`
     },
     alternative_found: {
-      icon: "⚡",
+      icon: "✓",
       label: "Compatible Part Found",
       message: "The checked part does not appear compatible, but a compatible part was found."
     },

@@ -11,7 +11,7 @@ export function UpgradeBanner({ message, onDismiss }) {
       background: "var(--yellow-bg)", border: "1px solid rgba(217,119,6,0.3)",
       borderRadius: 12, padding: "14px 16px", marginBottom: 16,
     }}>
-      <div style={{ fontSize: 18, flexShrink: 0 }}>⚡</div>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, color: "var(--yellow, #d97706)", marginTop: 2 }}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
       <div style={{ flex: 1 }}>
         <div style={{ fontSize: 13, color: "var(--text)", fontWeight: 600, lineHeight: 1.5 }}>{message}</div>
         <Link to="/pricing" style={{

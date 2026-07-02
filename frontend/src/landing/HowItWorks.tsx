@@ -287,7 +287,7 @@ export default function HowItWorks() {
                 gap: 8,
               }}
             >
-              <span style={{ fontSize: 16 }}>⚡</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#135DFF" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
               <span style={{ fontSize: 13, color: ACCENT, fontWeight: 700 }}>
                 Under 2 minutes per listing
               </span>

@@ -370,7 +370,7 @@ function HtmlTab({ html }) {
           Full generated HTML — includes all sections and compatibility tables.
         </div>
         <CopyButton value={html} style={{ fontSize: 12, flexShrink: 0 }}>
-          📋 Copy HTML
+          Copy HTML
         </CopyButton>
       </div>
       <ReadOnlyTextarea value={html} minHeight={400} />

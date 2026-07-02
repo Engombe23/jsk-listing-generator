@@ -424,9 +424,8 @@ function BillingPage() {
 function AppearancePage() {
   const { theme, setTheme } = useTheme();
   const options = [
-    { key: "light",  label: "Light",  desc: "Clean white interface" },
-    { key: "dark",   label: "Dark",   desc: "Dark navy interface" },
-    { key: "system", label: "System", desc: "Follow OS setting" },
+    { key: "light", label: "Light", desc: "Clean white interface" },
+    { key: "dark",  label: "Dark",  desc: "Dark navy interface" },
   ];
   return (
     <Card>
@@ -450,9 +449,6 @@ function AppearancePage() {
                 boxShadow: active ? "0 0 0 3px var(--blue-glow)" : "none",
               }}
             >
-              <div style={{ fontSize: 22, marginBottom: 6 }}>
-                {key === "light" ? "☀️" : key === "dark" ? "🌙" : "💻"}
-              </div>
               <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 3 }}>{label}</div>
               <div style={{ fontSize: 11, opacity: 0.7 }}>{desc}</div>
             </button>
@@ -466,9 +462,22 @@ function AppearancePage() {
 // ─── PAGE: Listing Preferences ────────────────────────────────────────────────
 const CONDITIONS = ["", "New", "New other (see details)", "Manufacturer refurbished", "Used", "Parts only"];
 const CURRENCIES = ["GBP", "USD", "EUR", "AUD", "CAD", "CHF", "SEK", "NOK", "DKK"];
-const COUNTRIES  = [
-  "", "United Kingdom", "Germany", "France", "Italy", "Spain", "China", "Japan",
-  "United States", "Taiwan", "South Korea", "Netherlands", "Poland", "Czech Republic", "Turkey",
+const COUNTRIES = [
+  "", "Afghanistan", "Albania", "Algeria", "Andorra", "Angola", "Argentina", "Armenia",
+  "Australia", "Austria", "Azerbaijan", "Bahrain", "Bangladesh", "Belarus", "Belgium",
+  "Bolivia", "Bosnia and Herzegovina", "Brazil", "Bulgaria", "Cambodia", "Canada", "Chile",
+  "China", "Colombia", "Croatia", "Cuba", "Cyprus", "Czech Republic", "Denmark", "Ecuador",
+  "Egypt", "Estonia", "Ethiopia", "Finland", "France", "Georgia", "Germany", "Ghana",
+  "Greece", "Guatemala", "Honduras", "Hong Kong", "Hungary", "Iceland", "India", "Indonesia",
+  "Iran", "Iraq", "Ireland", "Israel", "Italy", "Ivory Coast", "Jamaica", "Japan", "Jordan",
+  "Kazakhstan", "Kenya", "Kuwait", "Latvia", "Lebanon", "Libya", "Lithuania", "Luxembourg",
+  "Malaysia", "Mexico", "Moldova", "Morocco", "Myanmar", "Nepal", "Netherlands", "New Zealand",
+  "Nigeria", "North Korea", "Norway", "Oman", "Pakistan", "Panama", "Paraguay", "Peru",
+  "Philippines", "Poland", "Portugal", "Qatar", "Romania", "Russia", "Saudi Arabia", "Serbia",
+  "Singapore", "Slovakia", "Slovenia", "South Africa", "South Korea", "Spain", "Sri Lanka",
+  "Sweden", "Switzerland", "Syria", "Taiwan", "Thailand", "Tunisia", "Turkey", "Ukraine",
+  "United Arab Emirates", "United Kingdom", "United States", "Uruguay", "Uzbekistan",
+  "Venezuela", "Vietnam", "Yemen",
 ];
 
 function PrefRow({ label, hint, children }) {
