@@ -135,7 +135,7 @@ export default function ContactPage() {
       <main style={{ background: "#f8faff", minHeight: "calc(100vh - 62px)" }}>
 
         {/* ── Hero ── */}
-        <div style={{ textAlign: "center", padding: "72px 24px 48px" }}>
+        <div style={{ textAlign: "center", padding: "104px 24px 48px" }}>
           <div style={{
             display: "inline-flex", alignItems: "center", gap: 7,
             background: "rgba(19,93,255,0.07)", border: "1px solid rgba(19,93,255,0.18)",
@@ -250,7 +250,7 @@ export default function ContactPage() {
                       <Label required>Your Email</Label>
                       <input
                         type="email" value={email} onChange={e => setEmail(e.target.value)}
-                        placeholder="e.g. aaron@partlister.app"
+                        placeholder="e.g. john@example.com"
                         style={inputStyle("email")}
                         onFocus={() => setFocused("email")} onBlur={() => setFocused(null)}
                       />
