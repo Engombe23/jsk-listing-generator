@@ -241,7 +241,7 @@ export default function ContactPage() {
                       <Label required>Your Name</Label>
                       <input
                         type="text" value={name} onChange={e => setName(e.target.value)}
-                        placeholder="e.g. Aaron Butler"
+                        placeholder="e.g. John Smith"
                         style={inputStyle("name")}
                         onFocus={() => setFocused("name")} onBlur={() => setFocused(null)}
                       />
