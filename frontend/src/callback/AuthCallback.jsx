@@ -33,10 +33,18 @@ export default function AuthCallback() {
       }
 
       let session;
+      let isRecovery = false;
+
+      // Subscribe before exchange so we catch PASSWORD_RECOVERY event
+      const { data: { subscription: recoverySub } } = supabase.auth.onAuthStateChange((event) => {
+        if (event === "PASSWORD_RECOVERY") isRecovery = true;
+      });
+
       try {
         session = await ensureSessionFromAuthCallback(code);
       } catch (err) {
         console.error("[auth/callback]", err.message);
+        recoverySub.unsubscribe();
         if (!cancelled) {
           setMessage("Could not complete sign-in. Please try again.");
           setTimeout(() => navigate("/auth/login", { replace: true }), 2500);
@@ -44,11 +52,19 @@ export default function AuthCallback() {
         return;
       }
 
+      recoverySub.unsubscribe();
+
       if (!session?.user) {
         if (!cancelled) {
           setMessage("Could not complete sign-in. Please try again.");
           setTimeout(() => navigate("/auth/login", { replace: true }), 2500);
         }
+        return;
+      }
+
+      // Password recovery — redirect to update-password page with session in place
+      if (isRecovery) {
+        if (!cancelled) navigate("/auth/update-password", { replace: true });
         return;
       }
 

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
 
@@ -8,24 +8,14 @@ export default function UpdatePasswordForm() {
   const [error, setError] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Hold the code in a ref — don't exchange it on mount, only on submit.
-  // Exchanging on mount creates a live session immediately, which lets users
-  // skip setting a new password and navigate straight into the app.
-  const codeRef = useRef(new URLSearchParams(window.location.search).get("code"));
-
   const handleUpdatePassword = async (e) => {
     e.preventDefault();
     setIsLoading(true);
     setError(null);
 
     try {
-      const code = codeRef.current;
-      if (code) {
-        const { error: exchangeErr } = await supabase.auth.exchangeCodeForSession(code);
-        if (exchangeErr) throw new Error("This reset link has expired. Please request a new one.");
-        codeRef.current = null; // prevent re-use on a second submit attempt
-      }
-
+      // Session is already established by AuthCallback (PASSWORD_RECOVERY event).
+      // Just update the password directly.
       const { error: updateErr } = await supabase.auth.updateUser({ password });
       if (updateErr) throw updateErr;
 
