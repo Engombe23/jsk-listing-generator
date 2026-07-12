@@ -11,6 +11,18 @@ const links = [
   { label: "FAQ", href: "/#faq" },
 ];
 
+function NavLink({ href, label }: { href: string; label: string }) {
+  return (
+    <a
+      href={href}
+      className="group relative px-3.5 py-2 text-[0.9rem] font-medium text-slate transition-colors duration-150 hover:text-[#135DFF]"
+    >
+      {label}
+      <span className="absolute bottom-1 left-1/2 h-[2px] w-0 -translate-x-1/2 rounded-full bg-[#135DFF] transition-all duration-200 group-hover:w-[calc(100%-1.75rem)]" />
+    </a>
+  );
+}
+
 export function Nav() {
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
@@ -30,7 +42,7 @@ export function Nav() {
       className="fixed inset-x-0 top-0 z-50 px-4 pt-3"
     >
       <div
-        className={`mx-auto flex w-full max-w-[1180px] items-center justify-between rounded-2xl px-4 py-2.5 transition-all duration-300 ${
+        className={`mx-auto grid w-full max-w-[1180px] grid-cols-[auto_1fr_auto] items-center rounded-2xl px-4 py-2.5 transition-all duration-300 ${
           scrolled
             ? "border border-hair bg-white/80 shadow-soft backdrop-blur-xl"
             : "border border-transparent bg-transparent"
@@ -38,24 +50,19 @@ export function Nav() {
       >
         <Logo />
 
-        <nav className="hidden items-center gap-1 md:flex">
+        <nav className="hidden items-center justify-center gap-1 md:flex">
           {links.map((l) => (
-            <a
-              key={l.href}
-              href={l.href}
-              className="rounded-lg px-3.5 py-2 text-[0.9rem] font-medium text-slate transition-colors hover:bg-wash hover:text-navy"
-            >
-              {l.label}
-            </a>
+            <NavLink key={l.href} href={l.href} label={l.label} />
           ))}
         </nav>
 
         <div className="hidden items-center gap-2 md:flex">
           <Link
             to="/auth/login"
-            className="rounded-lg px-3.5 py-2 text-[0.9rem] font-semibold text-navy transition-colors hover:bg-wash"
+            className="group relative px-3.5 py-2 text-[0.9rem] font-semibold text-navy transition-colors duration-150 hover:text-[#135DFF]"
           >
             Login
+            <span className="absolute bottom-1 left-1/2 h-[2px] w-0 -translate-x-1/2 rounded-full bg-[#135DFF] transition-all duration-200 group-hover:w-[calc(100%-1.75rem)]" />
           </Link>
           <PrimaryButton href="/auth/sign-up">
             Generate 10 Listings Free
@@ -87,7 +94,7 @@ export function Nav() {
                   key={l.href}
                   href={l.href}
                   onClick={() => setOpen(false)}
-                  className="rounded-lg px-4 py-3 text-[0.95rem] font-medium text-slate hover:bg-wash"
+                  className="rounded-lg px-4 py-3 text-[0.95rem] font-medium text-slate transition-colors hover:bg-wash hover:text-[#135DFF]"
                 >
                   {l.label}
                 </a>
@@ -95,7 +102,7 @@ export function Nav() {
               <Link
                 to="/auth/login"
                 onClick={() => setOpen(false)}
-                className="rounded-lg px-4 py-3 text-[0.95rem] font-semibold text-navy hover:bg-wash"
+                className="rounded-lg px-4 py-3 text-[0.95rem] font-semibold text-navy transition-colors hover:bg-wash hover:text-[#135DFF]"
               >
                 Login
               </Link>
