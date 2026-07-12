@@ -1,10 +1,27 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" translate="no" class="notranslate">
   <head>
     <meta charset="UTF-8" />
+
+    <!-- SVG favicon with built-in dark/light mode support -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+    <!-- PNG fallbacks for browsers that don't support SVG favicons -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/FAV-ICON-32.png" media="(prefers-color-scheme: light)" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/FAV-ICON-16.png" media="(prefers-color-scheme: light)" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/FAV-ICON-32.png" media="(prefers-color-scheme: dark)" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/FAV-ICON-16.png" media="(prefers-color-scheme: dark)" />
+
+    <!-- Apple / PWA -->
+    <link rel="apple-touch-icon" sizes="32x32" href="/FAV-ICON-32.png" />
+    <link rel="shortcut icon" href="/FAV-ICON-32.png" />
+
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>frontend</title>
+    <title>PartLister | eBay Car Parts Listing Generator & Compatibility Tool</title>
+    <meta name="description" content="Turn OEM, OE and article numbers into ready-to-list eBay listings. Automatically generate titles, descriptions, item specifics, compatibility data and pricing insights." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   </head>
   <body>
     <div id="root"></div>

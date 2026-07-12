@@ -1,0 +1,478 @@
+/* Styles scoped to the public marketing landing page only.
+   Imported by LandingHome.jsx — never loaded for the authenticated app. */
+
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap');
+
+/* Reveal-on-scroll animation */
+.reveal {
+  opacity: 0;
+  transform: translateY(28px);
+  transition: opacity 0.55s ease, transform 0.55s ease;
+}
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   GLOBAL — prevent horizontal overflow on mobile
+══════════════════════════════════════════════════════════════ */
+.landing-root {
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+.landing-root *,
+.landing-root *::before,
+.landing-root *::after {
+  box-sizing: border-box;
+}
+.landing-root img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   NAVBAR — hamburger + mobile drawer
+══════════════════════════════════════════════════════════════ */
+
+.nav-hamburger {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #fff;
+  cursor: pointer;
+  flex-shrink: 0;
+  margin-left: 8px;
+  transition: background 0.15s, border-color 0.15s;
+}
+.nav-hamburger:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+.nav-desktop-links {
+  display: flex;
+  flex: 1;
+  align-items: stretch;
+}
+
+.nav-desktop-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-left: 16px;
+  flex-shrink: 0;
+}
+
+.nav-logo-divider {
+  padding-right: 28px;
+  border-right: 1px solid #e2e8f0;
+  margin-right: 8px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+.nav-mobile-drawer {
+  display: none;
+  position: fixed;
+  top: 62px;
+  left: 0;
+  right: 0;
+  background: #fff;
+  border-bottom: 1px solid #e2e8f0;
+  box-shadow: 0 12px 32px rgba(0,0,0,0.10);
+  z-index: 99;
+  padding: 8px 20px 20px;
+  animation: drawerSlideDown 0.2s ease;
+}
+.nav-mobile-drawer.open { display: block; }
+
+@keyframes drawerSlideDown {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.nav-mobile-drawer .drawer-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 4px;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 15px;
+  font-weight: 600;
+  color: #132A46;
+  text-decoration: none;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+.nav-mobile-drawer .drawer-nav-item:hover { color: #135DFF; }
+.nav-mobile-drawer .drawer-nav-item:last-of-type { border-bottom: none; }
+
+.nav-mobile-drawer .drawer-actions {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.nav-mobile-drawer .drawer-login {
+  display: block;
+  padding: 12px;
+  text-align: center;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #475569;
+  text-decoration: none;
+  transition: background 0.15s;
+}
+.nav-mobile-drawer .drawer-login:hover { background: #f8fafc; }
+
+.nav-mobile-drawer .drawer-cta {
+  display: block;
+  padding: 14px;
+  text-align: center;
+  background: #135DFF;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  text-decoration: none;
+  box-shadow: 0 4px 14px rgba(19,93,255,0.30);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   HERO — desktop base states
+══════════════════════════════════════════════════════════════ */
+
+/* Product preview moved inline — hidden on desktop, shown on mobile */
+.hero-product-early { display: none; }
+
+.hero-section-grid { /* base layout handled via inline style on desktop */ }
+.hero-carousel-desktop { /* shown by default */ }
+.hero-mobile-preview { display: none; }
+
+/* Step connectors — default (desktop): invisible */
+.hero-step { /* inline flex styles */ }
+.hero-step-num { /* inline styles */ }
+
+/* ══════════════════════════════════════════════════════════════
+   SECTION GRIDS — placeholder names for mobile overrides
+══════════════════════════════════════════════════════════════ */
+.problem-cards-grid  { }
+.how-it-works-grid   { }
+.how-it-works-partlister { }
+.before-after-grid   { }
+.before-after-partlister { }
+.features-main-grid  { }
+.features-row2-grid  { }
+.features-row3-grid  { }
+.smart-pricing-grid  { }
+.pricing-grid        { }
+.pricing-growth-card { }
+.pricing-plan-card   { }
+.final-cta-btns      { }
+.footer-top          { }
+.footer-links        { }
+
+/* ══════════════════════════════════════════════════════════════
+   MOBILE — max-width: 768px  (tablets + phones)
+══════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+
+  /* ────────────────────────────────────────
+     NAVBAR: ~20% more compact
+  ──────────────────────────────────────── */
+  .nav-inner { height: 50px !important; }
+
+  /* Logo slightly smaller */
+  .nav-logo-divider img { height: 26px !important; }
+
+  /* Hamburger shrinks to match, centred vertically in the stretch container */
+  .nav-hamburger {
+    display: flex;
+    width: 34px !important;
+    height: 34px !important;
+    border-radius: 8px !important;
+    align-self: center !important;
+    margin-left: auto !important;
+  }
+
+  /* Drawer offset matches new nav height */
+  .nav-mobile-drawer { top: 50px !important; }
+
+  /* Desktop links/login hidden */
+  .nav-desktop-links   { display: none !important; }
+  .nav-logo-divider    { border-right: none !important; padding-right: 0 !important; margin-right: 0 !important; }
+  .nav-login-btn       { display: none !important; }
+  .nav-cta-btn         { padding: 6px 12px !important; font-size: 12px !important; }
+  .nav-cta-text-long   { display: none   !important; }
+  .nav-cta-text-short  { display: inline !important; }
+
+  /* ────────────────────────────────────────
+     HERO: tighter padding, product appears early
+  ──────────────────────────────────────── */
+
+  /* Section itself: shorter on mobile */
+  .hero-section {
+    min-height: 0 !important;
+    padding-top: 52px !important;
+  }
+
+  /* Grid becomes single column, tight padding */
+  .hero-section-grid {
+    grid-template-columns: 1fr !important;
+    padding: 22px 20px 40px !important;
+    gap: 0 !important;
+  }
+
+  /* Background: reduce blueprint pattern, add vertical white fade */
+  .hero-pattern   { opacity: 0.06 !important; }
+  .hero-bg-mask   {
+    background: linear-gradient(
+      180deg,
+      rgba(248,250,252,0.97) 0%,
+      rgba(248,250,252,0.92) 50%,
+      rgba(248,250,252,0.78) 100%
+    ) !important;
+  }
+
+  /* Badge: tighter gap below */
+  .hero-badge { margin-bottom: 12px !important; }
+
+  /* Headline: optimised for mobile viewport */
+  .hero-h1 {
+    font-size: clamp(30px, 9vw, 42px) !important;
+    letter-spacing: -1.8px !important;
+    margin-bottom: 16px !important;
+    line-height: 1.07 !important;
+  }
+
+  /* Product preview: appears right after headline */
+  .hero-product-early {
+    display: block !important;
+    margin-bottom: 16px !important;
+  }
+  /* Hide the old right-column version (product now shown earlier) */
+  .hero-mobile-preview    { display: none !important; }
+  .hero-carousel-desktop  { display: none !important; }
+
+  /* Paragraph: tighter */
+  .hero-para {
+    font-size: 14px !important;
+    line-height: 1.72 !important;
+    margin-bottom: 16px !important;
+  }
+
+  /* CTAs: stacked, primary is full-width and dominant */
+  .hero-ctas {
+    flex-direction: column !important;
+    gap: 10px !important;
+    margin-bottom: 22px !important;
+  }
+  .hero-primary-cta {
+    width: 100% !important;
+    justify-content: center !important;
+    font-size: 15.5px !important;
+    padding: 15px 24px !important;
+    border-radius: 14px !important;
+    box-shadow:
+      0 10px 44px rgba(19,93,255,0.46),
+      0 4px 12px rgba(19,93,255,0.24),
+      inset 0 1px 0 rgba(255,255,255,0.22) !important;
+  }
+  .hero-secondary-cta {
+    width: 100% !important;
+    justify-content: center !important;
+    font-size: 13.5px !important;
+    padding: 12px 20px !important;
+  }
+
+  /* 3-step process: proper vertical flow with connectors */
+  .hero-steps {
+    gap: 0 !important;
+    margin-bottom: 4px !important;
+  }
+  .hero-step {
+    align-items: flex-start !important;
+    padding: 0 0 18px !important;
+    position: relative;
+  }
+  .hero-step:last-child { padding-bottom: 0 !important; }
+
+  /* Connector line between steps */
+  .hero-step:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    left: 13px;
+    top: 28px;
+    bottom: 0;
+    width: 2px;
+    background: linear-gradient(to bottom, #c7d9ff 0%, transparent 100%);
+    border-radius: 99px;
+  }
+
+  /* Step number: circular shape emphasises progression */
+  .hero-step-num {
+    border-radius: 50% !important;
+    width: 28px  !important;
+    height: 28px !important;
+    flex-shrink: 0;
+  }
+
+  /* ────────────────────────────────────────
+     PROBLEM SECTION
+  ──────────────────────────────────────── */
+  .problem-cards-grid {
+    grid-template-columns: 1fr !important;
+    gap: 14px !important;
+  }
+
+  /* Transition/bridge card: more premium */
+  .hiw-bridge {
+    padding: 20px 28px !important;
+    margin-top: 44px !important;
+    border-radius: 14px !important;
+    box-shadow: 0 4px 20px rgba(19,45,70,0.08) !important;
+  }
+  .hiw-bridge-text {
+    font-size: 15px !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.2px !important;
+  }
+
+  /* ────────────────────────────────────────
+     HOW IT WORKS
+  ──────────────────────────────────────── */
+  .how-it-works-grid {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+  .how-it-works-partlister { order: -1 !important; }
+
+  /* ────────────────────────────────────────
+     BEFORE / AFTER
+  ──────────────────────────────────────── */
+  .before-after-grid {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+  .before-after-partlister { order: -1 !important; }
+
+  /* ────────────────────────────────────────
+     FEATURES
+  ──────────────────────────────────────── */
+  .features-main-grid {
+    grid-template-columns: 1fr !important;
+    gap: 20px !important;
+  }
+  .features-row2-grid {
+    grid-template-columns: 1fr !important;
+    margin-bottom: 14px !important;
+  }
+  .features-row3-grid { grid-template-columns: 1fr !important; }
+
+  /* ────────────────────────────────────────
+     SMART PRICING
+  ──────────────────────────────────────── */
+  .smart-pricing-grid {
+    grid-template-columns: 1fr !important;
+    gap: 28px !important;
+  }
+
+  /* ────────────────────────────────────────
+     PRICING CARDS: less vertical padding
+  ──────────────────────────────────────── */
+  .pricing-grid {
+    grid-template-columns: 1fr !important;
+    padding-top: 14px !important;
+    gap: 16px !important;
+  }
+  .pricing-plan-card {
+    padding: 22px 18px !important;
+  }
+  /* Growth card: no float, slightly more padding for badge room */
+  .pricing-growth-card {
+    transform: none !important;
+  }
+  .pricing-growth-card.pricing-plan-card {
+    padding: 28px 18px 22px !important;
+  }
+
+  /* ────────────────────────────────────────
+     FINAL CTA
+  ──────────────────────────────────────── */
+  .final-cta-btns {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    width: 100%;
+    gap: 12px !important;
+  }
+  .final-cta-btns > a,
+  .final-cta-btns > button {
+    width: 100% !important;
+    text-align: center !important;
+    box-sizing: border-box;
+  }
+
+  /* ────────────────────────────────────────
+     FOOTER
+  ──────────────────────────────────────── */
+  .footer-top   { flex-direction: column !important; gap: 24px !important; }
+  .footer-links { flex-direction: column !important; gap: 24px !important; }
+
+  /* ────────────────────────────────────────
+     AUDIENCE / WHO IT'S FOR
+  ──────────────────────────────────────── */
+  .audience-grid { grid-template-columns: 1fr !important; }
+
+  /* ────────────────────────────────────────
+     SECTION PADDING (all lp-section)
+  ──────────────────────────────────────── */
+  .lp-section {
+    padding-top: 56px !important;
+    padding-bottom: 56px !important;
+    padding-left: 20px !important;
+    padding-right: 20px !important;
+  }
+
+  /* ────────────────────────────────────────
+     OVERFLOW + IMAGE SAFETY
+  ──────────────────────────────────────── */
+  img { max-width: 100%; height: auto; }
+  .landing-root { overflow-x: hidden !important; }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   SMALL PHONES — max-width: 430px
+══════════════════════════════════════════════════════════════ */
+@media (max-width: 430px) {
+  .hero-section-grid {
+    padding: 18px 16px 36px !important;
+  }
+  .lp-section {
+    padding-top: 48px !important;
+    padding-bottom: 48px !important;
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   VERY SMALL PHONES — max-width: 375px
+══════════════════════════════════════════════════════════════ */
+@media (max-width: 375px) {
+  .hero-section-grid {
+    padding: 16px 14px 32px !important;
+  }
+  .lp-section {
+    padding-left: 14px !important;
+    padding-right: 14px !important;
+  }
+}

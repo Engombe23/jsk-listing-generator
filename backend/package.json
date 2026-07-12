@@ -5,16 +5,32 @@
   "main": "server.js",
   "type": "module",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "dev": "kill-port 3001 && nodemon server.js",
+    "test": "vitest run"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@sentry/node": "^8.0.0",
+    "@supabase/supabase-js": "^2.108.2",
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",
     "express": "^5.1.0",
+    "express-rate-limit": "^7.5.0",
+    "helmet": "^8.0.0",
     "json2csv": "^6.0.0-alpha.2",
-    "openai": "^5.20.0"
+    "multer": "^2.0.1",
+    "openai": "^5.20.0",
+    "p-limit": "^6.2.0",
+    "posthog-node": "^5.38.2",
+    "resend": "^4.5.0",
+    "stripe": "^22.2.2"
+  },
+  "devDependencies": {
+    "kill-port": "^2.0.1",
+    "nodemon": "^3.1.14",
+    "vitest": "^3.0.0"
   }
 }
