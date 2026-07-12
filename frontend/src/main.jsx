@@ -1,31 +1,11 @@
-import { StrictMode, Component } from "react";
+import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-
-class RootErrorBoundary extends Component {
-  constructor(props) { super(props); this.state = { error: null }; }
-  static getDerivedStateFromError(e) { return { error: e }; }
-  render() {
-    if (this.state.error) {
-      return (
-        <div style={{ padding: 32, fontFamily: "monospace", color: "#c00" }}>
-          <strong>App crashed — check console for details.</strong>
-          <pre style={{ marginTop: 12, fontSize: 13, whiteSpace: "pre-wrap" }}>
-            {this.state.error?.message}
-            {"\n"}
-            {this.state.error?.stack}
-          </pre>
-        </div>
-      );
-    }
-    return this.props.children;
-  }
-}
 import "./index.css";
 import "./i18n/index.js";
 import "./lib/posthogClient.js";
 import "./lib/gtag.js";
-import "./lib/sentry.js";
+import { Sentry } from "./lib/sentry.js";
 import PostHogPageView from "./lib/PostHogPageView.jsx";
 import Providers from "./Providers.jsx";
 import HomeRoute from "./router/HomeRoute.jsx";
@@ -50,7 +30,11 @@ import AuthCallback from "./callback/AuthCallback.jsx";
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>
-    <RootErrorBoundary>
+    <Sentry.ErrorBoundary fallback={
+      <div style={{ padding: 32, fontFamily: "monospace", color: "#c00" }}>
+        <strong>App crashed — check console for details.</strong>
+      </div>
+    }>
     <BrowserRouter>
       <PostHogPageView />
       <Routes>
@@ -87,6 +71,6 @@ createRoot(document.getElementById("root")).render(
         </Route>
       </Routes>
     </BrowserRouter>
-    </RootErrorBoundary>
+    </Sentry.ErrorBoundary>
   </StrictMode>
 );

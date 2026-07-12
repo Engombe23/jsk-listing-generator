@@ -1517,7 +1517,7 @@ app.post("/api/ebay/sold-counts", requireAuth, ebayLimiter, async (req, res) => 
   }
 });
 
-app.use(Sentry.expressErrorHandler());
+Sentry.setupExpressErrorHandler(app);
 
 const PORT = process.env.PORT;
 app.listen(PORT, () => {
