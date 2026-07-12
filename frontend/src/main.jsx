@@ -25,6 +25,7 @@ import "./index.css";
 import "./i18n/index.js";
 import "./lib/posthogClient.js";
 import "./lib/gtag.js";
+import "./lib/sentry.js";
 import PostHogPageView from "./lib/PostHogPageView.jsx";
 import Providers from "./Providers.jsx";
 import HomeRoute from "./router/HomeRoute.jsx";

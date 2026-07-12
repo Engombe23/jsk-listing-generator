@@ -1,6 +1,10 @@
-// Server-side mirror of frontend/src/lib/plans.js — kept in sync manually.
-// The frontend values are the source of truth for what users see; this file
-// is what actually gets ENFORCED, since nothing client-side can be trusted.
+// Enforcement-critical plan data is sourced from shared/planConfig.js so that
+// frontend and backend always agree on limits and feature tiers.
+import {
+  planListingLimits as PLAN_LISTING_LIMITS,
+  planRank as PLAN_RANK,
+  featureMinTier as FEATURE_MIN_TIER,
+} from "../../shared/planConfig.js";
 
 // Backend-only — separate from ADMIN_EMAILS (admin analytics dashboard
 // access). These accounts bypass all plan restrictions, listing limits, and
@@ -10,23 +14,7 @@ export const WHITELISTED_EMAILS = [
   "engombe@partlister.app",
 ];
 
-// null = unlimited (Scale plan). Mirrors PLAN_LISTING_LIMITS in plans.js.
-export const PLAN_LISTING_LIMITS = {
-  free:   10,
-  lite:   50,
-  growth: 200,
-  scale:  null,
-};
-
-export const PLAN_RANK = { free: 0, lite: 1, growth: 2, scale: 3 };
-
-// Mirrors FEATURE_MIN_TIER in plans.js.
-export const FEATURE_MIN_TIER = {
-  compatibilityChecker: "growth",
-  smartPricing:         "growth",
-  bulkListingGeneration:"scale",
-  bulkCsvExport:        "scale",
-};
+export { PLAN_LISTING_LIMITS, PLAN_RANK, FEATURE_MIN_TIER };
 
 export function isWhitelisted(email) {
   return !!email && WHITELISTED_EMAILS.includes(email.toLowerCase());

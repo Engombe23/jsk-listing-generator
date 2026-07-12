@@ -1,4 +1,5 @@
 import "dotenv/config";
+import { Sentry } from "./lib/sentry.js";
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
@@ -1515,6 +1516,8 @@ app.post("/api/ebay/sold-counts", requireAuth, ebayLimiter, async (req, res) => 
     res.status(500).json({ error: err.message });
   }
 });
+
+app.use(Sentry.expressErrorHandler());
 
 const PORT = process.env.PORT;
 app.listen(PORT, () => {

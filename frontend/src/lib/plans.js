@@ -1,3 +1,13 @@
+// Enforcement-critical values sourced from shared/planConfig.js so that
+// frontend and backend always agree. The @shared alias is set in vite.config.js.
+import {
+  planListingLimits as PLAN_LISTING_LIMITS,
+  planRank as PLAN_RANK,
+  featureMinTier as _FEATURE_MIN_TIER,
+} from "@shared/planConfig.js";
+
+export { PLAN_RANK, PLAN_LISTING_LIMITS };
+
 export const PAID_PLAN_KEYS = ["lite", "growth", "scale"];
 export const BILLING_INTERVALS = ["monthly", "annual"];
 
@@ -100,22 +110,10 @@ export function clearPendingCheckout() {
   } catch { /* ignore */ }
 }
 
-/** Minimum paid tier required for each gated capability (from Pricing.tsx). */
+/** Minimum paid tier required for each gated capability. */
 export const FEATURE_MIN_TIER = {
-  compatibilityChecker: "growth",
-  smartPricing: "growth",
-  prioritySupport: "growth",
-  bulkListingGeneration: "scale",
-  bulkCsvExport: "scale",
-};
-
-export const PLAN_RANK = { free: 0, lite: 1, growth: 2, scale: 3 };
-
-export const PLAN_LISTING_LIMITS = {
-  free: 10,
-  lite: 50,
-  growth: 200,
-  scale: null, // unlimited
+  ..._FEATURE_MIN_TIER,
+  prioritySupport: "growth", // display-only; not in shared enforcement config
 };
 
 export function planRank(plan) {
