@@ -12,11 +12,17 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@supabase/supabase-js": "^2.108.2",
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",
     "express": "^5.1.0",
+    "express-rate-limit": "^7.5.0",
     "json2csv": "^6.0.0-alpha.2",
-    "openai": "^5.20.0"
+    "multer": "^2.0.1",
+    "openai": "^5.20.0",
+    "posthog-node": "^5.38.2",
+    "resend": "^4.5.0",
+    "stripe": "^22.2.2"
   },
   "devDependencies": {
     "kill-port": "^2.0.1",

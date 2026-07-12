@@ -1,10 +1,10 @@
-import React, { useState, useMemo } from "react";
+﻿import React, { useState, useMemo } from "react";
 import { SMALL_BUTTON_STYLE, INPUT_STYLE, CopyButton } from "./shared.jsx";
 import { mapApiSpecsToSchema, SPEC_SCHEMA, SECTION_TITLES } from "./itemSpecificsSchema.js";
 
 // ─── API URL (mirrors ListingGenerator) ──────────────────────────────────────
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
+const API_URL = import.meta.env.VITE_API_URL;
 
 // ─── Theme list (mirrors App.jsx) ─────────────────────────────────────────────
 
@@ -132,9 +132,9 @@ function DescriptionBadge({ hasDescription }) {
     <span style={{
       display: "inline-block",
       padding: "3px 9px", borderRadius: 999, fontSize: 11, fontWeight: 700,
-      background: hasDescription ? "rgba(74,222,128,0.10)" : "rgba(255,255,255,0.04)",
-      color:      hasDescription ? "#4ade80"               : "#6b7280",
-      border:     hasDescription ? "1px solid rgba(74,222,128,0.22)" : "1px solid rgba(255,255,255,0.07)",
+      background: hasDescription ? "rgba(74,222,128,0.10)" : "var(--border-light)",
+      color:      hasDescription ? "var(--green)"               : "var(--text-muted)",
+      border:     hasDescription ? "1px solid rgba(74,222,128,0.22)" : "1px solid var(--border)",
       whiteSpace: "nowrap"
     }}>
       {hasDescription ? "✓ Generated" : "Not Generated"}
@@ -151,8 +151,8 @@ function StatusBadge({ status }) {
       padding: "3px 9px", borderRadius: 999, fontSize: 11, fontWeight: 700,
       background: isDraft    ? "rgba(251,191,36,0.12)"  :
                   isExported ? "rgba(74,222,128,0.12)"  : "rgba(99,102,241,0.12)",
-      color:      isDraft    ? "#fbbf24"                :
-                  isExported ? "#4ade80"                : "#a5b4fc",
+      color:      isDraft    ? "var(--yellow)"                :
+                  isExported ? "var(--green)"                : "#a5b4fc",
       border:     isDraft    ? "1px solid rgba(251,191,36,0.25)"  :
                   isExported ? "1px solid rgba(74,222,128,0.25)"  : "1px solid rgba(99,102,241,0.25)"
     }}>
@@ -177,9 +177,9 @@ function DateFilterBar({ filter, onFilter, customFrom, customTo, onCustomFrom, o
         return (
           <button key={key} onClick={() => onFilter(key)} style={{
             padding: "6px 14px", borderRadius: 10, fontSize: 12, cursor: "pointer",
-            border:     active ? "1px solid #135DFF" : "1px solid rgba(255,255,255,0.10)",
-            background: active ? "rgba(19,93,255,0.18)" : "transparent",
-            color:      active ? "#93c5fd" : "#9ca3af",
+            border:     active ? "1px solid #135DFF" : "1px solid var(--border-strong)",
+            background: active ? "var(--border-blue)" : "transparent",
+            color:      active ? "var(--text-accent)" : "var(--text-muted)",
             fontWeight: active ? 700 : 400, transition: "all 0.14s"
           }}>
             {label}
@@ -190,7 +190,7 @@ function DateFilterBar({ filter, onFilter, customFrom, customTo, onCustomFrom, o
         <>
           <input type="date" value={customFrom} onChange={(e) => onCustomFrom(e.target.value)}
             style={{ ...INPUT_STYLE, padding: "5px 8px", fontSize: 12, width: 140 }} />
-          <span style={{ color: "#6b7280", fontSize: 12 }}>to</span>
+          <span style={{ color: "var(--text-muted)", fontSize: 12 }}>to</span>
           <input type="date" value={customTo} onChange={(e) => onCustomTo(e.target.value)}
             style={{ ...INPUT_STYLE, padding: "5px 8px", fontSize: 12, width: 140 }} />
         </>
@@ -214,7 +214,7 @@ function AdListerSettings() {
   const inp = (label, key, placeholder = "") => (
     <div key={key} style={{ display: "flex", flexDirection: "column", gap: 3 }}>
       <label style={{
-        fontSize: 10, fontWeight: 700, color: "#4b5563",
+        fontSize: 10, fontWeight: 700, color: "var(--text-dim)",
         textTransform: "uppercase", letterSpacing: 0.4
       }}>{label}</label>
       <input
@@ -222,8 +222,8 @@ function AdListerSettings() {
         onChange={(e) => set(key, e.target.value)}
         placeholder={placeholder}
         style={{
-          background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)",
-          borderRadius: 6, color: "#d1d5db", fontSize: 12, padding: "5px 8px",
+          background: "var(--border-light)", border: "1px solid var(--border)",
+          borderRadius: 6, color: "var(--text)", fontSize: 12, padding: "5px 8px",
           outline: "none", width: "100%", boxSizing: "border-box"
         }}
       />
@@ -232,15 +232,15 @@ function AdListerSettings() {
 
   const sectionLabel = (text) => (
     <div style={{
-      gridColumn: "1 / -1", fontSize: 10, fontWeight: 800, color: "#6b7280",
+      gridColumn: "1 / -1", fontSize: 10, fontWeight: 800, color: "var(--text-muted)",
       textTransform: "uppercase", letterSpacing: 0.6,
-      paddingBottom: 4, borderBottom: "1px solid rgba(255,255,255,0.04)", marginTop: 4
+      paddingBottom: 4, borderBottom: "1px solid var(--border-light)", marginTop: 4
     }}>{text}</div>
   );
 
   return (
     <div style={{
-      background: "#060e1a", borderRadius: 12, padding: "16px 18px",
+      background: "var(--bg-surface3)", borderRadius: 12, padding: "16px 18px",
       border: "1px solid rgba(99,102,241,0.20)", display: "grid", gap: 14
     }}>
       <div style={{ fontSize: 11, fontWeight: 800, color: "#a5b4fc", letterSpacing: 0.6, textTransform: "uppercase" }}>
@@ -264,8 +264,8 @@ function AdListerSettings() {
       {/* Domestic Shipping */}
       <div style={{ display: "grid", gap: 8 }}>
         <div style={{
-          fontSize: 10, fontWeight: 800, color: "#6b7280", textTransform: "uppercase",
-          letterSpacing: 0.6, paddingBottom: 4, borderBottom: "1px solid rgba(255,255,255,0.04)"
+          fontSize: 10, fontWeight: 800, color: "var(--text-muted)", textTransform: "uppercase",
+          letterSpacing: 0.6, paddingBottom: 4, borderBottom: "1px solid var(--border-light)"
         }}>Domestic Shipping</div>
         {[1, 2, 3].map((n) => (
           <div key={n} style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 8 }}>
@@ -279,8 +279,8 @@ function AdListerSettings() {
       {/* International Shipping */}
       <div style={{ display: "grid", gap: 8 }}>
         <div style={{
-          fontSize: 10, fontWeight: 800, color: "#6b7280", textTransform: "uppercase",
-          letterSpacing: 0.6, paddingBottom: 4, borderBottom: "1px solid rgba(255,255,255,0.04)"
+          fontSize: 10, fontWeight: 800, color: "var(--text-muted)", textTransform: "uppercase",
+          letterSpacing: 0.6, paddingBottom: 4, borderBottom: "1px solid var(--border-light)"
         }}>International Shipping</div>
         {[1, 2, 3].map((n) => (
           <div key={n} style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 8 }}>
@@ -294,9 +294,9 @@ function AdListerSettings() {
       {/* Best Offer */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
         <div style={{
-          gridColumn: "1 / -1", fontSize: 10, fontWeight: 800, color: "#6b7280",
+          gridColumn: "1 / -1", fontSize: 10, fontWeight: 800, color: "var(--text-muted)",
           textTransform: "uppercase", letterSpacing: 0.6,
-          paddingBottom: 4, borderBottom: "1px solid rgba(255,255,255,0.04)"
+          paddingBottom: 4, borderBottom: "1px solid var(--border-light)"
         }}>Best Offer</div>
         {inp("Enabled (0/1)", "bestOfferEnabled", "0")}
         {inp("Accept Price",  "bestOfferAccept",  ""  )}
@@ -306,9 +306,9 @@ function AdListerSettings() {
       {/* Ref */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
         <div style={{
-          gridColumn: "1 / -1", fontSize: 10, fontWeight: 800, color: "#6b7280",
+          gridColumn: "1 / -1", fontSize: 10, fontWeight: 800, color: "var(--text-muted)",
           textTransform: "uppercase", letterSpacing: 0.6,
-          paddingBottom: 4, borderBottom: "1px solid rgba(255,255,255,0.04)"
+          paddingBottom: 4, borderBottom: "1px solid var(--border-light)"
         }}>Reference</div>
         {inp("Ref Type", "refType", "")}
         {inp("Ref Id",   "refId",   "")}
@@ -319,11 +319,11 @@ function AdListerSettings() {
 
 // ─── Table style constants ────────────────────────────────────────────────────
 
-const COL = { padding: "10px 12px", fontSize: 13, borderBottom: "1px solid rgba(255,255,255,0.05)" };
+const COL = { padding: "10px 12px", fontSize: 13, borderBottom: "1px solid var(--border-light)" };
 const HDR = {
-  ...COL, fontSize: 11, fontWeight: 700, color: "#6b7280",
+  ...COL, fontSize: 11, fontWeight: 700, color: "var(--text-muted)",
   textTransform: "uppercase", letterSpacing: "0.05em",
-  background: "#0a1628", borderBottom: "1px solid rgba(255,255,255,0.08)", padding: "9px 12px"
+  background: "var(--bg-surface3)", borderBottom: "1px solid var(--border)", padding: "9px 12px"
 };
 
 // ─── Listings table ───────────────────────────────────────────────────────────
@@ -336,9 +336,9 @@ function CopyHtmlButton({ html }) {
       title="Copy description HTML"
       style={{
         padding: "3px 7px", borderRadius: 6, fontSize: 12,
-        border: "1px solid rgba(255,255,255,0.12)",
-        background: "rgba(255,255,255,0.05)",
-        color: "#9ca3af",
+        border: "1px solid var(--border-strong)",
+        background: "var(--border-light)",
+        color: "var(--text-muted)",
         fontWeight: 600, whiteSpace: "nowrap",
         boxShadow: "none",
       }}
@@ -358,8 +358,8 @@ function ListingsTable({
     return (
       <div style={{
         minHeight: 200, display: "grid", placeItems: "center",
-        background: "#081322", border: "1px dashed rgba(255,255,255,0.08)",
-        borderRadius: 16, color: "#9ca3af", fontSize: 14
+        background: "var(--bg-surface3)", border: "1px dashed var(--border)",
+        borderRadius: 16, color: "var(--text-muted)", fontSize: 14
       }}>
         No listings match the current filter.
       </div>
@@ -367,19 +367,20 @@ function ListingsTable({
   }
 
   return (
-    <div style={{ borderRadius: 16, overflow: "hidden", border: "1px solid rgba(255,255,255,0.08)" }}>
+    <div style={{ borderRadius: 16, overflow: "hidden", border: "1px solid var(--border)" }}>
       <div style={{ overflowX: "auto" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 1020 }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 1160 }}>
           <thead>
             <tr>
               <th style={{ ...HDR, width: 40 }}>
                 <input type="checkbox" checked={allSelected} onChange={onToggleAll}
-                  style={{ cursor: "pointer", accentColor: "#135DFF" }} />
+                  style={{ cursor: "pointer", accentColor: "var(--blue)" }} />
               </th>
               <th style={{ ...HDR, width: 108 }}>Article No.</th>
               <th style={HDR}>Title</th>
               <th style={{ ...HDR, width: 118 }}>Description</th>
               <th style={{ ...HDR, width: 120 }}>Type</th>
+              <th style={{ ...HDR, width: 140 }}>K Numbers</th>
               <th style={{ ...HDR, width: 170 }}>OEM Numbers</th>
               <th style={{ ...HDR, width: 96 }}>Date</th>
               <th style={{ ...HDR, width: 88 }}>Status</th>
@@ -392,6 +393,8 @@ function ListingsTable({
               const type     = l.product_type || "—";
               const oem      = (l.oem_numbers || []).slice(0, 2).join(", ") +
                                ((l.oem_numbers?.length || 0) > 2 ? ` +${l.oem_numbers.length - 2}` : "");
+              const kNums    = (l.k_number_list || []).slice(0, 2).join(", ") +
+                               ((l.k_number_list?.length || 0) > 2 ? ` +${l.k_number_list.length - 2}` : "");
               const hasDesc  = !!l.description_html?.trim();
               const isGen    = generatingIds.includes(l.id);
               const bg       = checked ? "rgba(19,93,255,0.07)" : idx % 2 === 0 ? "rgba(255,255,255,0.015)" : "transparent";
@@ -400,17 +403,17 @@ function ListingsTable({
                 <tr key={l.id} style={{ background: bg, transition: "background 0.1s" }}>
                   <td style={{ ...COL, textAlign: "center" }}>
                     <input type="checkbox" checked={checked} onChange={() => onToggleOne(l.id)}
-                      style={{ cursor: "pointer", accentColor: "#135DFF" }} />
+                      style={{ cursor: "pointer", accentColor: "var(--blue)" }} />
                   </td>
-                  <td style={{ ...COL, color: "#93c5fd", fontFamily: "monospace", fontSize: 12 }}>
+                  <td style={{ ...COL, color: "var(--text-accent)", fontFamily: "monospace", fontSize: 12 }}>
                     {l.article_number || "—"}
                   </td>
-                  <td style={{ ...COL, color: "#ffffff", fontWeight: 600, maxWidth: 220 }}>
+                  <td style={{ ...COL, color: "var(--text)", fontWeight: 600, maxWidth: 220 }}>
                     <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {l.title || "—"}
                     </div>
                     {l.compatibility_count > 0 && (
-                      <div style={{ fontSize: 11, color: "#6b7280", marginTop: 2 }}>
+                      <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>
                         {l.compatibility_count} vehicle applications
                       </div>
                     )}
@@ -418,15 +421,20 @@ function ListingsTable({
                   <td style={COL}>
                     <DescriptionBadge hasDescription={hasDesc} />
                   </td>
-                  <td style={{ ...COL, color: "#d1d5db", maxWidth: 120, fontSize: 12 }}>
+                  <td style={{ ...COL, color: "var(--text)", maxWidth: 120, fontSize: 12 }}>
                     <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{type}</div>
                   </td>
-                  <td style={{ ...COL, color: "#9ca3af", fontSize: 12, maxWidth: 170 }}>
+                  <td style={{ ...COL, color: "var(--text-muted)", fontSize: 12, maxWidth: 140 }}>
+                    <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {kNums || "—"}
+                    </div>
+                  </td>
+                  <td style={{ ...COL, color: "var(--text-muted)", fontSize: 12, maxWidth: 170 }}>
                     <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {oem || "—"}
                     </div>
                   </td>
-                  <td style={{ ...COL, color: "#6b7280", fontSize: 12, whiteSpace: "nowrap" }}>
+                  <td style={{ ...COL, color: "var(--text-muted)", fontSize: 12, whiteSpace: "nowrap" }}>
                     {fmtDate(l.savedAt)}
                   </td>
                   <td style={COL}>
@@ -434,7 +442,7 @@ function ListingsTable({
                       <StatusBadge status={l.status} />
                       {l.status === "Exported" && (
                         <button onClick={() => onStatusChange(l.id, "Draft")} title="Reset to Draft"
-                          style={{ background: "none", border: "none", cursor: "pointer", color: "#6b7280", fontSize: 11, padding: "1px 4px" }}>
+                          style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: 11, padding: "1px 4px" }}>
                           ↺
                         </button>
                       )}
@@ -453,8 +461,8 @@ function ListingsTable({
                             padding: "3px 7px", borderRadius: 6, fontSize: 12,
                             cursor: isGen ? "default" : "pointer",
                             border:      "1px solid rgba(19,93,255,0.30)",
-                            background:  isGen ? "rgba(255,255,255,0.04)" : "rgba(19,93,255,0.14)",
-                            color:       isGen ? "#4b5563" : "#93c5fd",
+                            background:  isGen ? "var(--border-light)" : "rgba(19,93,255,0.14)",
+                            color:       isGen ? "var(--text-dim)" : "var(--text-accent)",
                             fontWeight: 600, transition: "all 0.14s"
                           }}
                         >
@@ -472,12 +480,12 @@ function ListingsTable({
                         style={{
                           padding: "3px 8px", borderRadius: 6, fontSize: 12,
                           cursor: "pointer",
-                          border:     "1px solid rgba(255,255,255,0.12)",
-                          background: "rgba(255,255,255,0.05)", color: "#d1d5db",
+                          border:     "1px solid var(--border-strong)",
+                          background: "var(--border-light)", color: "var(--text)",
                           fontWeight: 600, transition: "all 0.14s"
                         }}
-                        onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.10)"; e.currentTarget.style.color = "#fff"; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.05)"; e.currentTarget.style.color = "#d1d5db"; }}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = "var(--border-strong)"; e.currentTarget.style.color = "var(--text)"; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = "var(--border-light)"; e.currentTarget.style.color = "var(--text)"; }}
                       >
                         ↗
                       </button>
@@ -489,12 +497,12 @@ function ListingsTable({
                         style={{
                           width: 24, height: 24, borderRadius: 6,
                           border: "1px solid rgba(220,38,38,0.15)",
-                          background: "rgba(220,38,38,0.06)", color: "#6b7280",
+                          background: "rgba(220,38,38,0.06)", color: "var(--text-muted)",
                           cursor: "pointer", fontSize: 13,
                           display: "inline-flex", alignItems: "center", justifyContent: "center"
                         }}
-                        onMouseEnter={(e) => { e.currentTarget.style.color = "#f87171"; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.color = "#6b7280"; }}
+                        onMouseEnter={(e) => { e.currentTarget.style.color = "var(--red)"; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-muted)"; }}
                       >×</button>
                     </div>
                   </td>
@@ -527,8 +535,8 @@ function DetailSpecificsEditor({ rows, onChange }) {
         <tr key={`sec-${row.section}-${i}`}>
           <td colSpan={3} style={{
             padding: "7px 10px 3px", fontSize: 10, fontWeight: 800,
-            color: "#4b5563", letterSpacing: "0.08em", textTransform: "uppercase",
-            background: "#060e1a", borderBottom: "1px solid rgba(255,255,255,0.04)"
+            color: "var(--text-dim)", letterSpacing: "0.08em", textTransform: "uppercase",
+            background: "var(--bg-surface3)", borderBottom: "1px solid var(--border-light)"
           }}>
             {SECTION_TITLES[row.section] || row.section}
           </td>
@@ -537,35 +545,35 @@ function DetailSpecificsEditor({ rows, onChange }) {
     }
     elements.push(
       <tr key={row.id}>
-        <td style={{ padding: "4px 8px", borderBottom: "1px solid rgba(255,255,255,0.04)", width: "38%" }}>
+        <td style={{ padding: "4px 8px", borderBottom: "1px solid var(--border-light)", width: "38%" }}>
           <input value={row.label} onChange={(e) => updateRow(row.id, "label", e.target.value)}
             style={{
-              width: "100%", background: "rgba(255,255,255,0.04)",
-              border: "1px solid rgba(255,255,255,0.07)", borderRadius: 5,
-              color: "#9ca3af", fontSize: 12, padding: "3px 7px", outline: "none",
+              width: "100%", background: "var(--border-light)",
+              border: "1px solid var(--border)", borderRadius: 5,
+              color: "var(--text-muted)", fontSize: 12, padding: "3px 7px", outline: "none",
               boxSizing: "border-box"
             }}
           />
         </td>
-        <td style={{ padding: "4px 8px", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+        <td style={{ padding: "4px 8px", borderBottom: "1px solid var(--border-light)" }}>
           <input value={row.value} onChange={(e) => updateRow(row.id, "value", e.target.value)}
             style={{
-              width: "100%", background: "rgba(255,255,255,0.04)",
-              border: "1px solid rgba(255,255,255,0.07)", borderRadius: 5,
-              color: "#ffffff", fontSize: 12, padding: "3px 7px", outline: "none",
+              width: "100%", background: "var(--border-light)",
+              border: "1px solid var(--border)", borderRadius: 5,
+              color: "var(--text)", fontSize: 12, padding: "3px 7px", outline: "none",
               boxSizing: "border-box"
             }}
           />
         </td>
-        <td style={{ padding: "4px 8px", borderBottom: "1px solid rgba(255,255,255,0.04)", width: 32, textAlign: "center" }}>
+        <td style={{ padding: "4px 8px", borderBottom: "1px solid var(--border-light)", width: 32, textAlign: "center" }}>
           <button onClick={() => deleteRow(row.id)}
-            onMouseEnter={(e) => { e.currentTarget.style.color = "#f87171"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.color = "#6b7280"; }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = "var(--red)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-muted)"; }}
             style={{
               width: 22, height: 22, borderRadius: 5, display: "inline-flex",
               alignItems: "center", justifyContent: "center",
               border: "1px solid rgba(220,38,38,0.15)", background: "rgba(220,38,38,0.06)",
-              color: "#6b7280", cursor: "pointer", fontSize: 12
+              color: "var(--text-muted)", cursor: "pointer", fontSize: 12
             }}
           >×</button>
         </td>
@@ -574,7 +582,7 @@ function DetailSpecificsEditor({ rows, onChange }) {
   });
 
   return (
-    <div style={{ borderRadius: 10, overflow: "hidden", border: "1px solid rgba(255,255,255,0.06)" }}>
+    <div style={{ borderRadius: 10, overflow: "hidden", border: "1px solid var(--border-light)" }}>
       <table style={{ width: "100%", borderCollapse: "collapse" }}>
         <thead>
           <tr>
@@ -585,10 +593,10 @@ function DetailSpecificsEditor({ rows, onChange }) {
         </thead>
         <tbody>{elements}</tbody>
       </table>
-      <div style={{ padding: "7px 10px", borderTop: "1px solid rgba(255,255,255,0.04)", background: "#060e1a" }}>
+      <div style={{ padding: "7px 10px", borderTop: "1px solid var(--border-light)", background: "var(--bg-surface3)" }}>
         <button onClick={addRow} style={{
           ...SMALL_BUTTON_STYLE, fontSize: 11, padding: "4px 10px",
-          background: "rgba(255,255,255,0.04)", boxShadow: "none", color: "#6b7280"
+          background: "var(--border-light)", boxShadow: "none", color: "var(--text-muted)"
         }}>
           + Add Field
         </button>
@@ -645,32 +653,32 @@ function ListingDetail({ listing, onClose, onSave }) {
   };
 
   const labelStyle = {
-    fontSize: 11, fontWeight: 700, color: "#6b7280",
+    fontSize: 11, fontWeight: 700, color: "var(--text-muted)",
     letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 6
   };
 
   return (
     <div style={{
-      background: "#0F1E35", borderRadius: 20,
-      border: "1px solid rgba(255,255,255,0.10)",
+      background: "var(--bg-nav)", borderRadius: 20,
+      border: "1px solid var(--border-strong)",
       boxShadow: "0 4px 32px rgba(0,0,0,0.35)"
     }}>
       {/* ── Header ── */}
       <div style={{
         display: "flex", alignItems: "center", gap: 12,
-        padding: "14px 20px", borderBottom: "1px solid rgba(255,255,255,0.08)",
+        padding: "14px 20px", borderBottom: "1px solid var(--border)",
         flexWrap: "wrap"
       }}>
         <button onClick={onClose} style={{
           ...SMALL_BUTTON_STYLE, padding: "6px 12px", fontSize: 12,
-          background: "rgba(255,255,255,0.06)", boxShadow: "none", color: "#9ca3af"
+          background: "var(--border-light)", boxShadow: "none", color: "var(--text-muted)"
         }}>← Back</button>
 
         <div style={{ flex: 1, minWidth: 180 }}>
-          <div style={{ fontSize: 15, fontWeight: 700, color: "#ffffff" }}>
+          <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text)" }}>
             {listing.article_number || "Listing Detail"}
           </div>
-          <div style={{ fontSize: 12, color: "#6b7280", marginTop: 1 }}>
+          <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 1 }}>
             {fmtDate(listing.savedAt)}
             {(listing.compatibility_count > 0) && ` · ${listing.compatibility_count} vehicle applications`}
           </div>
@@ -680,7 +688,7 @@ function ListingDetail({ listing, onClose, onSave }) {
 
         <button onClick={handleSave} style={{
           ...SMALL_BUTTON_STYLE, fontSize: 12, padding: "7px 18px",
-          background: "#135DFF", boxShadow: "0 0 16px rgba(19,93,255,0.32)"
+          background: "var(--blue)", boxShadow: "0 0 16px rgba(19,93,255,0.32)"
         }}>
           💾 Save Changes
         </button>
@@ -691,7 +699,7 @@ function ListingDetail({ listing, onClose, onSave }) {
 
         {/* Left: title + SKU/BIN Price + item specifics */}
         <div style={{
-          borderRight: "1px solid rgba(255,255,255,0.06)",
+          borderRight: "1px solid var(--border-light)",
           padding: 20, display: "flex", flexDirection: "column", gap: 16
         }}>
 
@@ -703,8 +711,8 @@ function ListingDetail({ listing, onClose, onSave }) {
               onChange={(e) => setEditedTitle(e.target.value)}
               style={{
                 width: "100%", boxSizing: "border-box",
-                background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.10)",
-                borderRadius: 10, color: "#ffffff", fontSize: 14, fontWeight: 600,
+                background: "var(--border-light)", border: "1px solid var(--border-strong)",
+                borderRadius: 10, color: "var(--text)", fontSize: 14, fontWeight: 600,
                 padding: "10px 14px", outline: "none",
               }}
             />
@@ -720,8 +728,8 @@ function ListingDetail({ listing, onClose, onSave }) {
                 placeholder={listing.article_number || "e.g. JSK-12345"}
                 style={{
                   width: "100%", boxSizing: "border-box",
-                  background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)",
-                  borderRadius: 8, color: "#ffffff", fontSize: 13,
+                  background: "var(--border-light)", border: "1px solid var(--border)",
+                  borderRadius: 8, color: "var(--text)", fontSize: 13,
                   padding: "8px 12px", outline: "none", fontFamily: "monospace"
                 }}
               />
@@ -734,13 +742,27 @@ function ListingDetail({ listing, onClose, onSave }) {
                 placeholder="e.g. 49.95"
                 style={{
                   width: "100%", boxSizing: "border-box",
-                  background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)",
-                  borderRadius: 8, color: "#ffffff", fontSize: 13,
+                  background: "var(--border-light)", border: "1px solid var(--border)",
+                  borderRadius: 8, color: "var(--text)", fontSize: 13,
                   padding: "8px 12px", outline: "none"
                 }}
               />
             </div>
           </div>
+
+          {/* K Numbers */}
+          {(listing.k_number_list || []).length > 0 && (
+            <div>
+              <div style={labelStyle}>K Numbers</div>
+              <div style={{
+                fontSize: 12, color: "var(--text-muted)", lineHeight: 1.7, wordBreak: "break-word",
+                background: "var(--border-light)", border: "1px solid var(--border)",
+                borderRadius: 8, padding: "8px 12px"
+              }}>
+                {(listing.k_number_list || []).join(", ")}
+              </div>
+            </div>
+          )}
 
           {/* Item Specifics */}
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -757,10 +779,10 @@ function ListingDetail({ listing, onClose, onSave }) {
           {/* Controls bar */}
           <div style={{
             display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap",
-            background: "#081322", borderRadius: 12, padding: "10px 14px",
-            border: "1px solid rgba(255,255,255,0.06)"
+            background: "var(--bg-surface3)", borderRadius: 12, padding: "10px 14px",
+            border: "1px solid var(--border-light)"
           }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: "#6b7280", letterSpacing: 0.4 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", letterSpacing: 0.4 }}>
               DESCRIPTION
             </div>
             <DescriptionBadge hasDescription={hasDesc} />
@@ -768,15 +790,15 @@ function ListingDetail({ listing, onClose, onSave }) {
             {/* Theme selector */}
             <select value={themeId} onChange={(e) => setThemeId(e.target.value)} style={{
               padding: "5px 8px", borderRadius: 8, fontSize: 11,
-              background: "#0D2040", color: "#9ca3af",
-              border: "1px solid rgba(255,255,255,0.12)", cursor: "pointer"
+              background: "var(--bg-surface2)", color: "var(--text-muted)",
+              border: "1px solid var(--border-strong)", cursor: "pointer"
             }}>
               {THEMES.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
             </select>
             {/* Generate / Regenerate */}
             <button onClick={generateDesc} disabled={generating} style={{
               ...SMALL_BUTTON_STYLE, fontSize: 12, padding: "6px 14px",
-              background:  generating ? "#374151" : hasDesc ? "rgba(22,163,74,0.28)" : "#135DFF",
+              background:  generating ? "var(--text-dim)" : hasDesc ? "rgba(22,163,74,0.28)" : "var(--blue)",
               boxShadow:   generating ? "none"    : hasDesc ? "0 0 12px rgba(22,163,74,0.22)" : "0 0 12px rgba(19,93,255,0.25)",
               opacity:     generating ? 0.7 : 1,
               cursor:      generating ? "default" : "pointer"
@@ -791,9 +813,9 @@ function ListingDetail({ listing, onClose, onSave }) {
                 title="Copy description HTML"
                 style={{
                   fontSize: 12, padding: "6px 12px",
-                  background: "rgba(255,255,255,0.06)",
-                  color: "#9ca3af",
-                  border: "1px solid rgba(255,255,255,0.10)",
+                  background: "var(--border-light)",
+                  color: "var(--text-muted)",
+                  border: "1px solid var(--border-strong)",
                   boxShadow: "none",
                 }}
               >
@@ -805,7 +827,7 @@ function ListingDetail({ listing, onClose, onSave }) {
           {/* Error */}
           {genError && (
             <div style={{
-              fontSize: 12, color: "#fca5a5",
+              fontSize: 12, color: "var(--red)",
               background: "rgba(220,38,38,0.08)", borderRadius: 8,
               padding: "8px 12px", border: "1px solid rgba(220,38,38,0.20)"
             }}>
@@ -816,7 +838,7 @@ function ListingDetail({ listing, onClose, onSave }) {
           {/* Rendered preview */}
           {hasDesc ? (
             <div style={{
-              background: "#ffffff", borderRadius: 14, padding: 16,
+              background: "var(--text-on-dark)", borderRadius: 14, padding: 16,
               flex: 1, overflowY: "auto", maxHeight: 480, overflowX: "hidden"
             }}>
               <div dangerouslySetInnerHTML={{ __html: previewHtml }} />
@@ -824,13 +846,19 @@ function ListingDetail({ listing, onClose, onSave }) {
           ) : (
             <div style={{
               flex: 1, minHeight: 260, display: "grid", placeItems: "center",
-              background: "#081322", border: "1px dashed rgba(255,255,255,0.08)",
-              borderRadius: 14, color: "#6b7280", fontSize: 14, textAlign: "center", padding: 24
+              background: "var(--bg-surface3)", border: "1px dashed var(--border)",
+              borderRadius: 14, color: "var(--text-muted)", fontSize: 14, textAlign: "center", padding: 24
             }}>
               <div>
-                <div style={{ fontSize: 36, marginBottom: 10 }}>📄</div>
-                <div style={{ color: "#9ca3af", fontWeight: 500 }}>No description yet</div>
-                <div style={{ fontSize: 12, color: "#6b7280", marginTop: 4 }}>
+                <div style={{ marginBottom: 12, opacity: 0.35 }}>
+                  <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--text-accent)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                    <line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
+                  </svg>
+                </div>
+                <div style={{ color: "var(--text-muted)", fontWeight: 500 }}>No description yet</div>
+                <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>
                   Select a theme and click ⚡ Generate above.
                 </div>
               </div>
@@ -844,7 +872,7 @@ function ListingDetail({ listing, onClose, onSave }) {
                 onClick={() => setShowRawHtml((v) => !v)}
                 style={{
                   background: "none", border: "none", cursor: "pointer",
-                  fontSize: 11, color: "#4b5563", fontWeight: 600,
+                  fontSize: 11, color: "var(--text-dim)", fontWeight: 600,
                   padding: "4px 0", letterSpacing: 0.3
                 }}
               >
@@ -857,8 +885,8 @@ function ListingDetail({ listing, onClose, onSave }) {
                   style={{
                     display: "block", width: "100%", boxSizing: "border-box",
                     marginTop: 6, height: 180, resize: "vertical",
-                    background: "#060e1a", color: "#93c5fd",
-                    border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10,
+                    background: "var(--bg-surface3)", color: "var(--text-accent)",
+                    border: "1px solid var(--border)", borderRadius: 10,
                     fontSize: 11, fontFamily: "monospace", lineHeight: 1.5,
                     padding: "10px 12px", outline: "none"
                   }}
@@ -890,8 +918,8 @@ function ItemSpecificsExport({ listings }) {
     return (
       <div style={{
         minHeight: 200, display: "grid", placeItems: "center",
-        background: "#081322", border: "1px dashed rgba(255,255,255,0.08)",
-        borderRadius: 16, color: "#9ca3af", fontSize: 14
+        background: "var(--bg-surface3)", border: "1px dashed var(--border)",
+        borderRadius: 16, color: "var(--text-muted)", fontSize: 14
       }}>
         No listings to display.
       </div>
@@ -905,7 +933,7 @@ function ItemSpecificsExport({ listings }) {
   });
 
   return (
-    <div style={{ borderRadius: 16, overflow: "hidden", border: "1px solid rgba(255,255,255,0.08)" }}>
+    <div style={{ borderRadius: 16, overflow: "hidden", border: "1px solid var(--border)" }}>
       <div style={{ overflowX: "auto" }}>
         <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 600 }}>
           <thead>
@@ -920,16 +948,16 @@ function ItemSpecificsExport({ listings }) {
             {rows.map(({ listing, vm }, idx) => (
               <tr key={listing.id} style={{ background: idx % 2 === 0 ? "rgba(255,255,255,0.015)" : "transparent" }}>
                 <td style={{
-                  ...COL, color: "#ffffff", fontWeight: 600,
+                  ...COL, color: "var(--text)", fontWeight: 600,
                   position: "sticky", left: 0,
-                  background: idx % 2 === 0 ? "#0d1e35" : "#091527",
+                  background: idx % 2 === 0 ? "var(--bg-surface2)" : "var(--bg-surface3)",
                   maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"
                 }}>
                   {listing.title}
                 </td>
                 {filledCols.map((col) => (
-                  <td key={col} style={{ ...COL, color: "#d1d5db", whiteSpace: "nowrap" }}>
-                    {vm[col] || <span style={{ color: "#374151" }}>—</span>}
+                  <td key={col} style={{ ...COL, color: "var(--text)", whiteSpace: "nowrap" }}>
+                    {vm[col] || <span style={{ color: "var(--text-dim)" }}>—</span>}
                   </td>
                 ))}
               </tr>
@@ -950,6 +978,7 @@ export default function GeneratedListings({
   onUpdateListing,
   onRemove,
   onRemoveBatch,
+  canBulkGenerate = false,
 }) {
   const [innerTab,           setInnerTab]           = useState("listings");
   const [dateFilter,         setDateFilter]         = useState("all");
@@ -1034,6 +1063,7 @@ export default function GeneratedListings({
   };
 
   const generateBulkDescriptions = async () => {
+    if (!canBulkGenerate) return;
     // Only target listings that are missing descriptions
     const ids = activeIds().filter((id) => {
       const l = listings.find((x) => x.id === id);
@@ -1208,28 +1238,28 @@ export default function GeneratedListings({
       {/* ── Stats header ── */}
       <div style={{
         display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center",
-        background: "#0F1E35", borderRadius: 16, padding: "14px 20px",
-        border: "1px solid rgba(255,255,255,0.08)"
+        background: "var(--bg-nav)", borderRadius: 16, padding: "14px 20px",
+        border: "1px solid var(--border)"
       }}>
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 20, fontWeight: 800, color: "#ffffff" }}>Generated Listings</div>
-          <div style={{ fontSize: 13, color: "#9ca3af", marginTop: 3 }}>
-            Auto-saved from the generator · manage, complete, and export from here
+          <div style={{ fontSize: 20, fontWeight: 800, color: "var(--text)" }}>Saved Listings</div>
+          <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 3 }}>
+            Saved from the generator · manage, complete, and export from here
           </div>
         </div>
         {[
-          { label: "Total",     value: listings.length, color: "#93c5fd" },
+          { label: "Total",     value: listings.length, color: "var(--text-accent)" },
           { label: "With Desc", value: withDescCount,   color: "#a78bfa" },
-          { label: "Draft",     value: draftCount,      color: "#fbbf24" },
-          { label: "Exported",  value: exportedCount,   color: "#4ade80" },
+          { label: "Draft",     value: draftCount,      color: "var(--yellow)" },
+          { label: "Exported",  value: exportedCount,   color: "var(--green)" },
         ].map(({ label, value, color }) => (
           <div key={label} style={{
             textAlign: "center", padding: "8px 20px",
-            background: "#081322", borderRadius: 12,
-            border: "1px solid rgba(255,255,255,0.06)"
+            background: "var(--bg-surface3)", borderRadius: 12,
+            border: "1px solid var(--border-light)"
           }}>
             <div style={{ fontSize: 22, fontWeight: 800, color }}>{value}</div>
-            <div style={{ fontSize: 11, color: "#6b7280", fontWeight: 700 }}>{label}</div>
+            <div style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 700 }}>{label}</div>
           </div>
         ))}
       </div>
@@ -1246,8 +1276,8 @@ export default function GeneratedListings({
         <>
           {/* ── Inner tab bar ── */}
           <div style={{
-            display: "flex", gap: 6, background: "#081322",
-            borderRadius: 14, padding: 4, border: "1px solid rgba(255,255,255,0.06)"
+            display: "flex", gap: 6, background: "var(--bg-surface3)",
+            borderRadius: 14, padding: 4, border: "1px solid var(--border-light)"
           }}>
             {[
               { key: "listings",  label: "Listings Table" },
@@ -1256,8 +1286,8 @@ export default function GeneratedListings({
               <button key={key} onClick={() => setInnerTab(key)} style={{
                 flex: 1, padding: "9px 14px", borderRadius: 10,
                 border: "none", cursor: "pointer", fontWeight: 700, fontSize: 13,
-                background: innerTab === key ? "#135DFF" : "transparent",
-                color:      innerTab === key ? "#fff"    : "#9ca3af",
+                background: innerTab === key ? "var(--blue)" : "transparent",
+                color:      innerTab === key ? "var(--text-on-dark)"    : "var(--text-muted)",
                 boxShadow:  innerTab === key ? "0 0 14px rgba(19,93,255,0.28)" : "none",
                 transition: "all 0.18s ease"
               }}>
@@ -1268,8 +1298,8 @@ export default function GeneratedListings({
 
           {/* ── Toolbar ── */}
           <div style={{
-            background: "#0F1E35", borderRadius: 14, padding: "12px 16px",
-            border: "1px solid rgba(255,255,255,0.08)",
+            background: "var(--bg-nav)", borderRadius: 14, padding: "12px 16px",
+            border: "1px solid var(--border)",
             display: "flex", flexDirection: "column", gap: 10
           }}>
             <DateFilterBar
@@ -1283,7 +1313,7 @@ export default function GeneratedListings({
               {/* Select / deselect */}
               <button onClick={toggleAll} style={{
                 ...SMALL_BUTTON_STYLE, fontSize: 12,
-                background: "rgba(255,255,255,0.07)", boxShadow: "none", color: "#d1d5db"
+                background: "var(--border)", boxShadow: "none", color: "var(--text)"
               }}>
                 {allSelected ? "Deselect All" : `Select All (${filtered.length})`}
               </button>
@@ -1291,14 +1321,14 @@ export default function GeneratedListings({
               {selInFilter > 0 && (
                 <button
                   onClick={() => setSelectedIds((prev) => prev.filter((id) => !filteredIds.includes(id)))}
-                  style={{ ...SMALL_BUTTON_STYLE, fontSize: 12, background: "transparent", boxShadow: "none", color: "#9ca3af" }}
+                  style={{ ...SMALL_BUTTON_STYLE, fontSize: 12, background: "transparent", boxShadow: "none", color: "var(--text-muted)" }}
                 >
                   Clear ({selInFilter})
                 </button>
               )}
 
               {/* ⚡ Bulk generate descriptions */}
-              {missingDescCount > 0 && !bulkGenProgress && (
+              {canBulkGenerate && missingDescCount > 0 && !bulkGenProgress && (
                 <button onClick={generateBulkDescriptions} style={{
                   ...SMALL_BUTTON_STYLE, fontSize: 12, padding: "6px 14px",
                   background: "rgba(99,102,241,0.16)", color: "#a5b4fc",
@@ -1308,7 +1338,7 @@ export default function GeneratedListings({
                 </button>
               )}
 
-              {bulkGenProgress && (
+              {canBulkGenerate && bulkGenProgress && (
                 <div style={{
                   fontSize: 12, color: "#a5b4fc",
                   background: "rgba(99,102,241,0.12)", borderRadius: 8,
@@ -1324,7 +1354,7 @@ export default function GeneratedListings({
               {selInFilter > 0 && (
                 <button
                   onClick={() => onUpdateStatusBatch(selectedIds.filter((id) => filteredIds.includes(id)), "Exported")}
-                  style={{ ...SMALL_BUTTON_STYLE, fontSize: 12, background: "rgba(74,222,128,0.12)", color: "#4ade80", boxShadow: "none" }}
+                  style={{ ...SMALL_BUTTON_STYLE, fontSize: 12, background: "rgba(74,222,128,0.12)", color: "var(--green)", boxShadow: "none" }}
                 >
                   ✓ Mark Exported ({selInFilter})
                 </button>
@@ -1333,7 +1363,7 @@ export default function GeneratedListings({
               {/* Delete */}
               {(selInFilter > 0 || filtered.length > 0) && (
                 <button onClick={() => confirmDelete("batch")} style={{
-                  ...SMALL_BUTTON_STYLE, fontSize: 12, background: "rgba(220,38,38,0.10)", color: "#f87171", boxShadow: "none"
+                  ...SMALL_BUTTON_STYLE, fontSize: 12, background: "rgba(220,38,38,0.10)", color: "var(--red)", boxShadow: "none"
                 }}>
                   × Delete {selInFilter > 0 ? `${selInFilter} selected` : `${filtered.length} shown`}
                 </button>
@@ -1345,9 +1375,9 @@ export default function GeneratedListings({
                 title="AdLister export settings"
                 style={{
                   ...SMALL_BUTTON_STYLE, fontSize: 12, padding: "6px 12px",
-                  background: showAdlisterSettings ? "rgba(99,102,241,0.20)" : "rgba(255,255,255,0.05)",
-                  color:      showAdlisterSettings ? "#a5b4fc"              : "#6b7280",
-                  border:     showAdlisterSettings ? "1px solid rgba(99,102,241,0.35)" : "1px solid rgba(255,255,255,0.10)",
+                  background: showAdlisterSettings ? "rgba(99,102,241,0.20)" : "var(--border-light)",
+                  color:      showAdlisterSettings ? "#a5b4fc"              : "var(--text-muted)",
+                  border:     showAdlisterSettings ? "1px solid rgba(99,102,241,0.35)" : "1px solid var(--border-strong)",
                   boxShadow: "none"
                 }}
               >
@@ -1370,11 +1400,11 @@ export default function GeneratedListings({
           {/* ── Delete confirmation ── */}
           {deletePending && (
             <div style={{
-              background: "#1c0a0a", border: "1px solid rgba(220,38,38,0.35)",
+              background: "var(--red-bg)", border: "1px solid rgba(220,38,38,0.35)",
               borderRadius: 12, padding: "12px 16px",
               display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap"
             }}>
-              <span style={{ fontSize: 13, color: "#fca5a5", flex: 1 }}>
+              <span style={{ fontSize: 13, color: "var(--red)", flex: 1 }}>
                 {deletePending === "batch"
                   ? `Permanently delete ${selInFilter > 0 ? selInFilter : filtered.length} listing(s)?`
                   : "Permanently delete this listing?"}
@@ -1385,7 +1415,7 @@ export default function GeneratedListings({
                 Delete
               </button>
               <button onClick={() => setDeletePending(null)}
-                style={{ ...SMALL_BUTTON_STYLE, background: "#374151", boxShadow: "none", fontSize: 12, padding: "6px 12px" }}>
+                style={{ ...SMALL_BUTTON_STYLE, background: "var(--text-dim)", boxShadow: "none", fontSize: 12, padding: "6px 12px" }}>
                 Cancel
               </button>
             </div>

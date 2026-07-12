@@ -1,4 +1,11 @@
-import React, { memo, useState, useRef, useEffect, useMemo } from "react";
+﻿import React, { memo, useState, useRef, useEffect, useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+import { supabase } from "./lib/supabaseClient";
+import { useSession } from "./context/SessionContext";
+import { syncCheckoutSession } from "./lib/billing";
+import { loadPreferences } from "./useListingPreferences.js";
+import { getMarketplaceById } from "./i18n/marketplaces.js";
 import {
   BUTTON_BASE,
   SMALL_BUTTON_STYLE,
@@ -13,15 +20,20 @@ import {
   InfoBox,
   CopyButton
 } from "./shared.jsx";
-import TabbedListingPreview, { USE_TABBED_PREVIEW } from "./TabbedListingPreview.jsx";
+import TabbedListingPreview, { USE_TABBED_PREVIEW, stripCompatSection, extractCompatSection } from "./TabbedListingPreview.jsx";
 import PriceCalculator from "./PriceCalculator.jsx";
 import SavedProducts from "./SavedProducts.jsx";
 import CompatibilityChecker from "./CompatibilityChecker.jsx";
+import Account, { ProfileDropdown } from "./Account.jsx";
+import PartIdentifier from "./PartIdentifier.jsx";
 import { useSavedProducts } from "./useSavedProducts.js";
 import { useGeneratedListings } from "./useGeneratedListings.js";
 import { useSessionState } from "./useSessionState.js";
 import GeneratedListings from "./GeneratedListings.jsx";
 import { SPEC_SCHEMA, SECTION_TITLES, mapApiSpecsToSchema } from "./itemSpecificsSchema.js";
+import { trackEvent } from "./lib/analytics";
+import { UpgradeBanner } from "./components/UpgradePrompt.jsx";
+import { useTheme } from "./context/ThemeContext";
 
 // ─── Description themes (mirrors backend) ────────────────────────────────────
 
@@ -35,8 +47,12 @@ const THEMES = [
 
 // ─── LocalStorage helpers ─────────────────────────────────────────────────────
 
-const LS_THEME_KEY     = "jsk_theme_v2";
-const LS_TEMPLATES_KEY = "jsk_custom_templates_v1";
+const LS_THEME_KEY        = "jsk_theme_v2";
+const LS_TEMPLATES_KEY    = "jsk_custom_templates_v1";
+const LS_ACCOUNT_TEMPLATES= "jsk_listing_templates_v1";
+const LS_OPTIONS_KEY      = "jsk_listing_options_v1";
+
+const DEFAULT_OPTIONS = { showCompatibilityTable: true, showInterchangeableNumbers: true, showEngineCodes: true };
 
 function getSavedTheme() {
   try { return localStorage.getItem(LS_THEME_KEY) || "clean-default"; }
@@ -45,11 +61,28 @@ function getSavedTheme() {
 function saveTheme(id) {
   try { localStorage.setItem(LS_THEME_KEY, id); } catch {}
 }
+function getSavedOptions() {
+  try { return { ...DEFAULT_OPTIONS, ...JSON.parse(localStorage.getItem(LS_OPTIONS_KEY) || "{}") }; }
+  catch { return { ...DEFAULT_OPTIONS }; }
+}
+function saveOptions(opts) {
+  try { localStorage.setItem(LS_OPTIONS_KEY, JSON.stringify(opts)); } catch {}
+}
 
 // ── Custom template storage ───────────────────────────────────────────────────
+// Merges templates from both storage systems:
+// 1. jsk_custom_templates_v1  — saved via "Save as Template" in the listing editor
+// 2. jsk_listing_templates_v1 — saved via Account → Listing Templates builder
 function loadCustomTemplates() {
-  try { return JSON.parse(localStorage.getItem(LS_TEMPLATES_KEY) || "[]"); }
-  catch { return []; }
+  const editor   = (() => { try { return JSON.parse(localStorage.getItem(LS_TEMPLATES_KEY)     || "[]"); } catch { return []; } })();
+  const account  = (() => { try { return JSON.parse(localStorage.getItem(LS_ACCOUNT_TEMPLATES) || "[]"); } catch { return []; } })();
+  // Normalise account templates to the { id, name, html } shape the editor expects
+  const accountNorm = account
+    .filter(t => t.rawHtml?.trim())
+    .map(t => ({ id: t.id, name: t.name || "Untitled", html: t.rawHtml }));
+  // Merge, deduplicating by id
+  const seen = new Set(editor.map(t => t.id));
+  return [...editor, ...accountNorm.filter(t => !seen.has(t.id))];
 }
 function persistCustomTemplates(list) {
   try { localStorage.setItem(LS_TEMPLATES_KEY, JSON.stringify(list)); } catch {}
@@ -57,12 +90,70 @@ function persistCustomTemplates(list) {
 
 // Strip article-specific content from HTML, keeping structure + header text.
 // Light-background divs and table cells are cleared; dark-background headers kept.
+// ── Placeholder-token replacement for new-style templates ──────────────────────
+// Replaces {{TOKEN}} placeholders in a template with actual listing data.
+// Used when the selected template was created via the Listing Templates builder.
+function replacePlaceholders(templateHtml, result) {
+  let html = templateHtml;
+
+  // {{TITLE}}
+  html = html.replace(/\{\{TITLE\}\}/g, result.generated_title || "");
+
+  // {{OE_NUMBERS}}
+  const oeNums = (result.oem_numbers || []).join(", ");
+  html = html.replace(/\{\{OE_NUMBERS\}\}/g, oeNums || "—");
+
+  // {{K_NUMBERS}}
+  const kNums = (result.k_number_list || []).join(", ");
+  html = html.replace(/\{\{K_NUMBERS\}\}/g, kNums || "—");
+
+  // {{INTERCHANGEABLE_NUMBERS}}
+  const interch = (result.interchangeable_parts || [])
+    .map(p => `<span style="margin-right:18px"><b>${p.brand}:</b> ${p.articleNo}</span>`)
+    .join("");
+  html = html.replace(/\{\{INTERCHANGEABLE_NUMBERS\}\}/g, interch || "—");
+
+  // {{COMPATIBILITY_TABLE}} — extract from the AI-generated HTML
+  const compatHtml = extractCompatSection(result.generated_html || "");
+  html = html.replace(/\{\{COMPATIBILITY_TABLE\}\}/g, compatHtml || "");
+
+  // {{ITEM_SPECIFICS}} — extract the item specifics section from generated HTML
+  html = html.replace(/\{\{ITEM_SPECIFICS\}\}/g, (() => {
+    const src = result.generated_html || "";
+    const idx = src.search(/item\s+specific/i);
+    if (idx === -1) return "";
+    const start = src.lastIndexOf("<", idx);
+    if (start === -1) return "";
+    const rest = src.slice(start);
+    const nextSection = rest.search(/<[^>]+>[^<]*(?:Engine\s+Codes?|Compatible\s+(?:Models?|Vehicles?)|Interchang)[^<]*<\/[^>]+>/i);
+    return nextSection > 0 ? rest.slice(0, nextSection) : rest;
+  })());
+
+  // {{FITMENT_WARNING}} — standard warning banner
+  html = html.replace(/\{\{FITMENT_WARNING\}\}/g,
+    `<div style="background:#fff8e1;border:2px solid #f59e0b;padding:10px 16px;font-size:13px;font-weight:bold;color:#78350f;border-radius:6px;text-align:center;margin:8px 0;">` +
+    `⚠️ Please review the images / compatibility to ensure you are ordering the correct part!` +
+    `</div>`
+  );
+
+  // {{DESCRIPTION}} — full description content without compatibility table
+  const descHtml = stripCompatSection(result.generated_html || "");
+  html = html.replace(/\{\{DESCRIPTION\}\}/g, descHtml || "");
+
+  // Policy placeholders — leave blank if not set (sellers customise these)
+  html = html.replace(/\{\{WARRANTY\}\}/g, "");
+  html = html.replace(/\{\{SHIPPING\}\}/g, "");
+  html = html.replace(/\{\{RETURNS\}\}/g, "");
+
+  return html;
+}
+
 function blankContentHtml(html) {
   const tmp = document.createElement("div");
   tmp.innerHTML = html;
   tmp.querySelectorAll("div, td, th, p, span").forEach((el) => {
     const bg = el.style.background || el.style.backgroundColor || "";
-    const isDarkBg = bg && bg !== "#ffffff" && bg !== "white" &&
+    const isDarkBg = bg && bg !== "var(--text-on-dark)" && bg !== "white" &&
       !bg.startsWith("rgb(255,255,255") && !bg.startsWith("rgba(255,255,255");
     if (!isDarkBg && el.children.length === 0) el.textContent = "";
   });
@@ -144,9 +235,85 @@ function makeRowId() {
 // ─── App ──────────────────────────────────────────────────────────────────────
 
 export default function App() {
+  const { t } = useTranslation();
+  const { session, hasFeature, refreshPlan } = useSession();
+  const { theme } = useTheme();
+  const isDark = theme === "dark" || (theme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+  const logoSrc = isDark ? "/logo-white.svg" : "/logo.png";
+  const [searchParams, setSearchParams] = useSearchParams();
   const [page, setPage] = useState(
     () => sessionStorage.getItem("jsk_active_page") || "listing"
   );
+  const [accountSubPage, setAccountSubPage] = useState("account");
+
+  const canUseCompatibility = hasFeature("compatibilityChecker");
+  const canUseSmartPricing = hasFeature("smartPricing");
+  const canBulkGenerate = hasFeature("bulkListingGeneration");
+  const canBulkCsvExport = hasFeature("bulkCsvExport");
+
+  // Effect A: detect return from Stripe, clean URL immediately, stash pending sync
+  // in sessionStorage so it survives the race between URL params and session load.
+  useEffect(() => {
+    const checkout  = searchParams.get("checkout");
+    const billing   = searchParams.get("billing");
+    const sessionId = searchParams.get("session_id");
+    if (checkout !== "success" && billing !== "1") return;
+
+    setAccountSubPage("billing");
+    sessionStorage.setItem("jsk_active_page", "account");
+    setPage("account");
+
+    if (checkout === "success" && sessionId) {
+      sessionStorage.setItem("jsk_pending_checkout_id", sessionId);
+    }
+
+    const next = new URLSearchParams(searchParams);
+    next.delete("checkout");
+    next.delete("billing");
+    next.delete("session_id");
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
+
+  // Effect B: runs whenever the session becomes available.
+  // Picks up any pending checkout session ID left by Effect A and syncs it.
+  useEffect(() => {
+    const userId    = session?.user?.id;
+    const pendingId = sessionStorage.getItem("jsk_pending_checkout_id");
+    if (!userId || !pendingId) return;
+
+    // Claim the ID immediately so a second effect fire can't double-sync.
+    sessionStorage.removeItem("jsk_pending_checkout_id");
+
+    let cancelled = false;
+    (async () => {
+      try {
+        await syncCheckoutSession({ sessionId: pendingId });
+      } catch (err) {
+        console.warn("[checkout] sync failed, falling back to profile refresh:", err.message);
+      }
+      if (!cancelled) await refreshPlan();
+    })();
+
+    return () => { cancelled = true; };
+  }, [session?.user?.id, refreshPlan]);
+
+  useEffect(() => {
+    if (page === "compatibility" && !canUseCompatibility) {
+      sessionStorage.setItem("jsk_active_page", "listing");
+      setPage("listing");
+    }
+  }, [page, canUseCompatibility]);
+
+  // Effect C: ?goto=<page> deep-link — used by "View Market Analysis" button in new tab
+  useEffect(() => {
+    const goto = searchParams.get("goto");
+    if (!goto) return;
+    const next = new URLSearchParams(searchParams);
+    next.delete("goto");
+    setSearchParams(next, { replace: true });
+    sessionStorage.setItem("jsk_active_page", goto);
+    setPage(goto);
+  }, [searchParams, setSearchParams]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Session-state key prefixes per page — used to wipe state on navigation away
   const PAGE_SS_PREFIXES = {
@@ -157,8 +324,6 @@ export default function App() {
 
   const navigateTo = (key) => {
     if (key !== page) {
-      // Clear all session-state keys for the page we're leaving so it
-      // starts fresh the next time the user visits it.
       const prefix = PAGE_SS_PREFIXES[page];
       if (prefix) {
         Object.keys(sessionStorage)
@@ -168,6 +333,17 @@ export default function App() {
     }
     sessionStorage.setItem("jsk_active_page", key);
     setPage(key);
+  };
+
+  // Navigate from profile dropdown — account sub-pages or logout
+  const handleProfileNav = async (subPage) => {
+    if (subPage === "logout") {
+      await supabase.auth.signOut();
+      window.location.href = "/auth/login";
+      return;
+    }
+    setAccountSubPage(subPage);
+    navigateTo("account");
   };
   const { products, save, remove } = useSavedProducts();
   const {
@@ -187,75 +363,111 @@ export default function App() {
     setTimeout(() => { if (loadProductRef.current) loadProductRef.current(product); }, 50);
   };
 
-  return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: "linear-gradient(180deg, #0A1628 0%, #071020 100%)",
-        fontFamily: "Inter, system-ui, sans-serif",
-        padding: 24
-      }}
-    >
-      <div style={{ maxWidth: 1440, margin: "0 auto" }}>
+  const NAV_ICONS = {
+    listing: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+        <line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
+      </svg>
+    ),
+    calculator: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/>
+        <line x1="16" y1="10" x2="16" y2="18"/><line x1="8" y1="14" x2="12" y2="14"/><line x1="8" y1="18" x2="12" y2="18"/>
+      </svg>
+    ),
+    compatibility: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+      </svg>
+    ),
+    account: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+      </svg>
+    ),
+    partidentifier: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        <line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/>
+      </svg>
+    ),
+  };
 
-        {/* Navbar */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            background: "#0F1E35",
-            borderRadius: 20,
-            padding: "14px 24px",
-            border: "1px solid rgba(255,255,255,0.08)",
-            marginBottom: 16,
-            boxShadow: "0 4px 24px rgba(0,0,0,0.28)"
-          }}
-        >
-          <img src="/logo.png" alt="PartLister" style={{ height: 32, width: "auto" }} />
-          <div style={{ fontSize: 13, color: "rgba(255,255,255,0.45)", fontWeight: 500 }}>
-            Listing Tool
+  return (
+    <div style={{ minHeight: "100vh", background: "var(--bg)", fontFamily: "Inter, system-ui, sans-serif" }}>
+
+      {/* ── Top Navbar ── */}
+      <div style={{ background: "var(--bg-surface)", borderBottom: "1px solid var(--border)", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
+        <div style={{ maxWidth: 1440, margin: "0 auto", padding: "0 28px", display: "flex", alignItems: "stretch", height: 62 }}>
+
+          {/* Logo */}
+          <div style={{ display: "flex", alignItems: "center", paddingRight: 32, borderRight: "1px solid var(--border)", marginRight: 8 }}>
+            <button
+              onClick={() => navigateTo("listing")}
+              style={{ background: "none", border: "none", padding: 0, cursor: "pointer", display: "flex", alignItems: "center" }}
+            >
+              <img src={logoSrc} alt="PartLister" style={{ height: 30, width: "auto" }} />
+            </button>
+          </div>
+
+          {/* Nav tabs */}
+          <div style={{ display: "flex", flex: 1, alignItems: "stretch" }}>
+            {[
+              { key: "listing",       label: t("nav.listingGenerator") },
+              { key: "calculator",    label: t("nav.priceCalculator") },
+              ...(canUseCompatibility ? [{ key: "compatibility", label: t("nav.compatibility") }] : []),
+              // { key: "partidentifier", label: "Part Identifier", badge: "BETA" }, // hidden — feature paused
+              { key: "account",       label: t("nav.account") },
+            ].map(({ key, label, badge }) => {
+              const active = page === key;
+              return (
+                <button key={key} onClick={() => navigateTo(key)} style={{
+                  display: "flex", alignItems: "center", gap: 7,
+                  padding: "0 18px", border: "none", background: "transparent", cursor: "pointer",
+                  fontSize: 13, fontWeight: active ? 700 : 500,
+                  color: active ? "var(--blue)" : "var(--text-muted)",
+                  borderBottom: active ? "2px solid var(--blue)" : "2px solid transparent",
+                  transition: "all 0.15s ease", whiteSpace: "nowrap",
+                }}>
+                  <span style={{ color: active ? "var(--blue)" : "var(--text-dim)", display: "flex" }}>
+                    {NAV_ICONS[key]}
+                  </span>
+                  {label}
+                  {badge && (
+                    <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.06em", color: "var(--blue)", background: "var(--blue-bg)", border: "1px solid rgba(19,93,255,0.2)", borderRadius: 4, padding: "1px 5px", marginLeft: 2 }}>
+                      {badge}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Right: email + logout */}
+          <div style={{ display: "flex", alignItems: "center", gap: 12, paddingLeft: 16 }}>
+            {session?.user?.email && (
+              <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{session.user.email}</span>
+            )}
+            <button type="button" onClick={() => handleProfileNav("logout")} style={{
+              display: "flex", alignItems: "center", gap: 6,
+              padding: "6px 14px", borderRadius: 8,
+              border: "1px solid var(--border)", background: "transparent",
+              cursor: "pointer", fontSize: 12, fontWeight: 600, color: "var(--red)",
+              transition: "all 0.15s ease",
+            }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+              </svg>
+              Log out
+            </button>
           </div>
         </div>
+      </div>
 
-        {/* Page tabs */}
-        <div
-          style={{
-            display: "flex",
-            gap: 6,
-            marginBottom: 24,
-            background: "#0F1E35",
-            borderRadius: 20,
-            padding: 6,
-            border: "1px solid rgba(255,255,255,0.08)"
-          }}
-        >
-          {[
-            { key: "listing",       label: "Listing Generator" },
-            { key: "calculator",    label: "Price Calculator" },
-            { key: "compatibility", label: "Compatibility Checker" },
-          ].map(({ key, label }) => (
-            <button
-              key={key}
-              onClick={() => navigateTo(key)}
-              style={{
-                flex: 1,
-                padding: "12px 16px",
-                borderRadius: 14,
-                border: "none",
-                cursor: "pointer",
-                fontWeight: 700,
-                fontSize: 14,
-                background: page === key ? "#135DFF" : "transparent",
-                color:      page === key ? "#fff"    : "#9ca3af",
-                boxShadow:  page === key ? "0 0 16px rgba(19,93,255,0.28)" : "none",
-                transition: "all 0.2s ease"
-              }}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+      {/* ── Page content ── */}
+      <div style={{ maxWidth: 1440, margin: "0 auto", padding: "24px 28px" }}>
 
         {page === "listing" && (
           <ListingGenerator
@@ -277,6 +489,7 @@ export default function App() {
             products={products}
             onDeleteProduct={remove}
             onLoadProduct={handleLoadProduct}
+            hasSmartPricing={canUseSmartPricing}
           />
         )}
         {page === "compatibility" && (
@@ -287,10 +500,28 @@ export default function App() {
             }}
           />
         )}
+        {page === "partidentifier" && (
+          <PartIdentifier
+            onSendToListing={({ articleNumber }) => {
+              setPrefilledArticle(articleNumber || "");
+              navigateTo("listing");
+            }}
+            onSendToPricing={({ query }) => {
+              try {
+                localStorage.setItem("jsk_pc_autorun", JSON.stringify({ query, timestamp: Date.now() }));
+              } catch {}
+              navigateTo("calculator");
+            }}
+          />
+        )}
+        {page === "account" && (
+          <Account initialPage={accountSubPage} />
+        )}
       </div>
     </div>
   );
 }
+
 
 // ─── ListingGenerator ─────────────────────────────────────────────────────────
 // innerPage: "generate" | "generated"
@@ -300,6 +531,11 @@ function ListingGenerator({
   prefilledArticle, onPrefilledConsumed, onAutoSave,
   listings, onUpdateStatus, onUpdateStatusBatch, onUpdateListing, onRemove, onRemoveBatch,
 }) {
+  const { t } = useTranslation();
+  const { session, hasFeature, listingLimit, listingsUsed, refreshPlan } = useSession();
+  const canBulkGenerate = hasFeature("bulkListingGeneration");
+  const canBulkCsvExport = hasFeature("bulkCsvExport");
+  const targetMarketplace = useMemo(() => loadPreferences().targetMarketplace || "ebay-uk", []);
   const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
 
   // ── Inner page ────────────────────────────────────────────────────────────
@@ -312,9 +548,108 @@ function ListingGenerator({
   const [searchResults, setSearchResults] = useState([]);
   const [result,        setResult]        = useSessionState("jsk_gen_result", null);
   const [error,         setError]         = useState("");
-  const [themeId,       setThemeId]       = useState(getSavedTheme);
+  const [limitMessage,  setLimitMessage]  = useState("");
+  const [isSaved,       setIsSaved]       = useState(false);
+  const [marketPrice,   setMarketPrice]   = useState(null);
+  const [themeId,        setThemeId]        = useState(getSavedTheme);
+  const [listingOptions, setListingOptions] = useState(getSavedOptions);
   const [customTemplates,    setCustomTemplates]    = useState(loadCustomTemplates);
   const [customTemplateHtml, setCustomTemplateHtml] = useState(null);
+
+  // Reload merged templates whenever Account → Listing Templates adds/removes one
+  useEffect(() => {
+    const onStorage = (e) => {
+      if (e.key === LS_ACCOUNT_TEMPLATES || e.key === LS_TEMPLATES_KEY) {
+        setCustomTemplates(loadCustomTemplates());
+      }
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
+
+  // Reset market price preview whenever a new generation begins
+  useEffect(() => {
+    if (phase === "generating") setMarketPrice(null);
+  }, [phase]);
+
+  // Background market price fetch — fires after listing lands, non-blocking
+  useEffect(() => {
+    if (phase !== "done" || !result) return;
+    const oemNums   = result.oem_numbers || [];
+    const articleNo = result.article_number;
+    const marketplace = result.target_marketplace || targetMarketplace;
+    let cancelled = false;
+
+    setMarketPrice({ status: "loading" });
+
+    const call = async (query) => {
+      const res = await fetch(`${API_URL}/api/ebay/search-prices`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+        },
+        body: JSON.stringify({ query, condition: "used", targetMarketplace: marketplace }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        const err  = new Error(`HTTP ${res.status}`);
+        err.status = res.status; err.body = body;
+        throw err;
+      }
+      return res.json();
+    };
+
+    (async () => {
+      try {
+        const primary = oemNums[0] || articleNo;
+        let data = await call(primary);
+        let usedQuery = primary;
+
+        // Insufficient results on OEM → retry with article number
+        if ((data.priceCount ?? 0) < 3 && oemNums[0] && articleNo) {
+          const fallback = await call(articleNo);
+          if ((fallback.priceCount ?? 0) > (data.priceCount ?? 0)) {
+            data = fallback; usedQuery = articleNo;
+          }
+        }
+
+        if (cancelled) return;
+        if (!data.priceCount || data.low == null) {
+          setMarketPrice({ status: "none" });
+        } else {
+          // IQR-trim the raw listing prices to remove outlier results that
+          // are completely unrelated items which happened to match on OEM number.
+          const rawPrices = (data.listings || [])
+            .map((l) => l.price)
+            .filter((p) => typeof p === "number" && isFinite(p))
+            .sort((a, b) => a - b);
+
+          let low = data.low, high = data.high;
+          if (rawPrices.length >= 4) {
+            const q1 = rawPrices[Math.floor(rawPrices.length * 0.25)];
+            const q3 = rawPrices[Math.floor(rawPrices.length * 0.75)];
+            const fence = 1.5 * (q3 - q1);
+            const trimmed = rawPrices.filter((p) => p >= q1 - fence && p <= q3 + fence);
+            if (trimmed.length >= 2) { low = trimmed[0]; high = trimmed[trimmed.length - 1]; }
+          }
+
+          const SYM = { GBP: "£", EUR: "€", USD: "$", AED: "د.إ", TRY: "₺" };
+          setMarketPrice({
+            status: "done",
+            low, high,
+            symbol: SYM[data.currency] || data.currency || "£",
+            query: usedQuery, marketplace,
+          });
+        }
+      } catch (err) {
+        if (cancelled) return;
+        setMarketPrice({ status: err.status === 403 ? "restricted" : "error" });
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [result?.article_number, phase]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Batch state ───────────────────────────────────────────────────────────
   const [batchRows,    setBatchRows]    = useSessionState("jsk_gen_batch_rows", [{ id: makeRowId(), articleNo: "", sku: "", binPrice: "" }]);
@@ -324,12 +659,16 @@ function ListingGenerator({
   const liveHtmlRef = useRef("");
 
   // ── Resolved HTML for TabbedListingPreview (no editing, so computed here) ──
-  const displayHtml = useMemo(
-    () => customTemplateHtml && result
-      ? mergeTemplateWithContent(customTemplateHtml, result.generated_html ?? "")
-      : (result?.generated_html ?? ""),
-    [customTemplateHtml, result?.generated_html]
-  );
+  // New-style templates (from Listing Templates builder) use {{TOKEN}} placeholders —
+  // detect them and replace with real data. Old-style templates use HTML structure merging.
+  const displayHtml = useMemo(() => {
+    if (!result) return "";
+    if (!customTemplateHtml) return result.generated_html ?? "";
+    const hasTokens = /\{\{[A-Z_]+\}\}/.test(customTemplateHtml);
+    return hasTokens
+      ? replacePlaceholders(customTemplateHtml, result)
+      : mergeTemplateWithContent(customTemplateHtml, result.generated_html ?? "");
+  }, [customTemplateHtml, result]);
 
   // Keep liveHtmlRef in sync when using the tabbed preview
   useEffect(() => {
@@ -350,11 +689,20 @@ function ListingGenerator({
     }
   }, [prefilledArticle]);
 
+  // Surface the upgrade banner proactively once usage data loads, not just
+  // after a blocked attempt — so the user understands why the button is disabled.
+  useEffect(() => {
+    if (listingLimit != null && listingsUsed >= listingLimit) {
+      setLimitMessage("You have reached your listing limit. Upgrade your plan to continue generating listings.");
+    }
+  }, [listingLimit, listingsUsed]);
+
   // ── Search (OEM or article number → candidates) ──────────────────────────
   const handleSearch = async () => {
     if (!canSearch || isLoading) return;
     setPhase("searching");
     setError("");
+    setLimitMessage("");
     setSearchResults([]);
     setResult(null);
     try {
@@ -383,20 +731,44 @@ function ListingGenerator({
   const generateListing = async (articleNo) => {
     setPhase("generating");
     setError("");
+    setLimitMessage("");
+    const startedAt = Date.now();
+    trackEvent("listing_generation_started", { part_number: articleNo, source: "listing_generator" });
     try {
       const res  = await fetch(`${API_URL}/lookup`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ articleNumber: String(articleNo), themeId })
+        headers: {
+          "Content-Type": "application/json",
+          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+        },
+        body: JSON.stringify({ articleNumber: String(articleNo), themeId, listingOptions, targetMarketplace })
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Lookup failed");
+      if (!res.ok) {
+        if (res.status === 403 && data.error === "limit_reached") {
+          setLimitMessage(data.message);
+          setPhase(searchResults.length > 0 ? "selecting" : "idle");
+          return;
+        }
+        throw new Error(data.message || data.error || "Lookup failed");
+      }
       setResult(data);
       setPhase("done");
-      onAutoSave?.({ ...data, sku: inputSku.trim() });
+      setIsSaved(false);
+      refreshPlan();
+      trackEvent("listing_generated", {
+        part_number: articleNo,
+        generation_time_ms: Date.now() - startedAt,
+        source: "listing_generator",
+      });
     } catch (err) {
       setError(String(err.message || err));
       setPhase(searchResults.length > 0 ? "selecting" : "idle");
+      trackEvent("listing_generation_failed", {
+        part_number: articleNo,
+        error: String(err.message || err),
+        source: "listing_generator",
+      });
     }
   };
 
@@ -426,14 +798,17 @@ function ListingGenerator({
       setPhase("generating");
       fetch(`${API_URL}/lookup`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ articleNumber: result.article_number, themeId: newId })
+        headers: {
+          "Content-Type": "application/json",
+          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+        },
+        body: JSON.stringify({ articleNumber: result.article_number, themeId: newId, listingOptions, targetMarketplace })
       })
         .then((r) => r.json())
         .then((data) => {
           if (data.error) throw new Error(data.error);
           setResult(data);
-          onAutoSave?.({ ...data, sku: inputSku.trim() }); // keep saved listing in sync
+          setIsSaved(false);
         })
         .catch((err) => setError(String(err.message || err)))
         .finally(() => setPhase("done"));
@@ -452,95 +827,133 @@ function ListingGenerator({
 
   // ── Batch export ──────────────────────────────────────────────────────────
   const handleBatchExport = async () => {
-    if (!canBatch || batchLoading) return;
+    if (!canBulkCsvExport || !canBatch || batchLoading) return;
     setBatchLoading(true);
     setError("");
+    setLimitMessage("");
     try {
       const rows = batchRows
         .filter((r) => r.articleNo.trim() && r.sku.trim() && r.binPrice.trim())
         .map(({ articleNo, sku, binPrice }) => ({ articleNumber: articleNo.trim(), sku: sku.trim(), binPrice: binPrice.trim() }));
       const res = await fetch(`${API_URL}/batch-export`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+        },
         body: JSON.stringify({ rows, themeId })
       });
-      if (!res.ok) { const d = await res.json(); throw new Error(d.error || "Batch export failed"); }
+      if (!res.ok) {
+        const d = await res.json();
+        if (res.status === 403 && d.error === "limit_reached") { setLimitMessage(d.message); return; }
+        throw new Error(d.message || d.error || "Batch export failed");
+      }
       const blob = await res.blob();
       const url  = URL.createObjectURL(blob);
       const a    = document.createElement("a");
       a.href = url; a.download = "batch-listings.csv";
       document.body.appendChild(a); a.click(); a.remove();
       URL.revokeObjectURL(url);
+      refreshPlan();
+      trackEvent("listing_exported_csv", { row_count: rows.length, source: "listing_generator_batch" });
     } catch (err) { setError(String(err.message || err)); }
     finally { setBatchLoading(false); }
   };
 
   const copyText = async (v) => { await navigator.clipboard.writeText(v || ""); };
 
+  // ── Save current listing to Saved Listings (explicit, button-triggered) ───
+  const handleSaveListing = () => {
+    if (!result) return;
+    onAutoSave?.({ ...result, sku: inputSku.trim() });
+    setIsSaved(true);
+    trackEvent("listing_saved", { part_number: result.article_number, source: "listing_generator" });
+  };
+
+  const atLimit = listingLimit != null && listingsUsed >= listingLimit;
+  const remainingLabel = listingLimit == null
+    ? "Unlimited Listings"
+    : `${Math.max(0, listingLimit - listingsUsed)} Listings Remaining`;
+
   const btnLabel =
-    phase === "searching"  ? "Searching…"   :
-    phase === "generating" ? "Generating…"  :
-    "Search & Generate";
+    phase === "searching"  ? t("generator.searching")  :
+    phase === "generating" ? t("generator.generating") :
+    t("generator.searchGenerate");
 
   const listingCount = listings?.length ?? 0;
 
   return (
     <>
       {/* ── Inner tab bar ── */}
-      <div style={{
-        display: "flex", gap: 6, marginBottom: 20,
-        background: "#0F1E35", borderRadius: 16, padding: 5,
-        border: "1px solid rgba(255,255,255,0.08)"
-      }}>
+      <div style={{ display: "flex", gap: 0, marginBottom: 24, borderBottom: "1px solid var(--border)" }}>
         {[
-          { key: "generate",  label: "Generate" },
-          { key: "generated", label: `Generated Listings${listingCount ? ` (${listingCount})` : ""}` },
-        ].map(({ key, label }) => (
-          <button
-            key={key}
-            onClick={() => setInnerPage(key)}
-            style={{
-              flex: 1, padding: "10px 16px", borderRadius: 12,
-              border: "none", cursor: "pointer", fontWeight: 700, fontSize: 13,
-              background: innerPage === key ? "#135DFF" : "transparent",
-              color:      innerPage === key ? "#ffffff" : "#9ca3af",
-              boxShadow:  innerPage === key ? "0 0 14px rgba(19,93,255,0.28)" : "none",
-              transition: "all 0.18s ease"
-            }}
-          >
-            {label}
-          </button>
-        ))}
+          { key: "generate",  label: t("nav.listingGenerator") },
+          { key: "generated", label: t("nav.savedListings"), count: listingCount },
+        ].map(({ key, label, count }) => {
+          const active = innerPage === key;
+          return (
+            <button key={key} onClick={() => setInnerPage(key)} style={{
+              display: "flex", alignItems: "center", gap: 7,
+              padding: "12px 20px", border: "none", background: "transparent",
+              cursor: "pointer", fontSize: 13, fontWeight: active ? 700 : 500,
+              color: active ? "var(--blue)" : "var(--text-muted)",
+              borderBottom: active ? "2px solid var(--blue)" : "2px solid transparent",
+              marginBottom: -1, transition: "all 0.15s ease",
+            }}>
+              {label}
+              {count > 0 && (
+                <span style={{
+                  fontSize: 11, fontWeight: 700, lineHeight: 1,
+                  background: active ? "var(--blue)" : "var(--border-strong)",
+                  color: active ? "var(--text-on-dark)" : "var(--text-muted)",
+                  borderRadius: 99, padding: "2px 7px",
+                }}>
+                  {count}
+                </span>
+              )}
+            </button>
+          );
+        })}
       </div>
 
       {/* ── Generate tab ── */}
       {innerPage === "generate" && (<>
+        {limitMessage && (
+          <UpgradeBanner message={limitMessage} onDismiss={() => setLimitMessage("")} />
+        )}
         {error && (
           <div style={{
-            background: "#0D1428", color: "#fca5a5",
-            border: "1px solid rgba(220,38,38,0.45)", borderRadius: 20,
-            padding: 16, marginBottom: 20,
-            boxShadow: "0 0 20px rgba(220,38,38,0.10)"
+            display: "flex", alignItems: "flex-start", gap: 10,
+            background: "var(--red-bg)", border: "1px solid rgba(220,38,38,0.22)",
+            borderRadius: 10, padding: "12px 16px", marginBottom: 20,
           }}>
-            <strong>Error:</strong> {error}
+            <div style={{ width: 20, height: 20, borderRadius: "50%", background: "var(--red)", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: "var(--text-on-dark)", fontWeight: 800, marginTop: 1 }}>!</div>
+            <div style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.55 }}>
+              <strong style={{ color: "var(--red)" }}>Error:</strong> {error}
+            </div>
           </div>
         )}
 
-        <div style={{ display: "grid", gridTemplateColumns: "360px 1fr 290px", gap: 20, alignItems: "start" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "340px 1fr 280px", gap: 20, alignItems: "start" }}>
 
-          {/* ── Left column: form + AI titles + final title ── */}
-          <div style={{ display: "grid", gap: 20 }}>
+          {/* ── Left column: form + AI titles ── */}
+          <div style={{ display: "grid", gap: 16 }}>
 
             {/* Single Listing */}
             <Card
-              title="Single Listing"
-              subtitle="Enter a TecDoc article number or OEM / reference number."
-              centeredTitle
+              title={t("generator.title")}
+              subtitle={t("generator.subtitle")}
+              icon={
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+                  <line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
+                </svg>
+              }
             >
               <div style={{ display: "grid", gap: 14 }}>
 
                 <div>
-                  <FieldLabel>Article No. or OEM Number</FieldLabel>
+                  <FieldLabel>{t("generator.articleLabel")}</FieldLabel>
                   <TextInput
                     value={query}
                     onChange={(e) => {
@@ -548,26 +961,26 @@ function ListingGenerator({
                       if (phase !== "idle") { setPhase("idle"); setSearchResults([]); setResult(null); }
                     }}
                     onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                    placeholder="e.g. AOP858 or LR002465"
+                    placeholder={t("generator.articlePlaceholder")}
                   />
                 </div>
 
                 <div>
                   <FieldLabel>
-                    SKU{" "}
-                    <span style={{ fontWeight: 400, color: "#6b7280", fontSize: 11 }}>(optional)</span>
+                    {t("generator.skuLabel")}{" "}
+                    <span style={{ fontWeight: 400, color: "var(--text-muted)", fontSize: 11 }}>{t("generator.skuOptional")}</span>
                   </FieldLabel>
                   <TextInput
                     value={inputSku}
                     onChange={(e) => setInputSku(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                    placeholder="Your internal SKU"
+                    placeholder={t("generator.skuPlaceholder")}
                   />
                 </div>
 
                 {/* Description Theme / Preset selector */}
                 <div>
-                  <FieldLabel>Description Preset</FieldLabel>
+                  <FieldLabel>{t("generator.templatesLabel")}</FieldLabel>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 4 }}>
                     {THEMES.map((t) => {
                       const active = themeId === t.id && !customTemplateHtml;
@@ -577,9 +990,9 @@ function ListingGenerator({
                           onClick={() => handleThemeChange(t.id)}
                           style={{
                             padding: "6px 12px", borderRadius: 10, fontSize: 12, cursor: "pointer",
-                            border:     active ? "1px solid #135DFF"    : "1px solid rgba(255,255,255,0.14)",
-                            background: active ? "rgba(19,93,255,0.18)" : "rgba(255,255,255,0.04)",
-                            color:      active ? "#93c5fd"              : "#9ca3af",
+                            border:     active ? "1px solid var(--blue)" : "1px solid var(--border)",
+                            background: active ? "var(--blue-bg)"     : "var(--bg-surface2)",
+                            color:      active ? "var(--blue)"        : "var(--text-muted)",
                             fontWeight: active ? 700 : 400,
                             transition: "all 0.15s ease"
                           }}
@@ -593,8 +1006,8 @@ function ListingGenerator({
                   {/* Custom (saved) templates */}
                   {customTemplates.length > 0 && (
                     <div style={{ marginTop: 10 }}>
-                      <div style={{ fontSize: 11, color: "#6b7280", fontWeight: 700, marginBottom: 6, letterSpacing: 0.4 }}>
-                        MY TEMPLATES
+                      <div style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 700, marginBottom: 6, letterSpacing: 0.4 }}>
+                        SAVED TEMPLATES
                       </div>
                       <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                         {customTemplates.map((t) => {
@@ -607,8 +1020,8 @@ function ListingGenerator({
                                   padding: "6px 12px", borderRadius: "10px 0 0 10px", fontSize: 12, cursor: "pointer",
                                   border:     active ? "1px solid #f59e0b"        : "1px solid rgba(255,255,255,0.14)",
                                   borderRight: "none",
-                                  background: active ? "rgba(245,158,11,0.18)"    : "rgba(255,255,255,0.04)",
-                                  color:      active ? "#fbbf24"                  : "#9ca3af",
+                                  background: active ? "rgba(245,158,11,0.18)"    : "var(--border-light)",
+                                  color:      active ? "var(--yellow)"                  : "var(--text-muted)",
                                   fontWeight: active ? 700 : 400,
                                   transition: "all 0.15s ease"
                                 }}
@@ -622,7 +1035,7 @@ function ListingGenerator({
                                   padding: "6px 7px", borderRadius: "0 10px 10px 0", fontSize: 11, cursor: "pointer",
                                   border:     "1px solid rgba(255,255,255,0.14)",
                                   background: "rgba(220,38,38,0.07)",
-                                  color:      "#f87171",
+                                  color:      "var(--red)",
                                   transition: "all 0.15s ease"
                                 }}
                               >×</button>
@@ -634,13 +1047,60 @@ function ListingGenerator({
                   )}
                 </div>
 
+                {/* Listing Content Toggles */}
+                <div>
+                  <FieldLabel>{t("generator.contentOptions")}</FieldLabel>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 6 }}>
+                    {[
+                      { key: "showCompatibilityTable",     label: t("generator.compatibilityTable") },
+                      { key: "showInterchangeableNumbers", label: t("generator.interchangeableNumbers") },
+                      { key: "showEngineCodes",            label: t("generator.engineCodes") },
+                    ].map(({ key, label }) => {
+                      const on = listingOptions[key] !== false;
+                      return (
+                        <div key={key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                          <span style={{ fontSize: 13, color: "var(--text-muted)" }}>{label}</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const next = { ...listingOptions, [key]: !on };
+                              setListingOptions(next);
+                              saveOptions(next);
+                            }}
+                            style={{
+                              position: "relative", width: 38, height: 20, borderRadius: 10, border: "none",
+                              cursor: "pointer", padding: 0, flexShrink: 0,
+                              background: on ? "var(--blue)" : "var(--border)",
+                              transition: "background 0.2s",
+                            }}
+                            aria-label={`${on ? "Disable" : "Enable"} ${label}`}
+                          >
+                            <span style={{
+                              position: "absolute", top: 3, left: on ? 20 : 3,
+                              width: 14, height: 14, borderRadius: "50%", background: "#ffffff",
+                              transition: "left 0.2s",
+                            }} />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
                 <button
                   onClick={handleSearch}
-                  disabled={isLoading || !canSearch}
-                  style={primaryButtonStyle(isLoading || !canSearch)}
+                  disabled={isLoading || !canSearch || atLimit}
+                  style={primaryButtonStyle(isLoading || !canSearch || atLimit)}
                 >
                   {btnLabel}
                 </button>
+
+                <div style={{
+                  textAlign: "center", fontSize: 12, fontWeight: 600,
+                  color: atLimit ? "var(--red)" : "var(--text-muted)",
+                }}>
+                  {remainingLabel}
+                </div>
               </div>
             </Card>
 
@@ -650,11 +1110,8 @@ function ListingGenerator({
                 result={result}
                 apiUrl={API_URL}
                 onUseTitle={(title) => {
-                  setResult((prev) => {
-                    const updated = { ...prev, generated_title: title };
-                    onAutoSave?.({ ...updated, sku: inputSku.trim() });
-                    return updated;
-                  });
+                  setResult((prev) => ({ ...prev, generated_title: title }));
+                  setIsSaved(false);
                 }}
               />
             )}
@@ -666,6 +1123,7 @@ function ListingGenerator({
             {(phase === "idle" || phase === "searching" || phase === "generating") && (
               <Card title="Output" subtitle="Generated listing content and live preview." centeredTitle>
                 <EmptyOutputPanel
+                  loading={phase === "searching" || phase === "generating"}
                   message={
                     phase === "searching"  ? "Searching for matching articles…" :
                     phase === "generating" ? "Generating listing…" :
@@ -713,82 +1171,151 @@ function ListingGenerator({
 
           {/* ── Right column: article info & actions ── */}
           {phase === "done" && result && (
-            <div style={{ display: "grid", gap: 12, position: "sticky", top: 16 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12, position: "sticky", top: 16, maxHeight: "calc(100vh - 80px)", overflowY: "auto" }}>
 
-              {/* Article chip */}
+              {/* Product image — always shown; placeholder when TecDoc has no image */}
               <div style={{
-                background: "#0F1E35", border: "1px solid rgba(255,255,255,0.08)",
-                borderRadius: 14, padding: "12px 16px",
-                display: "flex", flexDirection: "column", gap: 4
+                background: "var(--bg-surface)", border: "1px solid var(--border)",
+                borderRadius: 12, overflow: "hidden", boxShadow: "var(--shadow)",
               }}>
-                <div style={{ fontSize: 10, color: "#6b7280", fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase" }}>Article</div>
-                <div style={{ fontSize: 15, fontWeight: 700, color: "#ffffff" }}>{result.article_number || "—"}</div>
-                {result.product_type && (
-                  <div style={{ fontSize: 12, color: "#9ca3af" }}>{result.product_type}</div>
+                {result.article_image ? (
+                  <img
+                    src={result.article_image}
+                    alt={result.product_type || result.generated_title || "Product image"}
+                    style={{ width: "100%", maxHeight: 200, objectFit: "contain", display: "block", padding: "12px 16px", boxSizing: "border-box" }}
+                    onError={(e) => {
+                      e.currentTarget.style.display = "none";
+                      const ph = e.currentTarget.parentElement.querySelector("[data-img-ph]");
+                      if (ph) ph.style.display = "flex";
+                    }}
+                  />
+                ) : null}
+                {/* Shown when image is absent or the img tag errors */}
+                <div
+                  data-img-ph="1"
+                  style={{
+                    display: result.article_image ? "none" : "flex",
+                    alignItems: "center", justifyContent: "center",
+                    height: 110, background: "var(--bg-surface2)",
+                  }}
+                >
+                  <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase", color: "var(--text-dim)" }}>No Image</span>
+                </div>
+              </div>
+
+              {/* Article */}
+              <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 12, padding: "14px 16px", boxShadow: "var(--shadow)" }}>
+                <div style={{ fontSize: 10, color: "var(--text-dim)", fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>{t("generator.article")}</div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text)", marginBottom: 2 }}>
+                  {result.product_type || result.article_number || "—"}
+                </div>
+                {result.product_type && result.article_number && (
+                  <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 4 }}>{result.article_number}</div>
                 )}
                 {result.compatibility_count > 0 && (
-                  <div style={{ fontSize: 11, color: "#4ade80", marginTop: 2 }}>
-                    ✓ {result.compatibility_count} compatible vehicles
+                  <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: "var(--green)", fontWeight: 600, marginTop: 4 }}>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    {t("generator.compatibleVehicles", { count: result.compatibility_count })}
                   </div>
                 )}
+                {result.target_marketplace && result.target_marketplace !== "ebay-uk" && (() => {
+                  const mp = getMarketplaceById(result.target_marketplace);
+                  return (
+                    <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: "var(--blue)", fontWeight: 600, marginTop: 6 }}>
+                      {mp.flag} {t("generator.translatedFor", { marketplace: mp.label })}
+                    </div>
+                  );
+                })()}
               </div>
 
-              {/* Product Image — directly below article chip */}
-              {result.article_image && (
-                <div style={{
-                  background: "#0D1B30", border: "1px solid rgba(255,255,255,0.08)",
-                  borderRadius: 14, padding: 12,
-                  display: "flex", justifyContent: "center", alignItems: "center"
-                }}>
-                  <img src={result.article_image} alt={result.generated_title || "Product"}
-                    style={{ maxWidth: "100%", maxHeight: 160, objectFit: "contain", borderRadius: 8 }} />
-                </div>
-              )}
-
-              {/* Quick Actions */}
-              <div style={{ display: "grid", gap: 8 }}>
-                <CopyButton
-                  onCopy={() => navigator.clipboard.writeText(liveHtmlRef.current || "")}
-                  style={{ width: "100%", textAlign: "center", fontSize: 13 }}
-                >
-                  📋 Copy HTML
-                </CopyButton>
-              </div>
-
-              {/* Active Title */}
+              {/* Market Price preview */}
               <div style={{
-                background: "#0F1E35", border: "1px solid rgba(255,255,255,0.08)",
-                borderRadius: 14, padding: "12px 16px"
+                background: "var(--bg-surface)", border: "1px solid var(--border)",
+                borderRadius: 12, padding: "14px 16px", boxShadow: "var(--shadow)",
               }}>
-                <div style={{ fontSize: 10, color: "#6b7280", fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 6 }}>
-                  Title
+                <div style={{ fontSize: 10, color: "var(--text-dim)", fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", marginBottom: 10 }}>Market Price</div>
+
+                <button
+                  onClick={() => {
+                    const oem = (result.oem_numbers || [])[0] || result.article_number;
+                    try {
+                      localStorage.setItem("jsk_pc_autorun", JSON.stringify({
+                        query: oem,
+                        marketplace: result.target_marketplace || targetMarketplace,
+                        timestamp: Date.now(),
+                      }));
+                    } catch {}
+                    window.open(window.location.origin + "/?goto=calculator", "_blank");
+                  }}
+                  style={{
+                    width: "100%", fontSize: 12, fontWeight: 700, padding: "9px 14px",
+                    borderRadius: 8, border: "none", cursor: "pointer",
+                    background: "var(--blue)", color: "#fff",
+                    display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
+                    boxShadow: "0 2px 8px rgba(19,93,255,0.3)",
+                    transition: "opacity 0.15s",
+                    margin: "0 -16px -14px", width: "calc(100% + 32px)", borderRadius: "0 0 12px 12px",
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.opacity = "0.85"}
+                  onMouseLeave={(e) => e.currentTarget.style.opacity = "1"}
+                >
+                  Check Market Prices
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                </button>
+              </div>
+
+              {/* Save listing */}
+              <button
+                onClick={handleSaveListing}
+                style={{
+                  width: "100%", textAlign: "center", fontSize: 13, fontWeight: 700,
+                  padding: "10px 16px", borderRadius: 10, cursor: "pointer", border: "none",
+                  background: isSaved ? "rgba(74,222,128,0.16)" : "var(--blue)",
+                  color: isSaved ? "var(--green)" : "var(--text-on-dark)",
+                  boxShadow: isSaved ? "none" : "0 0 16px rgba(19,93,255,0.3)",
+                  transition: "all 0.15s ease",
+                }}
+              >
+                {isSaved ? t("generator.saved") : t("generator.save")}
+              </button>
+
+              {/* Copy HTML */}
+              <CopyButton
+                onCopy={() => {
+                  navigator.clipboard.writeText(liveHtmlRef.current || "");
+                  trackEvent("listing_copied", { part_number: result.article_number, copy_type: "html", source: "listing_generator" });
+                }}
+                style={{ width: "100%", textAlign: "center", fontSize: 13, padding: "10px 16px", borderRadius: 10 }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline", verticalAlign: "middle", marginRight: 6 }}><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                Copy HTML
+              </CopyButton>
+
+              {/* Title */}
+              <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 12, padding: "14px 16px", boxShadow: "var(--shadow)" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                  <div style={{ fontSize: 10, color: "var(--text-dim)", fontWeight: 700, letterSpacing: 1, textTransform: "uppercase" }}>Title</div>
+                  <div style={{
+                    fontSize: 11, fontWeight: 600,
+                    color: (result.generated_title || "").length > 80 ? "var(--red)" :
+                           (result.generated_title || "").length >= 70 ? "var(--green)" : "var(--text-muted)"
+                  }}>
+                    {(result.generated_title || "").length} / 80
+                  </div>
                 </div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: "#ffffff", lineHeight: 1.5, wordBreak: "break-word" }}>
+                <div style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.5, wordBreak: "break-word" }}>
                   {result.generated_title || "—"}
-                </div>
-                <div style={{
-                  fontSize: 10, marginTop: 5, textAlign: "right",
-                  color: (result.generated_title || "").length > 80 ? "#f87171" :
-                         (result.generated_title || "").length >= 70 ? "#4ade80" : "#6b7280"
-                }}>
-                  {(result.generated_title || "").length} / 80
                 </div>
               </div>
 
               {/* K Numbers */}
               {(result.k_number_list || []).length > 0 && (
-                <div style={{
-                  background: "#0F1E35", border: "1px solid rgba(255,255,255,0.08)",
-                  borderRadius: 14, padding: "12px 16px"
-                }}>
-                  <div style={{ fontSize: 10, color: "#6b7280", fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 6 }}>K Numbers</div>
-                  <div style={{ fontSize: 12, color: "#d1d5db", lineHeight: 1.6, wordBreak: "break-word" }}>
+                <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 12, padding: "14px 16px", boxShadow: "var(--shadow)" }}>
+                  <div style={{ fontSize: 10, color: "var(--text-dim)", fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>K Numbers</div>
+                  <div style={{ fontSize: 12, color: "var(--text-muted)", lineHeight: 1.7, wordBreak: "break-word", marginBottom: 10 }}>
                     {(result.k_number_list || []).join(", ")}
                   </div>
-                  <CopyButton
-                    value={(result.k_number_list || []).join(", ")}
-                    style={{ marginTop: 8, fontSize: 11, padding: "5px 10px" }}
-                  >
+                  <CopyButton value={(result.k_number_list || []).join(", ")} style={{ fontSize: 11, padding: "5px 12px", borderRadius: 7 }}>
                     Copy K Numbers
                   </CopyButton>
                 </div>
@@ -796,19 +1323,16 @@ function ListingGenerator({
 
               {/* OEM Numbers */}
               {(result.oem_numbers || []).length > 0 && (
-                <div style={{
-                  background: "#0F1E35", border: "1px solid rgba(255,255,255,0.08)",
-                  borderRadius: 14, padding: "12px 16px"
-                }}>
-                  <div style={{ fontSize: 10, color: "#6b7280", fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 6 }}>OEM Numbers</div>
-                  <div style={{ fontSize: 12, color: "#d1d5db", lineHeight: 1.6, wordBreak: "break-word" }}>
+                <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 12, padding: "14px 16px", boxShadow: "var(--shadow)" }}>
+                  <div style={{ fontSize: 10, color: "var(--text-dim)", fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>OEM Numbers</div>
+                  <div style={{ fontSize: 12, color: "var(--text-muted)", lineHeight: 1.7, wordBreak: "break-word" }}>
                     {(result.oem_numbers || []).slice(0, 8).join(", ")}
                     {(result.oem_numbers || []).length > 8 ? ` +${(result.oem_numbers || []).length - 8} more` : ""}
                   </div>
                 </div>
               )}
 
-              {/* Description HTML (collapsible) — uses a local toggle */}
+              {/* Description HTML toggle */}
               <RightPanelHtmlToggle htmlRef={liveHtmlRef} />
 
             </div>
@@ -825,6 +1349,7 @@ function ListingGenerator({
           onUpdateListing={onUpdateListing}
           onRemove={onRemove}
           onRemoveBatch={onRemoveBatch}
+          canBulkGenerate={canBulkGenerate}
         />
       )}
     </>
@@ -833,14 +1358,57 @@ function ListingGenerator({
 
 // ─── Empty output placeholder ─────────────────────────────────────────────────
 
-function EmptyOutputPanel({ message }) {
+// Inject keyframes once (shared with the loading animation below)
+(function () {
+  if (typeof document === "undefined" || document.getElementById("__og-kf")) return;
+  const s = document.createElement("style"); s.id = "__og-kf";
+  s.textContent = `
+    @keyframes ogSpin    { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+    @keyframes ogLoadBar { 0%,100%{transform:scaleY(0.15);opacity:0.35} 50%{transform:scaleY(1);opacity:1} }
+  `;
+  document.head.appendChild(s);
+})();
+
+function EmptyOutputPanel({ message, loading = false }) {
+  if (!loading) {
+    return (
+      <div style={{
+        minHeight: 420, display: "grid", placeItems: "center",
+        background: "var(--bg-surface3)", border: "1px dashed var(--border-strong)",
+        borderRadius: 20, color: "var(--text-muted)", fontSize: 15, textAlign: "center", padding: 24
+      }}>
+        {message}
+      </div>
+    );
+  }
+
   return (
     <div style={{
-      minHeight: 420, display: "grid", placeItems: "center",
-      background: "#081322", border: "1px dashed rgba(255,255,255,0.12)",
-      borderRadius: 20, color: "#9ca3af", fontSize: 15, textAlign: "center", padding: 24
+      minHeight: 420, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+      gap: 22, background: "var(--bg-surface3)", border: "1px dashed var(--border-strong)",
+      borderRadius: 20, padding: 24, textAlign: "center"
     }}>
-      {message}
+      {/* Animated bars */}
+      <div style={{ display: "flex", alignItems: "flex-end", gap: 5, height: 46, transformOrigin: "bottom" }}>
+        {[0.35, 0.65, 0.9, 0.5, 1.0, 0.6, 0.4, 0.8, 0.55].map((h, i) => (
+          <div key={i} style={{
+            width: 8, height: 46, borderRadius: "4px 4px 0 0",
+            background: "linear-gradient(to top, var(--blue) 0%, #38bdf8 100%)",
+            transformOrigin: "bottom",
+            animation: `ogLoadBar ${0.7 + h * 0.7}s ease-in-out ${i * 0.09}s infinite`,
+          }} />
+        ))}
+      </div>
+      {/* Ring spinner */}
+      <div style={{
+        width: 30, height: 30, borderRadius: "50%",
+        border: "3px solid var(--border-blue)",
+        borderTop: "3px solid var(--blue)",
+        animation: "ogSpin 0.8s linear infinite",
+      }} />
+      <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-muted)" }}>
+        {message}
+      </div>
     </div>
   );
 }
@@ -857,36 +1425,36 @@ function ArticleSelector({ articles, onSelect }) {
           style={{
             display: "grid", gridTemplateColumns: "auto 1fr",
             gap: 14, alignItems: "center",
-            background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.10)",
+            background: "var(--border-light)", border: "1px solid var(--border-strong)",
             borderRadius: 14, padding: "14px 16px",
             cursor: "pointer", textAlign: "left", transition: "all 0.15s ease", width: "100%"
           }}
           onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(19,93,255,0.10)"; e.currentTarget.style.borderColor = "rgba(19,93,255,0.4)"; }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.10)"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = "var(--border-light)"; e.currentTarget.style.borderColor = "var(--border-strong)"; }}
         >
           {/* Brand badge */}
           <div style={{
-            background: a.brand ? "#135DFF" : "rgba(255,255,255,0.08)",
-            color:      a.brand ? "#fff"    : "#6b7280",
+            background: a.brand ? "var(--blue)" : "var(--border)",
+            color:      a.brand ? "var(--text-on-dark)"    : "var(--text-muted)",
             fontWeight: 700, fontSize: 11, padding: "4px 10px", borderRadius: 8,
             whiteSpace: "nowrap", textTransform: "uppercase", letterSpacing: 0.5,
-            border: a.brand ? "none" : "1px solid rgba(255,255,255,0.12)"
+            border: a.brand ? "none" : "1px solid var(--border-strong)"
           }}>
             {a.brand || "—"}
           </div>
 
           {/* Info */}
           <div>
-            <div style={{ fontSize: 14, fontWeight: 600, color: "#ffffff", marginBottom: 3 }}>
+            <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text)", marginBottom: 3 }}>
               {a.productName || "—"}
             </div>
             <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
-              <span style={{ fontSize: 12, color: "#9ca3af" }}>
-                Article No. <span style={{ color: "#d1d5db" }}>{a.articleNo || "—"}</span>
+              <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
+                Article No. <span style={{ color: "var(--text)" }}>{a.articleNo || "—"}</span>
               </span>
               {a.oemNumbers?.length > 0 && (
-                <span style={{ fontSize: 12, color: "#9ca3af" }}>
-                  OEM: <span style={{ color: "#d1d5db" }}>
+                <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
+                  OEM: <span style={{ color: "var(--text)" }}>
                     {a.oemNumbers.slice(0, 3).join(", ")}{a.oemNumbers.length > 3 ? ` +${a.oemNumbers.length - 3}` : ""}
                   </span>
                 </span>
@@ -994,16 +1562,16 @@ function InsertZone({ onInsert }) {
         <div style={{
           display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center",
           padding: "8px 10px", margin: "4px 0",
-          background: "#f0f4ff", border: "1px dashed #93c5fd", borderRadius: 10
+          background: "var(--bg-surface2)", border: "1px dashed #93c5fd", borderRadius: 10
         }}>
-          <span style={{ fontSize: 11, color: "#6b7280", fontWeight: 700, marginRight: 2 }}>INSERT:</span>
+          <span style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 700, marginRight: 2 }}>INSERT:</span>
           {BLOCK_TEMPLATES.map((t) => (
             <button
               key={t.label}
               onClick={() => { onInsert(t.html); setOpen(false); }}
               style={{
                 padding: "4px 12px", borderRadius: 8, fontSize: 12,
-                background: "#135DFF", color: "#ffffff",
+                background: "var(--blue)", color: "var(--text-on-dark)",
                 border: "none", cursor: "pointer", fontWeight: 600
               }}
             >
@@ -1014,7 +1582,7 @@ function InsertZone({ onInsert }) {
             onClick={() => setOpen(false)}
             style={{
               padding: "4px 8px", borderRadius: 8, fontSize: 12,
-              background: "transparent", color: "#9ca3af",
+              background: "transparent", color: "var(--text-muted)",
               border: "1px solid #d1d5db", cursor: "pointer", marginLeft: 2
             }}
           >
@@ -1034,15 +1602,15 @@ function InsertZone({ onInsert }) {
           onMouseEnter={(e) => (e.currentTarget.style.opacity = "1")}
           onMouseLeave={(e) => (e.currentTarget.style.opacity = "0")}
         >
-          <div style={{ flex: 1, height: 1, background: "#135DFF", opacity: 0.5 }} />
+          <div style={{ flex: 1, height: 1, background: "var(--blue)", opacity: 0.5 }} />
           <span style={{
             padding: "2px 10px", borderRadius: 10, fontSize: 11, fontWeight: 700,
-            background: "#135DFF", color: "#fff", margin: "0 6px",
+            background: "var(--blue)", color: "var(--text-on-dark)", margin: "0 6px",
             userSelect: "none", whiteSpace: "nowrap"
           }}>
             + Insert
           </span>
-          <div style={{ flex: 1, height: 1, background: "#135DFF", opacity: 0.5 }} />
+          <div style={{ flex: 1, height: 1, background: "var(--blue)", opacity: 0.5 }} />
         </div>
       )}
     </div>
@@ -1067,8 +1635,8 @@ function RightPanelHtmlToggle({ htmlRef }) {
         onClick={toggle}
         style={{
           ...SMALL_BUTTON_STYLE, width: "100%", textAlign: "center",
-          fontSize: 12, background: "rgba(255,255,255,0.05)", boxShadow: "none",
-          color: "#9ca3af", border: "1px solid rgba(255,255,255,0.10)"
+          fontSize: 12, background: "var(--border-light)", boxShadow: "none",
+          color: "var(--text-muted)", border: "1px solid var(--border-strong)"
         }}
       >
         {open ? "▲ Hide HTML" : "▼ Show Description HTML"}
@@ -1091,6 +1659,7 @@ const STYLE_LABELS = {
 };
 
 function AiTitleSuggestions({ result, apiUrl, onUseTitle }) {
+  const { session } = useSession();
   const [titles,   setTitles]   = useState(null);
   const [loading,  setLoading]  = useState(false);
   const [error,    setError]    = useState("");
@@ -1103,19 +1672,23 @@ function AiTitleSuggestions({ result, apiUrl, onUseTitle }) {
     setTitles(null);
     try {
       const payload = {
-        productType:    result.product_type    || "",
-        brand:          result.brand           || "",
-        oemNumbers:     result.oem_numbers     || [],
-        topModels:      result.top_models      || [],
-        engineCodes:    result.engine_codes    || [],
-        engineSizes:    result.engine_sizes    || [],
-        fuelType:       result.fuel_type       || "",
-        yearRange:      result.year_range      || "",
-        maxTitleLength: 80
+        productType:      result.product_type    || "",
+        brand:            result.brand           || "",
+        oemNumbers:       result.oem_numbers     || [],
+        topModels:        result.top_models      || [],
+        engineCodes:      result.engine_codes    || [],
+        engineSizes:      result.engine_sizes    || [],
+        fuelType:         result.fuel_type       || "",
+        yearRange:        result.year_range      || "",
+        maxTitleLength:   80,
+        targetMarketplace: loadPreferences().targetMarketplace || "ebay-uk",
       };
       const res = await fetch(`${apiUrl}/api/ai/generate-titles`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+        },
         body: JSON.stringify(payload)
       });
       const contentType = res.headers.get("content-type") || "";
@@ -1123,7 +1696,7 @@ function AiTitleSuggestions({ result, apiUrl, onUseTitle }) {
         throw new Error(`AI title generation failed (HTTP ${res.status}). Please try again.`);
       }
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "AI title generation failed.");
+      if (!res.ok) throw new Error(data.message || data.error || "AI title generation failed.");
       if (!Array.isArray(data.titles) || data.titles.length === 0) {
         throw new Error("No titles returned.");
       }
@@ -1144,20 +1717,20 @@ function AiTitleSuggestions({ result, apiUrl, onUseTitle }) {
   };
 
   const charColor = (count) => {
-    if (count >= 75) return "#4ade80";
-    if (count >= 60) return "#fbbf24";
-    return "#9ca3af";
+    if (count >= 75) return "var(--green)";
+    if (count >= 60) return "var(--yellow)";
+    return "var(--text-muted)";
   };
 
   return (
     <div style={{
-      background: "linear-gradient(135deg, #135DFF 0%, #7C3AED 100%)",
+      background: "linear-gradient(135deg, var(--blue) 0%, #7C3AED 100%)",
       borderRadius: 22,
       padding: 2,
-      boxShadow: "0 0 24px rgba(19,93,255,0.18), 0 0 48px rgba(124,58,237,0.10)"
+      boxShadow: "0 0 24px var(--border-blue), 0 0 48px rgba(124,58,237,0.10)"
     }}>
     <div style={{
-      background: "#0B1929",
+      background: "var(--bg-surface)",
       borderRadius: 20,
       padding: 20,
     }}>
@@ -1171,9 +1744,9 @@ function AiTitleSuggestions({ result, apiUrl, onUseTitle }) {
               WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
               textTransform: "uppercase"
             }}>✦ AI</span>
-            <div style={{ fontSize: 14, fontWeight: 700, color: "#fff" }}>Title Suggestions</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)" }}>Title Suggestions</div>
           </div>
-          <div style={{ fontSize: 12, color: "#6b7280", marginTop: 2 }}>
+          <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
             Generate 3 optimised eBay title styles from the listing data.
           </div>
         </div>
@@ -1182,8 +1755,8 @@ function AiTitleSuggestions({ result, apiUrl, onUseTitle }) {
           disabled={loading}
           style={{
             padding: "10px 20px", borderRadius: 12, border: "none",
-            background: loading ? "rgba(19,93,255,0.3)" : "#135DFF",
-            color: "#fff", fontWeight: 700, fontSize: 13,
+            background: loading ? "rgba(19,93,255,0.3)" : "var(--blue)",
+            color: "var(--text-on-dark)", fontWeight: 700, fontSize: 13,
             cursor: loading ? "not-allowed" : "pointer",
             opacity: loading ? 0.7 : 1,
             transition: "all 0.15s ease",
@@ -1197,7 +1770,7 @@ function AiTitleSuggestions({ result, apiUrl, onUseTitle }) {
       {/* Error */}
       {error && (
         <div style={{
-          background: "#0D1428", color: "#fca5a5",
+          background: "var(--bg-surface3)", color: "var(--red)",
           border: "1px solid rgba(220,38,38,0.4)", borderRadius: 12,
           padding: "12px 14px", fontSize: 13
         }}>
@@ -1210,14 +1783,14 @@ function AiTitleSuggestions({ result, apiUrl, onUseTitle }) {
         <div style={{ display: "grid", gap: 12 }}>
           {titles.map((t) => (
             <div key={t.style} style={{
-              background: "#081322",
-              border: "1px solid rgba(255,255,255,0.08)",
+              background: "var(--bg-surface3)",
+              border: "1px solid var(--border)",
               borderRadius: 14, padding: 16
             }}>
               {/* Style label + char count */}
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
                 <span style={{
-                  fontSize: 11, fontWeight: 700, color: "#6b7280",
+                  fontSize: 11, fontWeight: 700, color: "var(--text-muted)",
                   textTransform: "uppercase", letterSpacing: 0.6
                 }}>
                   {STYLE_LABELS[t.style] || t.style}
@@ -1229,7 +1802,7 @@ function AiTitleSuggestions({ result, apiUrl, onUseTitle }) {
 
               {/* Title text */}
               <div style={{
-                fontSize: 15, fontWeight: 600, color: "#ffffff",
+                fontSize: 15, fontWeight: 600, color: "var(--text)",
                 lineHeight: 1.4, marginBottom: 8,
                 wordBreak: "break-word"
               }}>
@@ -1242,9 +1815,9 @@ function AiTitleSuggestions({ result, apiUrl, onUseTitle }) {
                   onClick={() => handleCopy(t.title, t.style)}
                   style={{
                     padding: "7px 14px", borderRadius: 9, fontSize: 12, fontWeight: 600,
-                    cursor: "pointer", border: "1px solid rgba(255,255,255,0.12)",
-                    background: copied === t.style ? "rgba(74,222,128,0.15)" : "rgba(255,255,255,0.05)",
-                    color: copied === t.style ? "#4ade80" : "#9ca3af",
+                    cursor: "pointer", border: "1px solid var(--border-strong)",
+                    background: copied === t.style ? "rgba(74,222,128,0.15)" : "var(--border-light)",
+                    color: copied === t.style ? "var(--green)" : "var(--text-muted)",
                     transition: "all 0.15s ease"
                   }}
                 >
@@ -1261,7 +1834,7 @@ function AiTitleSuggestions({ result, apiUrl, onUseTitle }) {
                     cursor: "pointer",
                     border: applied === t.style ? "1px solid rgba(74,222,128,0.4)" : "1px solid rgba(19,93,255,0.4)",
                     background: applied === t.style ? "rgba(74,222,128,0.15)" : "rgba(19,93,255,0.15)",
-                    color: applied === t.style ? "#4ade80" : "#93c5fd",
+                    color: applied === t.style ? "var(--green)" : "var(--text-accent)",
                     transition: "all 0.15s ease"
                   }}
                 >
@@ -1279,23 +1852,25 @@ function AiTitleSuggestions({ result, apiUrl, onUseTitle }) {
 
 // ─── ListingOutput ────────────────────────────────────────────────────────────
 
-function resolveHtml(customTemplateHtml, generatedHtml) {
-  return customTemplateHtml
-    ? mergeTemplateWithContent(customTemplateHtml, generatedHtml ?? "")
-    : (generatedHtml ?? "");
+function resolveHtml(customTemplateHtml, generatedHtml, result) {
+  if (!customTemplateHtml) return generatedHtml ?? "";
+  const hasTokens = /\{\{[A-Z_]+\}\}/.test(customTemplateHtml);
+  return hasTokens && result
+    ? replacePlaceholders(customTemplateHtml, result)
+    : mergeTemplateWithContent(customTemplateHtml, generatedHtml ?? "");
 }
 
 function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate, noRightPanel = false, onHtmlChange }) {
   const [innerTab,     setInnerTab]     = useState("overview"); // "overview" | "specifics"
   const [editMode,     setEditMode]     = useState(false);
   const [editedHtml,   setEditedHtml]   = useState(
-    () => resolveHtml(customTemplateHtml, result.generated_html)
+    () => resolveHtml(customTemplateHtml, result.generated_html, result)
   );
   const [sections,     setSections]     = useState([]);
   const [wrapperOpen,  setWrapperOpen]  = useState(null);
   const [wrapperClose, setWrapperClose] = useState(null);
   const [textColor,    setTextColor]    = useState("#cc0000");
-  const [boxBgColor,        setBoxBgColor]        = useState("#ffffff");
+  const [boxBgColor,        setBoxBgColor]        = useState("var(--text-on-dark)");
   const [borderColor,       setBorderColor]       = useState("#000000");
   const [borderWidth,       setBorderWidth]       = useState("1px");
   const [tableBorderColor,  setTableBorderColor]  = useState("#cccccc");
@@ -1311,7 +1886,7 @@ function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate, n
 
   // Sync whenever the generated HTML or selected template changes
   useEffect(() => {
-    setEditedHtml(resolveHtml(customTemplateHtml, result.generated_html));
+    setEditedHtml(resolveHtml(customTemplateHtml, result.generated_html, result));
   }, [result.generated_html, customTemplateHtml]);
 
   // Notify parent of latest editedHtml (for Copy HTML in detached right panel)
@@ -1539,34 +2114,84 @@ function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate, n
     <div style={{ display: "grid", gridTemplateColumns: noRightPanel ? "1fr" : "1fr 290px", gap: 20, alignItems: "start" }}>
 
       {/* ── Left: Preview / Item Specifics ── */}
-      <div style={{ display: "grid", gap: 14 }}>
+      <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 16, overflow: "hidden", boxShadow: "var(--shadow)" }}>
 
         {/* Tab bar */}
-        <div style={{
-          display: "flex", gap: 6,
-          background: "#0F1E35", borderRadius: 14, padding: 4,
-          border: "1px solid rgba(255,255,255,0.06)"
-        }}>
+        <div style={{ display: "flex", borderBottom: "1px solid var(--border)", padding: "0 4px" }}>
           {[
             { key: "overview",  label: "Preview"        },
             { key: "specifics", label: "Item Specifics" }
-          ].map(({ key, label }) => (
-            <button
-              key={key}
-              onClick={() => setInnerTab(key)}
-              style={{
-                flex: 1, padding: "9px 14px", borderRadius: 10,
-                border: "none", cursor: "pointer", fontWeight: 700, fontSize: 13,
-                background: innerTab === key ? "#135DFF" : "transparent",
-                color:      innerTab === key ? "#fff"    : "#9ca3af",
-                boxShadow:  innerTab === key ? "0 0 14px rgba(19,93,255,0.28)" : "none",
-                transition: "all 0.18s ease"
-              }}
-            >
-              {label}
-            </button>
-          ))}
+          ].map(({ key, label }) => {
+            const active = innerTab === key;
+            return (
+              <button key={key} onClick={() => setInnerTab(key)} style={{
+                padding: "13px 20px", border: "none", background: "transparent",
+                cursor: "pointer", fontSize: 13, fontWeight: active ? 700 : 500,
+                color: active ? "var(--blue)" : "var(--text-muted)",
+                borderBottom: active ? "2px solid var(--blue)" : "2px solid transparent",
+                marginBottom: -1, transition: "all 0.15s ease",
+              }}>
+                {label}
+              </button>
+            );
+          })}
         </div>
+
+        <div style={{ padding: "16px 18px" }}>
+
+        {/* Edit / Save Template controls shown inline when noRightPanel */}
+        {noRightPanel && (
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
+            {!editMode ? (
+              <button
+                onClick={enterEdit}
+                style={{ ...SMALL_BUTTON_STYLE, fontSize: 13 }}
+              >
+                ✎ Edit Description
+              </button>
+            ) : (
+              <>
+                <button
+                  onClick={exitEdit}
+                  style={{ ...SMALL_BUTTON_STYLE, fontSize: 13, background: "#16a34a", boxShadow: "0 0 16px rgba(22,163,74,0.3)" }}
+                >
+                  ✓ Done Editing
+                </button>
+                {saveMode ? (
+                  <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                    <input
+                      value={saveName}
+                      onChange={(e) => setSaveName(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && doSaveTemplate()}
+                      placeholder="Template name…"
+                      autoFocus
+                      style={{
+                        padding: "6px 10px", borderRadius: 10, fontSize: 12,
+                        background: "var(--bg-surface2)", color: "var(--text)",
+                        border: "1px solid var(--border-strong)", outline: "none"
+                      }}
+                    />
+                    <button onClick={doSaveTemplate}
+                      style={{ ...SMALL_BUTTON_STYLE, fontSize: 12, background: "#b45309", boxShadow: "0 0 12px rgba(180,83,9,0.3)" }}>
+                      💾 Save
+                    </button>
+                    <button onClick={() => { setSaveMode(false); setSaveName(""); }}
+                      style={{ ...SMALL_BUTTON_STYLE, fontSize: 12, background: "var(--text-dim)", boxShadow: "none" }}>
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setSaveMode(true)}
+                    style={{ ...SMALL_BUTTON_STYLE, fontSize: 12, background: "#92400e", boxShadow: "0 0 12px rgba(146,64,14,0.3)" }}
+                  >
+                    📐 Save as Template
+                  </button>
+                )}
+              </>
+            )}
+          </div>
+        )}
 
         {/* Editor Toolbar (preview tab + edit mode only) */}
         {innerTab === "overview" && editMode && (
@@ -1593,10 +2218,12 @@ function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate, n
           <div
             onMouseDown={editMode ? (e) => captureTarget(e.target) : undefined}
             style={{
-              background: "#ffffff",
-              border: editMode ? "2px solid #135DFF" : "1px solid rgba(255,255,255,0.08)",
-              borderRadius: 18, padding: 18, overflowX: "auto",
-              boxShadow: editMode ? "0 0 0 4px rgba(19,93,255,0.12)" : "0 0 16px rgba(19,93,255,0.08)"
+              background: "var(--bg-surface)",
+              border: editMode ? "2px solid var(--blue)" : "1px solid var(--border)",
+              borderRadius: 12, padding: 18,
+              overflowX: "auto", overflowY: "auto",
+              maxHeight: "calc(100vh - 200px)",
+              boxShadow: editMode ? "0 0 0 4px rgba(19,93,255,0.10)" : "none",
             }}
           >
             {editMode ? (
@@ -1610,7 +2237,7 @@ function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate, n
                         gap: 4, paddingTop: 4, flexShrink: 0
                       }}>
                         <span style={{
-                          fontSize: 10, fontWeight: 700, color: "#9ca3af",
+                          fontSize: 10, fontWeight: 700, color: "var(--text-muted)",
                           background: "#f3f4f6", borderRadius: 4,
                           padding: "1px 5px", userSelect: "none"
                         }}>{idx + 1}</span>
@@ -1652,25 +2279,26 @@ function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate, n
           <ItemSpecificsTab result={result} copyText={copyText} />
         )}
 
-      </div>
+        </div>{/* end padding wrapper */}
+      </div>{/* end card */}
 
       {/* ── Right: Info & Actions Panel (only when not in noRightPanel mode) ── */}
       {!noRightPanel && (
-        <div style={{ display: "grid", gap: 12, position: "sticky", top: 16 }}>
+        <div style={{ display: "grid", gap: 12, position: "sticky", top: 16, maxHeight: "calc(100vh - 60px)", overflowY: "auto" }}>
 
           {/* Article chip */}
           <div style={{
-            background: "#0F1E35", border: "1px solid rgba(255,255,255,0.08)",
+            background: "var(--bg-nav)", border: "1px solid var(--border)",
             borderRadius: 14, padding: "12px 16px",
             display: "flex", flexDirection: "column", gap: 4
           }}>
-            <div style={{ fontSize: 10, color: "#6b7280", fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase" }}>Article</div>
-            <div style={{ fontSize: 15, fontWeight: 700, color: "#ffffff" }}>{result.article_number || "—"}</div>
+            <div style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase" }}>Article</div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text)" }}>{result.article_number || "—"}</div>
             {result.product_type && (
-              <div style={{ fontSize: 12, color: "#9ca3af" }}>{result.product_type}</div>
+              <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{result.product_type}</div>
             )}
             {result.compatibility_count > 0 && (
-              <div style={{ fontSize: 11, color: "#4ade80", marginTop: 2 }}>
+              <div style={{ fontSize: 11, color: "var(--green)", marginTop: 2 }}>
                 ✓ {result.compatibility_count} compatible vehicles
               </div>
             )}
@@ -1682,20 +2310,20 @@ function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate, n
               value={result.generated_title}
               style={{ width: "100%", textAlign: "center", fontSize: 13 }}
             >
-              📋 Copy Title
+              Copy Title
             </CopyButton>
             <CopyButton
               value={editedHtml}
               style={{ width: "100%", textAlign: "center", fontSize: 13 }}
             >
-              📋 Copy HTML
+              Copy HTML
             </CopyButton>
             {!editMode ? (
               <button
                 onClick={enterEdit}
                 style={{ ...SMALL_BUTTON_STYLE, width: "100%", textAlign: "center", fontSize: 13 }}
               >
-                ✎ Edit Preview
+                ✎ Edit Description
               </button>
             ) : (
               <>
@@ -1715,8 +2343,8 @@ function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate, n
                       autoFocus
                       style={{
                         padding: "6px 10px", borderRadius: 10, fontSize: 12,
-                        background: "#0D2040", color: "#ffffff",
-                        border: "1px solid rgba(255,255,255,0.20)", outline: "none"
+                        background: "var(--bg-surface2)", color: "var(--text)",
+                        border: "1px solid var(--border-strong)", outline: "none"
                       }}
                     />
                     <div style={{ display: "flex", gap: 6 }}>
@@ -1725,7 +2353,7 @@ function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate, n
                         💾 Save
                       </button>
                       <button onClick={() => { setSaveMode(false); setSaveName(""); }}
-                        style={{ ...SMALL_BUTTON_STYLE, flex: 1, textAlign: "center", fontSize: 12, background: "#374151", boxShadow: "none" }}>
+                        style={{ ...SMALL_BUTTON_STYLE, flex: 1, textAlign: "center", fontSize: 12, background: "var(--text-dim)", boxShadow: "none" }}>
                         Cancel
                       </button>
                     </div>
@@ -1745,11 +2373,11 @@ function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate, n
           {/* K Numbers */}
           {(result.k_number_list || []).length > 0 && (
             <div style={{
-              background: "#0F1E35", border: "1px solid rgba(255,255,255,0.08)",
+              background: "var(--bg-nav)", border: "1px solid var(--border)",
               borderRadius: 14, padding: "12px 16px"
             }}>
-              <div style={{ fontSize: 10, color: "#6b7280", fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 6 }}>K Numbers</div>
-              <div style={{ fontSize: 12, color: "#d1d5db", lineHeight: 1.6, wordBreak: "break-word" }}>
+              <div style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 6 }}>K Numbers</div>
+              <div style={{ fontSize: 12, color: "var(--text)", lineHeight: 1.6, wordBreak: "break-word" }}>
                 {(result.k_number_list || []).join(", ")}
               </div>
               <CopyButton
@@ -1764,11 +2392,11 @@ function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate, n
           {/* OEM Numbers */}
           {(result.oem_numbers || []).length > 0 && (
             <div style={{
-              background: "#0F1E35", border: "1px solid rgba(255,255,255,0.08)",
+              background: "var(--bg-nav)", border: "1px solid var(--border)",
               borderRadius: 14, padding: "12px 16px"
             }}>
-              <div style={{ fontSize: 10, color: "#6b7280", fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 6 }}>OEM Numbers</div>
-              <div style={{ fontSize: 12, color: "#d1d5db", lineHeight: 1.6, wordBreak: "break-word" }}>
+              <div style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 6 }}>OEM Numbers</div>
+              <div style={{ fontSize: 12, color: "var(--text)", lineHeight: 1.6, wordBreak: "break-word" }}>
                 {(result.oem_numbers || []).slice(0, 8).join(", ")}
                 {(result.oem_numbers || []).length > 8 ? ` +${(result.oem_numbers || []).length - 8} more` : ""}
               </div>
@@ -1778,7 +2406,7 @@ function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate, n
           {/* Product Image */}
           {result.article_image && (
             <div style={{
-              background: "#0D1B30", border: "1px solid rgba(255,255,255,0.08)",
+              background: "var(--bg-surface3)", border: "1px solid var(--border)",
               borderRadius: 14, padding: 12,
               display: "flex", justifyContent: "center", alignItems: "center"
             }}>
@@ -1793,8 +2421,8 @@ function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate, n
               onClick={() => setShowDescHtml((v) => !v)}
               style={{
                 ...SMALL_BUTTON_STYLE, width: "100%", textAlign: "center",
-                fontSize: 12, background: "rgba(255,255,255,0.05)", boxShadow: "none",
-                color: "#9ca3af", border: "1px solid rgba(255,255,255,0.10)"
+                fontSize: 12, background: "var(--border-light)", boxShadow: "none",
+                color: "var(--text-muted)", border: "1px solid var(--border-strong)"
               }}
             >
               {showDescHtml ? "▲ Hide HTML" : "▼ Show Description HTML"}
@@ -1806,60 +2434,6 @@ function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate, n
             )}
           </div>
 
-        </div>
-      )}
-
-      {/* Edit / Save Template controls shown inline when noRightPanel */}
-      {noRightPanel && (
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: -6 }}>
-          {!editMode ? (
-            <button
-              onClick={enterEdit}
-              style={{ ...SMALL_BUTTON_STYLE, fontSize: 13 }}
-            >
-              ✎ Edit Preview
-            </button>
-          ) : (
-            <>
-              <button
-                onClick={exitEdit}
-                style={{ ...SMALL_BUTTON_STYLE, fontSize: 13, background: "#16a34a", boxShadow: "0 0 16px rgba(22,163,74,0.3)" }}
-              >
-                ✓ Done Editing
-              </button>
-              {saveMode ? (
-                <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                  <input
-                    value={saveName}
-                    onChange={(e) => setSaveName(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && doSaveTemplate()}
-                    placeholder="Template name…"
-                    autoFocus
-                    style={{
-                      padding: "6px 10px", borderRadius: 10, fontSize: 12,
-                      background: "#0D2040", color: "#ffffff",
-                      border: "1px solid rgba(255,255,255,0.20)", outline: "none"
-                    }}
-                  />
-                  <button onClick={doSaveTemplate}
-                    style={{ ...SMALL_BUTTON_STYLE, fontSize: 12, background: "#b45309", boxShadow: "0 0 12px rgba(180,83,9,0.3)" }}>
-                    💾 Save
-                  </button>
-                  <button onClick={() => { setSaveMode(false); setSaveName(""); }}
-                    style={{ ...SMALL_BUTTON_STYLE, fontSize: 12, background: "#374151", boxShadow: "none" }}>
-                    Cancel
-                  </button>
-                </div>
-              ) : (
-                <button
-                  onClick={() => setSaveMode(true)}
-                  style={{ ...SMALL_BUTTON_STYLE, fontSize: 12, background: "#92400e", boxShadow: "0 0 12px rgba(146,64,14,0.3)" }}
-                >
-                  📐 Save as Template
-                </button>
-              )}
-            </>
-          )}
         </div>
       )}
 
@@ -1922,7 +2496,7 @@ function EditorToolbar({
       style={{
         padding: "5px 10px", borderRadius: 8, cursor: "pointer",
         border: "1px solid rgba(255,255,255,0.15)",
-        background: "rgba(255,255,255,0.07)", color: "#ffffff",
+        background: "var(--border)", color: "var(--text)",
         fontSize: 13, userSelect: "none", lineHeight: 1.3,
         ...extra
       }}
@@ -1939,7 +2513,7 @@ function EditorToolbar({
     <div style={{
       display: "flex", flexWrap: "wrap", gap: 5, alignItems: "center",
       padding: "10px 12px", marginBottom: 12,
-      background: "#0F1E35", border: "1px solid rgba(255,255,255,0.10)",
+      background: "var(--bg-nav)", border: "1px solid var(--border-strong)",
       borderRadius: 14,
       position: "sticky", top: 0, zIndex: 50,
       backdropFilter: "blur(8px)"
@@ -1971,7 +2545,7 @@ function EditorToolbar({
         defaultValue=""
         style={{
           padding: "5px 8px", borderRadius: 8, fontSize: 12,
-          background: "#0D2040", color: "#ffffff",
+          background: "var(--bg-surface2)", color: "var(--text)",
           border: "1px solid rgba(255,255,255,0.15)", cursor: "pointer",
           maxWidth: 150
         }}
@@ -1993,7 +2567,7 @@ function EditorToolbar({
         defaultValue=""
         style={{
           padding: "5px 8px", borderRadius: 8, fontSize: 12,
-          background: "#0D2040", color: "#ffffff",
+          background: "var(--bg-surface2)", color: "var(--text)",
           border: "1px solid rgba(255,255,255,0.15)", cursor: "pointer"
         }}
       >
@@ -2012,12 +2586,12 @@ function EditorToolbar({
         style={{
           padding: "5px 10px", borderRadius: 8, cursor: "pointer",
           border: "1px solid rgba(255,255,255,0.15)",
-          background: "rgba(255,255,255,0.07)", userSelect: "none",
+          background: "var(--border)", userSelect: "none",
           display: "flex", flexDirection: "column", alignItems: "center", gap: 2
         }}
       >
-        <span style={{ fontSize: 11, color: "#9ca3af", lineHeight: 1 }}>Text</span>
-        <span style={{ fontSize: 13, color: "#ffffff", lineHeight: 1, fontWeight: 700 }}>A</span>
+        <span style={{ fontSize: 11, color: "var(--text-muted)", lineHeight: 1 }}>Text</span>
+        <span style={{ fontSize: 13, color: "var(--text)", lineHeight: 1, fontWeight: 700 }}>A</span>
         <span style={{ width: 16, height: 3, borderRadius: 2, background: textColor, display: "block" }} />
       </button>
       <input
@@ -2037,11 +2611,11 @@ function EditorToolbar({
         style={{
           padding: "5px 10px", borderRadius: 8, cursor: "pointer",
           border: "1px solid rgba(255,255,255,0.15)",
-          background: "rgba(255,255,255,0.07)", userSelect: "none",
+          background: "var(--border)", userSelect: "none",
           display: "flex", flexDirection: "column", alignItems: "center", gap: 2
         }}
       >
-        <span style={{ fontSize: 11, color: "#9ca3af", lineHeight: 1 }}>Fill</span>
+        <span style={{ fontSize: 11, color: "var(--text-muted)", lineHeight: 1 }}>Fill</span>
         <span style={{ width: 16, height: 10, borderRadius: 3, background: boxBgColor, display: "block", border: "1px solid rgba(255,255,255,0.2)" }} />
       </button>
       <input
@@ -2059,11 +2633,11 @@ function EditorToolbar({
         style={{
           padding: "5px 10px", borderRadius: 8, cursor: "pointer",
           border: "1px solid rgba(255,255,255,0.15)",
-          background: "rgba(255,255,255,0.07)", userSelect: "none",
+          background: "var(--border)", userSelect: "none",
           display: "flex", flexDirection: "column", alignItems: "center", gap: 2
         }}
       >
-        <span style={{ fontSize: 11, color: "#9ca3af", lineHeight: 1 }}>Border</span>
+        <span style={{ fontSize: 11, color: "var(--text-muted)", lineHeight: 1 }}>Border</span>
         <span style={{ width: 16, height: 10, borderRadius: 3, background: "transparent", display: "block", border: `2px solid ${borderColor}` }} />
       </button>
       <input
@@ -2082,7 +2656,7 @@ function EditorToolbar({
         title="Border thickness"
         style={{
           padding: "5px 8px", borderRadius: 8, fontSize: 12,
-          background: "#0D2040", color: "#ffffff",
+          background: "var(--bg-surface2)", color: "var(--text)",
           border: "1px solid rgba(255,255,255,0.15)", cursor: "pointer"
         }}
       >
@@ -2097,7 +2671,7 @@ function EditorToolbar({
       {sep}
 
       {/* ── TABLE section ───────────────────────────────────────────────── */}
-      <span style={{ fontSize: 10, fontWeight: 700, color: "#6b7280", userSelect: "none", letterSpacing: 0.5 }}>TABLE</span>
+      <span style={{ fontSize: 10, fontWeight: 700, color: "var(--text-muted)", userSelect: "none", letterSpacing: 0.5 }}>TABLE</span>
 
       {/* Table cell border colour */}
       <button
@@ -2106,11 +2680,11 @@ function EditorToolbar({
         style={{
           padding: "5px 10px", borderRadius: 8, cursor: "pointer",
           border: "1px solid rgba(255,255,255,0.15)",
-          background: "rgba(255,255,255,0.07)", userSelect: "none",
+          background: "var(--border)", userSelect: "none",
           display: "flex", flexDirection: "column", alignItems: "center", gap: 2
         }}
       >
-        <span style={{ fontSize: 11, color: "#9ca3af", lineHeight: 1 }}>Lines</span>
+        <span style={{ fontSize: 11, color: "var(--text-muted)", lineHeight: 1 }}>Lines</span>
         {/* mini table icon */}
         <svg width="16" height="10" viewBox="0 0 16 10" fill="none" style={{ display: "block" }}>
           <rect x="0.5" y="0.5" width="15" height="9" stroke={tableBorderColor} strokeWidth="1.2" fill="none" rx="1"/>
@@ -2134,7 +2708,7 @@ function EditorToolbar({
         title="Table line weight"
         style={{
           padding: "5px 8px", borderRadius: 8, fontSize: 12,
-          background: "#0D2040", color: "#ffffff",
+          background: "var(--bg-surface2)", color: "var(--text)",
           border: "1px solid rgba(255,255,255,0.15)", cursor: "pointer"
         }}
       >
@@ -2154,7 +2728,7 @@ function EditorToolbar({
         style={{
           padding: "5px 10px", borderRadius: 8, cursor: "pointer",
           border: "1px solid rgba(255,255,255,0.15)",
-          background: "rgba(255,255,255,0.07)", color: "#9ca3af",
+          background: "var(--border)", color: "var(--text-muted)",
           fontSize: 12, userSelect: "none"
         }}
       >
@@ -2176,6 +2750,8 @@ function loadSavedFromStorage() {
 // SPEC_SCHEMA, SECTION_TITLES, and mapApiSpecsToSchema are imported from ./itemSpecificsSchema.js
 
 function ItemSpecificsTab({ result, copyText }) {
+  const { hasFeature } = useSession();
+  const canBulkCsvExport = hasFeature("bulkCsvExport");
   const buildInitialRows = (res) => mapApiSpecsToSchema(res);
 
   const [rows,        setRows]        = useState(() => buildInitialRows(result));
@@ -2236,6 +2812,7 @@ function ItemSpecificsTab({ result, copyText }) {
   };
 
   const exportBatch = () => {
+    if (!canBulkCsvExport) return;
     const prods = getBatchProds();
     if (!prods.length) return;
 
@@ -2285,30 +2862,32 @@ function ItemSpecificsTab({ result, copyText }) {
         >
           ↓ CSV (This Listing)
         </button>
-        <button
-          onClick={() => { setBatchOpen((v) => !v); }}
-          style={{
-            ...SMALL_BUTTON_STYLE, fontSize: 12,
-            background: batchOpen ? "#164e63" : "#0e7490",
-            boxShadow: "0 0 14px rgba(14,116,144,0.25)"
-          }}
-        >
-          ↓ CSV (Batch){batchOpen ? " ▲" : " ▼"}
-        </button>
+        {canBulkCsvExport && (
+          <button
+            onClick={() => { setBatchOpen((v) => !v); }}
+            style={{
+              ...SMALL_BUTTON_STYLE, fontSize: 12,
+              background: batchOpen ? "#164e63" : "var(--blue)",
+              boxShadow: "0 0 14px rgba(14,116,144,0.25)"
+            }}
+          >
+            ↓ CSV (Batch){batchOpen ? " ▲" : " ▼"}
+          </button>
+        )}
         <div style={{ flex: 1 }} />
         <button
           onClick={() => setShowAddRow((v) => !v)}
           style={{
             ...SMALL_BUTTON_STYLE, fontSize: 12,
-            background: showAddRow ? "#374151" : "rgba(255,255,255,0.07)",
-            boxShadow: "none", color: showAddRow ? "#d1d5db" : "#9ca3af"
+            background: showAddRow ? "var(--text-dim)" : "var(--border)",
+            boxShadow: "none", color: showAddRow ? "var(--text)" : "var(--text-muted)"
           }}
         >
           + Add Field
         </button>
         <button
           onClick={() => setShowReset(true)}
-          style={{ ...SMALL_BUTTON_STYLE, fontSize: 12, background: "rgba(220,38,38,0.12)", color: "#f87171", boxShadow: "none" }}
+          style={{ ...SMALL_BUTTON_STYLE, fontSize: 12, background: "rgba(220,38,38,0.12)", color: "var(--red)", boxShadow: "none" }}
         >
           ↺ Reset
         </button>
@@ -2317,11 +2896,11 @@ function ItemSpecificsTab({ result, copyText }) {
       {/* Reset confirmation */}
       {showReset && (
         <div style={{
-          background: "#1c0a0a", border: "1px solid rgba(220,38,38,0.35)",
+          background: "var(--red-bg)", border: "1px solid rgba(220,38,38,0.35)",
           borderRadius: 12, padding: "12px 16px",
           display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap"
         }}>
-          <span style={{ fontSize: 13, color: "#fca5a5", flex: 1 }}>
+          <span style={{ fontSize: 13, color: "var(--red)", flex: 1 }}>
             Reset all fields to the originally generated values?
           </span>
           <button onClick={doReset}
@@ -2329,23 +2908,23 @@ function ItemSpecificsTab({ result, copyText }) {
             Reset
           </button>
           <button onClick={() => setShowReset(false)}
-            style={{ ...SMALL_BUTTON_STYLE, background: "#374151", boxShadow: "none", fontSize: 12, padding: "6px 12px" }}>
+            style={{ ...SMALL_BUTTON_STYLE, background: "var(--text-dim)", boxShadow: "none", fontSize: 12, padding: "6px 12px" }}>
             Cancel
           </button>
         </div>
       )}
 
       {/* Batch export panel */}
-      {batchOpen && (
+      {canBulkCsvExport && batchOpen && (
         <div style={{
-          background: "#061826", border: "1px solid rgba(14,116,144,0.35)",
+          background: "var(--bg-surface3)", border: "1px solid rgba(14,116,144,0.35)",
           borderRadius: 16, padding: 16
         }}>
           <div style={{ fontSize: 13, fontWeight: 700, color: "#67e8f9", marginBottom: 12 }}>
             Batch CSV Export — Item Specifics
           </div>
           {savedProds.length === 0 ? (
-            <div style={{ fontSize: 13, color: "#9ca3af" }}>
+            <div style={{ fontSize: 13, color: "var(--text-muted)" }}>
               No saved listings found. Save a listing from the Price Calculator first.
             </div>
           ) : (<>
@@ -2361,9 +2940,9 @@ function ItemSpecificsTab({ result, copyText }) {
                     onClick={() => { setDateFilter(key); setSelectedIds([]); }}
                     style={{
                       padding: "5px 12px", borderRadius: 8, fontSize: 12, cursor: "pointer",
-                      border:      active ? "1px solid #0e7490" : "1px solid rgba(255,255,255,0.10)",
+                      border:      active ? "1px solid #0e7490" : "1px solid var(--border-strong)",
                       background:  active ? "rgba(14,116,144,0.20)" : "transparent",
-                      color:       active ? "#67e8f9" : "#9ca3af",
+                      color:       active ? "#67e8f9" : "var(--text-muted)",
                       fontWeight:  active ? 700 : 400, transition: "all 0.15s"
                     }}
                   >
@@ -2387,11 +2966,11 @@ function ItemSpecificsTab({ result, copyText }) {
                   }}>
                     <input type="checkbox" checked={checked}
                       onChange={() => toggleSelected(p.id)}
-                      style={{ cursor: "pointer", accentColor: "#0e7490" }} />
-                    <span style={{ fontSize: 12, color: "#d1d5db", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      style={{ cursor: "pointer", accentColor: "var(--blue)" }} />
+                    <span style={{ fontSize: 12, color: "var(--text)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {p.generated_title || p.title || "Untitled"}
                     </span>
-                    <span style={{ fontSize: 11, color: "#6b7280", flexShrink: 0 }}>
+                    <span style={{ fontSize: 11, color: "var(--text-muted)", flexShrink: 0 }}>
                       {p.savedAt ? new Date(p.savedAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short" }) : ""}
                     </span>
                   </label>
@@ -2402,14 +2981,14 @@ function ItemSpecificsTab({ result, copyText }) {
             <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
               <button onClick={exportBatch} style={{
                 ...SMALL_BUTTON_STYLE, fontSize: 12,
-                background: "#0e7490", boxShadow: "0 0 14px rgba(14,116,144,0.28)"
+                background: "var(--blue)", boxShadow: "0 0 14px rgba(14,116,144,0.28)"
               }}>
                 ↓ Download CSV ({selectedIds.length > 0 ? `${selectedIds.length} selected` : `${batchCount} listings`})
               </button>
               {selectedIds.length > 0 && (
                 <button onClick={() => setSelectedIds([])} style={{
                   ...SMALL_BUTTON_STYLE, fontSize: 12, background: "transparent",
-                  boxShadow: "none", color: "#9ca3af"
+                  boxShadow: "none", color: "var(--text-muted)"
                 }}>
                   Clear Selection
                 </button>
@@ -2422,22 +3001,22 @@ function ItemSpecificsTab({ result, copyText }) {
       {/* Add field form */}
       {showAddRow && (
         <div style={{
-          background: "#081322", border: "1px solid rgba(19,93,255,0.28)",
+          background: "var(--bg-surface3)", border: "1px solid rgba(19,93,255,0.28)",
           borderRadius: 12, padding: 14
         }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: "#6b7280", letterSpacing: "0.05em", marginBottom: 10 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", letterSpacing: "0.05em", marginBottom: 10 }}>
             ADD CUSTOM FIELD
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: 8, alignItems: "end" }}>
             <div>
-              <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 4 }}>Field Name</div>
+              <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 4 }}>Field Name</div>
               <input value={newLabel} onChange={(e) => setNewLabel(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && addRow()}
                 placeholder="e.g. Material"
                 style={{ ...INPUT_STYLE, padding: "8px 10px", fontSize: 13 }} />
             </div>
             <div>
-              <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 4 }}>Value</div>
+              <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 4 }}>Value</div>
               <input value={newValue} onChange={(e) => setNewValue(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && addRow()}
                 placeholder="e.g. Steel"
@@ -2449,7 +3028,7 @@ function ItemSpecificsTab({ result, copyText }) {
                 Add
               </button>
               <button onClick={() => { setShowAddRow(false); setNewLabel(""); setNewValue(""); }}
-                style={{ ...SMALL_BUTTON_STYLE, background: "#374151", boxShadow: "none", fontSize: 12 }}>
+                style={{ ...SMALL_BUTTON_STYLE, background: "var(--text-dim)", boxShadow: "none", fontSize: 12 }}>
                 Cancel
               </button>
             </div>
@@ -2459,22 +3038,22 @@ function ItemSpecificsTab({ result, copyText }) {
 
       {/* Specifics table */}
       <div style={{
-        background: "#081322", border: "1px solid rgba(255,255,255,0.08)",
+        background: "var(--bg-surface3)", border: "1px solid var(--border)",
         borderRadius: 16, overflow: "hidden"
       }}>
         {/* Column headers */}
         <div style={{
           display: "grid", gridTemplateColumns: "220px 1fr 72px 36px",
           padding: "8px 14px",
-          background: "#0F1E35", borderBottom: "1px solid rgba(255,255,255,0.08)"
+          background: "var(--bg-nav)", borderBottom: "1px solid var(--border)"
         }}>
           {["Field Name", "Value", "", ""].map((h, i) => (
-            <div key={i} style={{ fontSize: 11, fontWeight: 700, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.05em" }}>{h}</div>
+            <div key={i} style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>{h}</div>
           ))}
         </div>
 
         {rows.length === 0 ? (
-          <div style={{ padding: "28px 16px", textAlign: "center", color: "#9ca3af", fontSize: 14 }}>
+          <div style={{ padding: "28px 16px", textAlign: "center", color: "var(--text-muted)", fontSize: 14 }}>
             No item specifics available for this listing.
           </div>
         ) : (() => {
@@ -2494,9 +3073,9 @@ function ItemSpecificsTab({ result, copyText }) {
                 <div key={`sec-${sec}`} style={{
                   display: "grid", gridTemplateColumns: "220px 1fr 72px 36px",
                   padding: "7px 14px",
-                  background: "#0a1628",
-                  borderTop: lastSection ? "1px solid rgba(255,255,255,0.06)" : "none",
-                  borderBottom: "1px solid rgba(255,255,255,0.06)"
+                  background: "var(--bg-surface3)",
+                  borderTop: lastSection ? "1px solid var(--border-light)" : "none",
+                  borderBottom: "1px solid var(--border-light)"
                 }}>
                   <div style={{ fontSize: 10, fontWeight: 800, color: "#4b6fa8", letterSpacing: "0.08em", gridColumn: "1 / 3" }}>
                     {SECTION_TITLES[sec] || sec.toUpperCase()}
@@ -2515,7 +3094,7 @@ function ItemSpecificsTab({ result, copyText }) {
               <div key={row.id} style={{
                 display: "grid", gridTemplateColumns: "220px 1fr 72px 36px",
                 alignItems: "center",
-                borderBottom: "1px solid rgba(255,255,255,0.04)",
+                borderBottom: "1px solid var(--border-light)",
                 background: isEven ? "rgba(255,255,255,0.015)" : "transparent"
               }}>
                 {/* Label */}
@@ -2524,8 +3103,8 @@ function ItemSpecificsTab({ result, copyText }) {
                   onChange={(e) => updateLabel(row.id, e.target.value)}
                   style={{
                     background: "transparent", border: "none", outline: "none",
-                    borderRight: "1px solid rgba(255,255,255,0.05)",
-                    color: row.value?.trim() ? "#9ca3af" : "#4b5563",
+                    borderRight: "1px solid var(--border-light)",
+                    color: row.value?.trim() ? "var(--text-muted)" : "var(--text-dim)",
                     fontSize: 13, fontWeight: 600,
                     padding: "9px 14px", width: "100%", fontFamily: "inherit"
                   }}
@@ -2537,7 +3116,7 @@ function ItemSpecificsTab({ result, copyText }) {
                   placeholder="—"
                   style={{
                     background: "transparent", border: "none", outline: "none",
-                    color: row.value?.trim() ? "#ffffff" : "#374151",
+                    color: row.value?.trim() ? "var(--text)" : "var(--text-dim)",
                     fontSize: 13,
                     padding: "9px 14px", width: "100%", fontFamily: "inherit"
                   }}
@@ -2550,9 +3129,9 @@ function ItemSpecificsTab({ result, copyText }) {
                     margin: "0 5px",
                     padding: "5px 0",
                     borderRadius: 8,
-                    border: "1px solid rgba(255,255,255,0.08)",
-                    background: "rgba(255,255,255,0.03)",
-                    color: "#6b7280",
+                    border: "1px solid var(--border)",
+                    background: "var(--border-light)",
+                    color: "var(--text-muted)",
                     fontSize: 11,
                     fontWeight: 700,
                     whiteSpace: "nowrap",
@@ -2567,13 +3146,13 @@ function ItemSpecificsTab({ result, copyText }) {
                   style={{
                     width: 24, height: 24, margin: "0 6px 0 0",
                     borderRadius: 6, border: "1px solid rgba(220,38,38,0.15)",
-                    background: "rgba(220,38,38,0.06)", color: "#6b7280",
+                    background: "rgba(220,38,38,0.06)", color: "var(--text-muted)",
                     cursor: "pointer", fontSize: 13,
                     display: "flex", alignItems: "center", justifyContent: "center",
                     transition: "all 0.15s"
                   }}
-                  onMouseEnter={(e) => { e.currentTarget.style.color = "#f87171"; e.currentTarget.style.borderColor = "rgba(220,38,38,0.4)"; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.color = "#6b7280"; e.currentTarget.style.borderColor = "rgba(220,38,38,0.15)"; }}
+                  onMouseEnter={(e) => { e.currentTarget.style.color = "var(--red)"; e.currentTarget.style.borderColor = "rgba(220,38,38,0.4)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-muted)"; e.currentTarget.style.borderColor = "rgba(220,38,38,0.15)"; }}
                 >×</button>
               </div>
             );
@@ -2615,15 +3194,15 @@ function ItemSpecificsPanel({ itemSpecifics, specifications, onCopyAll }) {
             key={i}
             style={{
               display: "flex", alignItems: "center", justifyContent: "space-between",
-              background: i % 2 === 0 ? "rgba(255,255,255,0.03)" : "rgba(255,255,255,0.06)",
+              background: i % 2 === 0 ? "var(--border-light)" : "var(--border-light)",
               borderRadius: 8, padding: "8px 12px", gap: 12
             }}
           >
             <div style={{ display: "flex", gap: 10, flex: 1, minWidth: 0 }}>
-              <span style={{ fontSize: 13, color: "#9ca3af", minWidth: 140, flexShrink: 0 }}>
+              <span style={{ fontSize: 13, color: "var(--text-muted)", minWidth: 140, flexShrink: 0 }}>
                 {row.label}
               </span>
-              <span style={{ fontSize: 13, color: "#ffffff", wordBreak: "break-word" }}>
+              <span style={{ fontSize: 13, color: "var(--text)", wordBreak: "break-word" }}>
                 {row.value}
               </span>
             </div>

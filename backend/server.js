@@ -1,6 +1,7 @@
 import "dotenv/config";
 import express from "express";
 import cors from "cors";
+import { rateLimit } from "express-rate-limit";
 import { Parser } from "json2csv";
 import { buildHtml } from "./html-builder.js";
 import { getTemplateById, THEME_LIST } from "./templates/index.js";
@@ -10,6 +11,15 @@ import {
   conditionOptions, EXCLUSION_REASONS,
 } from "./ebay-filter-rules.js";
 import OpenAI from "openai";
+import posthog from "./posthog.js";
+import analyticsRouter from "./routes/analytics.js";
+import stripeRouter, { registerStripeWebhook } from "./routes/stripe.js";
+import { stripeReady, CLIENT_URL } from "./lib/stripeConfig.js";
+import { supabaseAdminReady } from "./lib/supabaseAdmin.js";
+import { requireAuth } from "./middleware/requireAuth.js";
+import { canGenerateListing, incrementListingUsage, checkFeatureAccess } from "./lib/profiles.js";
+import authRouter from "./routes/auth.js";
+import contactRouter from "./routes/contact.js";
 
 const openaiClient = process.env.OPENAI_API_KEY
   ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
@@ -18,8 +28,24 @@ const OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-4o-mini";
 
 const app = express();
 
-app.use(cors());
+// Needed for req.ip to reflect the real client IP (X-Forwarded-For) rather
+// than Render's proxy — used by the signup-fingerprint abuse-detection check.
+app.set("trust proxy", true);
+
+registerStripeWebhook(app);
+
+app.use(cors({ origin: CLIENT_URL || "*" }));
 app.use(express.json({ limit: "2mb" }));
+app.use("/api", analyticsRouter);
+app.use("/api", stripeRouter);
+app.use("/api", authRouter);
+app.use("/api", contactRouter);
+
+// Rate limiters for cost-incurring endpoints (per IP, per minute).
+// `trust proxy` is set above so req.ip reflects the real client IP.
+const lookupLimiter = rateLimit({ windowMs: 60_000, max: 20, standardHeaders: true, legacyHeaders: false });
+const aiLimiter     = rateLimit({ windowMs: 60_000, max: 15, standardHeaders: true, legacyHeaders: false });
+const ebayLimiter   = rateLimit({ windowMs: 60_000, max: 30, standardHeaders: true, legacyHeaders: false });
 
 const RAPIDAPI_KEY  = process.env.RAPIDAPI_KEY;
 const RAPIDAPI_HOST = "autodoc-parts-catalog.p.rapidapi.com";
@@ -35,6 +61,12 @@ const modelEngineCache = new Map();
 // articleNumber → { normalized, articleId, articleImage }  (populated after first lookup)
 const articleNormCache = new Map();
 
+// Evicts the oldest entry (Maps preserve insertion order) when the cap is hit.
+function cappedSet(map, key, value, maxSize) {
+  if (map.size >= maxSize && !map.has(key)) map.delete(map.keys().next().value);
+  map.set(key, value);
+}
+
 // ─── Shared helpers ───────────────────────────────────────────────────────────
 
 function uniq(arr) {
@@ -43,6 +75,14 @@ function uniq(arr) {
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// Wrap fetch with a hard timeout so a hung external API call never blocks forever.
+function fetchWithTimeout(url, options = {}, ms = 25000) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), ms);
+  return fetch(url, { ...options, signal: ctrl.signal })
+    .finally(() => clearTimeout(timer));
 }
 
 function formatYearRange(start, end) {
@@ -83,7 +123,7 @@ async function fetchArticleDetails(articleNumber) {
   params.append("langId", LANG_ID);
   params.append("countryFilterId", COUNTRY_FILTER_ID);
   params.append("articleNo", articleNumber);
-  const res = await fetch(url, {
+  const res = await fetchWithTimeout(url, {
     method: "POST",
     headers: apiHeaders(true),
     body: params.toString()
@@ -99,10 +139,100 @@ async function fetchArticleMedia(articleId) {
   params.append("langId", LANG_ID);
   params.append("articleId", String(articleId));
   try {
-    const res = await fetch(url, { method: "POST", headers: apiHeaders(true), body: params.toString() });
+    const res = await fetchWithTimeout(url, { method: "POST", headers: apiHeaders(true), body: params.toString() });
     if (!res.ok) return null;
     return res.json();
   } catch { return null; }
+}
+
+// Fetch cross-reference (interchangeable) part numbers for an article.
+// These are aftermarket manufacturer numbers — Febi, FAI, Autopumps, SKF, etc.
+// Endpoint: GET /api/artlookup/select-article-cross-references/article-id/{id}/lang-id/4
+async function fetchArticleCrossReferences(articleId) {
+  if (!articleId) return [];
+  const url = `https://${RAPIDAPI_HOST}/api/artlookup/select-article-cross-references/article-id/${encodeURIComponent(String(articleId))}/lang-id/${LANG_ID}`;
+  try {
+    const res = await fetchWithTimeout(url, { method: "GET", headers: apiHeaders() });
+    if (!res.ok) return [];
+    return res.json();
+  } catch { return []; }
+}
+
+// Parse the cross-references response into a clean array of { brand, articleNo } objects,
+// grouped and deduplicated. Handles both array and object wrapper responses.
+//
+// oemNumbers:    the article's own OEM reference numbers — cross-refs whose articleNo
+//               duplicates one of these are excluded (TecDoc sometimes returns OEM
+//               vehicle-manufacturer numbers with wrong brand attribution).
+// articleBrand:  the brand of the article being listed (e.g. "Motive", "Autopumps UK").
+//               Cross-refs from this same brand are excluded — "interchangeable" means
+//               a DIFFERENT manufacturer making the same part. Same-brand refs are just
+//               a different (often wrong) part number from the same supplier.
+function parseCrossReferences(raw, oemNumbers = [], articleBrand = "") {
+  if (!raw) return [];
+  const list = Array.isArray(raw)
+    ? raw
+    : (raw.articles || raw.crossReferences || raw.data || raw.result || []);
+  if (!Array.isArray(list)) return [];
+
+  // Normalise for case-insensitive comparison.
+  const normaliseNo    = (s) => String(s || "").replace(/[\s\-\.]/g, "").toUpperCase();
+  const normaliseName  = (s) => String(s || "").toLowerCase().trim();
+  const oemSet         = new Set(oemNumbers.map(normaliseNo).filter(Boolean));
+  const ownBrand       = normaliseName(articleBrand);
+
+  const seen = new Set();
+  const refs = [];
+
+  for (const item of list) {
+    if (!item || typeof item !== "object") continue;
+
+    const brand = (
+      item.brandName        ||
+      item.supplierName     ||
+      item.brand            ||
+      item.mfrName          ||
+      item.manufacturerName ||
+      ""
+    ).trim();
+
+    const articleNo = (
+      item.articleNo     ||
+      item.articleNumber ||
+      item.artNr         ||
+      item.oemNo         ||
+      ""
+    ).trim();
+
+    if (!brand || !articleNo) continue;
+
+    // Skip cross-refs from the same brand as the article — these are not
+    // interchangeable parts, just different (often incorrect) numbers from
+    // the same supplier that TecDoc has incorrectly cross-linked.
+    if (ownBrand && normaliseName(brand) === ownBrand) {
+      console.log(`[CrossRef] Skipped ${brand} ${articleNo} — same brand as article`);
+      continue;
+    }
+
+    // Skip cross-refs whose number duplicates one of the article's OEM refs.
+    if (oemSet.has(normaliseNo(articleNo))) {
+      console.log(`[CrossRef] Skipped ${brand} ${articleNo} — duplicates an OEM number`);
+      continue;
+    }
+
+    const key = `${brand.toLowerCase()}::${articleNo.toLowerCase()}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+
+    const productName = (
+      item.articleProductName || item.productName || item.productGroupName || ""
+    ).trim();
+    console.log(`[CrossRef] Accepted ${brand} ${articleNo}${productName ? ` ("${productName}")` : ""}`);
+
+    refs.push({ brand, articleNo });
+  }
+
+  return refs;
 }
 
 
@@ -115,7 +245,7 @@ async function searchArticleByOem(oemNumber) {
   params.append("langId", LANG_ID);
   params.append("articleOemNo", oemNumber);
   try {
-    const res = await fetch(url, { method: "POST", headers: apiHeaders(true), body: params.toString() });
+    const res = await fetchWithTimeout(url, { method: "POST", headers: apiHeaders(true), body: params.toString() });
     if (!res.ok) return null;
     return res.json();
   } catch { return null; }
@@ -128,7 +258,23 @@ async function artlookupByOem(oemNumber) {
   params.append("articleType", "OENumber");
   const url = `https://${RAPIDAPI_HOST}/api/artlookup/search-articles-by-article-no?${params.toString()}`;
   try {
-    const res = await fetch(url, { method: "GET", headers: apiHeaders() });
+    const res = await fetchWithTimeout(url, { method: "GET", headers: apiHeaders() });
+    if (!res.ok) return null;
+    return res.json();
+  } catch { return null; }
+}
+
+// Search by aftermarket supplier article number (e.g. "AOP858", "FAI OFW1009A").
+// Uses articleType=ArticleNumber which finds parts by their brand's own part number,
+// not by OEM reference number.
+async function artlookupByArticleNo(articleNo) {
+  const params = new URLSearchParams();
+  params.append("langId", LANG_ID);
+  params.append("articleNo", articleNo);
+  params.append("articleType", "ArticleNumber");
+  const url = `https://${RAPIDAPI_HOST}/api/artlookup/search-articles-by-article-no?${params.toString()}`;
+  try {
+    const res = await fetchWithTimeout(url, { method: "GET", headers: apiHeaders() });
     if (!res.ok) return null;
     return res.json();
   } catch { return null; }
@@ -180,6 +326,23 @@ async function resolveArticleResponse(input) {
     return { articleResponse: { articles: [best] }, resolvedNumber: resolvedNo || input };
   }
 
+  // 4. Aftermarket article-number fallback (e.g. AOP858, FAI OFW1009A)
+  const artData = await artlookupByArticleNo(input);
+  const artArticles = Array.isArray(artData)
+    ? artData
+    : (artData?.articles || artData?.data || []);
+
+  if (artArticles.length > 0) {
+    const best = artArticles[0];
+    const resolvedNo = best.articleNo || best.articleNumber || best.artNr || null;
+    if (resolvedNo) {
+      let detail = null;
+      try { detail = await fetchArticleDetails(resolvedNo); } catch {}
+      if (detail?.articles?.[0]) return { articleResponse: detail, resolvedNumber: resolvedNo };
+    }
+    return { articleResponse: { articles: [best] }, resolvedNumber: resolvedNo || input };
+  }
+
   throw new Error(`No article found for "${input}" — try a TecDoc article number or OEM reference number`);
 }
 
@@ -192,7 +355,7 @@ async function resolveArticleResponse(input) {
 async function fetchEngineTypesByModel(modelId) {
   const url = `https://${RAPIDAPI_HOST}/api/types/type-id/${TYPE_ID}/list-vehicles-types/${modelId}/lang-id/${LANG_ID}/country-filter-id/${COUNTRY_FILTER_ID}`;
   try {
-    const res = await fetch(url, { method: "GET", headers: apiHeaders() });
+    const res = await fetchWithTimeout(url, { method: "GET", headers: apiHeaders() });
     if (!res.ok) return [];
     const data = await res.json();
     const rows = data?.modelTypes || data?.vehicleTypes || data?.vehicles || data?.data || [];
@@ -200,48 +363,87 @@ async function fetchEngineTypesByModel(modelId) {
   } catch { return []; }
 }
 
+// Pull the vehicleId from a TecDoc car/engine-row object regardless of field name.
+function getVid(obj) {
+  return String(obj?.vehicleId || obj?.typeId || obj?.kType || obj?.kTypeId || obj?.id || "").trim();
+}
+
+// Pull typeEngineName from an engine row regardless of field name.
+function getEngineRowName(r) {
+  return String(r?.typeEngineName || r?.typeName || r?.carTypeName || r?.engineName || "").trim().toLowerCase();
+}
+
 // Match a compatibleCar entry to the best engine-type row from the model series.
-// Priority: exact vehicleId → typeEngineName + date range → typeEngineName alone.
+// Priority: exact vehicleId → name+dates → dates only → name alone.
 function findEngineMatch(car, engineRows) {
   if (!Array.isArray(engineRows) || engineRows.length === 0) return null;
 
-  // 1. Exact vehicleId match
-  const byId = engineRows.find(r => String(r.vehicleId) === String(car.vehicleId));
-  if (byId) return byId;
+  const carVid   = getVid(car);
+  const carName  = String(car.typeEngineName || car.typeName || car.carTypeName || "").trim().toLowerCase();
+  const carStart = String(car.constructionIntervalStart || car.yearFrom || "");
+  const carEnd   = String(car.constructionIntervalEnd   || car.yearTo   || "");
 
-  const carName  = String(car.typeEngineName  || "").trim().toLowerCase();
-  const carStart = String(car.constructionIntervalStart || "");
-  const carEnd   = String(car.constructionIntervalEnd   || "");
+  // 1. Exact vehicleId — try every known field name on both sides
+  if (carVid) {
+    const byId = engineRows.find(r => getVid(r) === carVid);
+    if (byId) return byId;
+  }
 
-  // 2. typeEngineName + construction dates
-  const byNameAndDate = engineRows.find(r =>
-    String(r.typeEngineName || "").trim().toLowerCase() === carName &&
-    String(r.constructionIntervalStart || "") === carStart &&
-    String(r.constructionIntervalEnd   || "") === carEnd
-  );
-  if (byNameAndDate) return byNameAndDate;
+  // 2. Engine name + construction date range
+  if (carName && carStart) {
+    const byNameAndDate = engineRows.find(r =>
+      getEngineRowName(r) === carName &&
+      String(r.constructionIntervalStart || r.yearFrom || "") === carStart &&
+      String(r.constructionIntervalEnd   || r.yearTo   || "") === carEnd
+    );
+    if (byNameAndDate) return byNameAndDate;
+  }
 
-  // 3. typeEngineName only
-  return engineRows.find(r =>
-    String(r.typeEngineName || "").trim().toLowerCase() === carName
-  ) || null;
+  // 3. Date range only (useful when engine name field is absent but dates are present)
+  if (carStart) {
+    const byDates = engineRows.find(r =>
+      String(r.constructionIntervalStart || r.yearFrom || "") === carStart &&
+      String(r.constructionIntervalEnd   || r.yearTo   || "") === carEnd
+    );
+    if (byDates) return byDates;
+  }
+
+  // 4. Engine name alone
+  if (carName) {
+    return engineRows.find(r => getEngineRowName(r) === carName) || null;
+  }
+
+  return null;
 }
 
 // Fetch engine data for all unique modelIds in a compatible-cars list.
 // Results are cached in modelEngineCache (persists across requests).
+// Runs in parallel batches of 4 with 200ms between batches to respect rate limits.
+// Capped at MAX_MODEL_LOOKUPS uncached fetches — the full compatibility list is still
+// built from the article response; only engine-code enrichment is limited.
+const MAX_MODEL_LOOKUPS = 60; // raised from 20 — parts like gaskets can have 40+ unique model series
+
 async function fetchEngineDataByModelIds(cars) {
   const uniqueModelIds = uniq(cars.map(c => String(c.modelId)).filter(Boolean));
   const result = {};
 
-  for (const modelId of uniqueModelIds) {
-    if (modelEngineCache.has(modelId)) {
-      result[modelId] = modelEngineCache.get(modelId);
-    } else {
+  // Split into cached vs uncached
+  const cached   = uniqueModelIds.filter(id => modelEngineCache.has(id));
+  const uncached = uniqueModelIds.filter(id => !modelEngineCache.has(id)).slice(0, MAX_MODEL_LOOKUPS);
+
+  // Fill cached results immediately
+  for (const id of cached) result[id] = modelEngineCache.get(id);
+
+  // Fetch uncached in parallel batches of 4
+  const BATCH = 4;
+  for (let i = 0; i < uncached.length; i += BATCH) {
+    const batch = uncached.slice(i, i + BATCH);
+    await Promise.all(batch.map(async (modelId) => {
       const rows = await fetchEngineTypesByModel(modelId);
-      modelEngineCache.set(modelId, rows);
+      cappedSet(modelEngineCache, modelId, rows, 500);
       result[modelId] = rows;
-      await sleep(300); // respect rate limits
-    }
+    }));
+    if (i + BATCH < uncached.length) await sleep(200); // brief pause between batches
   }
 
   return result;
@@ -276,33 +478,46 @@ function normalizeTecdoc(articleResponse, engineDataByModelId) {
   const compatibility = article.compatibleCars || [];
 
   const rows = compatibility.map((car) => {
-    // Look up the model-series engine list, then find the best match for this variant
-    const engineRows = engineDataByModelId[String(car.modelId)] || [];
-    const match      = findEngineMatch(car, engineRows);
+    // ── Consistent field extraction (TecDoc API field names vary by endpoint) ──
+    const make    = car.manufacturerName || car.manuName   || car.make  || car.brand  || "";
+    const model   = car.modelName        || car.carModelName || car.model || car.series || "";
+    const engine  = car.typeEngineName   || car.carTypeName  || car.typeName || car.engineName || car.variant || "";
+    const yearFrom = car.constructionIntervalStart || car.yearFrom || car.from || "";
+    const yearTo   = car.constructionIntervalEnd   || car.yearTo   || car.to   || "";
+    const vid      = car.vehicleId || car.typeId || car.kType || car.kTypeId || car.id || "";
+    const modelId  = String(car.modelId || car.carModelId || "");
 
-    // Engine codes: matched engine row first, then any field on the car entry itself
+    // Look up model-series engine list, then find the best match for this variant
+    const engineRows = (modelId ? engineDataByModelId[modelId] : null) || [];
+    const match      = findEngineMatch({ ...car, typeEngineName: engine, constructionIntervalStart: yearFrom, constructionIntervalEnd: yearTo }, engineRows);
+
+    // Engine codes — try match first, then every known field name on the car entry
     const rawCodes =
-      match?.engCodes    ||
-      match?.engineCodes ||
-      match?.engineCode  ||
-      car?.engCodes      ||
-      car?.engineCodes   ||
-      car?.engineCode    ||
+      match?.engCodes    || match?.engineCodes || match?.engineCode || match?.motorCodes ||
+      car?.engCodes      || car?.engineCodes   || car?.engineCode   || car?.motorCodes   ||
       "";
 
+    // Power + capacity — match overrides car entry if available
+    const kw = match?.powerKw   ?? car?.powerKw   ?? car?.kw  ?? null;
+    const hp = match?.powerPs   ?? car?.powerPs   ?? car?.ps  ?? car?.hp ?? null;
+    const cc = match?.capacityTech ?? car?.capacityTech ?? car?.displacement ?? car?.cc ?? null;
+
+    const vehicle = `${make} ${model} ${engine}`.trim();
+
+    // Skip completely empty rows (no make AND no model) — these are ghost entries
+    // with no useful data that would render as blank table rows.
+    if (!make && !model && !engine) return null;
+
     return {
-      make:             car.manufacturerName || "",
-      model:            car.modelName        || "",
-      engine:           car.typeEngineName   || "",
-      vehicle:          `${car.manufacturerName || ""} ${car.modelName || ""} ${car.typeEngineName || ""}`.trim(),
-      production_years: formatYearRange(car.constructionIntervalStart, car.constructionIntervalEnd),
-      kw:               cleanNumber(match?.powerKw      ?? car?.powerKw),
-      hp:               cleanNumber(match?.powerPs      ?? car?.powerPs),
-      cc:               cleanNumber(match?.capacityTech ?? car?.capacityTech),
-      engine_codes:     uniq(splitEngineCodes(rawCodes)),
-      k_number:         String(car.vehicleId || "")
+      make,  model,  engine,  vehicle,
+      production_years: formatYearRange(yearFrom, yearTo),
+      kw:           cleanNumber(kw),
+      hp:           cleanNumber(hp),
+      cc:           cleanNumber(cc),
+      engine_codes: uniq(splitEngineCodes(rawCodes)),
+      k_number:     String(vid)
     };
-  });
+  }).filter(Boolean); // remove ghost rows
 
   const specifications = uniq(
     (article.allSpecifications || [])
@@ -380,12 +595,79 @@ async function buildListingFromArticle(articleNumber, themeId = "clean-default")
   const kNumbers    = uniq(normalized.compatibility_rows.map((r) => r.k_number));
   const engineCodes = uniq(normalized.compatibility_rows.flatMap((r) => r.engine_codes || []));
 
-  // ── Media ─────────────────────────────────────────────────────────────────
-  const mediaResponse = await fetchArticleMedia(articleId);
-  const articleImage  = extractFirstImageUrl(mediaResponse);
+  // ── Media + Cross-references + OEM search (all parallel) ────────────────
+  // Three sources run at the same time:
+  //   1. article-all-media-info        → article image
+  //   2. select-article-cross-refs     → article-ID specific cross-refs (varies by brand)
+  //   3. article-oem-search-no         → ALL aftermarket articles for this OEM number
+  //                                      (the real interchangeable list — brand-agnostic)
+  const firstOem = normalized.oem_numbers?.[0] || null;
+  const [mediaResponse, crossRefsRaw, oemSearchRaw] = await Promise.all([
+    fetchArticleMedia(articleId),
+    fetchArticleCrossReferences(articleId),
+    firstOem ? searchArticleByOem(firstOem) : Promise.resolve(null)
+  ]);
+
+  const articleBrand = (
+    article.supplierName     ||
+    article.brandName        ||
+    article.brand            ||
+    article.mfrName          ||
+    article.brandShortName   ||
+    ""
+  ).trim();
+
+  const articleImage = extractFirstImageUrl(mediaResponse);
+
+  // Normalise helpers (shared below)
+  const normaliseNo   = (s) => String(s || "").replace(/[\s\-\.]/g, "").toUpperCase();
+  const normaliseName = (s) => String(s || "").toLowerCase().trim();
+  const oemSet        = new Set(normalized.oem_numbers.map(normaliseNo).filter(Boolean));
+  const ownBrandKey   = normaliseName(articleBrand);
+
+  // ── 1. Article's own brand + number (always first) ───────────────────────
+  const ownArticleNo = (
+    article.articleNo || article.articleNumber || article.artNr || resolvedNumber || ""
+  ).trim();
+  const ownRef = (articleBrand && ownArticleNo)
+    ? [{ brand: articleBrand, articleNo: ownArticleNo }]
+    : [];
+
+  // ── 2. OEM search results — every aftermarket article for the OEM number ─
+  // This is the primary interchangeable source: brand-agnostic, complete.
+  const oemSearchList = Array.isArray(oemSearchRaw)
+    ? oemSearchRaw
+    : (oemSearchRaw?.articles || oemSearchRaw?.data || []);
+
+  const fromOemSearch = oemSearchList
+    .map((a) => ({
+      brand:     (a.supplierName || a.brandName || a.brand || a.mfrName || "").trim(),
+      articleNo: (a.articleNo || a.articleNumber || a.artNr || "").trim()
+    }))
+    .filter((r) => {
+      if (!r.brand || !r.articleNo) return false;
+      if (oemSet.has(normaliseNo(r.articleNo))) return false;        // skip OEM numbers
+      if (normaliseName(r.brand) === ownBrandKey) return false;      // skip same brand (own ref already added above)
+      return true;
+    });
+
+  // ── 3. Dedicated cross-ref endpoint — supplements OEM search ─────────────
+  const crossRefs = parseCrossReferences(crossRefsRaw, normalized.oem_numbers, articleBrand);
+
+  // ── Merge and deduplicate all three sources ───────────────────────────────
+  const seen = new Set();
+  const interchangeableParts = [];
+  for (const ref of [...ownRef, ...fromOemSearch, ...crossRefs]) {
+    const key = `${normaliseName(ref.brand)}::${normaliseNo(ref.articleNo)}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    interchangeableParts.push(ref);
+  }
+
+  console.log(`[Listing] ${articleNumber}: own=${ownRef.length} oemSearch=${fromOemSearch.length} crossRefs=${crossRefs.length} total=${interchangeableParts.length} brand="${articleBrand}"`);
 
   // ── Build HTML ────────────────────────────────────────────────────────────
-  const html = buildHtml({ ...normalized, engine_codes: engineCodes, k_numbers: kNumbers }, template);
+  const html = buildHtml({ ...normalized, engine_codes: engineCodes, k_numbers: kNumbers, interchangeable_parts: interchangeableParts }, template);
 
   // ── Derive summary fields for AI title generation ─────────────────────────
   const modelCounts = {};
@@ -425,28 +707,29 @@ async function buildListingFromArticle(articleNumber, themeId = "clean-default")
   const fuelType = Object.entries(fuelCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || "";
 
   const baseResult = {
-    article_number:      articleNumber,
-    article_id:          articleId,
-    article_image:       articleImage,
-    generated_title:     normalized.product_name,
-    k_number_list:       kNumbers,
-    oem_numbers:         normalized.oem_numbers,
-    engine_codes:        engineCodes,
-    specifications:      normalized.specifications,
-    item_specifics:      normalized.item_specifics,
-    compatibility_count: normalized.compatibility_rows.length,
-    compatibility_rows:  normalized.compatibility_rows,
-    product_type:        normalized.product_name,
-    top_models:          topModels,
-    year_range:          yearRange,
-    engine_sizes:        engineSizes,
-    fuel_type:           fuelType
+    article_number:       articleNumber,
+    article_id:           articleId,
+    article_image:        articleImage,
+    generated_title:      normalized.product_name,
+    k_number_list:        kNumbers,
+    oem_numbers:          normalized.oem_numbers,
+    interchangeable_parts: interchangeableParts,
+    engine_codes:         engineCodes,
+    specifications:       normalized.specifications,
+    item_specifics:       normalized.item_specifics,
+    compatibility_count:  normalized.compatibility_rows.length,
+    compatibility_rows:   normalized.compatibility_rows,
+    product_type:         normalized.product_name,
+    top_models:           topModels,
+    year_range:           yearRange,
+    engine_sizes:         engineSizes,
+    fuel_type:            fuelType
   };
 
   // Cache by both the input key and the resolved article number (OEM searches benefit from this)
-  const cachePayload = { normalized: { ...normalized, engine_codes: engineCodes, k_numbers: kNumbers }, baseResult, articleImage };
-  articleNormCache.set(articleNumber, cachePayload);
-  if (resolvedNumber !== articleNumber) articleNormCache.set(resolvedNumber, cachePayload);
+  const cachePayload = { normalized: { ...normalized, engine_codes: engineCodes, k_numbers: kNumbers, interchangeable_parts: interchangeableParts }, baseResult, articleImage };
+  cappedSet(articleNormCache, articleNumber, cachePayload, 200);
+  if (resolvedNumber !== articleNumber) cappedSet(articleNormCache, resolvedNumber, cachePayload, 200);
 
   return {
     ...baseResult,
@@ -518,6 +801,13 @@ async function searchArticles(input) {
     absorb(lookupList);
   }
 
+  // 4. Aftermarket article-number search — catches supplier part numbers like AOP858, FAI OFW1009A
+  if (found.length === 0) {
+    const artData = await artlookupByArticleNo(input);
+    const artList = Array.isArray(artData) ? artData : (artData?.articles || artData?.data || []);
+    absorb(artList);
+  }
+
   const filtered = found.filter((a) => a.articleNo || a.articleId);
 
   // 4. Enrich missing brand names — OEM search endpoints don't always return
@@ -552,7 +842,7 @@ app.get("/themes", (_req, res) => {
 });
 
 // Search: OEM number or article number → list of candidate articles for selection
-app.post("/search", async (req, res) => {
+app.post("/search", requireAuth, lookupLimiter, async (req, res) => {
   try {
     const query = String(req.body.query || "").trim().replace(/\s+/g, "");
     if (!query) return res.status(400).json({ error: "Missing query" });
@@ -564,14 +854,38 @@ app.post("/search", async (req, res) => {
   }
 });
 
-app.post("/lookup", async (req, res) => {
+app.post("/lookup", requireAuth, lookupLimiter, async (req, res) => {
   try {
     const articleNumber = String(req.body.articleNumber || "").trim().replace(/\s+/g, "");
     const themeId       = req.body.themeId || req.body.templateId || "clean-default";
 
     if (!articleNumber) return res.status(400).json({ error: "Missing articleNumber" });
 
+    // Listing limit check — happens BEFORE generation, never consumes a
+    // credit on its own. The credit is only spent after a successful result.
+    const access = await canGenerateListing(req.user.id, req.user.email);
+    if (!access.allowed) {
+      return res.status(403).json({
+        error: "limit_reached",
+        message: "You have reached your listing limit. Upgrade your plan to continue generating listings.",
+      });
+    }
+
     const result = await buildListingFromArticle(articleNumber, themeId);
+
+    // Only increment usage once a real result has been returned — failures,
+    // not-found, and server errors above never reach this line.
+    await incrementListingUsage(req.user.id, req.user.email);
+
+    posthog.capture({
+      distinctId: "server",
+      event: "listing_generated",
+      properties: {
+        article_number:      articleNumber,
+        template_id:         result.template_id,
+        compatibility_count: result.compatibility_count,
+      },
+    });
     res.json(result);
   } catch (err) {
     console.error(err);
@@ -579,13 +893,16 @@ app.post("/lookup", async (req, res) => {
   }
 });
 
-app.post("/batch-export", async (req, res) => {
+app.post("/batch-export", requireAuth, async (req, res) => {
   try {
     const { rows, themeId = "clean-default", templateId } = req.body;
     const resolvedTheme = themeId || templateId || "clean-default";
 
     if (!Array.isArray(rows) || rows.length === 0) {
       return res.status(400).json({ error: "rows must be a non-empty array" });
+    }
+    if (rows.length > 100) {
+      return res.status(400).json({ error: "Maximum 100 rows per batch export." });
     }
 
     const cleanedRows = rows
@@ -600,9 +917,40 @@ app.post("/batch-export", async (req, res) => {
       return res.status(400).json({ error: "No valid rows found" });
     }
 
+    // Check the limit up-front so a user with zero credits left gets a clear
+    // error instead of a CSV full of blank/errored rows.
+    const initialAccess = await canGenerateListing(req.user.id, req.user.email);
+    if (!initialAccess.allowed) {
+      return res.status(403).json({
+        error: "limit_reached",
+        message: "You have reached your listing limit. Upgrade your plan to continue generating listings.",
+      });
+    }
+
     const exportRows = [];
 
     for (const row of cleanedRows) {
+      // Re-check before each row — a capped plan stops generating once the
+      // limit is hit mid-batch rather than over-counting past it.
+      const rowAccess = await canGenerateListing(req.user.id, req.user.email);
+      if (!rowAccess.allowed) {
+        exportRows.push({
+          "Title": "", "SKU": row.sku, "BIN Price": row.binPrice,
+          "Description": "",
+          "Custom Specifics 1 Name": "Brand", "Custom Specifics 1 Value": "JSK",
+          "Custom Specifics 2 Name": "Reference OE/OEM Number", "Custom Specifics 2 Value": "",
+          "Custom Specifics 3 Name": "Manufacturer Part Number", "Custom Specifics 3 Value": row.sku,
+          "Custom Specifics 4 Name": "Product Type", "Custom Specifics 4 Value": "",
+          "Custom Specifics 5 Name": "Country of Manufacture", "Custom Specifics 5 Value": "United Kingdom",
+          "Custom Specifics 6 Name": "Compatible Engine Codes", "Custom Specifics 6 Value": "",
+          "Custom Specifics 7 Name": "K Numbers", "Custom Specifics 7 Value": "",
+          "Article Number": row.articleNumber,
+          "Template": "",
+          "Error": "Listing limit reached — upgrade your plan to generate more.",
+        });
+        continue;
+      }
+
       try {
         console.log(`Batch processing ${row.articleNumber}...`);
         const result = await buildListingFromArticle(row.articleNumber, resolvedTheme);
@@ -630,6 +978,8 @@ app.post("/batch-export", async (req, res) => {
           "Template":                    result.template_name || "",
           "Error":                       ""
         });
+
+        await incrementListingUsage(req.user.id, req.user.email);
       } catch (err) {
         exportRows.push({
           "Title": "", "SKU": row.sku, "BIN Price": row.binPrice,
@@ -662,6 +1012,17 @@ app.post("/batch-export", async (req, res) => {
       ]
     });
 
+    const successCount = exportRows.filter(r => !r["Error"]).length;
+    posthog.capture({
+      distinctId: "server",
+      event: "batch_export_completed",
+      properties: {
+        total_rows:    cleanedRows.length,
+        success_count: successCount,
+        error_count:   cleanedRows.length - successCount,
+        template_id:   resolvedTheme,
+      },
+    });
     res.setHeader("Content-Type", "text/csv");
     res.setHeader("Content-Disposition", 'attachment; filename="adlister-batch-export.csv"');
     res.send(parser.parse(exportRows));
@@ -671,8 +1032,16 @@ app.post("/batch-export", async (req, res) => {
   }
 });
 
-app.post("/compatibility/check", async (req, res) => {
+app.post("/compatibility/check", requireAuth, async (req, res) => {
   try {
+    const feature = await checkFeatureAccess(req.user.id, req.user.email, "compatibilityChecker");
+    if (!feature.allowed) {
+      return res.status(403).json({
+        error: "feature_restricted",
+        message: "This feature is available on Growth and Scale plans.",
+      });
+    }
+
     const {
       vin, oemNumber, partType, engineCode,
       make, model, year, fuelType, engineSize,
@@ -706,7 +1075,7 @@ app.post("/compatibility/check", async (req, res) => {
 // POST /api/ai/generate-titles
 // Calls OpenAI to produce 3 eBay-style listing titles from structured part data.
 
-app.post("/api/ai/generate-titles", async (req, res) => {
+app.post("/api/ai/generate-titles", requireAuth, aiLimiter, async (req, res) => {
   if (!openaiClient) {
     return res.status(503).json({ error: "OpenAI API key is not configured." });
   }
@@ -809,6 +1178,15 @@ Respond with valid JSON only, no markdown:
       });
     }
 
+    posthog.capture({
+      distinctId: "server",
+      event: "ai_titles_generated",
+      properties: {
+        product_type:  productType,
+        model:         OPENAI_MODEL,
+        titles_count:  parsed.titles?.length ?? 0,
+      },
+    });
     res.json(parsed);
   } catch (err) {
     console.error("[/api/ai/generate-titles]", err.message);
@@ -853,14 +1231,14 @@ async function getEbayAccessToken() {
 
   const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
 
-  const res = await fetch("https://api.ebay.com/identity/v1/oauth2/token", {
+  const res = await fetchWithTimeout("https://api.ebay.com/identity/v1/oauth2/token", {
     method: "POST",
     headers: {
       Authorization:  `Basic ${credentials}`,
       "Content-Type": "application/x-www-form-urlencoded"
     },
     body: "grant_type=client_credentials&scope=https%3A%2F%2Fapi.ebay.com%2Foauth%2Fapi_scope"
-  });
+  }, 15000);
 
   if (!res.ok) {
     const text = await res.text();
@@ -899,8 +1277,16 @@ async function getEbayAccessToken() {
 //   7. Multiplier outlier filter  (per-rule high/low thresholds)
 //   8. Recalculate final stats from clean set
 //   9. Return enriched response with per-reason exclusion counts
-app.post("/api/ebay/search-prices", async (req, res) => {
+app.post("/api/ebay/search-prices", requireAuth, ebayLimiter, async (req, res) => {
   try {
+    const feature = await checkFeatureAccess(req.user.id, req.user.email, "smartPricing");
+    if (!feature.allowed) {
+      return res.status(403).json({
+        error: "feature_restricted",
+        message: "This feature is available on Growth and Scale plans.",
+      });
+    }
+
     const { query, condition = "new" } = req.body;
     if (!query?.trim()) {
       return res.status(400).json({ error: "query is required" });
@@ -923,13 +1309,13 @@ app.post("/api/ebay/search-prices", async (req, res) => {
     let url = `https://api.ebay.com/buy/browse/v1/item_summary/search?q=${encodeURIComponent(ebayQuery)}&limit=60&offset=0&fieldgroups=EXTENDED`;
     if (condFilter) url += `&filter=${condFilter}`;
 
-    const ebayRes = await fetch(url, {
+    const ebayRes = await fetchWithTimeout(url, {
       headers: {
         Authorization:             `Bearer ${token}`,
         "X-EBAY-C-MARKETPLACE-ID": "EBAY_GB",
         "Content-Type":            "application/json",
       },
-    });
+    }, 20000);
 
     if (!ebayRes.ok) {
       const text = await ebayRes.text();
@@ -957,6 +1343,7 @@ app.post("/api/ebay/search-prices", async (req, res) => {
       const shippingOpt = item.shippingOptions?.[0];
       const shippingVal = parseFloat(shippingOpt?.shippingCost?.value);
       return {
+        itemId:            item.itemId || null,
         title:             item.title || "",
         price:             Number.isFinite(v) && v > 0 ? v : null,
         url:               item.itemWebUrl || "",
@@ -1025,6 +1412,18 @@ app.post("/api/ebay/search-prices", async (req, res) => {
       `[eBay] "${query}" | ${condLabel} | fetched=${totalFetched} used=${n}`
     );
 
+    posthog.capture({
+      distinctId: "server",
+      event: "ebay_price_search",
+      properties: {
+        condition,
+        detected_type:   rule?.productType || null,
+        total_fetched:   totalFetched,
+        price_count:     n,
+        median_price:    +median.toFixed(2),
+      },
+    });
+
     const allExcluded = [];
 
     res.json({
@@ -1050,6 +1449,7 @@ app.post("/api/ebay/search-prices", async (req, res) => {
       confidenceLabel: confidence.label,
       confidenceColor: confidence.color,
       listings: relevantItems.map(i => ({
+        itemId:            i.itemId,
         title:             i.title,
         price:             i.price,
         url:               i.url,
@@ -1071,10 +1471,63 @@ app.post("/api/ebay/search-prices", async (req, res) => {
   }
 });
 
-const PORT = process.env.PORT || 3001;
+// ─── eBay sold-count lookup ───────────────────────────────────────────────────
+// POST /api/ebay/sold-counts
+// Accepts { itemIds: string[] }, returns { [itemId]: soldQty | null }.
+// Fetches item details in parallel (max 10 concurrent) with a 5-second timeout.
+app.post("/api/ebay/sold-counts", requireAuth, ebayLimiter, async (req, res) => {
+  try {
+    const { itemIds } = req.body;
+    if (!Array.isArray(itemIds) || itemIds.length === 0) return res.json({});
+    if (itemIds.length > 50) return res.status(400).json({ error: "Maximum 50 itemIds per request." });
+
+    const token   = await getEbayAccessToken();
+    const results = {};
+    const CONCURRENCY = 10;
+
+    // Process in chunks to avoid hammering the API
+    for (let i = 0; i < itemIds.length; i += CONCURRENCY) {
+      const chunk = itemIds.slice(i, i + CONCURRENCY);
+      await Promise.allSettled(chunk.map(async (itemId) => {
+        try {
+          const r = await fetchWithTimeout(
+            `https://api.ebay.com/buy/browse/v1/item/${encodeURIComponent(String(itemId))}`,
+            {
+              method: "GET",
+              headers: {
+                "Authorization":            `Bearer ${token}`,
+                "X-EBAY-C-MARKETPLACE-ID":  "EBAY_GB",
+                "Content-Type":             "application/json",
+              },
+            },
+            5000
+          );
+          if (!r.ok) { results[itemId] = null; return; }
+          const data  = await r.json();
+          const avail = Array.isArray(data.estimatedAvailabilities) ? data.estimatedAvailabilities[0] : null;
+          results[itemId] = avail?.soldQuantity ?? null;
+        } catch {
+          results[itemId] = null;
+        }
+      }));
+    }
+
+    res.json(results);
+  } catch (err) {
+    console.error("[/api/ebay/sold-counts]", err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+const PORT = process.env.PORT;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`OpenAI configured: ${openaiClient ? "YES" : "NO — OPENAI_API_KEY is missing"}`);
   console.log(`RapidAPI configured: ${RAPIDAPI_KEY ? "YES" : "NO"}`);
   console.log(`eBay configured: ${process.env.EBAY_CLIENT_ID ? "YES" : "NO — EBAY_CLIENT_ID/SECRET missing"}`);
+  console.log(`Stripe configured: ${stripeReady ? "YES" : "NO — STRIPE_API_KEY is missing"}`);
+  console.log(`Supabase admin configured: ${supabaseAdminReady ? "YES" : "NO — SUPABASE_SERVICE_ROLE_KEY is missing"}`);
 });
+
+process.on("SIGTERM", () => posthog.shutdown());
+process.on("SIGINT",  () => posthog.shutdown());

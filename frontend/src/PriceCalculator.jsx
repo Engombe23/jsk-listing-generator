@@ -1,14 +1,30 @@
-﻿import React, { memo, useState, useEffect, useRef } from "react";
+﻿import React, { memo, useState, useEffect, useRef, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useSessionState } from "./useSessionState.js";
+import { useSession } from "./context/SessionContext";
+import { redirectToStripeCheckout, upgradeSubscription } from "./lib/billing";
+import { getNextPlan, getUpgradeTierForFeature, hasActiveSubscription } from "./lib/plans";
 import { BUTTON_BASE, SMALL_BUTTON_STYLE, INPUT_STYLE } from "./shared.jsx";
 import SavedProducts from "./SavedProducts.jsx";
+import { trackEvent } from "./lib/analytics";
+import { loadPreferences } from "./useListingPreferences.js";
+import { MARKETPLACES } from "./i18n/marketplaces.js";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
 
-// ─── Formatters ───────────────────────────────────────────────────────────────
-const fmt    = (n) => (n === null || isNaN(n)) ? "—" : (n < 0 ? `-£${Math.abs(n).toFixed(2)}` : `£${n.toFixed(2)}`);
+// ─── Currency helpers ─────────────────────────────────────────────────────────
+const CURRENCY_SYMBOLS = { GBP: "£", EUR: "€", USD: "$", TRY: "₺", AED: "د.إ" };
+function currencySymbol(code) { return CURRENCY_SYMBOLS[code] || code || "£"; }
+function fmtCurrency(n, sym) {
+  if (n === null || isNaN(n)) return "—";
+  return n < 0 ? `-${sym}${Math.abs(n).toFixed(2)}` : `${sym}${n.toFixed(2)}`;
+}
+
+// ─── Formatters (GBP — for the left-panel calculator which uses user-entered values) ───
+const fmt    = (n) => fmtCurrency(n, "£");
 const fmtPct = (n) => (n === null || isNaN(n)) ? "—" : `${n.toFixed(1)}%`;
-const fmtGBP = (v) => (v != null && !isNaN(v)) ? `£${Number(v).toFixed(2)}` : "—";
+const fmtGBP = (v, sym = "£") => (v != null && !isNaN(v)) ? `${sym}${Number(v).toFixed(2)}` : "—";
 
 // ─── Keyframes ────────────────────────────────────────────────────────────────
 (function () {
@@ -22,22 +38,24 @@ const fmtGBP = (v) => (v != null && !isNaN(v)) ? `£${Number(v).toFixed(2)}` : "
     @keyframes pdBeamPulse { 0%,100%{box-shadow:0 0 28px #38bdf8cc,0 0 56px #38bdf844,0 3px 12px rgba(0,0,0,.5)} 50%{box-shadow:0 0 40px #38bdf8ff,0 0 80px #38bdf866,0 3px 12px rgba(0,0,0,.5)} }
     @keyframes pdDotPulse  { 0%,100%{r:5;opacity:1} 50%{r:7;opacity:.7} }
     @keyframes pdBeamLine  { 0%,100%{opacity:.55} 50%{opacity:.85} }
+    @keyframes pcSpin      { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+    @keyframes pcLoadBar   { 0%,100%{transform:scaleY(0.15);opacity:0.35} 50%{transform:scaleY(1);opacity:1} }
   `;
   document.head.appendChild(s);
 })();
 
-// ─── Design tokens ────────────────────────────────────────────────────────────
+// ─── Design tokens — all values are CSS variables for theme support ───────────
 const C = {
-  bg0: "#080f1c",
-  bg1: "#0b1929",
-  bg2: "#0d1f35",
-  bg3: "#060d1a",
-  border:     "1px solid rgba(255,255,255,0.07)",
-  borderBlue: "1px solid rgba(19,93,255,0.22)",
-  blue: "#135DFF",
-  text: "#e2e8f0",
-  muted: "#6b7280",
-  dim:   "#374151",
+  bg0: "var(--bg)",
+  bg1: "var(--bg-surface)",
+  bg2: "var(--bg-surface2)",
+  bg3: "var(--bg-surface3)",
+  border:     "1px solid var(--border)",
+  borderBlue: "1px solid var(--border-blue)",
+  blue: "var(--blue)",
+  text: "var(--text)",
+  muted: "var(--text-muted)",
+  dim:   "var(--text-dim)",
 };
 
 const CI = {
@@ -45,8 +63,6 @@ const CI = {
   padding: "7px 10px",
   fontSize: 13,
   borderRadius: 8,
-  background: "#0d1f35",
-  border: "1px solid rgba(255,255,255,0.09)",
 };
 
 // ─── Market position (all blue palette) ──────────────────────────────────────
@@ -57,8 +73,8 @@ function getPos(price, data) {
   const pct = ((price - data.low) / range) * 100;
   if (price < data.low)   return { label: "Below Market",  color: "#60a5fa" };
   if (pct < 25)           return { label: "Lower Range",   color: "#60a5fa" };
-  if (pct < 45)           return { label: "Lower-Mid",     color: "#7dd3fc" };
-  if (pct < 65)           return { label: "Core Market",   color: "#93c5fd" };
+  if (pct < 45)           return { label: "Lower-Mid",     color: "var(--text-accent)" };
+  if (pct < 65)           return { label: "Core Market",   color: "var(--text-accent)" };
   if (pct < 82)           return { label: "Upper-Mid",     color: "#bae6fd" };
   if (price <= data.high) return { label: "Premium Range", color: "#dbeafe" };
   return                         { label: "Above Market",  color: "#eff6ff" };
@@ -115,10 +131,10 @@ function Row({ label, children, last, note }) {
     <div style={{
       display: "grid", gridTemplateColumns: "100px 1fr", alignItems: "center", gap: 8,
       padding: "4px 0",
-      borderBottom: last ? "none" : "1px solid rgba(255,255,255,0.04)",
+      borderBottom: last ? "none" : "1px solid var(--border-light)",
     }}>
       <div>
-        <div style={{ fontSize: 12, color: "#7a9cc0", lineHeight: 1.3 }}>{label}</div>
+        <div style={{ fontSize: 12, color: "var(--text-muted)", lineHeight: 1.3 }}>{label}</div>
         {note && <div style={{ fontSize: 10, color: C.dim, marginTop: 1, lineHeight: 1.2 }}>{note}</div>}
       </div>
       {children}
@@ -128,13 +144,13 @@ function Row({ label, children, last, note }) {
 
 function SL({ children, mt }) {
   return (
-    <div style={{ fontSize: 10, fontWeight: 700, color: "#4a7096", textTransform: "uppercase", letterSpacing: 1.2, paddingTop: mt ?? 10, paddingBottom: 4 }}>
+    <div style={{ fontSize: 10, fontWeight: 700, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: 1.2, paddingTop: mt ?? 12, paddingBottom: 5 }}>
       {children}
     </div>
   );
 }
 
-const HD = () => <div style={{ height: 1, background: "rgba(255,255,255,0.06)", margin: "10px 0" }} />;
+const HD = () => <div style={{ height: 1, background: "var(--border-light)", margin: "10px 0" }} />;
 
 // ─── Breakdown row ────────────────────────────────────────────────────────────
 function BR({ label, value, color, strong, note }) {
@@ -142,13 +158,13 @@ function BR({ label, value, color, strong, note }) {
     <div style={{
       display: "flex", justifyContent: "space-between", alignItems: "center",
       padding: strong ? "7px 0 4px" : "4px 0",
-      borderTop: strong ? "1px solid rgba(255,255,255,0.08)" : "none",
+      borderTop: strong ? "1px solid var(--border)" : "none",
     }}>
       <div>
         <div style={{ fontSize: strong ? 13 : 12, color: strong ? C.text : C.muted }}>{label}</div>
         {note && <div style={{ fontSize: 10, color: C.dim }}>{note}</div>}
       </div>
-      <span style={{ fontSize: strong ? 15 : 13, fontWeight: strong ? 800 : 600, color: color || (strong ? C.text : "#9ca3af") }}>{value}</span>
+      <span style={{ fontSize: strong ? 15 : 13, fontWeight: strong ? 800 : 600, color: color || (strong ? C.text : "var(--text-muted)") }}>{value}</span>
     </div>
   );
 }
@@ -170,13 +186,13 @@ function SourceListings({ listings, excludedListings, show, onToggle, tab, onTab
         style={{
           width: "100%", padding: "6px 10px",
           background: "transparent",
-          border: "1px solid rgba(255,255,255,0.06)",
+          border: "1px solid var(--border-light)",
           borderRadius: 7, cursor: "pointer",
           display: "flex", alignItems: "center", justifyContent: "space-between",
           transition: "border-color 0.15s",
         }}
         onMouseEnter={e => e.currentTarget.style.borderColor = "rgba(255,255,255,0.14)"}
-        onMouseLeave={e => e.currentTarget.style.borderColor = "rgba(255,255,255,0.06)"}
+        onMouseLeave={e => e.currentTarget.style.borderColor = "var(--border-light)"}
       >
         <span style={{ fontSize: 10, fontWeight: 700, color: C.dim, textTransform: "uppercase", letterSpacing: 0.8 }}>
           Source listings
@@ -190,7 +206,7 @@ function SourceListings({ listings, excludedListings, show, onToggle, tab, onTab
       </button>
 
       {show && (
-        <div style={{ marginTop: 4, border: "1px solid rgba(255,255,255,0.07)", borderRadius: 7, overflow: "hidden" }}>
+        <div style={{ marginTop: 4, border: "1px solid var(--border)", borderRadius: 7, overflow: "hidden" }}>
           {!hasData ? (
             /* Stale cached data — no listings field present */
             <div style={{ padding: "16px 14px", textAlign: "center", fontSize: 12, color: C.dim }}>
@@ -199,16 +215,16 @@ function SourceListings({ listings, excludedListings, show, onToggle, tab, onTab
           ) : (
             <>
               {/* Sub-tabs */}
-              <div style={{ display: "flex", background: "#060d1a", borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
+              <div style={{ display: "flex", background: "var(--bg-surface3)", borderBottom: "1px solid var(--border)" }}>
                 {[
-                  { key: "used",     label: `✓ Used (${usedList.length})`,   color: "#4ade80" },
-                  { key: "excluded", label: `✕ Excluded (${excList.length})`, color: "#f87171" },
+                  { key: "used",     label: `✓ Used (${usedList.length})`,   color: "var(--green)" },
+                  { key: "excluded", label: `✕ Excluded (${excList.length})`, color: "var(--red)" },
                 ].map(({ key, label, color }) => {
                   const active = tab === key;
                   return (
                     <button key={key} onClick={() => onTab(key)} style={{
                       flex: 1, padding: "6px 10px", border: "none", cursor: "pointer",
-                      background: active ? "rgba(255,255,255,0.04)" : "transparent",
+                      background: active ? "var(--border-light)" : "transparent",
                       fontSize: 11, fontWeight: 700,
                       color: active ? color : C.dim,
                       borderBottom: active ? `2px solid ${color}` : "2px solid transparent",
@@ -238,36 +254,36 @@ function SourceListings({ listings, excludedListings, show, onToggle, tab, onTab
                       style={{
                         display: "flex", alignItems: "flex-start", gap: 10,
                         padding: "8px 12px",
-                        borderBottom: i < activeList.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none",
+                        borderBottom: i < activeList.length - 1 ? "1px solid var(--border-light)" : "none",
                         textDecoration: "none",
                         cursor: item.url ? "pointer" : "default",
                       }}
-                      onMouseEnter={e => { if (item.url) e.currentTarget.style.background = "rgba(255,255,255,0.04)"; }}
+                      onMouseEnter={e => { if (item.url) e.currentTarget.style.background = "var(--border-light)"; }}
                       onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
                     >
                       <span style={{
                         flexShrink: 0, minWidth: 60, textAlign: "right",
                         fontSize: 12, fontWeight: 800,
-                        color: isExc ? "#4b5563" : "#93c5fd",
+                        color: isExc ? "var(--text-dim)" : "var(--text-accent)",
                       }}>
                         {item.price != null ? `£${item.price.toFixed(2)}` : "—"}
                       </span>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{
                           fontSize: 11, lineHeight: 1.4,
-                          color: isExc ? "#374151" : "#94a3b8",
+                          color: isExc ? "var(--text-dim)" : "var(--text-muted)",
                           overflow: "hidden", display: "-webkit-box",
                           WebkitLineClamp: 2, WebkitBoxOrient: "vertical",
                         }}>
                           {item.title || "—"}
                         </div>
                         {isExc && item.exclusionReason && (
-                          <div style={{ fontSize: 10, color: "#6b7280", marginTop: 2, fontStyle: "italic" }}>
+                          <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 2, fontStyle: "italic" }}>
                             {item.exclusionReason}
                           </div>
                         )}
                       </div>
-                      {item.url && <span style={{ flexShrink: 0, fontSize: 9, color: "#374151", paddingTop: 3 }}>↗</span>}
+                      {item.url && <span style={{ flexShrink: 0, fontSize: 9, color: "var(--text-dim)", paddingTop: 3 }}>↗</span>}
                     </Row>
                   );
                 })}
@@ -281,7 +297,7 @@ function SourceListings({ listings, excludedListings, show, onToggle, tab, onTab
 }
 
 // ─── Pricing Band ─────────────────────────────────────────────────────────────
-function PricingBand({ data, price }) {
+function PricingBand({ data, price, sym = "£" }) {
   if (!data) return null;
   const range = data.high - data.low;
   if (range <= 0) return null;
@@ -311,11 +327,11 @@ function PricingBand({ data, price }) {
 
   return (
     <div style={{
-      background: "#030b17",
+      background: "var(--bg-surface3)",
       border: "1px solid rgba(19,93,255,0.45)",
       borderRadius: 14,
       padding: "18px 20px 16px",
-      boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04), 0 4px 24px rgba(0,0,0,0.4)",
+      boxShadow: "none",
     }}>
       {/* Header */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
@@ -354,7 +370,7 @@ function PricingBand({ data, price }) {
                 boxShadow: `0 0 16px ${MARKER}99, 0 2px 8px rgba(0,0,0,0.5)`,
                 letterSpacing: -0.2,
               }}>
-                {fmtGBP(price)}
+                {fmtGBP(price, sym)}
               </div>
               <div style={{ width: 2, height: 14, background: `linear-gradient(to bottom, ${MARKER}cc, transparent)` }} />
             </div>
@@ -387,7 +403,7 @@ function PricingBand({ data, price }) {
 
           {/* LOW — always shown */}
           <div style={{ position: "absolute", left: 0 }}>
-            <div style={{ fontSize: 13, fontWeight: 800, color: "#7dd3fc", lineHeight: 1 }}>{fmtGBP(data.low)}</div>
+            <div style={{ fontSize: 13, fontWeight: 800, color: "var(--text-accent)", lineHeight: 1 }}>{fmtGBP(data.low, sym)}</div>
             <div style={{ fontSize: 11, color: C.muted, marginTop: 3 }}>Low</div>
           </div>
 
@@ -395,7 +411,7 @@ function PricingBand({ data, price }) {
           {showMergedLabel && (
             <div style={{ position: "absolute", left: `${mergedMidPct}%`, transform: "translateX(-50%)", textAlign: "center", whiteSpace: "nowrap" }}>
               <div style={{ fontSize: 13, fontWeight: 800, color: "#c4d4e8", lineHeight: 1 }}>
-                {fmtGBP(data.average)} / {fmtGBP(data.median)}
+                {fmtGBP(data.average, sym)} / {fmtGBP(data.median, sym)}
               </div>
               <div style={{ fontSize: 11, color: C.muted, marginTop: 3 }}>Avg / Med</div>
             </div>
@@ -404,7 +420,7 @@ function PricingBand({ data, price }) {
           {/* MEDIAN (only when not merged and not too close to Low or High) */}
           {showMedLabel && (
             <div style={{ position: "absolute", left: `${medPct}%`, transform: "translateX(-50%)", textAlign: "center", whiteSpace: "nowrap" }}>
-              <div style={{ fontSize: 13, fontWeight: 800, color: "#c4d4e8", lineHeight: 1 }}>{fmtGBP(data.median)}</div>
+              <div style={{ fontSize: 13, fontWeight: 800, color: "#c4d4e8", lineHeight: 1 }}>{fmtGBP(data.median, sym)}</div>
               <div style={{ fontSize: 11, color: C.muted, marginTop: 3 }}>Median</div>
             </div>
           )}
@@ -412,14 +428,14 @@ function PricingBand({ data, price }) {
           {/* AVERAGE (only when not merged and not too close to Low or High) */}
           {showAvgLabel && (
             <div style={{ position: "absolute", left: `${avgPct}%`, transform: "translateX(-50%)", textAlign: "center", whiteSpace: "nowrap" }}>
-              <div style={{ fontSize: 13, fontWeight: 800, color: "#c4d4e8", lineHeight: 1 }}>{fmtGBP(data.average)}</div>
+              <div style={{ fontSize: 13, fontWeight: 800, color: "#c4d4e8", lineHeight: 1 }}>{fmtGBP(data.average, sym)}</div>
               <div style={{ fontSize: 11, color: C.muted, marginTop: 3 }}>Average</div>
             </div>
           )}
 
           {/* HIGH — always shown */}
           <div style={{ position: "absolute", right: 0, textAlign: "right" }}>
-            <div style={{ fontSize: 13, fontWeight: 800, color: "#7dd3fc", lineHeight: 1 }}>{fmtGBP(data.high)}</div>
+            <div style={{ fontSize: 13, fontWeight: 800, color: "var(--text-accent)", lineHeight: 1 }}>{fmtGBP(data.high, sym)}</div>
             <div style={{ fontSize: 11, color: C.muted, marginTop: 3 }}>High</div>
           </div>
         </div>
@@ -427,8 +443,8 @@ function PricingBand({ data, price }) {
 
       {/* Interpretation */}
       {verdict && (
-        <div style={{ marginTop: 18, padding: "10px 14px", background: "rgba(14,165,233,0.07)", border: "1px solid rgba(14,165,233,0.2)", borderRadius: 10, fontSize: 13, color: "#93c5fd", lineHeight: 1.55 }}>
-          💡 {verdict}
+        <div style={{ marginTop: 18, padding: "10px 14px", background: "rgba(14,165,233,0.07)", border: "1px solid rgba(14,165,233,0.2)", borderRadius: 10, fontSize: 13, color: "var(--text-accent)", lineHeight: 1.55 }}>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--text-accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginRight: 7, verticalAlign: "middle" }}><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>{verdict}
         </div>
       )}
       {!verdict && hasPrice && (
@@ -440,8 +456,38 @@ function PricingBand({ data, price }) {
   );
 }
 
+// ─── Greedy label thinning — guarantees zero overlap ─────────────────────────
+// Each tick carries a pre-computed pct (0-100) centre position and halfW (half
+// the estimated label width, also in pct units).  The algorithm places labels
+// left-to-right, skipping any that would clip the previous one.  The last
+// label is always included; if it would overlap the previous kept label, that
+// label is removed and we keep walking back until there is room.
+function thinLabels(ticks) {
+  if (ticks.length <= 1) return ticks;
+  const GAP = 1.5; // % gap between right edge of prev and left edge of next
+  const out  = [ticks[0]];
+  let lastR  = ticks[0].pct + ticks[0].halfW;
+
+  for (let i = 1; i < ticks.length - 1; i++) {
+    const t = ticks[i];
+    if (t.pct - t.halfW >= lastR + GAP) {
+      out.push(t);
+      lastR = t.pct + t.halfW;
+    }
+  }
+
+  // Always keep the last tick — back out any recently added labels that collide
+  const last = ticks[ticks.length - 1];
+  while (out.length > 1 && last.pct - last.halfW < out[out.length - 1].pct + out[out.length - 1].halfW + GAP) {
+    out.pop();
+  }
+  if (last !== out[out.length - 1]) out.push(last);
+  return out;
+}
+
 // ─── Price Distribution — Market Intelligence Chart ───────────────────────────
-function PriceDistribution({ data, listings, price }) {
+function PriceDistribution({ data, listings, price, onBinSelect, soldCounts = {}, soldCountsFetching = false, onTableView, sym = "£", marketplaceLabel = "eBay UK" }) {
+  const { t } = useTranslation();
   const svgRef       = useRef(null);
   const [hoveredBin,  setHoveredBin]  = useState(null);
   const [clickedBin,  setClickedBin]  = useState(null); // index of clicked bar → opens zoom + right panel
@@ -449,17 +495,43 @@ function PriceDistribution({ data, listings, price }) {
   const [viewMode,    setViewMode]    = useState("volume"); // "volume" | "table"
   const [tableSort,   setTableSort]   = useState("price");
   const [panelSort,   setPanelSort]   = useState("asc");
+  const [lightboxImg, setLightboxImg] = useState(null); // URL of expanded image, null = closed
+  const [hoveredZBin, setHoveredZBin] = useState(null); // index into zBins for zoom chart hover
+
+  // Refs to share latest computed bin data with parent (when onBinSelect is provided)
+  const binsRef        = useRef([]);
+  const binListingsRef = useRef([]);
+  const fmtXRef        = useRef(v => String(v));
+  const nRef           = useRef(0);
+
+  useEffect(() => {
+    if (!onBinSelect) return;
+    if (clickedBin === null) { onBinSelect(null); return; }
+    const b = binsRef.current[clickedBin];
+    if (!b) return;
+    onBinSelect({
+      bin:           b,
+      allListings:   binListingsRef.current[clickedBin] || [],
+      zoomRange,
+      setZoomRange,
+      setClickedBin,
+      fmtX:          fmtXRef.current,
+      totalListings: nRef.current,
+      onViewAll:     () => setViewMode("table"),
+    });
+  }, [clickedBin, zoomRange, onBinSelect]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const prices = (listings || [])
     .map(l => l.price)
     .filter(p => p != null && p > 0)
     .sort((a, b) => a - b);
 
-  if (prices.length < 2 || !data) return <PricingBand data={data} price={price} />;
+  if (prices.length < 2 || !data) return <PricingBand data={data} price={price} sym={sym} />;
   const { low, high, median, average } = data;
   const range = high - low;
-  if (range <= 0) return <PricingBand data={data} price={price} />;
+  if (range <= 0) return <PricingBand data={data} price={price} sym={sym} />;
   const n = prices.length;
+  nRef.current = n;
   const hasPrice = price > 0;
 
   // ── IQR for cluster markers only (no listings excluded from view) ────────────
@@ -492,7 +564,9 @@ function PriceDistribution({ data, listings, price }) {
   }).filter(b => b.s < viewMax && b.e > viewMin);
 
   const maxBucket  = Math.max(...bins.map(b => b.count), 1);
-  const yAxisMax   = Math.max(maxBucket, 10); // Y-axis always shows at least 0–10
+  // Dynamic Y-axis: scale to market density so sparse markets look full
+  const dynYMax  = m => m <= 3 ? 3 : m <= 5 ? 5 : m <= 10 ? 10 : m <= 20 ? 20 : m <= 30 ? 30 : m <= 40 ? 40 : 60;
+  const yAxisMax = dynYMax(maxBucket);
 
   // ── Bar-height density curve (Catmull-Rom spline through bin tops) ──────────
   // Curve tracks actual histogram bars — no bell-curve floating artefact
@@ -526,14 +600,13 @@ function PriceDistribution({ data, listings, price }) {
   const baseline = PAD_T + plotH;
 
 
-  // ── Y-axis ticks — always 0–yAxisMax ─────────────────────────────────────────
-  const yStep  = yAxisMax <= 10 ? 2 : yAxisMax <= 20 ? 4 : yAxisMax <= 40 ? 5 : 10;
+  // ── Y-axis ticks — dynamic step matching tier ────────────────────────────────
+  const yStep  = yAxisMax <= 5 ? 1 : yAxisMax <= 10 ? 2 : yAxisMax <= 30 ? 5 : 10;
   const yTicks = Array.from({ length: Math.floor(yAxisMax / yStep) + 1 }, (_, i) => i * yStep);
+  // Minimum pixel height so 1-count bars are always visible and clickable
+  const MIN_BAR_PX = 4;
 
-  // ── X-axis ticks — one per non-empty bin, centred under each bar ────────────
-  const xTicks = bins
-    .filter(b => b.count > 0)
-    .map(b => ({ v: b.s, e: b.e, mid: (b.s + b.e) / 2 }));
+  // xTicks computed below after fmtRange is available (width-aware thinning)
 
   // ── Price marker cards — Low, Median, Avg, Your Price, High ─────────────────
   const MARKERS_DEF = [
@@ -566,7 +639,25 @@ function PriceDistribution({ data, listings, price }) {
   }
 
   const CARD_H = 72;
-  const fmtX   = v => v >= 1000 ? `£${+(v / 1000).toFixed(1)}k` : `£${Math.round(v)}`;
+  const fmtX = v => v >= 10000 ? `${sym}${Math.round(v / 1000)}k`
+                  : v >= 1000  ? `${sym}${+(v / 1000).toFixed(1)}k`.replace('.0k', 'k')
+                  : `${sym}${Math.round(v)}`;
+  // Compact range label: £20–40, £1k–1.2k, £800–£1k
+  const fmtRange = (s, e) => `${fmtX(s)}–${fmtX(e)}`;
+  fmtXRef.current = fmtX;
+
+  // ── X-axis ticks — width-aware greedy thinning ───────────────────────────────
+  // Estimate each label's half-width as % of the chart area.
+  // Using a conservative 380px chart estimate so we under-place rather than over.
+  const _EST_PX  = 380;
+  const _halfW   = (s, e) => Math.min(20, ((fmtRange(s, e).length * 7.5 + 10) / _EST_PX) * 50);
+  const xTicks   = thinLabels(
+    bins.filter(b => b.count > 0).map(b => ({
+      v: b.s, e: b.e, mid: (b.s + b.e) / 2,
+      pct:   clamp(toPct((b.s + b.e) / 2), 0.5, 99.5),
+      halfW: _halfW(b.s, b.e),
+    }))
+  );
 
   // ── Rounded-top bar path helper ──────────────────────────────────────────────
   const roundedTopRect = (x, y, w, h, r) => {
@@ -587,6 +678,8 @@ function PriceDistribution({ data, listings, price }) {
       l.price != null && l.price >= b.s && (isLast ? l.price <= b.e : l.price < b.e)
     );
   });
+  binsRef.current       = bins;
+  binListingsRef.current = binListings;
 
   // ── Concentration stats for bottom card ─────────────────────────────────────
   const concCount = concBins.reduce((s, b) => s + b.count, 0);
@@ -596,11 +689,11 @@ function PriceDistribution({ data, listings, price }) {
 
   return (
     <div style={{
-      background: "linear-gradient(180deg, #020e1f 0%, #010c1a 55%, #010810 100%)",
-      border: "1px solid rgba(30,58,138,0.28)",
+      background: "var(--chart-bg)",
+      border: "1px solid var(--chart-border)",
       borderRadius: 16,
       overflow: "hidden",
-      boxShadow: "0 8px 48px rgba(0,0,0,0.65), inset 0 1px 0 rgba(255,255,255,0.04)",
+      boxShadow: "var(--shadow)",
       marginTop: 2,
       animation: "pdIn 0.4s ease",
       display: "flex",         // flex row: chart | right panel
@@ -612,23 +705,23 @@ function PriceDistribution({ data, listings, price }) {
       {/* ── Header ── */}
       <div style={{ padding: "18px 22px 12px", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 18, fontWeight: 800, color: "#e2e8f0", letterSpacing: -0.4, lineHeight: 1.2 }}>
-            Price Distribution
+          <div style={{ fontSize: 18, fontWeight: 800, color: "var(--text)", letterSpacing: -0.4, lineHeight: 1.2 }}>
+            {t("pricing.priceDistribution")}
           </div>
-          <div style={{ fontSize: 11, color: "#5a7fa0", marginTop: 4 }}>
-            <strong style={{ color: "#7dd3fc" }}>{n}</strong> listings analysed
+          <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4 }}>
+            {t("pricing.listingsAnalysed", { count: n })}
           </div>
         </div>
         {/* Volume / Cumulative % / Table tabs */}
-        <div style={{ display: "flex", gap: 2, background: "rgba(0,0,0,0.25)", borderRadius: 8, padding: "3px", flexShrink: 0 }}>
-          {[["volume", "Volume"], ["table", "Table"]].map(([mode, label]) => (
-            <button key={mode} onClick={() => setViewMode(mode)} style={{
+        <div style={{ display: "flex", gap: 2, background: "var(--chart-tab-bg)", borderRadius: 8, padding: "3px", flexShrink: 0 }}>
+          {[["volume", t("pricing.volume")], ["table", t("pricing.table")]].map(([mode, label]) => (
+            <button key={mode} onClick={() => { setViewMode(mode); if (mode === "table" && onTableView) onTableView(); }} style={{
               padding: "5px 13px", fontSize: 10, fontWeight: 700,
               letterSpacing: 0.5,
               background: viewMode === mode ? "rgba(56,189,248,0.16)" : "transparent",
-              border: viewMode === mode ? "1px solid rgba(56,189,248,0.35)" : "1px solid transparent",
+              border: viewMode === mode ? "1px solid var(--border-blue)" : "1px solid transparent",
               borderRadius: 6,
-              color: viewMode === mode ? "#7dd3fc" : "#3d5a72",
+              color: viewMode === mode ? "var(--text-accent)" : "var(--text-muted)",
               cursor: "pointer", transition: "all 0.15s",
             }}>
               {label}
@@ -640,11 +733,11 @@ function PriceDistribution({ data, listings, price }) {
       {viewMode === "volume" && <>
 
       {/* ── Market stats bar — LOW / MEDIAN / YOUR PRICE / HIGH ── */}
-      <div style={{ display: "grid", gridTemplateColumns: `repeat(${markers.length}, 1fr)`, borderTop: "1px solid rgba(255,255,255,0.05)", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+      <div style={{ display: "grid", gridTemplateColumns: `repeat(${markers.length}, 1fr)`, borderTop: "1px solid var(--border-light)", borderBottom: "1px solid var(--border)" }}>
         {markers.map((m, i) => (
           <div key={m.key} style={{
             padding: "11px 14px", textAlign: "center",
-            borderLeft: i > 0 ? "1px solid rgba(255,255,255,0.05)" : "none",
+            borderLeft: i > 0 ? "1px solid var(--border-light)" : "none",
             background: m.hero ? "rgba(0,229,255,0.03)" : "transparent",
           }}>
             <div style={{ fontSize: 9, fontWeight: 700, color: m.col, textTransform: "uppercase", letterSpacing: 1, marginBottom: 5, opacity: 0.8 }}>
@@ -653,7 +746,7 @@ function PriceDistribution({ data, listings, price }) {
             <div style={{ fontSize: 20, fontWeight: 900, color: m.col, letterSpacing: -0.5, lineHeight: 1, fontVariantNumeric: "tabular-nums",
               textShadow: m.hero ? `0 0 18px ${m.col}66` : "none",
             }}>
-              {fmtGBP(m.v)}
+              {fmtGBP(m.v, sym)}
               {m.outside && <span style={{ fontSize: 10, marginLeft: 5, opacity: 0.5 }}>{m.v < viewMin ? "◀" : "▶"}</span>}
             </div>
           </div>
@@ -668,13 +761,13 @@ function PriceDistribution({ data, listings, price }) {
           <div style={{ position: "relative", height: CHART_H }}>
             {/* Rotated axis title */}
             <div style={{ position: "absolute", left: 1, top: 0, width: 14, height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <span style={{ fontSize: 7, fontWeight: 600, color: "#2d3f55", textTransform: "uppercase", letterSpacing: 1.8, writingMode: "vertical-rl", transform: "rotate(180deg)", whiteSpace: "nowrap", userSelect: "none" }}>
+              <span style={{ fontSize: 7, fontWeight: 600, color: "var(--chart-dim)", textTransform: "uppercase", letterSpacing: 1.8, writingMode: "vertical-rl", transform: "rotate(180deg)", whiteSpace: "nowrap", userSelect: "none" }}>
                 Listings
               </span>
             </div>
             {/* Tick numbers */}
             {yTicks.map(t => (
-              <div key={t} style={{ position: "absolute", right: 5, top: toY(t), transform: "translateY(-50%)", fontSize: 9, color: t === 0 ? "#2d4a65" : "#5a7fa0", lineHeight: 1, fontVariantNumeric: "tabular-nums", userSelect: "none", fontWeight: 600 }}>
+              <div key={t} style={{ position: "absolute", right: 5, top: toY(t), transform: "translateY(-50%)", fontSize: 9, color: t === 0 ? "var(--text-dim)" : "var(--text-muted)", lineHeight: 1, fontVariantNumeric: "tabular-nums", userSelect: "none", fontWeight: 600 }}>
                 {t}
               </div>
             ))}
@@ -703,7 +796,7 @@ function PriceDistribution({ data, listings, price }) {
               </linearGradient>
               {/* Neutral bar gradient — same for all bars, opacity modulated per-bar */}
               <linearGradient id="pdBar" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%"   stopColor="#38bdf8" stopOpacity="1.00" />
+                <stop offset="0%"   stopColor="var(--blue)" stopOpacity="1.00" />
                 <stop offset="55%"  stopColor="#0ea5e9" stopOpacity="0.90" />
                 <stop offset="100%" stopColor="#0369a1" stopOpacity="0.60" />
               </linearGradient>
@@ -727,7 +820,7 @@ function PriceDistribution({ data, listings, price }) {
             {/* ── Gridlines ── */}
             {yTicks.filter(t => t > 0).map(t => (
               <line key={t} x1={0} y1={toY(t)} x2={plotW} y2={toY(t)}
-                stroke="rgba(255,255,255,0.055)" strokeWidth={1}
+                stroke="var(--chart-grid)" strokeWidth={1}
                 vectorEffect="non-scaling-stroke" />
             ))}
 
@@ -748,7 +841,7 @@ function PriceDistribution({ data, listings, price }) {
               const colX  = Math.max(0, toX(b.s));
               const colW  = Math.max(2, Math.min(plotW, toX(b.e)) - colX);
               const barW  = Math.max(1, colW * 0.45);        // 45% width, centred in column
-              const barH  = (b.count / yAxisMax) * plotH;
+              const barH  = Math.max(MIN_BAR_PX, (b.count / yAxisMax) * plotH);
               const barY  = baseline - barH;
               const ir    = b.count / maxBucket;
               const isHov = hoveredBin === i;
@@ -770,7 +863,7 @@ function PriceDistribution({ data, listings, price }) {
                   {/* Selected indicator — white outline */}
                   {isSel && (
                     <path d={roundedTopRect(barX, barY, barW, barH, 3)}
-                      fill="none" stroke="rgba(255,255,255,0.85)" strokeWidth={1.5}
+                      fill="none" stroke="var(--chart-contrast)" strokeWidth={1.5}
                       vectorEffect="non-scaling-stroke" style={{ pointerEvents: "none" }} />
                   )}
                 </g>
@@ -779,7 +872,7 @@ function PriceDistribution({ data, listings, price }) {
 
             {/* Baseline */}
             <line x1={0} y1={baseline} x2={plotW} y2={baseline}
-              stroke="rgba(255,255,255,0.10)" strokeWidth={1}
+              stroke="var(--chart-baseline)" strokeWidth={1}
               vectorEffect="non-scaling-stroke" />
 
 
@@ -830,15 +923,35 @@ function PriceDistribution({ data, listings, price }) {
           </svg>
 
 
-          {/* ── X-axis labels ── */}
-          <div style={{ position: "relative", height: 30, marginTop: 2 }}>
+          {/* ── Hover tooltip — floats over the hovered bar ── */}
+          {hoveredBin !== null && bins[hoveredBin] && (() => {
+            const hb = bins[hoveredBin];
+            const rawPct = toPct((hb.s + hb.e) / 2);
+            const leftPct = clamp(rawPct, 8, 82);
+            return (
+              <div style={{ position: "absolute", left: `${leftPct}%`, top: 6, transform: "translateX(-50%)", background: "var(--chart-tooltip-bg)", border: "1px solid var(--border-blue)", borderRadius: 6, padding: "4px 10px", fontSize: 11, fontWeight: 600, color: "var(--text)", whiteSpace: "nowrap", pointerEvents: "none", zIndex: 20, boxShadow: "0 2px 14px rgba(0,0,0,0.6)" }}>
+                <span style={{ color: "var(--text-accent)" }}>{fmtRange(hb.s, hb.e)}</span>
+                <span style={{ color: "var(--blue)", marginLeft: 8 }}>{hb.count}</span>
+                <span style={{ color: "var(--text-muted)", marginLeft: 3, fontWeight: 400 }}>listing{hb.count !== 1 ? 's' : ''}</span>
+              </div>
+            );
+          })()}
+
+          {/* ── X-axis: tick marks + thinned labels + summary ── */}
+          <div style={{ position: "relative", height: 46, marginTop: 4 }}>
+            {/* Tick mark for every non-empty bin */}
+            {bins.filter(b => b.count > 0).map(b => (
+              <div key={`tick-${b.s}`} style={{ position: "absolute", left: `${clamp(toPct((b.s + b.e) / 2), 0.5, 99.5)}%`, top: 0, width: 1, height: 5, background: "var(--border-blue)", transform: "translateX(-50%)" }} />
+            ))}
+            {/* Text label only for thinned ticks — positions pre-computed by thinLabels */}
             {xTicks.map(tick => (
-              <div key={tick.v} style={{ position: "absolute", left: `${clamp(toPct(tick.mid), 2, 96)}%`, top: 4, transform: "translateX(-50%)", fontSize: 9, color: "#5a7fa0", whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums", userSelect: "none", fontWeight: 600 }}>
-                {fmtX(tick.v)}–{Math.round(tick.e)}
+              <div key={tick.v} style={{ position: "absolute", left: `${tick.pct}%`, top: 7, transform: "translateX(-50%)", fontSize: 10, color: "var(--text-muted)", whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums", userSelect: "none", fontWeight: 600 }}>
+                {fmtRange(tick.v, tick.e)}
               </div>
             ))}
-            <div style={{ textAlign: "center", paddingTop: 18, fontSize: 7, color: "#2d4a65", textTransform: "uppercase", letterSpacing: 1.8, userSelect: "none", fontWeight: 700 }}>
-              PRICE (£)
+            {/* Summary line */}
+            <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, textAlign: "center", fontSize: 9, color: "var(--text-dim)", userSelect: "none", fontWeight: 500, letterSpacing: 0.2 }}>
+              {fmtX(low)} – {fmtX(high)} &nbsp;·&nbsp; {fmtX(binW)} price bands &nbsp;·&nbsp; {n} listings
             </div>
           </div>
         </div>
@@ -871,7 +984,7 @@ function PriceDistribution({ data, listings, price }) {
         }).filter(b => b.s < zMax && b.e > zMin);
 
         const zMaxBucket = Math.max(...zBins.map(b => b.count), 1);
-        const zYMax      = Math.max(zMaxBucket, 3);
+        const zYMax      = dynYMax(zMaxBucket);
         const ZCW = 500, ZCH = 160, ZPADT = 12, ZPADB = 6, ZPADR = 8;
         const zPlotW    = ZCW - ZPADR;
         const zPlotH    = ZCH - ZPADT - ZPADB;
@@ -889,37 +1002,43 @@ function PriceDistribution({ data, listings, price }) {
         const zBinMidX   = i => groupX + i * colW + colW / 2;
         const zBarFrac   = 0.55; // matches main chart bar width fraction
 
-        const zTicks = zBins
-          .map((b, i) => ({ v: b.s, e: b.e, midX: zBinMidX(i) }))
-          .filter((_, i) => zBins[i].count > 0);
+        const zTicks = thinLabels(
+          zBins
+            .map((b, i) => ({
+              v: b.s, e: b.e, midX: zBinMidX(i),
+              pct:   Math.min(99.5, Math.max(0.5, (zBinMidX(i) / ZCW) * 100)),
+              halfW: Math.min(22, ((fmtRange(b.s, b.e).length * 7.5 + 10) / _EST_PX) * 50),
+            }))
+            .filter((_, i) => zBins[i].count > 0)
+        );
         const totalInRange = zBins.reduce((s, b) => s + b.count, 0);
 
         return (
-          <div style={{ borderTop: "1px solid rgba(56,189,248,0.12)", background: "rgba(0,10,25,0.45)" }}>
+          <div style={{ borderTop: "1px solid var(--blue-bg)", background: "var(--chart-zoom-bg)" }}>
             {/* Zoom header */}
             <div style={{ padding: "12px 22px 4px", display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
               <div>
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <span style={{ fontSize: 9, fontWeight: 800, color: "#38bdf8", textTransform: "uppercase", letterSpacing: 1.4, background: "rgba(56,189,248,0.10)", border: "1px solid rgba(56,189,248,0.22)", borderRadius: 4, padding: "2px 8px" }}>
-                    Zoomed
+                  <span style={{ fontSize: 9, fontWeight: 800, color: "var(--blue)", textTransform: "uppercase", letterSpacing: 1.4, background: "var(--blue-bg)", border: "1px solid var(--border-blue)", borderRadius: 4, padding: "2px 8px" }}>
+                    {t("pricing.zoomed")}
                   </span>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: "#e2e8f0" }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>
                     {fmtX(zMin)} – {fmtX(zMax)}
                   </span>
-                  <span style={{ fontSize: 10, color: "#4a7090" }}>
+                  <span style={{ fontSize: 10, color: "var(--text-muted)" }}>
                     £{zBinW} steps
                   </span>
                 </div>
-                <div style={{ fontSize: 11, color: "#5a7fa0", marginTop: 4 }}>
-                  <strong style={{ color: "#7dd3fc" }}>{totalInRange}</strong> listings in range
+                <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4 }}>
+                  {t("pricing.listingsInRange", { count: totalInRange })}
                 </div>
               </div>
               <button onClick={() => { setClickedBin(null); setZoomRange(null); }} style={{
-                background: "none", border: "1px solid rgba(255,255,255,0.08)",
-                borderRadius: 5, color: "#4a7090", cursor: "pointer",
+                background: "none", border: "1px solid var(--border)",
+                borderRadius: 5, color: "var(--text-muted)", cursor: "pointer",
                 fontSize: 10, fontWeight: 600, padding: "3px 10px", letterSpacing: 0.3,
               }}>
-                ← Back
+                ← {t("pricing.back")}
               </button>
             </div>
 
@@ -929,31 +1048,36 @@ function PriceDistribution({ data, listings, price }) {
               <div style={{ width: 44, flexShrink: 0 }}>
                 <div style={{ position: "relative", height: ZCH }}>
                   <div style={{ position: "absolute", left: 1, top: 0, width: 14, height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    <span style={{ fontSize: 7, fontWeight: 600, color: "#2d3f55", textTransform: "uppercase", letterSpacing: 1.8, writingMode: "vertical-rl", transform: "rotate(180deg)", whiteSpace: "nowrap", userSelect: "none" }}>
+                    <span style={{ fontSize: 7, fontWeight: 600, color: "var(--chart-dim)", textTransform: "uppercase", letterSpacing: 1.8, writingMode: "vertical-rl", transform: "rotate(180deg)", whiteSpace: "nowrap", userSelect: "none" }}>
                       Listings
                     </span>
                   </div>
-                  {Array.from({ length: zYMax + 1 }, (_, t) => t).map(t => (
-                    <div key={t} style={{
-                      position: "absolute", right: 5,
-                      top: ZPADT + zPlotH - (t / zYMax) * zPlotH,
-                      transform: "translateY(-50%)",
-                      fontSize: 9, color: t === 0 ? "#2d4a65" : "#5a7fa0",
-                      lineHeight: 1, fontVariantNumeric: "tabular-nums",
-                      userSelect: "none", fontWeight: 600,
-                    }}>
-                      {t}
-                    </div>
-                  ))}
+                  {(() => {
+                    const zYStep  = zYMax <= 5 ? 1 : zYMax <= 10 ? 2 : zYMax <= 20 ? 5 : zYMax <= 50 ? 10 : 20;
+                    const zYTicks = Array.from({ length: Math.floor(zYMax / zYStep) + 1 }, (_, i) => i * zYStep);
+                    return zYTicks.map(t => (
+                      <div key={t} style={{
+                        position: "absolute", right: 5,
+                        top: ZPADT + zPlotH - (t / zYMax) * zPlotH,
+                        transform: "translateY(-50%)",
+                        fontSize: 9, color: t === 0 ? "var(--text-dim)" : "var(--text-muted)",
+                        lineHeight: 1, fontVariantNumeric: "tabular-nums",
+                        userSelect: "none", fontWeight: 600,
+                      }}>
+                        {t}
+                      </div>
+                    ));
+                  })()}
                 </div>
               </div>
               {/* Chart */}
               <div style={{ flex: 1, minWidth: 0, position: "relative" }}>
                 <svg viewBox={`0 0 ${ZCW} ${ZCH}`} preserveAspectRatio="none"
-                  width="100%" height={ZCH} style={{ display: "block" }}>
+                  width="100%" height={ZCH} style={{ display: "block" }}
+                  onMouseLeave={() => setHoveredZBin(null)}>
                   <defs>
                     <linearGradient id="zBarGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#38bdf8" stopOpacity="0.85" />
+                      <stop offset="0%" stopColor="var(--blue)" stopOpacity="0.85" />
                       <stop offset="100%" stopColor="#1d6fa4" stopOpacity="0.60" />
                     </linearGradient>
                   </defs>
@@ -962,14 +1086,14 @@ function PriceDistribution({ data, listings, price }) {
                   {[0.25, 0.5, 0.75, 1].map(f => (
                     <line key={f}
                       x1={0} y1={ZPADT + zPlotH * (1 - f)} x2={zPlotW} y2={ZPADT + zPlotH * (1 - f)}
-                      stroke="rgba(255,255,255,0.04)" strokeWidth={1} vectorEffect="non-scaling-stroke" />
+                      stroke="var(--border-light)" strokeWidth={1} vectorEffect="non-scaling-stroke" />
                   ))}
 
                   {/* Ghost slots for empty bins — preserve spacing rhythm */}
                   {zBins.map((b, i) => b.count > 0 ? null : (
                     <line key={`gap-${i}`}
                       x1={zBinMidX(i)} y1={zBaseline} x2={zBinMidX(i)} y2={zBaseline - 4}
-                      stroke="rgba(255,255,255,0.07)" strokeWidth={1}
+                      stroke="var(--border)" strokeWidth={1}
                       vectorEffect="non-scaling-stroke" />
                   ))}
 
@@ -978,7 +1102,7 @@ function PriceDistribution({ data, listings, price }) {
                     if (b.count === 0) return null;
                     const cX    = zBinColX(i);
                     const bW    = Math.max(1, colW * zBarFrac);
-                    const barH  = (b.count / zYMax) * zPlotH;
+                    const barH  = Math.max(MIN_BAR_PX, (b.count / zYMax) * zPlotH);
                     const barY  = zBaseline - barH;
                     const bX    = cX + (colW - bW) / 2;
                     const ir    = b.count / zMaxBucket;
@@ -987,6 +1111,8 @@ function PriceDistribution({ data, listings, price }) {
                     return (
                       <g key={i}
                         onClick={() => setZoomRange(isSel ? null : { s: b.s, e: b.e })}
+                        onMouseEnter={() => setHoveredZBin(i)}
+                        onMouseLeave={() => setHoveredZBin(null)}
                         style={{ cursor: "pointer" }}
                       >
                         <rect x={cX} y={ZPADT} width={colW} height={zPlotH} fill="transparent" />
@@ -995,7 +1121,7 @@ function PriceDistribution({ data, listings, price }) {
                           opacity={isSel ? 1.0 : 0.28 + 0.68 * ir} style={{ pointerEvents: "none" }} />
                         {isSel && (
                           <path d={roundedTopRect(bX, barY, bW, barH, 3)}
-                            fill="none" stroke="rgba(255,255,255,0.85)" strokeWidth={1.5}
+                            fill="none" stroke="var(--chart-contrast)" strokeWidth={1.5}
                             vectorEffect="non-scaling-stroke" style={{ pointerEvents: "none" }} />
                         )}
                       </g>
@@ -1027,24 +1153,37 @@ function PriceDistribution({ data, listings, price }) {
 
                   {/* Baseline */}
                   <line x1={0} y1={zBaseline} x2={zPlotW} y2={zBaseline}
-                    stroke="rgba(255,255,255,0.10)" strokeWidth={1} vectorEffect="non-scaling-stroke" />
+                    stroke="var(--chart-baseline)" strokeWidth={1} vectorEffect="non-scaling-stroke" />
                 </svg>
 
-                {/* X-axis labels */}
-                <div style={{ position: "relative", height: 28, marginTop: 2 }}>
+                {/* Zoom hover tooltip */}
+                {hoveredZBin !== null && zBins[hoveredZBin] && zBins[hoveredZBin].count > 0 && (() => {
+                  const hzb = zBins[hoveredZBin];
+                  const midPctZ = Math.min(82, Math.max(8, (zBinMidX(hoveredZBin) / ZCW) * 100));
+                  return (
+                    <div style={{ position: "absolute", left: `${midPctZ}%`, top: 4, transform: "translateX(-50%)", background: "var(--chart-tooltip-bg)", border: "1px solid var(--border-blue)", borderRadius: 6, padding: "4px 10px", fontSize: 11, fontWeight: 600, color: "var(--text)", whiteSpace: "nowrap", pointerEvents: "none", zIndex: 20, boxShadow: "0 2px 14px rgba(0,0,0,0.6)" }}>
+                      <span style={{ color: "var(--text-accent)" }}>{fmtRange(hzb.s, hzb.e)}</span>
+                      <span style={{ color: "var(--blue)", marginLeft: 8 }}>{hzb.count}</span>
+                      <span style={{ color: "var(--text-muted)", marginLeft: 3, fontWeight: 400 }}>listing{hzb.count !== 1 ? 's' : ''}</span>
+                    </div>
+                  );
+                })()}
+
+                {/* Zoom X-axis: tick marks + thinned labels + summary */}
+                <div style={{ position: "relative", height: 42, marginTop: 4 }}>
+                  {/* Tick for every non-empty zoom bin */}
+                  {zBins.map((b, i) => b.count === 0 ? null : (
+                    <div key={`ztick-${b.s}`} style={{ position: "absolute", left: `${Math.min(99.5, Math.max(0.5, (zBinMidX(i) / ZCW) * 100))}%`, top: 0, width: 1, height: 4, background: "var(--border-blue)", transform: "translateX(-50%)" }} />
+                  ))}
+                  {/* Thinned text labels — positions pre-computed by thinLabels */}
                   {zTicks.map(tick => (
-                    <div key={tick.v} style={{
-                      position: "absolute",
-                      left: `${Math.min(96, Math.max(2, (tick.midX / ZCW) * 100))}%`,
-                      top: 4, transform: "translateX(-50%)",
-                      fontSize: 9, color: "#5a7fa0", whiteSpace: "nowrap",
-                      fontVariantNumeric: "tabular-nums", userSelect: "none", fontWeight: 600,
-                    }}>
-                      {fmtX(tick.v)}–{Math.round(tick.e)}
+                    <div key={tick.v} style={{ position: "absolute", left: `${tick.pct}%`, top: 6, transform: "translateX(-50%)", fontSize: 10, color: "var(--text-muted)", whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums", userSelect: "none", fontWeight: 600 }}>
+                      {fmtRange(tick.v, tick.e)}
                     </div>
                   ))}
-                  <div style={{ textAlign: "center", paddingTop: 16, fontSize: 7, color: "#2d4a65", textTransform: "uppercase", letterSpacing: 1.8, userSelect: "none", fontWeight: 700 }}>
-                    PRICE (£)
+                  {/* Zoom summary */}
+                  <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, textAlign: "center", fontSize: 9, color: "var(--text-dim)", userSelect: "none", fontWeight: 500, letterSpacing: 0.2 }}>
+                    {fmtX(zMin)} – {fmtX(zMax)} &nbsp;·&nbsp; {fmtX(zBinW)} price bands
                   </div>
                 </div>
               </div>
@@ -1073,7 +1212,7 @@ function PriceDistribution({ data, listings, price }) {
 
         const fmtShipping = (cost, type) => {
           if (type === "FREE" || cost === 0) return "Free";
-          if (cost != null) return `+£${cost.toFixed(2)}`;
+          if (cost != null) return `+${sym}${cost.toFixed(2)}`;
           return "—";
         };
 
@@ -1082,15 +1221,15 @@ function PriceDistribution({ data, listings, price }) {
           const pct = ((p - low) / range) * 100;
           if (p < low)    return { label: "Below",   col: "#60a5fa" };
           if (pct < 25)   return { label: "Lower",   col: "#60a5fa" };
-          if (pct < 45)   return { label: "Low-mid", col: "#7dd3fc" };
-          if (pct < 65)   return { label: "Core",    col: "#34d399" };
-          if (pct < 82)   return { label: "Up-mid",  col: "#fbbf24" };
-          if (p <= high)  return { label: "Upper",   col: "#f87171" };
+          if (pct < 45)   return { label: "Low-mid", col: "var(--text-accent)" };
+          if (pct < 65)   return { label: "Core",    col: "var(--green)" };
+          if (pct < 82)   return { label: "Up-mid",  col: "var(--yellow)" };
+          if (p <= high)  return { label: "Upper",   col: "var(--red)" };
           return               { label: "Above",    col: "#ef4444" };
         };
 
-        const TH = ({ children, w }) => (
-          <div style={{ width: w, fontSize: 8, fontWeight: 800, color: "#2d4a65", textTransform: "uppercase", letterSpacing: 1.2, padding: "0 8px 8px", flexShrink: 0 }}>
+        const TH = ({ children, w, flex1 }) => (
+          <div style={{ ...(flex1 ? { flex: 1, minWidth: 0 } : { width: w, flexShrink: 0 }), fontSize: 8, fontWeight: 800, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: 1.2, paddingBottom: 8 }}>
             {children}
           </div>
         );
@@ -1099,13 +1238,13 @@ function PriceDistribution({ data, listings, price }) {
           <div style={{ padding: "0 22px 18px" }}>
             {/* Sort bar */}
             <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12 }}>
-              <span style={{ fontSize: 9, color: "#2d4a65", textTransform: "uppercase", letterSpacing: 1, fontWeight: 700 }}>Sort</span>
+              <span style={{ fontSize: 9, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: 1, fontWeight: 700 }}>{t("pricing.sort")}</span>
               {SORTS.map(s => (
                 <button key={s.key} onClick={() => setTableSort(s.key)} style={{
                   padding: "3px 10px", fontSize: 10, fontWeight: 600,
-                  background: tableSort === s.key ? "rgba(56,189,248,0.12)" : "transparent",
-                  border: tableSort === s.key ? "1px solid rgba(56,189,248,0.30)" : "1px solid rgba(255,255,255,0.06)",
-                  borderRadius: 5, color: tableSort === s.key ? "#7dd3fc" : "#3d5a72",
+                  background: tableSort === s.key ? "var(--blue-bg)" : "transparent",
+                  border: tableSort === s.key ? "1px solid rgba(56,189,248,0.30)" : "1px solid var(--border-light)",
+                  borderRadius: 5, color: tableSort === s.key ? "var(--text-accent)" : "var(--text-muted)",
                   cursor: "pointer",
                 }}>
                   {s.label}
@@ -1113,11 +1252,12 @@ function PriceDistribution({ data, listings, price }) {
               ))}
             </div>
 
-            {/* Header row */}
-            <div style={{ display: "flex", borderBottom: "1px solid rgba(255,255,255,0.06)", paddingBottom: 4, marginBottom: 2, paddingLeft: 8 }}>
-              <div style={{ width: 52, flexShrink: 0 }} />
-              <TH w="auto">Title</TH>
+            {/* Header row — widths must exactly mirror data row cell widths */}
+            <div style={{ display: "flex", borderBottom: "1px solid var(--border)", paddingBottom: 4, marginBottom: 2, paddingLeft: 8 }}>
+              <div style={{ width: 52, flexShrink: 0 }} /> {/* thumbnail spacer: 44px img + 8px marginRight */}
+              <TH flex1>Title</TH>
               <TH w={62}>Price</TH>
+              <TH w={48}>Sold</TH>
               <TH w={56}>Cond.</TH>
               <TH w={104}>Seller</TH>
               <TH w={68}>Delivery</TH>
@@ -1129,11 +1269,11 @@ function PriceDistribution({ data, listings, price }) {
               {sorted.map((item, i) => {
                 const pos      = posFor(item.price);
                 const isUser   = hasPrice && Math.abs(item.price - price) < 0.01;
-                const rowBg    = isUser ? "rgba(0,229,255,0.04)" : i % 2 === 0 ? "transparent" : "rgba(255,255,255,0.015)";
+                const rowBg    = isUser ? "rgba(0,229,255,0.04)" : i % 2 === 0 ? "transparent" : "var(--border-light)";
                 return (
                   <div key={i} style={{
                     display: "flex", alignItems: "center",
-                    padding: "5px 0", borderBottom: "1px solid rgba(255,255,255,0.04)",
+                    padding: "5px 0", borderBottom: "1px solid var(--border)",
                     background: rowBg,
                     borderLeft: isUser ? "2px solid #00e5ff" : "2px solid transparent",
                     paddingLeft: isUser ? 6 : 8,
@@ -1141,14 +1281,14 @@ function PriceDistribution({ data, listings, price }) {
                     {/* Thumbnail */}
                     <div style={{ width: 44, flexShrink: 0, marginRight: 8 }}>
                       {item.image ? (
-                        <img src={item.image} alt="" style={{
+                        <img src={item.image} alt="" onClick={e => { e.stopPropagation(); e.preventDefault(); setLightboxImg(item.image); }} style={{
                           width: 44, height: 44, objectFit: "contain",
-                          borderRadius: 5, background: "#0b1929",
-                          border: "1px solid rgba(255,255,255,0.07)",
-                          display: "block",
+                          borderRadius: 5, background: "var(--bg-surface)",
+                          border: "1px solid var(--border)",
+                          display: "block", cursor: "zoom-in",
                         }} />
                       ) : (
-                        <div style={{ width: 44, height: 44, borderRadius: 5, background: "#0a1520", border: "1px solid rgba(255,255,255,0.05)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <div style={{ width: 44, height: 44, borderRadius: 5, background: "var(--bg-surface3)", border: "1px solid var(--border-light)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                           <span style={{ fontSize: 16, opacity: 0.2 }}>□</span>
                         </div>
                       )}
@@ -1156,37 +1296,46 @@ function PriceDistribution({ data, listings, price }) {
                     {/* Title */}
                     <div style={{ flex: 1, minWidth: 0, paddingRight: 8 }}>
                       <a href={item.url} target="_blank" rel="noreferrer" style={{
-                        fontSize: 11, color: "#a8c8e8", textDecoration: "none", lineHeight: 1.4,
+                        fontSize: 11, color: "var(--text-accent)", textDecoration: "none", lineHeight: 1.4,
                         display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden",
                       }}
-                        onMouseEnter={e => e.currentTarget.style.color = "#e2e8f0"}
-                        onMouseLeave={e => e.currentTarget.style.color = "#a8c8e8"}
+                        onMouseEnter={e => e.currentTarget.style.color = "var(--text)"}
+                        onMouseLeave={e => e.currentTarget.style.color = "var(--text-accent)"}
                       >
                         {item.title}
                       </a>
                     </div>
                     {/* Price */}
-                    <div style={{ width: 62, flexShrink: 0, fontSize: 12, fontWeight: 800, color: isUser ? "#00e5ff" : "#e2e8f0", fontVariantNumeric: "tabular-nums" }}>
-                      {fmtGBP(item.price)}
+                    <div style={{ width: 62, flexShrink: 0, fontSize: 12, fontWeight: 800, color: isUser ? "#00e5ff" : "var(--text)", fontVariantNumeric: "tabular-nums" }}>
+                      {fmtGBP(item.price, sym)}
+                    </div>
+                    {/* Sold qty */}
+                    <div style={{ width: 48, flexShrink: 0, fontSize: 11, fontVariantNumeric: "tabular-nums" }}>
+                      {item.itemId && soldCounts[item.itemId] != null
+                        ? <span style={{ fontWeight: 700, color: "var(--green)" }}>{soldCounts[item.itemId]}</span>
+                        : soldCountsFetching && item.itemId && !(item.itemId in soldCounts)
+                          ? <span style={{ color: "var(--text-dim)" }}>…</span>
+                          : <span style={{ color: "var(--text-dim)" }}>—</span>
+                      }
                     </div>
                     {/* Condition */}
-                    <div style={{ width: 56, flexShrink: 0, fontSize: 10, color: "#7a9cc0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    <div style={{ width: 56, flexShrink: 0, fontSize: 10, color: "var(--text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {item.condition || "—"}
                     </div>
                     {/* Seller */}
                     <div style={{ width: 104, flexShrink: 0, overflow: "hidden", paddingRight: 4 }}>
-                      <div style={{ fontSize: 10, fontWeight: 600, color: "#9ab8d0", textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>
+                      <div style={{ fontSize: 10, fontWeight: 600, color: "var(--text-muted)", textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>
                         {item.sellerName || "—"}
                       </div>
                       {item.sellerFeedback != null && (
-                        <div style={{ fontSize: 9, color: "#5a7fa0", marginTop: 2 }}>
+                        <div style={{ fontSize: 9, color: "var(--text-muted)", marginTop: 2 }}>
                           {item.sellerFeedback.toLocaleString()}
-                          {item.sellerFeedbackPct != null && <span style={{ color: "#4a9a6a", marginLeft: 3 }}>{item.sellerFeedbackPct.toFixed(1)}%</span>}
+                          {item.sellerFeedbackPct != null && <span style={{ color: "var(--green)", marginLeft: 3 }}>{item.sellerFeedbackPct.toFixed(1)}%</span>}
                         </div>
                       )}
                     </div>
                     {/* Delivery */}
-                    <div style={{ width: 68, flexShrink: 0, fontSize: 10, color: item.shippingCost === 0 || item.shippingType === "FREE" ? "#34d399" : "#7a9cc0" }}>
+                    <div style={{ width: 68, flexShrink: 0, fontSize: 10, color: item.shippingCost === 0 || item.shippingType === "FREE" ? "var(--green)" : "var(--text-muted)" }}>
                       {fmtShipping(item.shippingCost, item.shippingType)}
                     </div>
                     {/* Position badge */}
@@ -1210,15 +1359,15 @@ function PriceDistribution({ data, listings, price }) {
       })()}
 
       {/* ── Footer ── */}
-      <div style={{ padding: "10px 20px 14px", borderTop: "1px solid rgba(255,255,255,0.04)", fontSize: 10, color: "#2d4a65", display: "flex", alignItems: "center", gap: 7 }}>
+      <div style={{ padding: "10px 20px 14px", borderTop: "1px solid var(--border-light)", fontSize: 10, color: "var(--text-dim)", display: "flex", alignItems: "center", gap: 7 }}>
         <span style={{ fontSize: 13, opacity: 0.5 }}>ⓘ</span>
-        Prices analysed from active eBay UK listings only. Data updates every 24 hours.
+        Prices analysed from active {marketplaceLabel} listings only. Data updates every 24 hours.
       </div>
 
       </div>{/* end main chart column */}
 
-      {/* ── Right listing panel — opens when a bar is clicked ── */}
-      {clickedBin !== null && (() => {
+      {/* ── Right listing panel — opens when a bar is clicked (internal mode only) ── */}
+      {!onBinSelect && clickedBin !== null && (() => {
         const b  = bins[clickedBin];
         if (!b) return null;
         // If a zoom bin is selected, filter down to that sub-range
@@ -1229,7 +1378,7 @@ function PriceDistribution({ data, listings, price }) {
         const displayRange = zoomRange ? zoomRange : b;
         const fmtShip = (cost, type) => {
           if (type === "FREE" || cost === 0) return "Free delivery";
-          if (cost != null) return `+£${cost.toFixed(2)} postage`;
+          if (cost != null) return `+${sym}${cost.toFixed(2)} postage`;
           return "";
         };
         const sorted = [...bl].sort((a, z) => {
@@ -1240,49 +1389,49 @@ function PriceDistribution({ data, listings, price }) {
         return (
           <div style={{
             width: 310, flexShrink: 0,
-            borderLeft: "1px solid rgba(56,189,248,0.14)",
-            background: "rgba(1,7,18,0.98)",
+            borderLeft: "1px solid var(--border-blue)",
+            background: "var(--chart-panel-bg)",
             display: "flex", flexDirection: "column",
             maxHeight: "100vh",
             overflow: "hidden",
           }}>
             {/* Panel header */}
-            <div style={{ padding: "18px 16px 14px", borderBottom: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
+            <div style={{ padding: "18px 16px 14px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
               <div>
                 {/* Breadcrumb when zoomed in */}
                 {zoomRange && (
                   <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 6 }}>
-                    <button onClick={() => setZoomRange(null)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontSize: 9, color: "#3d5a72", fontWeight: 600, letterSpacing: 0.3 }}>
+                    <button onClick={() => setZoomRange(null)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontSize: 9, color: "var(--text-muted)", fontWeight: 600, letterSpacing: 0.3 }}>
                       {fmtX(b.s)}–{fmtX(b.e)}
                     </button>
-                    <span style={{ fontSize: 9, color: "#2d4a65" }}>›</span>
-                    <span style={{ fontSize: 9, color: "#38bdf8", fontWeight: 700 }}>
+                    <span style={{ fontSize: 9, color: "var(--text-dim)" }}>›</span>
+                    <span style={{ fontSize: 9, color: "var(--blue)", fontWeight: 700 }}>
                       {fmtX(zoomRange.s)}–{fmtX(zoomRange.e)}
                     </span>
                   </div>
                 )}
-                <div style={{ fontSize: 15, fontWeight: 800, color: "#e2e8f0", letterSpacing: -0.3 }}>
+                <div style={{ fontSize: 15, fontWeight: 800, color: "var(--text)", letterSpacing: -0.3 }}>
                   {fmtX(displayRange.s)} – {fmtX(displayRange.e)} Range
                 </div>
-                <span style={{ display: "inline-block", marginTop: 5, fontSize: 10, fontWeight: 700, color: "#38bdf8", background: "rgba(56,189,248,0.10)", border: "1px solid rgba(56,189,248,0.22)", borderRadius: 5, padding: "2px 8px" }}>
+                <span style={{ display: "inline-block", marginTop: 5, fontSize: 10, fontWeight: 700, color: "var(--blue)", background: "var(--blue-bg)", border: "1px solid var(--border-blue)", borderRadius: 5, padding: "2px 8px" }}>
                   {bl.length} listings
                 </span>
               </div>
-              <button onClick={() => { setClickedBin(null); setZoomRange(null); }} style={{ background: "none", border: "none", color: "#4a7090", cursor: "pointer", fontSize: 22, lineHeight: 1, padding: "0 2px", marginTop: -2, flexShrink: 0 }}>
+              <button onClick={() => { setClickedBin(null); setZoomRange(null); }} style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", fontSize: 22, lineHeight: 1, padding: "0 2px", marginTop: -2, flexShrink: 0 }}>
                 ×
               </button>
             </div>
 
             {/* Sort bar */}
-            <div style={{ padding: "8px 14px", borderBottom: "1px solid rgba(255,255,255,0.04)", display: "flex", alignItems: "center", gap: 7 }}>
-              <span style={{ fontSize: 10, color: "#3d5a72", whiteSpace: "nowrap" }}>Sort by:</span>
+            <div style={{ padding: "8px 14px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 7 }}>
+              <span style={{ fontSize: 10, color: "var(--text-muted)", whiteSpace: "nowrap" }}>{t("pricing.sort")}:</span>
               <select value={panelSort} onChange={e => setPanelSort(e.target.value)} style={{
-                background: "rgba(0,0,0,0.35)", border: "1px solid rgba(255,255,255,0.10)",
-                borderRadius: 5, color: "#94a3b8", fontSize: 10, padding: "3px 8px",
+                background: "var(--bg-surface2)", border: "1px solid var(--border)",
+                borderRadius: 5, color: "var(--text-muted)", fontSize: 10, padding: "3px 8px",
                 cursor: "pointer", flex: 1,
               }}>
-                <option value="asc">Price: Low to High</option>
-                <option value="desc">Price: High to Low</option>
+                <option value="asc">{t("pricing.priceLowHigh")}</option>
+                <option value="desc">{t("pricing.priceHighLow")}</option>
                 <option value="feedback">Most Feedback</option>
               </select>
             </div>
@@ -1292,62 +1441,62 @@ function PriceDistribution({ data, listings, price }) {
               {sorted.map((l, i) => (
                 <a key={i} href={l.url} target="_blank" rel="noreferrer" style={{
                   display: "flex", alignItems: "center", gap: 10, padding: "10px 14px",
-                  borderBottom: "1px solid rgba(255,255,255,0.04)",
+                  borderBottom: "1px solid var(--border)",
                   textDecoration: "none",
                   background: "transparent",
                   transition: "background 0.12s",
                 }}
-                  onMouseEnter={e => e.currentTarget.style.background = "rgba(56,189,248,0.04)"}
+                  onMouseEnter={e => e.currentTarget.style.background = "var(--blue-bg)"}
                   onMouseLeave={e => e.currentTarget.style.background = "transparent"}
                 >
                   {/* Thumbnail */}
-                  <div style={{ width: 44, height: 44, flexShrink: 0, borderRadius: 6, overflow: "hidden", background: "#0a1520", border: "1px solid rgba(255,255,255,0.07)" }}>
+                  <div style={{ width: 44, height: 44, flexShrink: 0, borderRadius: 6, overflow: "hidden", background: "var(--bg-surface3)", border: "1px solid var(--border)" }}>
                     {l.image
-                      ? <img src={l.image} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      ? <img src={l.image} alt="" onClick={e => { e.stopPropagation(); e.preventDefault(); setLightboxImg(l.image); }} style={{ width: "100%", height: "100%", objectFit: "cover", cursor: "zoom-in" }} />
                       : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, opacity: 0.2 }}>□</div>
                     }
                   </div>
                   {/* Info */}
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 10.5, color: "#a8c8e8", lineHeight: 1.35, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", marginBottom: 3 }}>
+                    <div style={{ fontSize: 10.5, color: "var(--text-accent)", lineHeight: 1.35, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", marginBottom: 3 }}>
                       {l.title}
                     </div>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                      <span style={{ fontSize: 13, fontWeight: 800, color: "#e2e8f0", fontVariantNumeric: "tabular-nums" }}>
-                        {fmtGBP(l.price)}
+                      <span style={{ fontSize: 13, fontWeight: 800, color: "var(--text)", fontVariantNumeric: "tabular-nums" }}>
+                        {fmtGBP(l.price, sym)}
                         <span style={{ fontSize: 9, marginLeft: 4, opacity: 0.5 }}>↗</span>
                       </span>
                     </div>
                     <div style={{ display: "flex", gap: 6, marginTop: 2, alignItems: "center", flexWrap: "wrap" }}>
                       {l.condition && (
-                        <span style={{ fontSize: 9, color: "#4a7090", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 3, padding: "1px 5px" }}>
+                        <span style={{ fontSize: 9, color: "var(--text-muted)", background: "var(--border-light)", border: "1px solid var(--border)", borderRadius: 3, padding: "1px 5px" }}>
                           {l.condition}
                         </span>
                       )}
                       {l.sellerFeedback != null && (
-                        <span style={{ fontSize: 9, color: "#3d5a72" }}>
+                        <span style={{ fontSize: 9, color: "var(--text-muted)" }}>
                           {l.sellerFeedback.toLocaleString()}
-                          {l.sellerFeedbackPct != null && <span style={{ color: "#4a9a6a", marginLeft: 2 }}>{l.sellerFeedbackPct.toFixed(1)}%</span>}
+                          {l.sellerFeedbackPct != null && <span style={{ color: "var(--green)", marginLeft: 2 }}>{l.sellerFeedbackPct.toFixed(1)}%</span>}
                         </span>
                       )}
                       {(l.shippingCost != null || l.shippingType) && (
-                        <span style={{ fontSize: 9, color: l.shippingCost === 0 || l.shippingType === "FREE" ? "#34d399" : "#4a7090" }}>
+                        <span style={{ fontSize: 9, color: l.shippingCost === 0 || l.shippingType === "FREE" ? "var(--green)" : "var(--text-muted)" }}>
                           {fmtShip(l.shippingCost, l.shippingType)}
                         </span>
                       )}
                     </div>
                   </div>
-                  <span style={{ fontSize: 14, color: "#2d4a65", flexShrink: 0 }}>›</span>
+                  <span style={{ fontSize: 14, color: "var(--text-dim)", flexShrink: 0 }}>›</span>
                 </a>
               ))}
             </div>
 
             {/* View all link */}
-            <div style={{ padding: "10px 14px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+            <div style={{ padding: "10px 14px", borderTop: "1px solid var(--border-light)" }}>
               <button onClick={() => setViewMode("table")} style={{
                 width: "100%", padding: "8px", fontSize: 11, fontWeight: 700,
-                color: "#38bdf8", background: "rgba(56,189,248,0.07)",
-                border: "1px solid rgba(56,189,248,0.20)", borderRadius: 7,
+                color: "var(--blue)", background: "var(--blue-bg)",
+                border: "1px solid var(--border-blue)", borderRadius: 7,
                 cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
               }}>
                 View all {bl.length} listings in this range
@@ -1356,25 +1505,61 @@ function PriceDistribution({ data, listings, price }) {
             </div>
 
             {/* Tip */}
-            <div style={{ padding: "8px 14px 14px", display: "flex", alignItems: "flex-start", gap: 7 }}>
-              <span style={{ fontSize: 13, flexShrink: 0 }}>💡</span>
-              <span style={{ fontSize: 10, color: "#2d4a65", lineHeight: 1.4 }}>Tip: Click a bar to lock this range</span>
+            <div style={{ padding: "10px 16px 16px", display: "flex", alignItems: "flex-start", gap: 7 }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 1 }}><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>
+              <span style={{ fontSize: 10, color: "var(--text-dim)", lineHeight: 1.4 }}>Tip: Click a bar to lock this range</span>
             </div>
           </div>
         );
       })()}
+
+    {/* ── Lightbox overlay ── */}
+    {lightboxImg && (() => {
+      // Swap eBay thumbnail size token to full-res (s-l140 / s-l300 / s-l500 → s-l1600)
+      const hiResImg = lightboxImg.replace(/s-l\d+(\.\w+)$/, "s-l1600$1");
+      return (
+      <div
+        onClick={() => setLightboxImg(null)}
+        onKeyDown={e => e.key === "Escape" && setLightboxImg(null)}
+        tabIndex={-1}
+        style={{
+          position: "fixed", inset: 0, zIndex: 9999,
+          background: "rgba(0,0,0,0.85)", backdropFilter: "blur(6px)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          cursor: "zoom-out",
+        }}
+      >
+        <img
+          src={hiResImg}
+          alt=""
+          style={{
+            width: "min(80vw, 800px)", height: "min(80vh, 800px)",
+            objectFit: "contain",
+            borderRadius: 12,
+            boxShadow: "0 0 60px rgba(0,0,0,0.8)",
+            border: "1px solid rgba(255,255,255,0.12)",
+          }}
+        />
+        <div style={{
+          position: "absolute", top: 18, right: 22,
+          fontSize: 22, color: "rgba(255,255,255,0.5)",
+          cursor: "pointer", lineHeight: 1,
+        }}>✕</div>
+      </div>
+      );
+    })()}
 
     </div>
   );
 }
 
 // ─── Locked state ─────────────────────────────────────────────────────────────
-function Locked() {
+function SmartPricingLocked({ onUpgrade, upgrading = false, upgradeError = null }) {
   return (
-    <div style={{ background: C.bg1, borderRadius: 14, border: C.borderBlue, position: "relative", overflow: "hidden", minHeight: 260 }}>
+    <div style={{ background: C.bg1, borderRadius: 14, border: C.borderBlue, position: "relative", overflow: "hidden", minHeight: 260, flex: 1 }}>
       <div style={{ padding: "28px", filter: "blur(4px)", userSelect: "none", pointerEvents: "none", opacity: 0.25 }}>
         <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
-          <div style={{ flex: 1, height: 36, background: "#0D2040", borderRadius: 8 }} />
+          <div style={{ flex: 1, height: 36, background: "var(--bg-surface2)", borderRadius: 8 }} />
           <div style={{ width: 110, height: 36, background: C.blue, borderRadius: 8 }} />
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "320px 1fr", gap: 12 }}>
@@ -1384,13 +1569,37 @@ function Locked() {
       </div>
       <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom,rgba(8,15,28,0.5),rgba(8,15,28,0.93))", backdropFilter: "blur(2px)", borderRadius: 14, display: "flex", alignItems: "center", justifyContent: "center" }}>
         <div style={{ textAlign: "center", maxWidth: 420 }}>
-          <div style={{ fontSize: 28, marginBottom: 10 }}>🔒</div>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 6 }}>
-            <span style={{ fontSize: 18, fontWeight: 800, color: "#fff" }}>Smart eBay Pricing</span>
-            <span style={{ fontSize: 9, fontWeight: 800, color: C.blue, background: "rgba(19,93,255,0.18)", border: "1px solid rgba(19,93,255,0.4)", borderRadius: 4, padding: "2px 7px", letterSpacing: 0.8 }}>PRO</span>
+          <div style={{ marginBottom: 14, opacity: 0.5 }}>
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+            </svg>
           </div>
-          <div style={{ fontSize: 13, color: C.muted, marginBottom: 20, lineHeight: 1.6 }}>Live eBay UK market data to price listings competitively and maximise profit.</div>
-          <button style={{ ...BUTTON_BASE, background: "linear-gradient(135deg,#135DFF,#0ea5e9)", color: "#fff", fontSize: 14, fontWeight: 800, padding: "11px 30px", boxShadow: "0 0 22px rgba(19,93,255,0.45)" }}>Upgrade to Pro →</button>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 6 }}>
+            <span style={{ fontSize: 18, fontWeight: 800, color: "var(--text-on-dark)" }}>Smart eBay Pricing</span>
+            <span style={{ fontSize: 9, fontWeight: 800, color: C.blue, background: "rgba(19,93,255,0.18)", border: "1px solid rgba(19,93,255,0.4)", borderRadius: 4, padding: "2px 7px", letterSpacing: 0.8 }}>GROWTH</span>
+          </div>
+          <div style={{ fontSize: 13, color: C.muted, marginBottom: 20, lineHeight: 1.6 }}>Live eBay market data to price listings competitively and maximise profit.</div>
+          {upgradeError && (
+            <div style={{ fontSize: 12, color: "var(--red)", marginBottom: 12 }}>{upgradeError}</div>
+          )}
+          <button
+            onClick={onUpgrade}
+            disabled={upgrading}
+            style={{
+              ...BUTTON_BASE,
+              background: "linear-gradient(135deg,#135DFF,#0ea5e9)",
+              color: "var(--text-on-dark)",
+              fontSize: 14,
+              fontWeight: 800,
+              padding: "11px 30px",
+              boxShadow: "0 0 22px rgba(19,93,255,0.45)",
+              opacity: upgrading ? 0.7 : 1,
+              cursor: upgrading ? "not-allowed" : "pointer",
+            }}
+          >
+            {upgrading ? "Upgrading…" : "Upgrade to Growth →"}
+          </button>
         </div>
       </div>
     </div>
@@ -1398,9 +1607,38 @@ function Locked() {
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
-export default function PriceCalculator({ onSave, onLoadHandled, products, onDeleteProduct, onLoadProduct, isPro = true }) {
+export default function PriceCalculator({ onSave, onLoadHandled, products, onDeleteProduct, onLoadProduct, hasSmartPricing = true }) {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const { session, plan, profile, refreshPlan } = useSession();
+  const [upgrading, setUpgrading] = useState(false);
+  const [upgradeError, setUpgradeError] = useState(null);
   const [innerPage, setInnerPage] = useState("calculator");
   const savedCount = products?.length ?? 0;
+
+  const handleSmartPricingUpgrade = async () => {
+    const user = session?.user;
+    if (!user) return;
+
+    const interval = profile?.billing_interval || "monthly";
+    const targetPlan = getNextPlan(plan) || getUpgradeTierForFeature("smartPricing");
+    setUpgrading(true);
+    setUpgradeError(null);
+
+    try {
+      if (hasActiveSubscription(profile)) {
+        await upgradeSubscription({ plan: targetPlan, interval });
+        await refreshPlan();
+        return;
+      }
+
+      await redirectToStripeCheckout({ plan: targetPlan, interval });
+    } catch (err) {
+      setUpgradeError(err instanceof Error ? err.message : "Could not upgrade plan");
+    } finally {
+      setUpgrading(false);
+    }
+  };
 
   // ── Input state ──────────────────────────────────────────────────────────────
   const [productName,    setProductName]    = useSessionState("jsk_calc_product_name", "");
@@ -1420,12 +1658,49 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
   const [editingMargin,  setEditingMargin]  = useState(false);
   const [savedFlash,     setSavedFlash]     = useState(false);
 
+  // ── Marketplace / currency ───────────────────────────────────────────────────
+  const targetMarketplace = useMemo(() => loadPreferences().targetMarketplace || "ebay-uk", []);
+  const marketplaceInfo   = useMemo(() => MARKETPLACES.find(m => m.id === targetMarketplace) || MARKETPLACES[0], [targetMarketplace]);
+  // Currency symbol from last successful search result (falls back to marketplace default)
+  const [resultCurrency, setResultCurrency] = useState(null);
+  const ebaySymbol = currencySymbol(resultCurrency || marketplaceInfo.currency);
+
   // ── Market pricing state ─────────────────────────────────────────────────────
   const [smQuery,        setSmQuery]        = useSessionState("jsk_calc_sm_query",     "");
   const [smCondition,    setSmCondition]    = useSessionState("jsk_calc_sm_condition", "new");
   const [smData,         setSmData]         = useSessionState("jsk_calc_sm_data",      null);
   const [smLoading,      setSmLoading]      = useState(false);
   const [smError,        setSmError]        = useState("");
+
+  // ── Right listings panel state ────────────────────────────────────────────────
+  const [binPanelData,      setBinPanelData]      = useState(null);
+  const [panelSort,         setPanelSort]         = useState("asc");
+
+  // ── Sold-count cache: { [itemId]: number | null } ─────────────────────────────
+  const [soldCounts,        setSoldCounts]        = useState({});
+  const [soldCountsFetching, setSoldCountsFetching] = useState(false);
+
+  const fetchSoldCounts = async (listings) => {
+    const ids = (listings || []).map(l => l.itemId).filter(Boolean);
+    const toFetch = ids.filter(id => !(id in soldCounts));
+    if (toFetch.length === 0) return;
+    setSoldCountsFetching(true);
+    try {
+      const res  = await fetch(`${API_URL}/api/ebay/sold-counts`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ itemIds: toFetch, targetMarketplace }),
+      });
+      const data = await res.json();
+      setSoldCounts(prev => ({ ...prev, ...data }));
+    } catch {}
+    finally { setSoldCountsFetching(false); }
+  };
+
+  // Fetch sold counts when a bin is selected
+  useEffect(() => {
+    if (binPanelData?.allListings?.length) fetchSoldCounts(binPanelData.allListings);
+  }, [binPanelData]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Derived calculations ─────────────────────────────────────────────────────
   const cost        = parseFloat(itemCost)      || 0;
@@ -1458,7 +1733,7 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
   const breakEven  = R > 0 ? (totalCosts + fixed) / R - buyerShip : NaN;
 
   const hasResult  = price > 0 && cost > 0;
-  const profitColor = !hasResult ? C.text : profit > 0 ? "#4ade80" : profit < 0 ? "#f87171" : C.text;
+  const profitColor = !hasResult ? C.text : profit > 0 ? "var(--green)" : profit < 0 ? "var(--red)" : C.text;
 
   // ── Handlers ─────────────────────────────────────────────────────────────────
   const loadProduct = (p) => {
@@ -1477,20 +1752,47 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
     if (!hasResult || !onSave) return;
     onSave({ name: productName.trim() || "Unnamed Product", itemCost: cost, shippingCost: shipping, sellingPrice: price, fvfPct: fvf, fixedFee: fixed, promoPct: promo, vatRegistered, profit, margin, markup, ebayFVF, ebayPromo, vatAmount });
     setSavedFlash(true); setTimeout(() => setSavedFlash(false), 2000);
+    trackEvent("price_saved", { selling_price: price, margin, source: "smart_pricing" });
   };
 
-  const handleFetch = async () => {
-    if (!smQuery.trim()) return;
-    setSmLoading(true); setSmError("");
+  const handleFetch = async (queryOverride) => {
+    const q = (queryOverride ?? smQuery).trim();
+    if (!q) return;
+    setSmLoading(true); setSmError(""); setBinPanelData(null); setSoldCounts({});
+    trackEvent("ebay_search_performed", { query: q, condition: smCondition, source: "smart_pricing" });
     try {
-      const res  = await fetch(`${API_URL}/api/ebay/search-prices`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ query: smQuery.trim(), condition: smCondition }) });
+      const res  = await fetch(`${API_URL}/api/ebay/search-prices`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+        },
+        body: JSON.stringify({ query: q, condition: smCondition, targetMarketplace }),
+      });
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Failed to fetch prices.");
+      if (!res.ok) {
+        if (res.status === 403 && json.error === "feature_restricted") throw new Error(json.message);
+        throw new Error(json.message || json.error || "Failed to fetch prices.");
+      }
       if (json.priceCount === 0) throw new Error(json.zeroResultsMsg || "No listings found — try changing the condition or search term.");
+      if (json.currency) setResultCurrency(json.currency);
       setSmData(json);
     } catch (err) { setSmError(err.message); setSmData(null); }
     finally       { setSmLoading(false); }
   };
+
+  // Autorun: launched from "View Market Analysis" button in Listing Generator (new tab)
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("jsk_pc_autorun");
+      if (!raw) return;
+      const { query, timestamp } = JSON.parse(raw);
+      if (!query || Date.now() - timestamp > 10_000) return;
+      localStorage.removeItem("jsk_pc_autorun");
+      setSmQuery(query);
+      handleFetch(query);
+    } catch {}
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Reset legacy "any" condition (removed in favour of explicit condition-first flow)
   useEffect(() => {
@@ -1524,10 +1826,27 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
     <div style={{ maxWidth: 1440, margin: "0 auto" }}>
 
       {/* ── Inner tab bar ── */}
-      <div style={{ display: "flex", gap: 5, marginBottom: 14, background: "#0F1E35", borderRadius: 12, padding: 4, border: "1px solid rgba(255,255,255,0.08)" }}>
-        {[{ key: "calculator", label: "Calculator" }, { key: "saved", label: `Saved Products${savedCount ? ` (${savedCount})` : ""}` }].map(({ key, label }) => (
-          <button key={key} onClick={() => setInnerPage(key)} style={{ flex: 1, padding: "8px 14px", borderRadius: 8, border: "none", cursor: "pointer", fontWeight: 700, fontSize: 13, background: innerPage === key ? C.blue : "transparent", color: innerPage === key ? "#fff" : C.muted, boxShadow: innerPage === key ? "0 0 12px rgba(19,93,255,0.28)" : "none", transition: "all 0.15s" }}>{label}</button>
-        ))}
+      <div style={{ display: "flex", gap: 0, marginBottom: 24, borderBottom: "1px solid var(--border)" }}>
+        {[{ key: "calculator", label: t("calculator.title") }, { key: "saved", label: t("saved.title"), count: savedCount }].map(({ key, label, count }) => {
+          const active = innerPage === key;
+          return (
+            <button key={key} onClick={() => setInnerPage(key)} style={{
+              display: "flex", alignItems: "center", gap: 7,
+              padding: "12px 20px", border: "none", background: "transparent",
+              cursor: "pointer", fontSize: 13, fontWeight: active ? 700 : 500,
+              color: active ? "var(--blue)" : "var(--text-muted)",
+              borderBottom: active ? "2px solid var(--blue)" : "2px solid transparent",
+              marginBottom: -1, transition: "all 0.15s ease",
+            }}>
+              {label}
+              {count > 0 && (
+                <span style={{ fontSize: 11, fontWeight: 700, background: active ? "var(--blue)" : "var(--bg-surface2)", color: active ? "var(--text-on-dark)" : "var(--text-muted)", borderRadius: 99, padding: "2px 7px", border: "1px solid var(--border)" }}>
+                  {count}
+                </span>
+              )}
+            </button>
+          );
+        })}
       </div>
 
       {/* ── Saved tab ── */}
@@ -1535,289 +1854,431 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
 
       {/* ── Calculator tab ── */}
       {innerPage === "calculator" && (
-        <>
-          {!isPro && <Locked />}
+        <div style={{ display: "grid", gridTemplateColumns: hasSmartPricing ? "290px 1fr 340px" : "290px 1fr", gap: 16, alignItems: "stretch" }}>
 
-          {isPro && (
-            <div style={{ background: C.bg1, border: C.borderBlue, borderRadius: 16, overflow: "hidden", display: "flex", flexDirection: "column" }}>
-
-              {/* ── Card header ── */}
-              <div style={{ padding: "14px 20px 12px", borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
-                  <div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <span style={{ fontSize: 16, fontWeight: 800, color: "#fff", letterSpacing: -0.3 }}>Smart eBay Pricing</span>
-                      <span style={{ fontSize: 9, fontWeight: 800, color: C.blue, background: "rgba(19,93,255,0.15)", border: "1px solid rgba(19,93,255,0.4)", borderRadius: 4, padding: "2px 7px", letterSpacing: 0.8 }}>PRO</span>
-                    </div>
-                    <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>Compare market pricing, fees and profit in one place</div>
-                  </div>
-                  {smData && (
-                    <div style={{ display: "flex", alignItems: "center", gap: 7, background: "rgba(19,93,255,0.1)", border: "1px solid rgba(19,93,255,0.22)", borderRadius: 8, padding: "7px 13px", flexShrink: 0 }}>
-                      <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#4ade80", display: "inline-block", animation: "pcPulse 2s ease-in-out infinite" }} />
-                      <span style={{ fontSize: 15, fontWeight: 800, color: "#93c5fd" }}>{smData.priceCount}</span>
-                      <span style={{ fontSize: 11, color: C.muted }}>{smData.conditionLabel?.toLowerCase() || ""} listings used</span>
-                    </div>
-                  )}
+          {/* ═══ LEFT SIDEBAR: Cost & Pricing Inputs ═══ */}
+          <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 16, overflow: "hidden", display: "flex", flexDirection: "column", boxShadow: "var(--shadow)" }}>
+                <div style={{ padding: "14px 16px 12px", borderBottom: "1px solid var(--border)" }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: 1.2 }}>{t("calculator.costInputs")}</div>
                 </div>
-                {/* Condition toggle */}
-                <div style={{ marginBottom: 8 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5 }}>
-                    <span style={{ fontSize: 11, color: C.muted, flexShrink: 0 }}>Condition</span>
-                    <div style={{ display: "flex", gap: 3, background: "#060d1a", borderRadius: 8, padding: 3, border: "1px solid rgba(255,255,255,0.07)" }}>
-                      {[{ key: "new", label: "New" }, { key: "used", label: "Used" }, { key: "remanufactured", label: "Remanufactured" }].map(({ key, label }) => {
-                        const active = smCondition === key;
-                        return (
-                          <button key={key} onClick={() => { setSmCondition(key); if (smData) setSmData(null); }}
-                            style={{ padding: "4px 16px", borderRadius: 6, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, background: active ? C.blue : "transparent", color: active ? "#fff" : C.muted, boxShadow: active ? "0 0 10px rgba(19,93,255,0.35)" : "none", transition: "all 0.15s" }}>
-                            {label}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                  <div style={{ fontSize: 10, color: C.dim, paddingLeft: 2 }}>
-                    Market data will only use listings matching the selected condition.
-                  </div>
-                </div>
+                <div style={{ padding: "10px 16px 16px" }}>
 
-                {/* Search row */}
-                <div style={{ display: "flex", gap: 8 }}>
-                  <input value={smQuery} onChange={(e) => setSmQuery(e.target.value)} onKeyDown={(e) => e.key === "Enter" && !smLoading && handleFetch()} placeholder="OEM / part number or product name…" style={{ ...CI, flex: 1, fontSize: 14 }} />
-                  <button onClick={handleFetch} disabled={smLoading || !smQuery.trim()} style={{ ...BUTTON_BASE, padding: "8px 22px", fontSize: 13, flexShrink: 0, background: smLoading || !smQuery.trim() ? "#0d2040" : C.blue, color: "#fff", opacity: smLoading || !smQuery.trim() ? 0.5 : 1, whiteSpace: "nowrap", boxShadow: smLoading || !smQuery.trim() ? "none" : "0 0 16px rgba(19,93,255,0.4)" }}>
-                    {smLoading ? "Fetching…" : "Fetch Prices"}
-                  </button>
-                </div>
-                {smError && <div style={{ marginTop: 8, padding: "7px 12px", background: "#0d1428", color: "#fca5a5", border: "1px solid rgba(220,38,38,0.25)", borderRadius: 8, fontSize: 12 }}>⚠ {smError}</div>}
-              </div>
-
-              {/* ── Two-column body ── */}
-              <div style={{ display: "flex", alignItems: "stretch", flex: 1 }}>
-
-                {/* ═══ LEFT: Inputs ═══ */}
-                <div style={{ width: 230, flexShrink: 0, background: C.bg2, borderRight: "1px solid rgba(255,255,255,0.05)", padding: "14px 16px", display: "flex", flexDirection: "column" }}>
-
-                  <SL mt={0}>Product</SL>
-                  <Row label="Product / SKU">
+                  <SL mt={0}>{t("calculator.product")}</SL>
+                  <Row label={t("calculator.productSku")}>
                     <input value={productName} onChange={(e) => setProductName(e.target.value)} placeholder="e.g. Timing Belt Kit" style={CI} />
                   </Row>
 
-                  <SL>Your Costs</SL>
-                  <Row label="Item cost (£)" note={vatRegistered ? "Enter ex-VAT if you reclaim" : ""}>
+                  <SL>{t("calculator.yourCosts")}</SL>
+                  <Row label={t("calculator.itemCost")} note={vatRegistered ? t("calculator.itemCostNote") : ""}>
                     <input type="number" value={itemCost} onChange={(e) => setItemCost(e.target.value)} placeholder="0.00" style={CI} />
                   </Row>
-                  <Row label="Postage (£)" note="Your outgoing courier cost">
+                  <Row label={t("calculator.postage")} note={t("calculator.postageNote")}>
                     <input type="number" value={shippingCost} onChange={(e) => setShippingCost(e.target.value)} placeholder="0.00" style={CI} />
                   </Row>
-                  <Row label="Packaging (£)">
+                  <Row label={t("calculator.packaging")}>
                     <input type="number" value={packagingCost} onChange={(e) => setPackagingCost(e.target.value)} placeholder="0.00" style={CI} />
                   </Row>
-                  <Row label="Other costs (£)" note="Handling, overheads, etc." last>
+                  <Row label={t("calculator.otherCosts")} note={t("calculator.otherCostsNote")} last>
                     <input type="number" value={otherCosts} onChange={(e) => setOtherCosts(e.target.value)} placeholder="0.00" style={CI} />
                   </Row>
 
-                  <SL>eBay Fees</SL>
-                  <Row label="Final value (%)">
+                  <SL>{t("calculator.ebayFees")}</SL>
+                  <Row label={t("calculator.finalValue")}>
                     <input type="number" value={fvfPct} onChange={(e) => setFvfPct(e.target.value)} placeholder="12.8" style={CI} />
                   </Row>
-                  <Row label="Fixed fee (£)">
+                  <Row label={t("calculator.fixedFee")}>
                     <input type="number" value={fixedFee} onChange={(e) => setFixedFee(e.target.value)} placeholder="0.30" style={CI} />
                   </Row>
-                  <Row label="Ad rate (%)" last>
+                  <Row label={t("calculator.adRate")} last>
                     <input type="number" value={promoPct} onChange={(e) => setPromoPct(e.target.value)} placeholder="0" style={CI} />
                   </Row>
 
                   {/* VAT toggle */}
-                  <div style={{ padding: "8px 0", marginTop: 4 }}>
+                  <div style={{ padding: "6px 0", marginTop: 2 }}>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                      <span style={{ fontSize: 12, color: C.muted }}>VAT registered (20%)</span>
-                      <button onClick={() => setVatRegistered(v => !v)} style={{ ...BUTTON_BASE, padding: "4px 14px", fontSize: 11, background: vatRegistered ? C.blue : "#0d2040", color: "#fff", boxShadow: vatRegistered ? "0 0 10px rgba(19,93,255,0.3)" : "none" }}>
+                      <span style={{ fontSize: 12, color: C.muted }}>{t("calculator.vatRegistered")}</span>
+                      <button onClick={() => setVatRegistered(v => !v)} style={{ ...BUTTON_BASE, padding: "3px 12px", fontSize: 11, background: vatRegistered ? C.blue : "var(--bg-surface2)", color: vatRegistered ? "var(--text-on-dark)" : "var(--text-muted)", boxShadow: vatRegistered ? "0 0 10px rgba(19,93,255,0.3)" : "none" }}>
                         {vatRegistered ? "ON" : "OFF"}
                       </button>
                     </div>
                     {vatRegistered && (
-                      <div style={{ fontSize: 10, color: C.dim, marginTop: 4, lineHeight: 1.4 }}>
-                        Selling price treated as VAT-inclusive. Collected VAT shown in breakdown.
+                      <div style={{ fontSize: 10, color: C.dim, marginTop: 3, lineHeight: 1.4 }}>
+                        {t("calculator.vatNote")}
                       </div>
                     )}
                   </div>
 
                   <HD />
 
-                  {/* Selling price */}
-                  <div style={{ marginBottom: 6 }}>
-                    <div style={{ fontSize: 10, fontWeight: 700, color: C.dim, textTransform: "uppercase", letterSpacing: 0.7, marginBottom: 5 }}>
-                      Selling Price {vatRegistered ? "(inc. VAT)" : "(ex. VAT)"}
-                    </div>
-                    <input
-                      type="number" value={sellingPrice}
-                      onChange={(e) => setSellingPrice(e.target.value)}
+                  <SL>{t("calculator.sellingPrice")}</SL>
+                  <div style={{ marginBottom: 8 }}>
+                    <div style={{ fontSize: 10, color: "var(--text-muted)", marginBottom: 4 }}>{vatRegistered ? t("calculator.sellingPriceNote") : "Ex. VAT"}</div>
+                    <input type="number" value={sellingPrice} onChange={(e) => setSellingPrice(e.target.value)}
+                      onBlur={() => {
+                        if (!sellingPrice) return;
+                        trackEvent("price_entered", { selling_price: parseFloat(sellingPrice) || 0, source: "smart_pricing" });
+                        trackEvent("price_calculated", { selling_price: parseFloat(sellingPrice) || 0, margin, profit, source: "smart_pricing" });
+                      }}
                       placeholder="e.g. 29.99"
-                      style={{ ...CI, fontSize: 18, fontWeight: 700, width: "100%", background: "rgba(19,93,255,0.08)", border: "1px solid rgba(19,93,255,0.3)" }}
-                    />
+                      style={{ ...CI, fontSize: 18, fontWeight: 700, width: "100%", background: "var(--blue-bg)", border: "1px solid var(--border-blue)" }} />
                   </div>
 
-                  {/* Buyer shipping */}
-                  <Row label="Buyer shipping (£)" note="Charged to buyer — inc. in fees" last>
+                  <Row label={t("calculator.buyerShipping")} note={t("calculator.buyerShippingNote")} last>
                     <input type="number" value={buyerShipping} onChange={(e) => setBuyerShipping(e.target.value)} placeholder="0.00" style={CI} />
                   </Row>
 
-                  <div style={{ marginTop: 8, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 7 }}>
+                  <SL>{t("calculator.targetProfit")}</SL>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 7, marginBottom: 6 }}>
                     <div>
-                      <div style={{ fontSize: 10, color: C.dim, marginBottom: 3 }}>Target markup %</div>
+                      <div style={{ fontSize: 10, color: C.dim, marginBottom: 3 }}>{t("calculator.targetMarginPct")}</div>
                       <div style={{ display: "flex", gap: 3 }}>
-                        <input type="number" value={targetMarkup}
-                          onChange={(e) => { setTargetMarkup(e.target.value); }}
-                          onFocus={() => setEditingMarkup(true)} onBlur={() => setEditingMarkup(false)}
-                          onKeyDown={(e) => e.key === "Enter" && calcFromMarkup()}
-                          placeholder="50" style={{ ...CI, flex: 1, padding: "6px 8px" }}
-                        />
-                        <button onClick={calcFromMarkup} style={{ ...SMALL_BUTTON_STYLE, padding: "6px 8px", fontSize: 11 }}>Set</button>
+                        <input type="number" value={targetMargin} onChange={(e) => setTargetMargin(e.target.value)} onFocus={() => setEditingMargin(true)} onBlur={() => setEditingMargin(false)} onKeyDown={(e) => e.key === "Enter" && calcFromMargin()} placeholder="20" style={{ ...CI, flex: 1, padding: "6px 8px" }} />
+                        <button onClick={calcFromMargin} style={{ ...SMALL_BUTTON_STYLE, padding: "6px 8px", fontSize: 11 }}>{t("calculator.set")}</button>
                       </div>
                     </div>
                     <div>
-                      <div style={{ fontSize: 10, color: C.dim, marginBottom: 3 }}>Target margin %</div>
+                      <div style={{ fontSize: 10, color: C.dim, marginBottom: 3 }}>{t("calculator.targetMarkupPct")}</div>
                       <div style={{ display: "flex", gap: 3 }}>
-                        <input type="number" value={targetMargin}
-                          onChange={(e) => { setTargetMargin(e.target.value); }}
-                          onFocus={() => setEditingMargin(true)} onBlur={() => setEditingMargin(false)}
-                          onKeyDown={(e) => e.key === "Enter" && calcFromMargin()}
-                          placeholder="20" style={{ ...CI, flex: 1, padding: "6px 8px" }}
-                        />
-                        <button onClick={calcFromMargin} style={{ ...SMALL_BUTTON_STYLE, padding: "6px 8px", fontSize: 11 }}>Set</button>
+                        <input type="number" value={targetMarkup} onChange={(e) => setTargetMarkup(e.target.value)} onFocus={() => setEditingMarkup(true)} onBlur={() => setEditingMarkup(false)} onKeyDown={(e) => e.key === "Enter" && calcFromMarkup()} placeholder="50" style={{ ...CI, flex: 1, padding: "6px 8px" }} />
+                        <button onClick={calcFromMarkup} style={{ ...SMALL_BUTTON_STYLE, padding: "6px 8px", fontSize: 11 }}>{t("calculator.set")}</button>
                       </div>
                     </div>
                   </div>
 
-                  <div style={{ flex: 1, minHeight: 12 }} />
-
                   {hasResult && (
-                    <button onClick={handleSave} style={{ ...BUTTON_BASE, background: savedFlash ? "#166534" : C.blue, color: "#fff", width: "100%", textAlign: "center", fontSize: 13, padding: "9px", marginTop: 8, boxShadow: savedFlash ? "0 0 14px rgba(22,101,52,0.4)" : "0 0 14px rgba(19,93,255,0.3)" }}>
+                    <button onClick={handleSave} style={{ ...BUTTON_BASE, background: savedFlash ? "#166534" : C.blue, color: "var(--text-on-dark)", width: "100%", textAlign: "center", fontSize: 13, padding: "9px", marginTop: 6, boxShadow: savedFlash ? "0 0 14px rgba(22,101,52,0.4)" : "0 0 14px rgba(19,93,255,0.3)" }}>
                       {savedFlash ? "✓ Saved!" : "Save Product"}
                     </button>
                   )}
                 </div>
+              </div>
 
-                {/* ═══ RIGHT: Results + Market ═══ */}
-                <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
+          {hasSmartPricing ? (
+            <>
+              {/* ═══ CENTER: Main Pricing Dashboard ═══ */}
+              <div style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 16 }}>
 
-                  {/* ── Compact profit stats bar ── */}
-                  <div style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", flexShrink: 0 }}>
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)" }}>
-                      {[
-                        {
-                          label: "Selling Price",
-                          value: price > 0 ? fmtGBP(price) : "—",
-                          color: price > 0 ? "#e2e8f0" : "#2a3f55",
-                          sub: buyerShip > 0 ? `+ ${fmtGBP(buyerShip)} p&p` : null,
-                        },
-                        {
-                          label: "Net Profit",
-                          value: hasResult ? fmt(profit) : "—",
-                          color: hasResult ? profitColor : "#2a3f55",
-                          sub: null,
-                        },
-                        {
-                          label: "Margin",
-                          value: hasResult ? fmtPct(margin) : "—",
-                          color: hasResult ? profitColor : "#2a3f55",
-                          sub: hasResult ? "of revenue" : null,
-                        },
-                        {
-                          label: "Markup",
-                          value: hasResult ? fmtPct(markup) : "—",
-                          color: hasResult ? profitColor : "#2a3f55",
-                          sub: hasResult ? "on cost" : null,
-                        },
-                      ].map(({ label, value, color, sub }, i) => (
-                        <div key={label} style={{
-                          padding: "12px 14px", textAlign: "center",
-                          borderLeft: i > 0 ? "1px solid rgba(255,255,255,0.05)" : "none",
-                        }}>
-                          <div style={{ fontSize: 9, fontWeight: 700, color: "#4a6a8a", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 5 }}>{label}</div>
-                          <div style={{ fontSize: 22, fontWeight: 900, color, lineHeight: 1, letterSpacing: -0.5 }}>{value}</div>
-                          {sub && <div style={{ fontSize: 10, color: "#3d5a7a", marginTop: 3 }}>{sub}</div>}
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* Break-even + cost breakdown */}
-                    {hasResult && (
-                      <div style={{ borderTop: "1px solid rgba(255,255,255,0.05)", padding: "8px 16px" }}>
-
-                        {!isNaN(breakEven) && (
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, padding: "5px 10px", background: "rgba(251,191,36,0.05)", border: "1px solid rgba(251,191,36,0.12)", borderRadius: 7 }}>
-                            <span style={{ fontSize: 12, color: "#6b7280" }}>Break-even</span>
-                            <span style={{ fontSize: 15, fontWeight: 800, color: "#fbbf24" }}>{fmt(breakEven)}</span>
-                          </div>
-                        )}
-
-                        <div style={{ fontSize: 10, fontWeight: 700, color: "#3d5268", textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 4 }}>Breakdown</div>
-                        {buyerShip > 0 && <BR label="Buyer shipping (income)" value={`+${fmt(buyerShip)}`} color="#93c5fd" />}
-                        {cost > 0      && <BR label="Product cost"            value={`-${fmt(cost)}`}       color="#f87171" />}
-                        {(shipping + packaging) > 0 && <BR label="Postage & packaging" value={`-${fmt(shipping + packaging)}`} color="#f87171" />}
-                        {other > 0     && <BR label="Other costs"             value={`-${fmt(other)}`}      color="#f87171" />}
-                        <BR label={`eBay fees (${fvf}% + £${fixed.toFixed(2)}${promo > 0 ? ` + ${promo}% ad` : ""})`} value={`-${fmt(ebayFVF + ebayPromo)}`} color="#f87171" />
-                        {vatRegistered && <BR label="VAT collected → HMRC" value={`-${fmt(vatAmount)}`} color="#f87171" note="You keep none of this" />}
-                        <BR label="Net Profit" value={fmt(profit)} color={profitColor} strong />
-                      </div>
-                    )}
-
-                    {!hasResult && (
-                      <div style={{ padding: "8px 0 2px", textAlign: "center", fontSize: 12, color: "#2a3f55" }}>
-                        Enter item cost &amp; selling price to calculate profit
-                      </div>
-                    )}
-                  </div>
-
-                  {/* ── Market Intelligence — HERO section ── */}
-                  <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0, padding: "0 20px 16px" }}>
-
-                    {/* Section header */}
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 0 8px" }}>
-                      <div style={{ fontSize: 11, fontWeight: 700, color: "#5a8ab0", textTransform: "uppercase", letterSpacing: 1.2 }}>
-                        {smData
-                          ? `eBay UK Market · ${smData.conditionLabel} · ${smData.priceCount} listings`
-                          : "Market Intelligence"
-                        }
+                {/* Search & header card */}
+                <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 16, overflow: "hidden", boxShadow: "var(--shadow)" }}>
+                  <div style={{ padding: "14px 18px 12px", borderBottom: "1px solid var(--border)" }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <span style={{ fontSize: 15, fontWeight: 700, color: "var(--text)", letterSpacing: -0.2 }}>{t("pricing.title")}</span>
+                        <span style={{ fontSize: 9, fontWeight: 800, color: "var(--blue)", background: "var(--blue-bg)", border: "1px solid var(--border-blue)", borderRadius: 4, padding: "2px 7px", letterSpacing: 0.8 }}>PRO</span>
+                        <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{t("pricing.subtitle")}</span>
                       </div>
                       {smData && (
-                        <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 9, fontWeight: 700, color: "#4ade80", background: "rgba(74,222,128,0.08)", borderRadius: 20, padding: "3px 9px" }}>
-                          <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#4ade80", display: "inline-block", animation: "pcPulse 2s ease-in-out infinite" }} />
-                          LIVE
-                        </span>
+                        <div style={{ display: "flex", alignItems: "center", gap: 7, background: "rgba(19,93,255,0.08)", border: "1px solid var(--border-blue)", borderRadius: 8, padding: "5px 12px", flexShrink: 0 }}>
+                          <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--green)", display: "inline-block", animation: "pcPulse 2s ease-in-out infinite" }} />
+                          <span style={{ fontSize: 14, fontWeight: 800, color: "var(--text-accent)" }}>{smData.priceCount}</span>
+                          <span style={{ fontSize: 11, color: C.muted }}>{smData.conditionLabel?.toLowerCase() || ""} listings used</span>
+                        </div>
                       )}
                     </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <div style={{ display: "flex", gap: 2, background: "var(--bg-surface3)", borderRadius: 8, padding: 3, border: "1px solid var(--border)", flexShrink: 0 }}>
+                        {[{ key: "new", label: t("pricing.new") }, { key: "used", label: t("pricing.used") }, { key: "remanufactured", label: t("pricing.refurbished") }].map(({ key, label }) => {
+                          const active = smCondition === key;
+                          return (
+                            <button key={key} onClick={() => { setSmCondition(key); if (smData) { setSmData(null); setBinPanelData(null); } }}
+                              style={{ padding: "4px 12px", borderRadius: 6, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700, background: active ? C.blue : "transparent", color: active ? "var(--text-on-dark)" : C.muted, boxShadow: active ? "0 0 10px rgba(19,93,255,0.35)" : "none", transition: "all 0.15s" }}>
+                              {label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <input value={smQuery} onChange={(e) => setSmQuery(e.target.value)} onKeyDown={(e) => e.key === "Enter" && !smLoading && handleFetch()} placeholder="Search by OEM / part number or product name…" style={{ ...CI, flex: 1, fontSize: 13 }} />
+                      <button onClick={handleFetch} disabled={smLoading || !smQuery.trim()}
+                        style={{ ...BUTTON_BASE, padding: "8px 20px", fontSize: 13, flexShrink: 0, display: "flex", alignItems: "center", gap: 7, background: smLoading ? "rgba(19,93,255,0.12)" : !smQuery.trim() ? "var(--bg-surface2)" : C.blue, color: smLoading ? "var(--text-accent)" : !smQuery.trim() ? "var(--text-muted)" : "var(--text-on-dark)", opacity: !smQuery.trim() && !smLoading ? 0.45 : 1, whiteSpace: "nowrap", border: smLoading ? "1px solid rgba(19,93,255,0.35)" : "1px solid transparent", boxShadow: smLoading ? "0 0 14px rgba(19,93,255,0.2)" : !smQuery.trim() ? "none" : "0 0 16px rgba(19,93,255,0.4)" }}>
+                        {smLoading && (
+                          <div style={{ width: 13, height: 13, borderRadius: "50%", border: "2px solid rgba(147,197,253,0.2)", borderTop: "2px solid #93c5fd", animation: "pcSpin 0.75s linear infinite", flexShrink: 0 }} />
+                        )}
+                        {smLoading ? t("pricing.searching") : t("pricing.search")}
+                      </button>
+                    </div>
+                    {smError && <div style={{ marginTop: 8, padding: "7px 12px", background: "var(--bg-surface2)", color: "var(--red)", border: "1px solid rgba(220,38,38,0.25)", borderRadius: 8, fontSize: 12 }}>⚠ {smError}</div>}
+                  </div>
 
-                    {smLoading && <div style={{ textAlign: "center", padding: "24px 0", color: C.muted, fontSize: 13 }}>⏳ Fetching live market data…</div>}
-
-                    {!smLoading && !smData && (
-                      <div style={{
-                        display: "flex", flexDirection: "column",
-                        alignItems: "center", justifyContent: "center",
-                        minHeight: 280, textAlign: "center",
-                      }}>
-                        <div style={{ fontSize: 42, opacity: 0.35, marginBottom: 12 }}>📊</div>
-                        <div style={{ fontSize: 16, fontWeight: 700, color: "#4b5563", marginBottom: 6 }}>No market data</div>
-                        <div style={{ fontSize: 13, color: C.dim, lineHeight: 1.6 }}>
-                          Search a part number above to<br />load live eBay UK pricing.
+                  {/* 4 KPI cards */}
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)" }}>
+                    {[
+                      { label: t("calculator.sellingPriceLabel"), value: price > 0 ? fmtGBP(price) : "—", color: price > 0 ? "var(--text)" : "var(--text-dim)", sub: buyerShip > 0 ? `+ ${fmtGBP(buyerShip)} p&p` : t("calculator.itemPrice"),       icon: "£" },
+                      { label: t("calculator.netProfit"),    value: hasResult ? fmt(profit)    : "—", color: hasResult ? profitColor : "var(--text-dim)", sub: hasResult ? "after all fees" : t("calculator.enterCostPrice"), icon: "↑" },
+                      { label: t("calculator.margin"),        value: hasResult ? fmtPct(margin) : "—", color: hasResult ? profitColor : "var(--text-dim)", sub: "of revenue",     icon: "%" },
+                      { label: t("calculator.markup"),        value: hasResult ? fmtPct(markup) : "—", color: hasResult ? profitColor : "var(--text-dim)", sub: "on cost",         icon: "×" },
+                    ].map(({ label, value, color, sub, icon }, i) => (
+                      <div key={label} style={{ padding: "12px 16px", borderLeft: i > 0 ? "1px solid var(--border-light)" : "none", borderTop: "1px solid var(--border-light)" }}>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 5 }}>
+                          <div style={{ fontSize: 9, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: 0.8 }}>{label}</div>
+                          <span style={{ fontSize: 11, color: "var(--text-dim)" }}>{icon}</span>
                         </div>
+                        <div style={{ fontSize: 22, fontWeight: 900, color, lineHeight: 1, letterSpacing: -0.5, fontVariantNumeric: "tabular-nums", marginBottom: 3 }}>{value}</div>
+                        <div style={{ fontSize: 10, color: "var(--text-muted)" }}>{sub}</div>
                       </div>
-                    )}
+                    ))}
+                  </div>
 
-                    {!smLoading && smData && (
-                      <div style={{ animation: "pcIn 0.3s ease" }}>
+                  {/* Breakdown — inside the card, below KPIs */}
+                  {hasResult && (
+                    <div style={{ padding: "10px 18px 12px", borderTop: "1px solid var(--border-light)" }}>
+                      {!isNaN(breakEven) && (
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, padding: "5px 10px", background: "rgba(251,191,36,0.05)", border: "1px solid rgba(251,191,36,0.12)", borderRadius: 7 }}>
+                          <span style={{ fontSize: 12, color: "var(--text-muted)" }}>Break-even selling price</span>
+                          <span style={{ fontSize: 15, fontWeight: 800, color: "var(--yellow)" }}>{fmt(breakEven)}</span>
+                        </div>
+                      )}
+                      <div style={{ fontSize: 10, fontWeight: 700, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 4 }}>Cost Breakdown</div>
+                      {buyerShip > 0 && <BR label="Buyer shipping (income)" value={`+${fmt(buyerShip)}`} color="var(--text-accent)" />}
+                      {cost > 0      && <BR label="Product cost"            value={`-${fmt(cost)}`}       color="var(--red)" />}
+                      {(shipping + packaging) > 0 && <BR label="Postage & packaging" value={`-${fmt(shipping + packaging)}`} color="var(--red)" />}
+                      {other > 0     && <BR label="Other costs"             value={`-${fmt(other)}`}      color="var(--red)" />}
+                      <BR label={`eBay fees (${fvf}% + £${fixed.toFixed(2)}${promo > 0 ? ` + ${promo}% ad` : ""})`} value={`-${fmt(ebayFVF + ebayPromo)}`} color="var(--red)" />
+                      {vatRegistered && <BR label="VAT collected → HMRC" value={`-${fmt(vatAmount)}`} color="var(--red)" note="You keep none of this" />}
+                      <BR label="Net Profit" value={fmt(profit)} color={profitColor} strong />
+                    </div>
+                  )}
+                </div>
 
-                        {/* ── Price Distribution — HERO ── */}
-                        <PriceDistribution data={smData} listings={smData.listings} price={price} />
-
+                {/* Market Intelligence */}
+                <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 16, overflow: "hidden", flex: 1, display: "flex", flexDirection: "column", boxShadow: "var(--shadow)" }}>
+                  <div style={{ padding: "12px 18px 10px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", marginBottom: 2 }}>{t("pricing.marketIntelligence")}</div>
+                      <div style={{ fontSize: 11, color: C.muted }}>
+                        {smData ? `${marketplaceInfo.label} · ${smData.conditionLabel} · ${smData.priceCount} listings` : `Live ${marketplaceInfo.label} pricing insights for your search.`}
                       </div>
+                    </div>
+                    {smData && (
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 9, fontWeight: 700, color: "var(--green)", background: "rgba(74,222,128,0.08)", border: "1px solid rgba(74,222,128,0.15)", borderRadius: 20, padding: "4px 10px" }}>
+                        <span style={{ width: 5, height: 5, borderRadius: "50%", background: "var(--green)", display: "inline-block", animation: "pcPulse 2s ease-in-out infinite" }} />
+                        LIVE
+                      </span>
                     )}
                   </div>
-                </div>{/* end right */}
-              </div>{/* end two-column */}
+                  {smLoading && (
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "44px 24px 40px", gap: 20 }}>
+                      {/* Animated bar chart */}
+                      <div style={{ display: "flex", alignItems: "flex-end", gap: 4, height: 44, transformOrigin: "bottom" }}>
+                        {[0.35, 0.6, 0.85, 0.5, 1.0, 0.7, 0.4, 0.9, 0.55, 0.75, 0.3, 0.65].map((h, i) => (
+                          <div key={i} style={{
+                            width: 7, height: 44, borderRadius: "3px 3px 0 0",
+                            background: `linear-gradient(to top, #1d4ed8 0%, #38bdf8 100%)`,
+                            transformOrigin: "bottom",
+                            animation: `pcLoadBar ${0.7 + h * 0.7}s ease-in-out ${i * 0.09}s infinite`,
+                          }} />
+                        ))}
+                      </div>
+                      {/* Ring spinner */}
+                      <div style={{
+                        width: 32, height: 32, borderRadius: "50%",
+                        border: "2.5px solid var(--blue-bg)",
+                        borderTop: "2.5px solid #38bdf8",
+                        animation: "pcSpin 0.85s linear infinite",
+                      }} />
+                      {/* Text */}
+                      <div style={{ textAlign: "center" }}>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-accent)", marginBottom: 5, letterSpacing: -0.2 }}>
+                          Scanning {marketplaceInfo.label} listings
+                        </div>
+                        <div style={{ fontSize: 11, color: "var(--text-muted)", lineHeight: 1.55 }}>
+                          Fetching live <span style={{ color: "var(--text-muted)", fontWeight: 600 }}>{smCondition}</span> condition pricing data…
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  {!smLoading && !smData && (
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: 260, textAlign: "center" }}>
+                      <div style={{ marginBottom: 14, opacity: 0.3 }}>
+                        <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                          <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/>
+                          <line x1="6" y1="20" x2="6" y2="14"/><line x1="2" y1="20" x2="22" y2="20"/>
+                        </svg>
+                      </div>
+                      <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-dim)", marginBottom: 6 }}>No market data yet</div>
+                      <div style={{ fontSize: 12, color: C.dim, lineHeight: 1.6 }}>Search a part number above to load live {marketplaceInfo.label} pricing.</div>
+                    </div>
+                  )}
+                  {!smLoading && smData && (
+                    <div style={{ animation: "pcIn 0.3s ease" }}>
+                      <PriceDistribution
+                        data={smData}
+                        listings={smData.listings}
+                        price={price}
+                        onBinSelect={setBinPanelData}
+                        soldCounts={soldCounts}
+                        soldCountsFetching={soldCountsFetching}
+                        onTableView={() => fetchSoldCounts(smData.listings)}
+                        sym={ebaySymbol}
+                        marketplaceLabel={marketplaceInfo.label}
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* ═══ RIGHT: Listings Panel ═══ */}
+              <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 16, overflow: "hidden", display: "flex", flexDirection: "column", boxShadow: "var(--shadow)" }}>
+                {!binPanelData ? (
+                  <>
+                    {/* Persistent header */}
+                    <div style={{ padding: "12px 16px 10px", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: 1.2 }}>{t("pricing.priceDistribution")}</div>
+                    </div>
+                    {/* Empty state */}
+                    <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14, padding: "32px 24px", textAlign: "center" }}>
+                      <div style={{ opacity: 0.3 }}>
+                        <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+                          <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/>
+                          <line x1="6" y1="20" x2="6" y2="14"/><line x1="2" y1="20" x2="22" y2="20"/>
+                        </svg>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-muted)", marginBottom: 6 }}>Select a price range</div>
+                        <div style={{ fontSize: 11, color: "var(--text-muted)", lineHeight: 1.65 }}>
+                          {smData
+                            ? "Click a bar in the chart to view matching listings."
+                            : "Fetch market data, then click a bar to see the listings."}
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                ) : (() => {
+                  const { bin, allListings, zoomRange, setZoomRange, setClickedBin, fmtX, onViewAll } = binPanelData;
+                  const bl = zoomRange ? allListings.filter(l => l.price >= zoomRange.s && l.price <= zoomRange.e) : allListings;
+                  const displayRange = zoomRange ? zoomRange : bin;
+                  const fmtShip = (cost, type) => {
+                    if (type === "FREE" || cost === 0) return "Free delivery";
+                    if (cost != null) return `+${ebaySymbol}${cost.toFixed(2)} postage`;
+                    return "";
+                  };
+                  const sorted = [...bl].sort((a, z) => {
+                    if (panelSort === "desc")     return z.price - a.price;
+                    if (panelSort === "feedback") return (z.sellerFeedback || 0) - (a.sellerFeedback || 0);
+                    return a.price - z.price;
+                  });
+                  return (
+                    <>
+                      <div style={{ padding: "12px 14px 10px", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
+                        {zoomRange && (
+                          <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 5 }}>
+                            <button onClick={() => setZoomRange(null)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", fontSize: 9, color: "var(--text-muted)", fontWeight: 600 }}>{fmtX(bin.s)}–{fmtX(bin.e)}</button>
+                            <span style={{ fontSize: 9, color: "var(--text-dim)" }}>›</span>
+                            <span style={{ fontSize: 9, color: "var(--blue)", fontWeight: 700 }}>{fmtX(zoomRange.s)}–{fmtX(zoomRange.e)}</span>
+                          </div>
+                        )}
+                        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+                          <div>
+                            <div style={{ fontSize: 14, fontWeight: 800, color: "var(--text)", letterSpacing: -0.2 }}>{fmtX(displayRange.s)} – {fmtX(displayRange.e)}</div>
+                            <span style={{ display: "inline-block", marginTop: 4, fontSize: 10, fontWeight: 700, color: "var(--blue)", background: "var(--blue-bg)", border: "1px solid var(--border-blue)", borderRadius: 5, padding: "2px 8px" }}>{bl.length} listings</span>
+                          </div>
+                          <button onClick={() => setClickedBin(null)} style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", fontSize: 20, lineHeight: 1, padding: "0 2px", marginTop: -2 }}>×</button>
+                        </div>
+                      </div>
+                      <div style={{ padding: "6px 12px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 7, flexShrink: 0 }}>
+                        <span style={{ fontSize: 10, color: "var(--text-muted)", whiteSpace: "nowrap" }}>{t("pricing.sort")}:</span>
+                        <select value={panelSort} onChange={e => setPanelSort(e.target.value)} style={{ background: "var(--bg-surface2)", border: "1px solid var(--border)", borderRadius: 5, color: "var(--text-muted)", fontSize: 10, padding: "3px 8px", cursor: "pointer", flex: 1 }}>
+                          <option value="asc">Price: Low to High</option>
+                          <option value="desc">Price: High to Low</option>
+                          <option value="feedback">Most Feedback</option>
+                        </select>
+                      </div>
+                      <div style={{ flex: 1, overflowY: "auto" }}>
+                        {sorted.map((l, i) => (
+                          <a key={i} href={l.url} target="_blank" rel="noreferrer"
+                            style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", borderBottom: "1px solid var(--border)", textDecoration: "none", background: "transparent", transition: "background 0.12s" }}
+                            onMouseEnter={e => e.currentTarget.style.background = "var(--blue-bg)"}
+                            onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+                            <div style={{ width: 42, height: 42, flexShrink: 0, borderRadius: 6, overflow: "hidden", background: "var(--bg-surface3)", border: "1px solid var(--border)" }}>
+                              {l.image ? <img src={l.image} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                                       : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, opacity: 0.2 }}>□</div>}
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: 10.5, color: "var(--text-accent)", lineHeight: 1.35, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", marginBottom: 3 }}>{l.title}</div>
+                              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
+                                <div style={{ fontSize: 13, fontWeight: 800, color: "var(--text)", fontVariantNumeric: "tabular-nums" }}>{fmtGBP(l.price, ebaySymbol)}</div>
+                                {l.itemId && soldCounts[l.itemId] != null && (
+                                  <span style={{ fontSize: 9, fontWeight: 700, color: "var(--green)", background: "rgba(74,222,128,0.08)", border: "1px solid rgba(74,222,128,0.2)", borderRadius: 3, padding: "1px 6px", whiteSpace: "nowrap" }}>
+                                    {soldCounts[l.itemId]} sold
+                                  </span>
+                                )}
+                                {l.itemId && soldCountsFetching && !(l.itemId in soldCounts) && (
+                                  <span style={{ fontSize: 9, color: "var(--text-dim)" }}>…</span>
+                                )}
+                              </div>
+                              <div style={{ display: "flex", gap: 5, flexWrap: "wrap", alignItems: "center" }}>
+                                {l.condition && <span style={{ fontSize: 9, color: "var(--text-muted)", background: "var(--border-light)", border: "1px solid var(--border)", borderRadius: 3, padding: "1px 5px" }}>{l.condition}</span>}
+                                {l.sellerFeedback != null && <span style={{ fontSize: 9, color: "var(--text-muted)" }}>{l.sellerFeedback.toLocaleString()}{l.sellerFeedbackPct != null && <span style={{ color: "var(--green)", marginLeft: 2 }}>{l.sellerFeedbackPct.toFixed(1)}%</span>}</span>}
+                                {(l.shippingCost != null || l.shippingType) && <span style={{ fontSize: 9, color: l.shippingCost === 0 || l.shippingType === "FREE" ? "var(--green)" : "var(--text-muted)" }}>{fmtShip(l.shippingCost, l.shippingType)}</span>}
+                              </div>
+                            </div>
+                            <span style={{ fontSize: 13, color: "var(--text-dim)", flexShrink: 0 }}>›</span>
+                          </a>
+                        ))}
+                      </div>
+                      {onViewAll && (
+                        <div style={{ padding: "8px 12px", borderTop: "1px solid var(--border-light)", flexShrink: 0 }}>
+                          <button onClick={onViewAll} style={{ width: "100%", padding: "7px", fontSize: 11, fontWeight: 700, color: "var(--blue)", background: "var(--blue-bg)", border: "1px solid var(--border-blue)", borderRadius: 7, cursor: "pointer" }}>
+                            View all {bl.length} in table ↗
+                          </button>
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
+              </div>
+            </>
+          ) : (
+            <div style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 16 }}>
+              <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 16, overflow: "hidden", boxShadow: "var(--shadow)" }}>
+                <div style={{ padding: "14px 18px 12px", borderBottom: "1px solid var(--border)" }}>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text)", marginBottom: 4 }}>{t("calculator.netProfit")}</div>
+                  <div style={{ fontSize: 12, color: "var(--text-muted)" }}>Enter your costs and selling price on the left to see margin and profit.</div>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)" }}>
+                  {[
+                    { label: t("calculator.sellingPriceLabel"), value: price > 0 ? fmtGBP(price) : "—", color: price > 0 ? "var(--text)" : "var(--text-dim)", sub: buyerShip > 0 ? `+ ${fmtGBP(buyerShip)} p&p` : t("calculator.itemPrice"), icon: "£" },
+                    { label: t("calculator.netProfit"),    value: hasResult ? fmt(profit)    : "—", color: hasResult ? profitColor : "var(--text-dim)", sub: hasResult ? "after all fees" : t("calculator.enterCostPrice"), icon: "↑" },
+                    { label: t("calculator.margin"),        value: hasResult ? fmtPct(margin) : "—", color: hasResult ? profitColor : "var(--text-dim)", sub: "of revenue",     icon: "%" },
+                    { label: t("calculator.markup"),        value: hasResult ? fmtPct(markup) : "—", color: hasResult ? profitColor : "var(--text-dim)", sub: "on cost",         icon: "×" },
+                  ].map(({ label, value, color, sub, icon }, i) => (
+                    <div key={label} style={{ padding: "12px 16px", borderLeft: i > 0 ? "1px solid var(--border-light)" : "none", borderTop: "1px solid var(--border-light)" }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 5 }}>
+                        <div style={{ fontSize: 9, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: 0.8 }}>{label}</div>
+                        <span style={{ fontSize: 11, color: "var(--text-dim)" }}>{icon}</span>
+                      </div>
+                      <div style={{ fontSize: 22, fontWeight: 900, color, lineHeight: 1, letterSpacing: -0.5, fontVariantNumeric: "tabular-nums", marginBottom: 3 }}>{value}</div>
+                      <div style={{ fontSize: 10, color: "var(--text-muted)" }}>{sub}</div>
+                    </div>
+                  ))}
+                </div>
+                {hasResult && (
+                  <div style={{ padding: "10px 18px 12px", borderTop: "1px solid var(--border-light)" }}>
+                    {!isNaN(breakEven) && (
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, padding: "5px 10px", background: "rgba(251,191,36,0.05)", border: "1px solid rgba(251,191,36,0.12)", borderRadius: 7 }}>
+                        <span style={{ fontSize: 12, color: "var(--text-muted)" }}>Break-even selling price</span>
+                        <span style={{ fontSize: 15, fontWeight: 800, color: "var(--yellow)" }}>{fmt(breakEven)}</span>
+                      </div>
+                    )}
+                    <div style={{ fontSize: 10, fontWeight: 700, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: 0.6, marginBottom: 4 }}>Cost Breakdown</div>
+                    {buyerShip > 0 && <BR label="Buyer shipping (income)" value={`+${fmt(buyerShip)}`} color="var(--text-accent)" />}
+                    {cost > 0 && <BR label="Product cost" value={`-${fmt(cost)}`} color="var(--red)" />}
+                    {(shipping + packaging) > 0 && <BR label="Postage & packaging" value={`-${fmt(shipping + packaging)}`} color="var(--red)" />}
+                    {other > 0 && <BR label="Other costs" value={`-${fmt(other)}`} color="var(--red)" />}
+                    <BR label={`eBay fees (${fvf}% + £${fixed.toFixed(2)}${promo > 0 ? ` + ${promo}% ad` : ""})`} value={`-${fmt(ebayFVF + ebayPromo)}`} color="var(--red)" />
+                    {vatRegistered && <BR label="VAT collected → HMRC" value={`-${fmt(vatAmount)}`} color="var(--red)" note="You keep none of this" />}
+                    <BR label="Net Profit" value={fmt(profit)} color={profitColor} strong />
+                  </div>
+                )}
+              </div>
+              <SmartPricingLocked
+                onUpgrade={handleSmartPricingUpgrade}
+                upgrading={upgrading}
+                upgradeError={upgradeError}
+              />
             </div>
           )}
-        </>
+
+            </div>
       )}
     </div>
   );

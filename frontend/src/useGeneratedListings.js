@@ -17,6 +17,7 @@ function buildEntry(result) {
     item_specifics:      result.item_specifics      || [],
     specifications:      result.specifications      || [],
     oem_numbers:         result.oem_numbers         || [],
+    k_number_list:       result.k_number_list       || [],
     engine_codes:        result.engine_codes        || [],
     compatibility_count: result.compatibility_count || 0,
     product_type:        result.product_type        || "",
