@@ -1,153 +1,211 @@
 import { useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
+import { Plus } from "lucide-react";
+import { Eyebrow, Reveal, Section } from "./Primitives";
 
-const TEXT = "#132A46";
-const MUTED = "#4d6a8a";
-const ACCENT = "#135DFF";
-const ACCENT_LIGHT = "#EEF5FF";
-const BORDER = "#dde7f5";
+type Faq = { q: string; a: React.ReactNode };
 
-const FAQS = [
+const sl = "space-y-3 text-[0.98rem] leading-relaxed text-slate";
+const li = "flex items-start gap-2 text-[0.98rem] leading-relaxed text-slate";
+
+const faqs: Faq[] = [
   {
-    q: "Does this work for eBay listings?",
-    a: "Yes. Part Lister is designed around eBay-style car parts listings, including titles, descriptions, item specifics and compatibility information.",
+    q: "Where does the part and fitment data come from?",
+    a: (
+      <p className="text-[0.98rem] leading-relaxed text-slate">
+        PartLister uses trusted TecDoc product and vehicle data to generate listings with OE references, interchangeable numbers, compatibility, engine codes and technical specifications. We don't invent product data with AI.
+      </p>
+    ),
   },
   {
-    q: "What number do I enter?",
-    a: "You can enter an OE number, OEM reference or part number.",
+    q: "What can I enter to generate a listing?",
+    a: (
+      <div className={sl}>
+        <p>You can generate a listing using:</p>
+        <ul className="space-y-1 pl-1">
+          {["OE Number", "OEM Number", "TecDoc Article Number"].map((s) => (
+            <li key={s} className={li}><span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />{s}</li>
+          ))}
+        </ul>
+        <p>Simply paste your reference number and PartLister builds the listing automatically.</p>
+      </div>
+    ),
   },
   {
-    q: "Do I need TecDoc knowledge?",
-    a: "No. Part Lister is designed to make technical parts data easier to use and format.",
+    q: "What does PartLister generate?",
+    a: (
+      <div className={sl}>
+        <p>Every listing can include:</p>
+        <ul className="space-y-1 pl-1">
+          {[
+            "SEO-optimised title",
+            "Product description",
+            "Item specifics",
+            "Vehicle compatibility",
+            "Engine codes",
+            "OE references",
+            "Interchangeable numbers",
+            "Market pricing",
+            "CSV export",
+          ].map((s) => (
+            <li key={s} className={li}>
+              <span className="mt-0.5 shrink-0 text-successg font-bold">✓</span>
+              {s}
+            </li>
+          ))}
+        </ul>
+      </div>
+    ),
   },
   {
-    q: "Can I use my own listing templates?",
-    a: "Yes. You can create and manage listing templates in your account.",
+    q: "Is the compatibility data accurate?",
+    a: (
+      <div className={sl}>
+        <p>Compatibility is generated directly from TecDoc vehicle application data.</p>
+        <p>We always recommend verifying compatibility before publishing, but PartLister removes the need to manually research hundreds of applications yourself.</p>
+      </div>
+    ),
   },
   {
-    q: "Can I export the listings?",
-    a: "Yes. You can copy or export listings into your current selling workflow.",
+    q: "How does the free trial work?",
+    a: (
+      <ul className="space-y-1.5 pl-1">
+        {[
+          "Every new account includes 10 free listings.",
+          "No credit card required.",
+          "You can explore every core feature before choosing a subscription.",
+        ].map((s) => (
+          <li key={s} className={li}><span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />{s}</li>
+        ))}
+      </ul>
+    ),
   },
   {
-    q: "Is it only for new parts?",
-    a: "No. You can create listings for both new and used parts.",
+    q: "Can I export my listings?",
+    a: (
+      <div className={sl}>
+        <p>Yes. You can instantly:</p>
+        <ul className="space-y-1 pl-1">
+          {[
+            "Copy HTML",
+            "Export to CSV",
+            "Save listings for later",
+            "Use your preferred marketplace workflow",
+          ].map((s) => (
+            <li key={s} className={li}><span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />{s}</li>
+          ))}
+        </ul>
+      </div>
+    ),
+  },
+  {
+    q: "Does PartLister calculate eBay fees and profit?",
+    a: (
+      <div className={sl}>
+        <p>Yes. Our Smart Pricing tool calculates:</p>
+        <ul className="space-y-1 pl-1">
+          {["eBay fees", "VAT", "Shipping", "Packaging", "Advertising costs", "Profit", "Margin", "Markup"].map((s) => (
+            <li key={s} className={li}><span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />{s}</li>
+          ))}
+        </ul>
+        <p>Helping you price every listing confidently.</p>
+      </div>
+    ),
+  },
+  {
+    q: "Is AI writing my listings?",
+    a: (
+      <div className={sl}>
+        <p>AI helps optimise titles and descriptions.</p>
+        <p>Your product specifications, compatibility and OE references come from trusted automotive data sources rather than being generated by AI.</p>
+        <p>This gives you the speed of AI with the reliability of verified catalogue data.</p>
+      </div>
+    ),
+  },
+  {
+    q: "Who is PartLister for?",
+    a: (
+      <div className={sl}>
+        <p>PartLister is built for:</p>
+        <ul className="space-y-1 pl-1">
+          {[
+            "eBay sellers",
+            "Motor factors",
+            "Automotive retailers",
+            "Engine rebuilders",
+            "Parts distributors",
+            "Salvage yards",
+            "Commercial vehicle specialists",
+          ].map((s) => (
+            <li key={s} className={li}><span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />{s}</li>
+          ))}
+        </ul>
+        <p>Anyone creating automotive parts listings at scale.</p>
+      </div>
+    ),
+  },
+  {
+    q: "Why use PartLister instead of copying from TecDoc?",
+    a: (
+      <div className={sl}>
+        <p>Instead of manually copying information between TecDoc, eBay and spreadsheets, PartLister generates a complete listing in seconds.</p>
+        <p>That means:</p>
+        <ul className="space-y-1 pl-1">
+          {["Less manual work", "Fewer mistakes", "Better SEO", "Consistent listings", "More time selling"].map((s) => (
+            <li key={s} className={li}><span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />{s}</li>
+          ))}
+        </ul>
+      </div>
+    ),
   },
 ];
 
-export default function FAQ() {
-  const [open, setOpen] = useState<number | null>(null);
-
+function Item({ q, a, i }: { q: string; a: React.ReactNode; i: number }) {
+  const [open, setOpen] = useState(false);
   return (
-    <section
-      id="faq"
-      style={{
-        padding: "96px 24px",
-        background: "#f4f7fc",
-        fontFamily: "Plus Jakarta Sans, sans-serif",
-      }}
-    >
-      <div style={{ maxWidth: 800, margin: "0 auto" }}>
-      <div style={{ textAlign: "center", marginBottom: 56 }}>
-        <div
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 8,
-            background: ACCENT_LIGHT,
-            border: `1px solid ${BORDER}`,
-            borderRadius: 999,
-            padding: "6px 16px",
-            fontSize: 12,
-            fontWeight: 700,
-            color: ACCENT,
-            letterSpacing: "0.05em",
-            marginBottom: 20,
-          }}
+    <Reveal delay={i * 0.04}>
+      <div className={`overflow-hidden rounded-2xl border bg-white transition-colors ${open ? "border-primary/30 shadow-soft" : "border-hair"}`}>
+        <button
+          onClick={() => setOpen((v) => !v)}
+          className="flex w-full items-center justify-between gap-4 px-6 py-5 text-left"
         >
-          FAQ
-        </div>
-        <h2
-          style={{
-            fontSize: "clamp(26px, 3.5vw, 44px)",
-            fontWeight: 900,
-            color: TEXT,
-            letterSpacing: "-0.5px",
-            lineHeight: 1.15,
-          }}
-        >
-          Frequently asked questions
-        </h2>
-      </div>
-
-      <div style={{ display: "flex", flexDirection: "column" as const, gap: 12 }}>
-        {FAQS.map((faq, i) => (
-          <div
-            key={i}
-            style={{
-              background: "#fff",
-              border: `1px solid ${open === i ? ACCENT : BORDER}`,
-              borderRadius: 14,
-              overflow: "hidden",
-              boxShadow: open === i ? "0 4px 20px rgba(19,93,255,0.08)" : "0 1px 4px rgba(19,45,70,0.04)",
-              transition: "border-color 0.2s, box-shadow 0.2s",
-            }}
-          >
-            <button
-              onClick={() => setOpen(open === i ? null : i)}
-              style={{
-                width: "100%",
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                padding: "18px 22px",
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-                textAlign: "left" as const,
-                gap: 16,
-                fontFamily: "inherit",
-              }}
+          <span className="text-[1.02rem] font-semibold text-navy">{q}</span>
+          <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full transition-all duration-300 ${open ? "rotate-45 bg-primary text-white" : "bg-wash text-primary"}`}>
+            <Plus className="h-4 w-4" />
+          </span>
+        </button>
+        <AnimatePresence initial={false}>
+          {open && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
             >
-              <span style={{ fontSize: 15, fontWeight: 700, color: TEXT }}>
-                {faq.q}
-              </span>
-              <span
-                style={{
-                  width: 28,
-                  height: 28,
-                  borderRadius: "50%",
-                  background: open === i ? ACCENT : ACCENT_LIGHT,
-                  border: `1px solid ${BORDER}`,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: 14,
-                  color: open === i ? "#fff" : ACCENT,
-                  fontWeight: 700,
-                  flexShrink: 0,
-                  transition: "all 0.2s",
-                }}
-              >
-                {open === i ? "−" : "+"}
-              </span>
-            </button>
-            {open === i && (
-              <div
-                style={{
-                  padding: "0 22px 18px",
-                  fontSize: 14,
-                  color: MUTED,
-                  lineHeight: 1.75,
-                  borderTop: `1px solid ${BORDER}`,
-                  paddingTop: 16,
-                }}
-              >
-                {faq.a}
-              </div>
-            )}
-          </div>
+              <div className="px-6 pb-6">{a}</div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </Reveal>
+  );
+}
+
+export default function FAQ() {
+  return (
+    <Section id="faq" className="py-24 sm:py-28">
+      <Reveal className="mx-auto max-w-2xl text-center">
+        <Eyebrow>FAQ</Eyebrow>
+        <h2 className="font-display text-[clamp(2rem,4vw,3rem)] font-extrabold tracking-tightest text-navy text-balance">
+          Everything you need to know
+        </h2>
+      </Reveal>
+
+      <div className="mx-auto mt-12 flex max-w-2xl flex-col gap-3">
+        {faqs.map((f, i) => (
+          <Item key={f.q} q={f.q} a={f.a} i={i} />
         ))}
       </div>
-      </div>
-    </section>
+    </Section>
   );
 }

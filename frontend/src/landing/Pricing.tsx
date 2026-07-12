@@ -1,311 +1,138 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { trackEvent } from "../lib/analytics";
-import { checkoutSearchParams } from "../lib/plans";
-// ─── Premium dark palette for this section only ────────────────────────────
-const BG          = "#0a0e17";
-const CARD_BG     = "#11151f";
-const SCALE_BG    = "linear-gradient(160deg, #12161f 0%, #161a26 100%)";
-const TEXT        = "#f5f7fa";
-const MUTED       = "#9aa3b8";
-const DIM         = "#5b6478";
-const BORDER      = "rgba(255,255,255,0.08)";
-const BORDER_SOFT = "rgba(255,255,255,0.06)";
-const ACCENT      = "#135DFF";
-const ACCENT_SOFT = "rgba(19,93,255,0.12)";
-const GOLD        = "#e8b95e";
+import { Check, ArrowRight } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Reveal, Section } from "./Primitives";
 
-function CheckIcon({ color = ACCENT }: { color?: string }) {
-  return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="20 6 9 17 4 12"/>
-    </svg>
-  );
-}
-
-type Plan = {
-  name: string;
-  price: number;
-  tagline: string;
-  cta: string;
-  listings: string;
-  inherits?: string;
-  groups: { label: string; items: string[] }[];
-  badge?: string;
-  tier: "lite" | "growth" | "scale";
-};
-
-const plans: Plan[] = [
+const plans = [
   {
     name: "Lite",
-    price: 19,
+    price: "19",
     tagline: "For occasional sellers and smaller inventories.",
-    cta: "Start with Lite",
-    listings: "50 listings / month",
-    tier: "lite",
-    groups: [
-      {
-        label: "Core Tools",
-        items: ["Listing Generator", "Price Calculator", "Seller Preferences", "Export Listings to CSV", "Saved Listings"],
-      },
+    features: [
+      "50 listings / month",
+      "Listing Generator",
+      "Price Calculator",
+      "Seller Preferences",
+      "Export Listings to CSV",
+      "Saved Listings",
     ],
+    cta: "Start with Lite",
+    featured: false,
   },
   {
     name: "Growth",
-    price: 49,
+    price: "49",
     tagline: "For growing automotive businesses.",
-    cta: "Start with Growth",
-    listings: "200 listings / month",
-    inherits: "Everything in Lite",
-    badge: "Most Popular",
-    tier: "growth",
-    groups: [
-      {
-        label: "Advanced Tools",
-        items: ["Compatibility Checker", "Smart Pricing", "Priority Support"],
-      },
+    features: [
+      "200 listings / month",
+      "Everything in Lite",
+      "Compatibility Checker",
+      "Smart Pricing",
+      "Priority Support",
     ],
+    cta: "Start with Growth",
+    featured: true,
   },
   {
     name: "Scale",
-    price: 99,
+    price: "99",
     tagline: "For larger operations and teams.",
-    cta: "Start with Scale",
-    listings: "Unlimited listings",
-    inherits: "Everything in Growth",
-    tier: "scale",
-    groups: [
-      {
-        label: "Scale Features",
-        items: ["Bulk Listing Generation", "Bulk CSV Export", "Priority Support", "Early Access Features"],
-      },
+    features: [
+      "Unlimited listings",
+      "Everything in Growth",
+      "Bulk Listing Generation",
+      "Bulk CSV Export",
+      "Early Access Features",
     ],
+    cta: "Start with Scale",
+    featured: false,
   },
 ];
 
-function PlanCard({ plan, annual }: { plan: Plan; annual: boolean }) {
-  const navigate = useNavigate();
-  const isGrowth = plan.tier === "growth";
-  const isScale  = plan.tier === "scale";
-  const displayPrice = annual ? Math.round(plan.price * 0.8) : plan.price;
-  const interval = annual ? "annual" : "monthly";
-  const checkoutHref = `/checkout?${checkoutSearchParams(plan.tier, interval)}`;
-
-  function handleCtaClick(e: React.MouseEvent) {
-    e.preventDefault();
-    trackEvent("signup_clicked", {
-      cta_location: "pricing_section",
-      plan_name: plan.name,
-      billing_period: interval,
-    });
-    navigate(checkoutHref);
-  }
-
+export function Pricing() {
   return (
-    <div
-      style={{
-        position: "relative",
-        background: isScale ? SCALE_BG : CARD_BG,
-        border: isGrowth ? `1.5px solid ${ACCENT}` : `1px solid ${isScale ? "rgba(255,255,255,0.12)" : BORDER_SOFT}`,
-        borderRadius: 20,
-        padding: isGrowth ? "44px 32px 32px" : "36px 28px",
-        boxShadow: isGrowth
-          ? "0 0 0 1px rgba(19,93,255,0.15), 0 24px 60px rgba(19,93,255,0.22), 0 8px 24px rgba(0,0,0,0.4)"
-          : "0 8px 24px rgba(0,0,0,0.3)",
-        transform: isGrowth ? "translateY(-14px)" : "none",
-        display: "flex",
-        flexDirection: "column",
-        height: "100%",
-      }}
-    >
-      {/* Most Popular badge */}
-      {plan.badge && (
-        <div style={{
-          position: "absolute", top: -15, left: "50%", transform: "translateX(-50%)",
-          background: `linear-gradient(90deg, ${ACCENT} 0%, #3b7dff 100%)`,
-          color: "#fff", borderRadius: 20, padding: "5px 16px",
-          fontSize: 11, fontWeight: 700, letterSpacing: "0.05em", whiteSpace: "nowrap",
-          boxShadow: "0 4px 14px rgba(19,93,255,0.45)",
-        }}>
-          ⭐ {plan.badge}
+    <Section id="pricing" className="relative overflow-hidden bg-[#081326] py-24 text-white sm:py-28">
+      <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+        <div
+          className="absolute inset-0"
+          style={{ background: "radial-gradient(ellipse 80% 60% at 50% 30%, #14294a 0%, #0c1c38 48%, #060f1f 100%)" }}
+        />
+        <div
+          className="absolute inset-0"
+          style={{ background: "radial-gradient(ellipse 40% 50% at 8% 6%, rgba(37,120,255,0.45), transparent 60%), radial-gradient(ellipse 42% 52% at 92% 12%, rgba(90,160,255,0.35), transparent 60%)" }}
+        />
+        <div
+          className="absolute inset-0 opacity-[0.45] [mask-image:radial-gradient(ellipse_at_50%_35%,black,transparent_78%)]"
+          style={{ backgroundImage: "radial-gradient(circle, rgba(255,255,255,0.11) 1px, transparent 1px)", backgroundSize: "24px 24px" }}
+        />
+        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/60 to-transparent" />
+      </div>
+
+      <Reveal className="mx-auto max-w-2xl text-center">
+        <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3.5 py-1.5 font-mono text-[0.72rem] font-medium uppercase tracking-[0.14em] text-blue-200 backdrop-blur">
+          Pricing
         </div>
-      )}
+        <h2 className="font-display text-[clamp(2rem,4vw,3rem)] font-extrabold tracking-tightest text-white text-balance">
+          Simple pricing that scales with you
+        </h2>
+        <p className="mx-auto mt-4 max-w-lg text-[1.05rem] leading-relaxed text-blue-100/70">
+          Start free with 10 listings. Upgrade when you are ready. No contracts, cancel anytime.
+        </p>
+      </Reveal>
 
-      {/* Plan name */}
-      <div style={{
-        fontSize: 13, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase",
-        color: isGrowth ? ACCENT : isScale ? GOLD : MUTED, marginBottom: 14,
-      }}>
-        {plan.name}
-      </div>
+      <div className="mt-14 grid items-start gap-6 lg:grid-cols-3">
+        {plans.map((p, i) => (
+          <Reveal key={p.name} delay={i * 0.08}>
+            <div
+              className={`relative flex h-full flex-col rounded-3xl p-8 backdrop-blur transition-all duration-300 ${
+                p.featured
+                  ? "border-2 border-primary bg-gradient-to-b from-[#12305e] to-[#0d1f3d] text-white shadow-[0_30px_80px_-24px_rgba(19,93,255,0.55)] lg:-mt-4 lg:mb-4"
+                  : "border border-white/10 bg-white/[0.04] shadow-[0_20px_50px_-30px_rgba(0,0,0,0.8)] hover:-translate-y-1 hover:border-white/20 hover:bg-white/[0.06]"
+              }`}
+            >
+              {p.featured && (
+                <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-primary px-3.5 py-1 font-mono text-[0.68rem] font-semibold uppercase tracking-wider text-white shadow-chip">
+                  Most Popular
+                </span>
+              )}
 
-      {/* Price */}
-      <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginBottom: 6 }}>
-        <span style={{ fontSize: isGrowth ? 48 : 40, fontWeight: 800, color: TEXT, letterSpacing: "-0.02em" }}>£{displayPrice}</span>
-        <span style={{ fontSize: 14, color: DIM, fontWeight: 600 }}>/mo</span>
-      </div>
-      {annual && (
-        <div style={{ fontSize: 12, color: DIM, marginBottom: 8 }}>
-          billed annually (£{displayPrice * 12}/yr) · was £{plan.price}/mo
-        </div>
-      )}
+              <div className="mb-6">
+                <h3 className="font-display text-[1.3rem] font-bold text-white">{p.name}</h3>
+                <p className={`mt-1 text-[0.9rem] ${p.featured ? "text-white/70" : "text-blue-100/60"}`}>{p.tagline}</p>
+              </div>
 
-      {/* Listings badge */}
-      <div style={{
-        display: "inline-flex", alignItems: "center", gap: 6, marginBottom: 14,
-        fontSize: 12.5, fontWeight: 600,
-        color: isScale ? GOLD : isGrowth ? ACCENT : MUTED,
-      }}>
-        {isScale && (
-          <span style={{
-            background: "rgba(232,185,94,0.12)", border: "1px solid rgba(232,185,94,0.3)",
-            borderRadius: 6, padding: "2px 8px", fontSize: 11, fontWeight: 700,
-          }}>
-            ∞ UNLIMITED
-          </span>
-        )}
-        {!isScale && plan.listings}
-      </div>
+              <div className="mb-6 flex items-end gap-1">
+                <span className="font-display text-[3.2rem] font-extrabold leading-none tracking-tightest text-white">£{p.price}</span>
+                <span className={`mb-1.5 text-[0.95rem] ${p.featured ? "text-white/60" : "text-blue-100/50"}`}>/month</span>
+              </div>
 
-      <div style={{ fontSize: 13.5, color: MUTED, lineHeight: 1.55, marginBottom: 26, minHeight: 38 }}>
-        {plan.tagline}
-      </div>
+              <Link
+                to="/auth/sign-up"
+                className={`group inline-flex w-full items-center justify-center gap-2 rounded-xl px-5 py-3.5 font-semibold transition-all duration-200 hover:-translate-y-0.5 ${
+                  p.featured
+                    ? "bg-primary text-white shadow-[0_10px_28px_-8px_rgba(19,93,255,0.7)] hover:bg-white hover:text-navy"
+                    : "border border-white/15 bg-white/10 text-white hover:border-primary hover:bg-primary"
+                }`}
+              >
+                {p.cta}
+                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+              </Link>
 
-      {/* CTA */}
-      <a
-        href={checkoutHref}
-        onClick={handleCtaClick}
-        style={{
-          display: "block", textAlign: "center", borderRadius: 10,
-          padding: "13px 0", fontSize: 14, fontWeight: 700, textDecoration: "none",
-          marginBottom: 28, transition: "opacity 0.15s, transform 0.15s",
-          background: isGrowth ? `linear-gradient(90deg, ${ACCENT} 0%, #3b7dff 100%)` : "transparent",
-          color: isGrowth ? "#fff" : isScale ? GOLD : TEXT,
-          border: isGrowth ? "none" : `1.5px solid ${isScale ? "rgba(232,185,94,0.4)" : "rgba(255,255,255,0.16)"}`,
-          boxShadow: isGrowth ? "0 8px 24px rgba(19,93,255,0.35)" : "none",
-        }}
-      >
-        {plan.cta}
-      </a>
-
-      {/* Inherited tier line */}
-      {plan.inherits && (
-        <div style={{
-          display: "flex", alignItems: "center", gap: 9, marginBottom: 14,
-          fontSize: 13, fontWeight: 700, color: TEXT,
-        }}>
-          <CheckIcon color={isGrowth ? ACCENT : isScale ? GOLD : ACCENT} />
-          {plan.inherits}
-        </div>
-      )}
-
-      {/* Feature groups */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-        {plan.groups.map((group) => (
-          <div key={group.label}>
-            <div style={{
-              fontSize: 11, fontWeight: 700, letterSpacing: "0.05em", textTransform: "uppercase",
-              color: DIM, marginBottom: 10,
-            }}>
-              {group.label}
+              <ul className="mt-7 flex flex-col gap-3.5">
+                {p.features.map((f) => (
+                  <li key={f} className="flex items-start gap-3">
+                    <span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${p.featured ? "bg-primary text-white" : "bg-primary/20 text-blue-300"}`}>
+                      <Check className="h-3.5 w-3.5" strokeWidth={3} />
+                    </span>
+                    <span className={`text-[0.95rem] ${p.featured ? "text-white/90" : "text-blue-100/80"}`}>{f}</span>
+                  </li>
+                ))}
+              </ul>
             </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
-              {group.items.map((item) => (
-                <div key={item} style={{ display: "flex", alignItems: "center", gap: 9 }}>
-                  <div style={{ flexShrink: 0, width: 16, display: "flex" }}>
-                    <CheckIcon color={isGrowth ? ACCENT : isScale ? GOLD : "#4ade80"} />
-                  </div>
-                  <span style={{ fontSize: 13.5, color: MUTED, lineHeight: 1.4 }}>{item}</span>
-                </div>
-              ))}
-            </div>
-          </div>
+          </Reveal>
         ))}
       </div>
-    </div>
+    </Section>
   );
 }
 
-export default function Pricing() {
-  const [annual, setAnnual] = useState(false);
-
-  return (
-    <section id="pricing" style={{ background: BG, padding: "100px 24px 110px" }}>
-      <div style={{ maxWidth: 1140, margin: "0 auto" }}>
-        {/* Header */}
-        <div style={{ textAlign: "center", marginBottom: 48 }}>
-          <div style={{
-            display: "inline-flex", alignItems: "center", gap: 8,
-            background: ACCENT_SOFT, border: "1px solid rgba(19,93,255,0.25)",
-            borderRadius: 20, padding: "6px 16px", marginBottom: 22,
-          }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={ACCENT} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/>
-            </svg>
-            <span style={{ fontSize: 12, fontWeight: 600, color: ACCENT, letterSpacing: "0.04em" }}>PRICING</span>
-          </div>
-          <h2 style={{ fontSize: "clamp(28px, 4vw, 42px)", fontWeight: 800, color: TEXT, margin: "0 0 16px", letterSpacing: "-0.01em", lineHeight: 1.2 }}>
-            Choose Your Plan
-          </h2>
-          <p style={{ fontSize: 16, color: MUTED, maxWidth: 480, margin: "0 auto 28px", lineHeight: 1.6 }}>
-            Generate professional listings in just a few clicks.
-          </p>
-
-          {/* Monthly / Annual toggle */}
-          <div style={{
-            display: "inline-flex", alignItems: "center", gap: 4,
-            background: CARD_BG, border: `1px solid ${BORDER_SOFT}`, borderRadius: 30, padding: 5,
-          }}>
-            <button
-              onClick={() => setAnnual(false)}
-              style={{
-                background: !annual ? ACCENT : "transparent",
-                color: !annual ? "#fff" : MUTED,
-                border: "none", borderRadius: 24, padding: "8px 22px",
-                fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "all 0.2s",
-              }}
-            >
-              Monthly
-            </button>
-            <button
-              onClick={() => setAnnual(true)}
-              style={{
-                background: annual ? ACCENT : "transparent",
-                color: annual ? "#fff" : MUTED,
-                border: "none", borderRadius: 24, padding: "8px 22px",
-                fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "all 0.2s",
-                display: "flex", alignItems: "center", gap: 8,
-              }}
-            >
-              Annual
-              <span style={{
-                background: annual ? "rgba(255,255,255,0.2)" : "rgba(74,222,128,0.15)",
-                color: annual ? "#fff" : "#4ade80",
-                borderRadius: 10, padding: "2px 8px", fontSize: 11, fontWeight: 700,
-              }}>
-                -20%
-              </span>
-            </button>
-          </div>
-        </div>
-
-        {/* Cards */}
-        <div style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-          gap: 28,
-          alignItems: "stretch",
-          paddingTop: 14,
-        }}>
-          {plans.map((plan) => <PlanCard key={plan.name} plan={plan} annual={annual} />)}
-        </div>
-
-        {/* Footer note */}
-        <p style={{ textAlign: "center", fontSize: 13, color: DIM, marginTop: 56 }}>
-          All plans include VAT. Cancel anytime. Questions?{" "}
-          <a href="mailto:hello@partlister.app" style={{ color: ACCENT, textDecoration: "none" }}>hello@partlister.app</a>
-        </p>
-      </div>
-    </section>
-  );
-}
+export default Pricing;

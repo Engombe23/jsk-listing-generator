@@ -1,4 +1,4 @@
-﻿import React, { useState } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
 
@@ -14,8 +14,11 @@ export default function UpdatePasswordForm() {
     setError(null);
 
     try {
-      const { error } = await supabase.auth.updateUser({ password });
-      if (error) throw error;
+      // Session is already established by AuthCallback (PASSWORD_RECOVERY event).
+      // Just update the password directly.
+      const { error: updateErr } = await supabase.auth.updateUser({ password });
+      if (updateErr) throw updateErr;
+
       navigate("/", { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");

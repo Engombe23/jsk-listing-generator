@@ -1,4 +1,5 @@
 import { supabase } from "./supabaseClient";
+import { isInternalUser } from "./internalUsers";
 
 // ─── Internal usage analytics (separate from PostHog) ──────────────────────
 // trackEvent() is the single entry point every component should use to record
@@ -25,12 +26,16 @@ function getSessionId() {
 }
 
 // Cached from Supabase auth state so trackEvent() can stay synchronous.
-let currentUserId = null;
+let currentUserId    = null;
+let currentUserEmail = null;
+
 supabase.auth.getSession().then(({ data: { session } }) => {
-  currentUserId = session?.user?.id || null;
+  currentUserId    = session?.user?.id    || null;
+  currentUserEmail = session?.user?.email || null;
 });
 supabase.auth.onAuthStateChange((_event, session) => {
-  currentUserId = session?.user?.id || null;
+  currentUserId    = session?.user?.id    || null;
+  currentUserEmail = session?.user?.email || null;
 });
 
 import { getCachedPlan } from "./billing";
@@ -46,17 +51,21 @@ function getCurrentPlan() {
  *
  * `source` inside metadata (or opts.source) is also lifted to its own top-level
  * column so it's filterable without reaching into JSONB.
+ *
+ * Every event automatically includes `internal_user` so internal team traffic
+ * can be excluded from business metrics without changing query code.
  */
 export function trackEvent(eventName, metadata = {}, opts = {}) {
   if (!eventName) return;
 
   const body = {
-    event_name:  eventName,
-    user_id:     currentUserId,
-    session_id:  getSessionId(),
-    plan:        opts.plan || getCurrentPlan(),
-    page_url:    typeof window !== "undefined" ? window.location.href : null,
-    source:      opts.source || metadata.source || null,
+    event_name:    eventName,
+    user_id:       currentUserId,
+    session_id:    getSessionId(),
+    plan:          opts.plan || getCurrentPlan(),
+    page_url:      typeof window !== "undefined" ? window.location.href : null,
+    source:        opts.source || metadata.source || null,
+    internal_user: isInternalUser(currentUserEmail),
     metadata,
   };
 

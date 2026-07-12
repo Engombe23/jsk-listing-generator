@@ -3,6 +3,7 @@ import { supabase } from "../lib/supabaseClient";
 import posthog from "../lib/posthogClient";
 import { getCachedProfile, refreshUserPlan } from "../lib/billing";
 import { getListingLimit, hasPlanFeature } from "../lib/plans";
+import { isInternalUser } from "../lib/internalUsers";
 
 // Frontend copy is for UX only (showing "Unlimited"/all features in the UI
 // for admin convenience) — the real enforcement boundary is the backend's
@@ -44,10 +45,27 @@ export function SessionProvider({ children }) {
   useEffect(() => {
     const syncIdentity = (s) => {
       if (s?.user) {
-        posthog.identify(s.user.id, { email: s.user.email });
+        const email    = s.user.email;
+        const internal = isInternalUser(email);
+
+        // PostHog: identify the person and register internal_user as a super
+        // property so it's automatically included on every subsequent capture.
+        try {
+          posthog.identify(s.user.id, { email, internal_user: internal });
+          posthog.register({ internal_user: internal });
+        } catch (err) {
+          console.warn("[session] PostHog identify failed:", err?.message);
+        }
+
+        // GA4: set as a user property so it persists across all events in the
+        // session and can be used as an audience filter in GA4 reports.
+        window.gtag?.("set", "user_properties", { internal_user: internal });
+
         syncPlan(s.user.id);
       } else {
+        // posthog.reset() clears registered super-properties too.
         posthog.reset();
+        window.gtag?.("set", "user_properties", { internal_user: false });
         syncPlan(null);
       }
     };
