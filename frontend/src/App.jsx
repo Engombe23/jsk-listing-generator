@@ -1,4 +1,5 @@
 ﻿import React, { memo, useState, useRef, useEffect, useMemo } from "react";
+import DOMPurify from "dompurify";
 import { useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { supabase } from "./lib/supabaseClient";
@@ -287,7 +288,10 @@ export default function App() {
     let cancelled = false;
     (async () => {
       try {
-        await syncCheckoutSession({ sessionId: pendingId });
+        await Promise.race([
+          syncCheckoutSession({ sessionId: pendingId }),
+          new Promise((_, rej) => setTimeout(() => rej(new Error("timeout")), 10_000)),
+        ]);
       } catch (err) {
         console.warn("[checkout] sync failed, falling back to profile refresh:", err.message);
       }
@@ -2269,7 +2273,7 @@ function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate, n
                 ))}
               </>
             ) : (
-              <div dangerouslySetInnerHTML={{ __html: editedHtml }} />
+              <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(editedHtml) }} />
             )}
           </div>
         )}

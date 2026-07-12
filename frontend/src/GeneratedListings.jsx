@@ -1,4 +1,5 @@
 ﻿import React, { useState, useMemo } from "react";
+import DOMPurify from "dompurify";
 import { SMALL_BUTTON_STYLE, INPUT_STYLE, CopyButton } from "./shared.jsx";
 import { mapApiSpecsToSchema, SPEC_SCHEMA, SECTION_TITLES } from "./itemSpecificsSchema.js";
 
@@ -343,7 +344,7 @@ function CopyHtmlButton({ html }) {
         boxShadow: "none",
       }}
     >
-      📋
+      Copy
     </CopyButton>
   );
 }
@@ -466,7 +467,7 @@ function ListingsTable({
                             fontWeight: 600, transition: "all 0.14s"
                           }}
                         >
-                          {isGen ? "…" : "⚡"}
+                          {isGen ? "…" : "+"}
                         </button>
                       )}
 
@@ -803,7 +804,7 @@ function ListingDetail({ listing, onClose, onSave }) {
               opacity:     generating ? 0.7 : 1,
               cursor:      generating ? "default" : "pointer"
             }}>
-              {generating ? "Generating…" : hasDesc ? "↺ Regenerate" : "⚡ Generate"}
+              {generating ? "Generating…" : hasDesc ? "↺ Regenerate" : "Generate"}
             </button>
 
             {/* Copy HTML */}
@@ -819,7 +820,7 @@ function ListingDetail({ listing, onClose, onSave }) {
                   boxShadow: "none",
                 }}
               >
-                📋 Copy HTML
+                Copy HTML
               </CopyButton>
             )}
           </div>
@@ -841,7 +842,7 @@ function ListingDetail({ listing, onClose, onSave }) {
               background: "var(--text-on-dark)", borderRadius: 14, padding: 16,
               flex: 1, overflowY: "auto", maxHeight: 480, overflowX: "hidden"
             }}>
-              <div dangerouslySetInnerHTML={{ __html: previewHtml }} />
+              <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(previewHtml) }} />
             </div>
           ) : (
             <div style={{
@@ -859,7 +860,7 @@ function ListingDetail({ listing, onClose, onSave }) {
                 </div>
                 <div style={{ color: "var(--text-muted)", fontWeight: 500 }}>No description yet</div>
                 <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>
-                  Select a theme and click ⚡ Generate above.
+                  Select a theme and click Generate above.
                 </div>
               </div>
             </div>
@@ -1334,7 +1335,7 @@ export default function GeneratedListings({
                   background: "rgba(99,102,241,0.16)", color: "#a5b4fc",
                   boxShadow: "none", border: "1px solid rgba(99,102,241,0.25)"
                 }}>
-                  ⚡ Generate Descriptions ({missingDescCount})
+                  Generate Descriptions ({missingDescCount})
                 </button>
               )}
 
@@ -1344,7 +1345,7 @@ export default function GeneratedListings({
                   background: "rgba(99,102,241,0.12)", borderRadius: 8,
                   padding: "5px 12px", border: "1px solid rgba(99,102,241,0.20)"
                 }}>
-                  ⚡ Generating… {bulkGenProgress.done} / {bulkGenProgress.total}
+                  Generating… {bulkGenProgress.done} / {bulkGenProgress.total}
                 </div>
               )}
 

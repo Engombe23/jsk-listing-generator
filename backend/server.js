@@ -1,7 +1,9 @@
 import "dotenv/config";
 import express from "express";
 import cors from "cors";
+import helmet from "helmet";
 import { rateLimit } from "express-rate-limit";
+import pLimit from "p-limit";
 import { Parser } from "json2csv";
 import { buildHtml } from "./html-builder.js";
 import { getTemplateById, THEME_LIST } from "./templates/index.js";
@@ -34,6 +36,7 @@ app.set("trust proxy", true);
 
 registerStripeWebhook(app);
 
+app.use(helmet());
 app.use(cors({ origin: CLIENT_URL || "*" }));
 app.use(express.json({ limit: "2mb" }));
 app.use("/api", analyticsRouter);
@@ -927,14 +930,12 @@ app.post("/batch-export", requireAuth, async (req, res) => {
       });
     }
 
-    const exportRows = [];
-
-    for (const row of cleanedRows) {
-      // Re-check before each row — a capped plan stops generating once the
-      // limit is hit mid-batch rather than over-counting past it.
+    // Process up to 3 rows concurrently — Promise.all preserves input order.
+    const batchLimit = pLimit(3);
+    const exportRows = await Promise.all(cleanedRows.map((row) => batchLimit(async () => {
       const rowAccess = await canGenerateListing(req.user.id, req.user.email);
       if (!rowAccess.allowed) {
-        exportRows.push({
+        return {
           "Title": "", "SKU": row.sku, "BIN Price": row.binPrice,
           "Description": "",
           "Custom Specifics 1 Name": "Brand", "Custom Specifics 1 Value": "JSK",
@@ -947,15 +948,13 @@ app.post("/batch-export", requireAuth, async (req, res) => {
           "Article Number": row.articleNumber,
           "Template": "",
           "Error": "Listing limit reached — upgrade your plan to generate more.",
-        });
-        continue;
+        };
       }
-
       try {
         console.log(`Batch processing ${row.articleNumber}...`);
         const result = await buildListingFromArticle(row.articleNumber, resolvedTheme);
-
-        exportRows.push({
+        await incrementListingUsage(req.user.id, req.user.email);
+        return {
           "Title":                       result.generated_title || "",
           "SKU":                         row.sku,
           "BIN Price":                   row.binPrice,
@@ -976,12 +975,10 @@ app.post("/batch-export", requireAuth, async (req, res) => {
           "Custom Specifics 7 Value":    uniq(result.k_number_list || []).join(", "),
           "Article Number":              row.articleNumber,
           "Template":                    result.template_name || "",
-          "Error":                       ""
-        });
-
-        await incrementListingUsage(req.user.id, req.user.email);
+          "Error":                       "",
+        };
       } catch (err) {
-        exportRows.push({
+        return {
           "Title": "", "SKU": row.sku, "BIN Price": row.binPrice,
           "Description": "",
           "Custom Specifics 1 Name": "Brand", "Custom Specifics 1 Value": "JSK",
@@ -993,10 +990,10 @@ app.post("/batch-export", requireAuth, async (req, res) => {
           "Custom Specifics 7 Name": "K Numbers", "Custom Specifics 7 Value": "",
           "Article Number": row.articleNumber,
           "Template": "",
-          "Error": err.message
-        });
+          "Error": err.message,
+        };
       }
-    }
+    })));
 
     const parser = new Parser({
       fields: [
