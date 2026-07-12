@@ -42,7 +42,7 @@ export function Nav() {
       className="fixed inset-x-0 top-0 z-50 px-4 pt-3"
     >
       <div
-        className={`mx-auto grid w-full max-w-[1180px] grid-cols-[auto_1fr_auto] items-center rounded-2xl px-4 py-2.5 transition-all duration-300 ${
+        className={`relative mx-auto flex w-full max-w-[1180px] items-center justify-between rounded-2xl px-4 py-2.5 transition-all duration-300 ${
           scrolled
             ? "border border-hair bg-white/80 shadow-soft backdrop-blur-xl"
             : "border border-transparent bg-transparent"
@@ -50,7 +50,7 @@ export function Nav() {
       >
         <Logo />
 
-        <nav className="hidden items-center justify-center gap-1 md:flex">
+        <nav className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-1 md:flex">
           {links.map((l) => (
             <NavLink key={l.href} href={l.href} label={l.label} />
           ))}
