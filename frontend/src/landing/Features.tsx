@@ -77,7 +77,7 @@ export default function Features() {
         <h2 className="font-display text-[clamp(2rem,4vw,3rem)] font-extrabold tracking-tightest text-navy text-balance">
           Built for sellers who move volume
         </h2>
-        <p className="mx-auto mt-4 max-w-lg text-[1.05rem] leading-relaxed text-slate">
+        <p className="mx-auto mt-4 max-w-lg text-balance text-center text-[1.05rem] leading-relaxed text-slate">
           Generate, price and verify fitment without ever leaving PartLister — every step of the listing in one place.
         </p>
       </Reveal>

@@ -29,7 +29,7 @@ export default function FinalCTA() {
             <h2 className="text-balance font-display text-[clamp(2rem,4.6vw,3.4rem)] font-extrabold leading-[1.05] tracking-tightest text-white">
               Ready to create listings in seconds?
             </h2>
-            <p className="mx-auto mt-5 max-w-lg text-[1.08rem] leading-relaxed text-white/70">
+            <p className="mx-auto mt-5 max-w-lg text-balance text-center text-[1.08rem] leading-relaxed text-white/70">
               Stop copy-pasting part data by hand. Turn your next OEM number into a complete eBay listing right now.
             </p>
 
