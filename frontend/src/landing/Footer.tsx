@@ -16,7 +16,7 @@ const cols = [
     title: "Support",
     links: [
       { label: "Help Centre", href: "/help" },
-      { label: "Contact", href: "mailto:enquiries@partlister.app" },
+      { label: "Contact", href: "/contact" },
       { label: "Login", href: "/auth/login" },
     ],
   },
