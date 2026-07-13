@@ -1,5 +1,6 @@
+import React from "react";
 import { Check, ArrowRight } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Reveal, Section } from "./Primitives";
 import { useSession } from "../context/SessionContext";
 import { redirectToStripeCheckout } from "../lib/billing";
@@ -53,13 +54,18 @@ const plans = [
 export function Pricing() {
   const { session } = useSession();
   const navigate = useNavigate();
+  const [loadingPlan, setLoadingPlan] = React.useState<string | null>(null);
+  const [checkoutError, setCheckoutError] = React.useState<string | null>(null);
 
   const handlePlanClick = async (planKey: string) => {
+    setCheckoutError(null);
     if (session) {
+      setLoadingPlan(planKey);
       try {
         await redirectToStripeCheckout({ plan: planKey, interval: "monthly" });
-      } catch (err) {
-        console.error("[Pricing] checkout error:", err);
+      } catch (err: any) {
+        setCheckoutError(err?.message || "Checkout failed. Please try again.");
+        setLoadingPlan(null);
       }
     } else {
       navigate(`/auth/sign-up?plan=${planKey}&interval=monthly`);
@@ -124,13 +130,14 @@ export function Pricing() {
 
               <button
                 onClick={() => handlePlanClick(p.name.toLowerCase())}
-                className={`group inline-flex w-full items-center justify-center gap-2 rounded-xl px-5 py-3.5 font-semibold transition-all duration-200 hover:-translate-y-0.5 cursor-pointer ${
+                disabled={loadingPlan === p.name.toLowerCase()}
+                className={`group inline-flex w-full items-center justify-center gap-2 rounded-xl px-5 py-3.5 font-semibold transition-all duration-200 hover:-translate-y-0.5 cursor-pointer disabled:opacity-70 disabled:cursor-wait ${
                   p.featured
                     ? "bg-primary text-white shadow-[0_10px_28px_-8px_rgba(19,93,255,0.7)] hover:bg-white hover:text-navy"
                     : "border border-white/15 bg-white/10 text-white hover:border-primary hover:bg-primary"
                 }`}
               >
-                {p.cta}
+                {loadingPlan === p.name.toLowerCase() ? "Redirecting…" : p.cta}
                 <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
               </button>
 
@@ -148,6 +155,12 @@ export function Pricing() {
           </Reveal>
         ))}
       </div>
+
+      {checkoutError && (
+        <div className="mx-auto mt-6 max-w-md rounded-xl border border-red-500/30 bg-red-500/10 px-5 py-3 text-center text-[0.9rem] text-red-300">
+          {checkoutError}
+        </div>
+      )}
     </Section>
   );
 }
