@@ -61,7 +61,7 @@ export default function Hero() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.14, ease }}
-            className="mx-auto mt-6 max-w-xl text-pretty text-[1.12rem] leading-relaxed text-slate"
+            className="mx-auto mt-6 max-w-xl text-balance text-center text-[1.12rem] leading-relaxed text-slate"
           >
             Paste an OE, OEM or article number and generate a complete eBay listing in seconds.
           </motion.p>
