@@ -1,6 +1,8 @@
 import { Check, ArrowRight } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Reveal, Section } from "./Primitives";
+import { useSession } from "../context/SessionContext";
+import { redirectToStripeCheckout } from "../lib/billing";
 
 const plans = [
   {
@@ -49,6 +51,21 @@ const plans = [
 ];
 
 export function Pricing() {
+  const { session } = useSession();
+  const navigate = useNavigate();
+
+  const handlePlanClick = async (planKey: string) => {
+    if (session) {
+      try {
+        await redirectToStripeCheckout({ plan: planKey, interval: "monthly" });
+      } catch (err) {
+        console.error("[Pricing] checkout error:", err);
+      }
+    } else {
+      navigate(`/auth/sign-up?plan=${planKey}&interval=monthly`);
+    }
+  };
+
   return (
     <Section id="pricing" className="relative overflow-hidden bg-[#081326] py-24 text-white sm:py-28">
       <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
@@ -105,9 +122,9 @@ export function Pricing() {
                 <span className={`mb-1.5 text-[0.95rem] ${p.featured ? "text-white/60" : "text-blue-100/50"}`}>/month</span>
               </div>
 
-              <Link
-                to="/auth/sign-up"
-                className={`group inline-flex w-full items-center justify-center gap-2 rounded-xl px-5 py-3.5 font-semibold transition-all duration-200 hover:-translate-y-0.5 ${
+              <button
+                onClick={() => handlePlanClick(p.name.toLowerCase())}
+                className={`group inline-flex w-full items-center justify-center gap-2 rounded-xl px-5 py-3.5 font-semibold transition-all duration-200 hover:-translate-y-0.5 cursor-pointer ${
                   p.featured
                     ? "bg-primary text-white shadow-[0_10px_28px_-8px_rgba(19,93,255,0.7)] hover:bg-white hover:text-navy"
                     : "border border-white/15 bg-white/10 text-white hover:border-primary hover:bg-primary"
@@ -115,7 +132,7 @@ export function Pricing() {
               >
                 {p.cta}
                 <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-              </Link>
+              </button>
 
               <ul className="mt-7 flex flex-col gap-3.5">
                 {p.features.map((f) => (
