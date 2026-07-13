@@ -45,7 +45,7 @@ export default function PartsBand() {
         <h2 className="font-display text-[clamp(1.75rem,3.4vw,2.6rem)] font-extrabold tracking-tightest text-navy text-balance">
           From engines to electrics — list any part
         </h2>
-        <p className="mx-auto mt-3 max-w-lg text-[1rem] leading-relaxed text-muted2">
+        <p className="mt-3 text-[1rem] leading-relaxed text-muted2 text-center">
           If it has an OE, OEM or article number, PartLister can turn it into a
           verified eBay listing.
         </p>
