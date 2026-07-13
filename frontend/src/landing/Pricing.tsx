@@ -74,7 +74,7 @@ export function Pricing() {
         <h2 className="font-display text-[clamp(2rem,4vw,3rem)] font-extrabold tracking-tightest text-white text-balance">
           Simple pricing that scales with you
         </h2>
-        <p className="mx-auto mt-4 max-w-lg text-balance text-center text-[1.05rem] leading-relaxed text-blue-100/70">
+        <p className="mt-4 text-balance text-center text-[1.05rem] leading-relaxed text-blue-100/70">
           Start free with 10 listings. Upgrade when you are ready. No contracts, cancel anytime.
         </p>
       </Reveal>
