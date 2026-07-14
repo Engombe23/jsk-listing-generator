@@ -57,16 +57,14 @@ export async function refreshUserPlan(userId) {
   return cachedPlan;
 }
 
-async function authHeaders() {
+async function getSession() {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session?.access_token) throw new Error("Not authenticated");
-  return {
-    "Content-Type": "application/json",
-    "Authorization": `Bearer ${session.access_token}`,
-  };
+  return session;
 }
 
 export async function createCheckoutSession({ plan, interval }) {
+  const session = await getSession();
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 30_000);
 
@@ -74,8 +72,19 @@ export async function createCheckoutSession({ plan, interval }) {
   try {
     res = await fetch(`${API_URL}/api/stripe/create-checkout-session`, {
       method: "POST",
-      headers: await authHeaders(),
-      body: JSON.stringify({ plan, interval }),
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${session.access_token}`,
+      },
+      // userId/email included for backwards-compat with the old backend
+      // which read them from the body; new backend ignores them and uses
+      // the Authorization header via requireAuth middleware instead.
+      body: JSON.stringify({
+        plan,
+        interval,
+        userId: session.user?.id,
+        email: session.user?.email,
+      }),
       signal: controller.signal,
     });
   } catch (err) {
