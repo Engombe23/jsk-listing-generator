@@ -67,11 +67,23 @@ async function authHeaders() {
 }
 
 export async function createCheckoutSession({ plan, interval }) {
-  const res = await fetch(`${API_URL}/api/stripe/create-checkout-session`, {
-    method: "POST",
-    headers: await authHeaders(),
-    body: JSON.stringify({ plan, interval }),
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 30_000);
+
+  let res;
+  try {
+    res = await fetch(`${API_URL}/api/stripe/create-checkout-session`, {
+      method: "POST",
+      headers: await authHeaders(),
+      body: JSON.stringify({ plan, interval }),
+      signal: controller.signal,
+    });
+  } catch (err) {
+    if (err.name === "AbortError") throw new Error("Checkout timed out — please try again.");
+    throw err;
+  } finally {
+    clearTimeout(timeout);
+  }
 
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || "Checkout failed");
