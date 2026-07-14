@@ -17,6 +17,25 @@ function requireStripe(_req, res, next) {
   next();
 }
 
+// Diagnostic: tells clients what's set without exposing keys
+router.get("/stripe/status", (_req, res) => {
+  const priceIds = {
+    lite_monthly: !!process.env.MONTHLY_PRICE_ID_LITE,
+    growth_monthly: !!process.env.MONTHLY_PRICE_ID_GROWTH,
+    scale_monthly: !!process.env.MONTHLY_PRICE_ID_SCALE,
+    lite_annual: !!process.env.ANNUAL_PRICE_ID_LITE,
+    growth_annual: !!process.env.ANNUAL_PRICE_ID_GROWTH,
+    scale_annual: !!process.env.ANNUAL_PRICE_ID_SCALE,
+  };
+  res.json({
+    stripe_ready: stripeReady,
+    client_url_set: !!CLIENT_URL,
+    client_url: CLIENT_URL,
+    price_ids: priceIds,
+    all_monthly_set: priceIds.lite_monthly && priceIds.growth_monthly && priceIds.scale_monthly,
+  });
+});
+
 router.post("/stripe/create-checkout-session", requireStripe, requireAuth, async (req, res) => {
   try {
     const { plan, interval = "monthly" } = req.body || {};
@@ -25,14 +44,20 @@ router.post("/stripe/create-checkout-session", requireStripe, requireAuth, async
 
     const priceId = resolvePriceId(plan, interval);
     if (!priceId) {
-      return res.status(400).json({ error: "Invalid plan or billing interval" });
+      console.error(`[/api/stripe/create-checkout-session] No price ID for plan="${plan}" interval="${interval}". Set MONTHLY_PRICE_ID_${plan?.toUpperCase()} on Render.`);
+      return res.status(400).json({ error: `Price not configured for ${plan} plan. Contact support.` });
+    }
+
+    if (!CLIENT_URL) {
+      console.error("[/api/stripe/create-checkout-session] CLIENT_URL is not set — set it to https://partlister.app on Render.");
+      return res.status(503).json({ error: "Checkout is misconfigured (CLIENT_URL missing). Contact support." });
     }
 
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
       line_items: [{ price: priceId, quantity: 1 }],
       success_url: `${CLIENT_URL}/?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${CLIENT_URL}/checkout?plan=${plan}&interval=${interval}`,
+      cancel_url: `${CLIENT_URL}/pricing`,
       client_reference_id: userId,
       customer_email: email || undefined,
       metadata: { userId, plan, interval },
@@ -43,8 +68,8 @@ router.post("/stripe/create-checkout-session", requireStripe, requireAuth, async
 
     res.json({ url: session.url });
   } catch (err) {
-    console.error("[/api/stripe/create-checkout-session]", err.message);
-    res.status(500).json({ error: "Checkout session creation failed." });
+    console.error("[/api/stripe/create-checkout-session]", err.message, err.type || "");
+    res.status(500).json({ error: `Checkout failed: ${err.message}` });
   }
 });
 
