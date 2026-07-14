@@ -106,10 +106,14 @@ export async function redirectToStripeCheckout({ plan, interval }) {
 }
 
 export async function upgradeSubscription({ plan, interval }) {
+  const session = await getSession();
   const res = await fetch(`${API_URL}/api/stripe/upgrade-subscription`, {
     method: "POST",
-    headers: await authHeaders(),
-    body: JSON.stringify({ plan, interval }),
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${session.access_token}`,
+    },
+    body: JSON.stringify({ plan, interval, userId: session.user?.id }),
   });
 
   const data = await res.json();
@@ -118,10 +122,14 @@ export async function upgradeSubscription({ plan, interval }) {
 }
 
 export async function syncCheckoutSession({ sessionId }) {
+  const session = await getSession();
   const res = await fetch(`${API_URL}/api/stripe/sync-checkout`, {
     method: "POST",
-    headers: await authHeaders(),
-    body: JSON.stringify({ sessionId }),
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${session.access_token}`,
+    },
+    body: JSON.stringify({ sessionId, userId: session.user?.id }),
   });
 
   const data = await res.json();
@@ -130,9 +138,13 @@ export async function syncCheckoutSession({ sessionId }) {
 }
 
 export async function openBillingPortal() {
+  const session = await getSession();
   const res = await fetch(`${API_URL}/api/stripe/create-portal-session`, {
     method: "POST",
-    headers: await authHeaders(),
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${session.access_token}`,
+    },
     body: JSON.stringify({}),
   });
 
