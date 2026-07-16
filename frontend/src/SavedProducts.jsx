@@ -94,7 +94,7 @@ function todayStr() { return new Date().toISOString().slice(0, 10); }
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export default function SavedProducts({ products, onDelete, onLoad }) {
+export default function SavedProducts({ products, isLoading = false, onDelete, onLoad }) {
   const { t } = useTranslation();
   const [confirmId,   setConfirmId]   = useState(null);
   const [period,      setPeriod]      = useState("all");
@@ -152,7 +152,20 @@ export default function SavedProducts({ products, onDelete, onLoad }) {
     setTimeout(() => setExportFlash(false), 1600);
   };
 
-  // ── Empty states ────────────────────────────────────────────────────────────
+  // ── Loading / empty states ──────────────────────────────────────────────────
+  if (isLoading) {
+    return (
+      <div style={{
+        minHeight: 360, display: "grid", placeItems: "center",
+        background: "var(--bg-nav)", border: "1px dashed var(--border-strong)",
+        borderRadius: 24, color: "var(--text-muted)", fontSize: 15,
+        textAlign: "center", padding: 40
+      }}>
+        Loading saved products…
+      </div>
+    );
+  }
+
   if (products.length === 0) {
     return (
       <div style={{

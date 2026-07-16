@@ -349,9 +349,10 @@ export default function App() {
     setAccountSubPage(subPage);
     navigateTo("account");
   };
-  const { products, save, remove } = useSavedProducts();
+  const { products, save, remove, isLoading: productsLoading } = useSavedProducts();
   const {
     listings: generatedListings,
+    isLoading: listingsLoading,
     autoSave,
     updateStatus,
     updateStatusBatch,
@@ -479,6 +480,7 @@ export default function App() {
             onPrefilledConsumed={() => setPrefilledArticle("")}
             onAutoSave={autoSave}
             listings={generatedListings}
+            listingsLoading={listingsLoading}
             onUpdateStatus={updateStatus}
             onUpdateStatusBatch={updateStatusBatch}
             onUpdateListing={updateGeneratedListing}
@@ -491,6 +493,7 @@ export default function App() {
             onSave={save}
             onLoadHandled={(fn) => { loadProductRef.current = fn; }}
             products={products}
+            productsLoading={productsLoading}
             onDeleteProduct={remove}
             onLoadProduct={handleLoadProduct}
             hasSmartPricing={canUseSmartPricing}
@@ -533,7 +536,8 @@ export default function App() {
 
 function ListingGenerator({
   prefilledArticle, onPrefilledConsumed, onAutoSave,
-  listings, onUpdateStatus, onUpdateStatusBatch, onUpdateListing, onRemove, onRemoveBatch,
+  listings, listingsLoading = false,
+  onUpdateStatus, onUpdateStatusBatch, onUpdateListing, onRemove, onRemoveBatch,
 }) {
   const { t } = useTranslation();
   const { session, hasFeature, listingLimit, listingsUsed, refreshPlan } = useSession();
@@ -1160,7 +1164,7 @@ function ListingGenerator({
                   html={displayHtml}
                   copyText={copyText}
                   renderSpecifics={() => (
-                    <ItemSpecificsTab result={result} copyText={copyText} />
+                    <ItemSpecificsTab result={result} copyText={copyText} savedListings={listings} />
                   )}
                 />
               ) : (
@@ -1171,6 +1175,7 @@ function ListingGenerator({
                   onSaveTemplate={handleSaveTemplate}
                   noRightPanel
                   onHtmlChange={(html) => { liveHtmlRef.current = html; }}
+                  savedListings={listings}
                 />
               )
             )}
@@ -1351,6 +1356,7 @@ function ListingGenerator({
       {innerPage === "generated" && (
         <GeneratedListings
           listings={listings}
+          isLoading={listingsLoading}
           onUpdateStatus={onUpdateStatus}
           onUpdateStatusBatch={onUpdateStatusBatch}
           onUpdateListing={onUpdateListing}
@@ -1867,7 +1873,7 @@ function resolveHtml(customTemplateHtml, generatedHtml, result) {
     : mergeTemplateWithContent(customTemplateHtml, generatedHtml ?? "");
 }
 
-function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate, noRightPanel = false, onHtmlChange }) {
+function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate, noRightPanel = false, onHtmlChange, savedListings = [] }) {
   const [innerTab,     setInnerTab]     = useState("overview"); // "overview" | "specifics"
   const [editMode,     setEditMode]     = useState(false);
   const [editedHtml,   setEditedHtml]   = useState(
@@ -2283,7 +2289,7 @@ function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate, n
 
         {/* Item Specifics tab */}
         {innerTab === "specifics" && (
-          <ItemSpecificsTab result={result} copyText={copyText} />
+          <ItemSpecificsTab result={result} copyText={copyText} savedListings={savedListings} />
         )}
 
         </div>{/* end padding wrapper */}
@@ -2747,16 +2753,17 @@ function EditorToolbar({
 
 // ─── Item Specifics Tab ───────────────────────────────────────────────────────
 
-const LS_SAVED_KEY = "jsk_saved_products";
-
-function loadSavedFromStorage() {
-  try { return JSON.parse(localStorage.getItem(LS_SAVED_KEY) || "[]"); }
-  catch { return []; }
-}
-
 // SPEC_SCHEMA, SECTION_TITLES, and mapApiSpecsToSchema are imported from ./itemSpecificsSchema.js
 
-function ItemSpecificsTab({ result, copyText }) {
+/** Normalize a saved listing row into the shape mapApiSpecsToSchema expects. */
+function listingAsSpecSource(listing) {
+  return {
+    ...listing,
+    generated_title: listing.generated_title || listing.title || "",
+  };
+}
+
+function ItemSpecificsTab({ result, copyText, savedListings = [] }) {
   const { hasFeature } = useSession();
   const canBulkCsvExport = hasFeature("bulkCsvExport");
   const buildInitialRows = (res) => mapApiSpecsToSchema(res);
@@ -2766,7 +2773,7 @@ function ItemSpecificsTab({ result, copyText }) {
   const [showAddRow,  setShowAddRow]  = useState(false);
   const [newLabel,    setNewLabel]    = useState("");
   const [newValue,    setNewValue]    = useState("");
-  const [savedProds]                  = useState(loadSavedFromStorage);
+  const savedProds = savedListings;
   const [batchOpen,   setBatchOpen]   = useState(false);
   const [selectedIds, setSelectedIds] = useState([]);
   const [dateFilter,  setDateFilter]  = useState("today");
@@ -2827,7 +2834,7 @@ function ItemSpecificsTab({ result, copyText }) {
     const predefinedLabels = SPEC_SCHEMA.map((f) => f.label);
     const extraLabels = new Set();
     prods.forEach((p) => {
-      mapApiSpecsToSchema(p)
+      mapApiSpecsToSchema(listingAsSpecSource(p))
         .filter((r) => r.section === "Additional" && r.label)
         .forEach((r) => extraLabels.add(r.label));
     });
@@ -2836,10 +2843,11 @@ function ItemSpecificsTab({ result, copyText }) {
     const csvRows = [
       cols.map(escCsv).join(","),
       ...prods.map((p) => {
-        const mapped = mapApiSpecsToSchema(p);
+        const src = listingAsSpecSource(p);
+        const mapped = mapApiSpecsToSchema(src);
         const valueMap = {};
         mapped.forEach((r) => { valueMap[r.label] = r.value; });
-        return cols.map((c) => escCsv(c === "Product Name" ? (p.generated_title || "") : (valueMap[c] || ""))).join(",");
+        return cols.map((c) => escCsv(c === "Product Name" ? (src.generated_title || "") : (valueMap[c] || ""))).join(",");
       })
     ];
     downloadCsv(csvRows.join("\n"), "batch-item-specifics.csv");
@@ -2932,7 +2940,7 @@ function ItemSpecificsTab({ result, copyText }) {
           </div>
           {savedProds.length === 0 ? (
             <div style={{ fontSize: 13, color: "var(--text-muted)" }}>
-              No saved listings found. Save a listing from the Price Calculator first.
+              No saved listings found. Save a listing from the Listing Generator first.
             </div>
           ) : (<>
             {/* Date filter */}
