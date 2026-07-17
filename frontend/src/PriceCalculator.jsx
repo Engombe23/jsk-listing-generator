@@ -1607,7 +1607,7 @@ function SmartPricingLocked({ onUpgrade, upgrading = false, upgradeError = null 
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
-export default function PriceCalculator({ onSave, onLoadHandled, products, onDeleteProduct, onLoadProduct, hasSmartPricing = true }) {
+export default function PriceCalculator({ onSave, onLoadHandled, products, productsLoading = false, onDeleteProduct, onLoadProduct, hasSmartPricing = true }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { session, plan, profile, refreshPlan } = useSession();
@@ -1850,7 +1850,14 @@ export default function PriceCalculator({ onSave, onLoadHandled, products, onDel
       </div>
 
       {/* ── Saved tab ── */}
-      {innerPage === "saved" && <SavedProducts products={products ?? []} onDelete={onDeleteProduct} onLoad={(p) => { setInnerPage("calculator"); if (onLoadProduct) onLoadProduct(p); }} />}
+      {innerPage === "saved" && (
+        <SavedProducts
+          products={products ?? []}
+          isLoading={productsLoading}
+          onDelete={onDeleteProduct}
+          onLoad={(p) => { setInnerPage("calculator"); if (onLoadProduct) onLoadProduct(p); }}
+        />
+      )}
 
       {/* ── Calculator tab ── */}
       {innerPage === "calculator" && (

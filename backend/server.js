@@ -14,7 +14,7 @@ import {
   conditionOptions, EXCLUSION_REASONS,
 } from "./ebay-filter-rules.js";
 import OpenAI from "openai";
-import posthog from "./posthog.js";
+import posthog from "posthog-js";
 import analyticsRouter from "./routes/analytics.js";
 import stripeRouter, { registerStripeWebhook } from "./routes/stripe.js";
 import { stripeReady, CLIENT_URL } from "./lib/stripeConfig.js";

@@ -974,6 +974,7 @@ function ItemSpecificsExport({ listings }) {
 
 export default function GeneratedListings({
   listings,
+  isLoading = false,
   onUpdateStatus,
   onUpdateStatusBatch,
   onUpdateListing,
@@ -1231,6 +1232,18 @@ export default function GeneratedListings({
   }, [selectedIds, filteredIds, listings, selInFilter]);
 
   const exportLabel = selInFilter > 0 ? `${selInFilter} selected` : `${filtered.length} shown`;
+
+  if (isLoading) {
+    return (
+      <div style={{
+        minHeight: 240, display: "grid", placeItems: "center",
+        background: "var(--bg-surface3)", border: "1px dashed var(--border)",
+        borderRadius: 16, color: "var(--text-muted)", fontSize: 14
+      }}>
+        Loading saved listings…
+      </div>
+    );
+  }
 
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
