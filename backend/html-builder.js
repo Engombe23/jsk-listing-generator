@@ -324,14 +324,14 @@ function buildHtmlDefault(data, t, opts, L) {
   const specsTableHtml = itemSpecs.length ? `<table style="width:100%;border-collapse:collapse;">${
     itemSpecs.map((s, i) => {
       const bg = i % 2 === 0 ? "#ffffff" : "#f8f8f8";
-      return `<tr style="background:${bg};"><td style="padding:8px 14px;font-size:13px;font-weight:bold;width:45%;border-bottom:1px solid #eaeaea;color:#333333;">${escapeHtml(s.label)}</td><td style="padding:8px 14px;font-size:13px;border-bottom:1px solid #eaeaea;color:#555555;">${escapeHtml(s.value)}</td></tr>`;
+      return `<tr style="background:${bg};"><td style="padding:8px 14px;font-size:13px;font-weight:bold;width:45%;border-bottom:1px solid #eaeaea;color:#333333;text-align:center;">${escapeHtml(s.label)}</td><td style="padding:8px 14px;font-size:13px;border-bottom:1px solid #eaeaea;color:#555555;text-align:center;">${escapeHtml(s.value)}</td></tr>`;
     }).join("")
   }</table>` : `<div style="padding:10px 14px;font-size:13px;color:#888888;">${L.notSpecified}</div>`;
 
   const xrefsBlock = (showXrefs && xrefs.length) ? `
 <div style="margin:0 0 16px;">
   <div style="background:${red};color:#ffffff;font-weight:bold;text-align:center;padding:9px 12px;font-size:15px;">${L.interchangeableColon}</div>
-  <div style="border:1px solid #eaeaea;border-top:none;padding:12px 16px;font-size:13px;line-height:1.8;background:#ffffff;">${buildCrossRefsHtml(xrefs)}</div>
+  <div style="border:1px solid #eaeaea;border-top:none;padding:12px 16px;font-size:13px;line-height:1.8;background:#ffffff;text-align:center;">${buildCrossRefsHtml(xrefs)}</div>
 </div>` : "";
 
   const ecBlock = (showEC && engineCodes.length) ? `
@@ -447,7 +447,7 @@ function buildHtmlTableFocused(data, t, opts, L) {
     metaRows.push(`<tr><td style="border:1px solid #999;padding:6px 10px;font-weight:bold;background:#e8e8e8;font-size:13px;width:160px;">${L.oemNumbers}</td><td style="border:1px solid #999;padding:6px 10px;font-size:13px;">${oems.map(escapeHtml).join(", ")}</td></tr>`);
   }
   if (showXrefs && xrefs.length) {
-    metaRows.push(buildCrossRefsHtml(xrefs, "rows"));
+    metaRows.push(`<tr><td style="border:1px solid #999;padding:6px 10px;font-weight:bold;background:#e8e8e8;font-size:13px;width:160px;">${L.interchangeable}</td><td style="border:1px solid #999;padding:6px 10px;font-size:13px;">${buildCrossRefsHtml(xrefs, "inline")}</td></tr>`);
   }
   for (const s of specs) {
     const { label, value } = parseSpec(s);
@@ -546,7 +546,7 @@ function buildHtmlMinimal(data, t, opts, L) {
   <p style="font-size:13px;margin:0 0 12px;color:#444444;">${escapeHtml(oemText)}</p>${xrefsBlock}
   <p style="font-weight:bold;font-size:13px;margin:0 0 3px;color:${t.primaryColor};">${L.itemSpecifics}</p>
   <div style="font-size:13px;color:#444444;line-height:1.8;margin-bottom:12px;">${specsHtml}</div>
-  ${showEC && engineCodes.length ? `<p style="font-weight:bold;font-size:13px;margin:0 0 3px;color:${t.primaryColor};">${L.engineCodes}:</p><div style="font-size:13px;color:#444444;line-height:1.8;margin-bottom:12px;">${escapeHtml(engineCodes.join(", "))}</div>` : ""}
+  ${showEC && engineCodes.length ? `<p style="font-weight:bold;font-size:13px;margin:0 0 3px;color:${t.primaryColor};">${L.engineCodes}</p><div style="font-size:13px;color:#444444;line-height:1.8;margin-bottom:12px;">${escapeHtml(engineCodes.join(", "))}</div>` : ""}
   ${showCompat ? `<p style="font-weight:bold;font-size:13px;margin:0 0 14px;color:${t.primaryColor};">${L.compatVehicles}</p>
   ${manufacturerTables}` : ""}
 </div>`.trim();
@@ -605,7 +605,7 @@ function buildHtmlProfessionalBlue(data, t, opts, L) {
   }).join("")}</table>` : `<div style="font-size:13px;color:#666;">${L.notSpecified}</div>`;
   const xrefsBlock = (showXrefs && xrefs.length) ? `
     <div style="margin-bottom:12px;">
-      <div style="background:${t.primaryColor};color:#ffffff;font-weight:bold;padding:6px 12px;font-size:13px;display:inline-block;margin-bottom:4px;">${L.interchangeable}</div>
+      <div style="background:${t.primaryColor};color:#ffffff;font-weight:bold;padding:6px 12px;font-size:13px;display:block;margin-bottom:4px;">${L.interchangeable}</div>
       <div style="padding:8px 12px;background:#ffffff;border:1px solid #b8d0e8;font-size:14px;line-height:1.8;">${buildCrossRefsHtml(xrefs)}</div>
     </div>` : "";
 
@@ -614,17 +614,17 @@ function buildHtmlProfessionalBlue(data, t, opts, L) {
   <div style="background:#fff3cd;border-bottom:1px solid #e0a800;padding:9px 16px;text-align:center;font-size:13px;font-weight:bold;color:#664d03;">&#9888; ${escapeHtml(L.warningReview)}</div>
   <div style="padding:12px 14px 0;">
     <div style="margin-bottom:12px;">
-      <div style="background:${t.primaryColor};color:#ffffff;font-weight:bold;padding:6px 12px;font-size:13px;display:inline-block;margin-bottom:4px;">${L.oemRef}</div>
+      <div style="background:${t.primaryColor};color:#ffffff;font-weight:bold;padding:6px 12px;font-size:13px;display:block;margin-bottom:4px;">${L.oemRef}</div>
       <div style="padding:8px 12px;background:#ffffff;border:1px solid #b8d0e8;font-size:14px;line-height:1.8;">${oemHtml}</div>
     </div>${xrefsBlock}
     <div style="margin-bottom:12px;">
-      <div style="background:${t.primaryColor};color:#ffffff;font-weight:bold;padding:6px 12px;font-size:13px;display:inline-block;margin-bottom:4px;">${L.itemSpecifics}</div>
-      ${specsHtml}
+      <div style="background:${t.primaryColor};color:#ffffff;font-weight:bold;padding:6px 12px;font-size:13px;display:block;margin-bottom:4px;">${L.itemSpecifics}</div>
+      <div style="border:1px solid #b8d0e8;background:#ffffff;">${specsHtml}</div>
     </div>
     ${showEC && engineCodes.length ? `<div style="margin-bottom:12px;padding:8px 12px;background:#ffffff;border:1px solid #b8d0e8;font-size:13px;line-height:1.8;"><strong style="color:#1a3a6b;display:block;margin-bottom:4px;">${L.engineCodes}:</strong>${escapeHtml(engineCodes.join(", "))}</div>` : ""}
   </div>
   ${showCompat ? `<div style="padding:4px 14px 14px;">
-    <div style="background:${t.primaryColor};color:#ffffff;font-weight:bold;padding:6px 12px;font-size:13px;display:inline-block;">${L.compatVehicles}</div>
+    <div style="background:${t.primaryColor};color:#ffffff;font-weight:bold;padding:6px 12px;font-size:13px;display:block;">${L.compatVehicles}</div>
   </div>
   ${manufacturerTables}` : ""}
 </div>`.trim();
