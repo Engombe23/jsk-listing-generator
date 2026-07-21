@@ -21,7 +21,7 @@ import { canGenerateListing, incrementListingUsage, checkFeatureAccess } from ".
 import authRouter from "./routes/auth.js";
 import partIdentifierRouter from "./routes/partIdentifier.js";
 import contactRouter        from "./routes/contact.js";
-import { listingGenerationLimiter, compatibilityLimiter, ebaySearchLimiter, aiTitlesLimiter } from "./middleware/rateLimiter.js";
+import { listingGenerationLimiter, compatibilityLimiter, ebaySearchLimiter, aiTitlesLimiter, demoPreviewLimiter } from "./middleware/rateLimiter.js";
 
 const openaiClient = process.env.OPENAI_API_KEY
   ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
@@ -351,13 +351,29 @@ async function resolveArticleResponse(input) {
 
 async function fetchEngineTypesByModel(modelId) {
   const url = `https://${RAPIDAPI_HOST}/api/types/type-id/${TYPE_ID}/list-vehicles-types/${modelId}/lang-id/${LANG_ID}/country-filter-id/${COUNTRY_FILTER_ID}`;
-  try {
-    const res = await fetchWithTimeout(url, { method: "GET", headers: apiHeaders() });
-    if (!res.ok) return [];
-    const data = await res.json();
-    const rows = data?.modelTypes || data?.vehicleTypes || data?.vehicles || data?.data || [];
-    return Array.isArray(rows) ? rows : [];
-  } catch { return []; }
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    try {
+      const res = await fetchWithTimeout(url, { method: "GET", headers: apiHeaders() }, 6000);
+      if (!res.ok) {
+        console.log(`[engineTypes] modelId=${modelId} HTTP ${res.status} (attempt ${attempt})`);
+        if (attempt < 2) { await sleep(600); continue; }
+        return [];
+      }
+      const data = await res.json();
+      // Handle bare array response and all known wrapper key names
+      if (Array.isArray(data)) return data;
+      const rows = data?.modelTypes || data?.vehicleTypes || data?.types || data?.vehicles || data?.data || [];
+      if (!Array.isArray(rows) || rows.length === 0) {
+        console.log(`[engineTypes] modelId=${modelId} — empty/unexpected structure: keys=${Object.keys(data || {}).join(",")}`);
+      }
+      return Array.isArray(rows) ? rows : [];
+    } catch (err) {
+      console.log(`[engineTypes] modelId=${modelId} threw: ${err.message} (attempt ${attempt})`);
+      if (attempt < 2) { await sleep(600); continue; }
+      return [];
+    }
+  }
+  return [];
 }
 
 // Pull the vehicleId from a TecDoc car/engine-row object regardless of field name.
@@ -418,7 +434,7 @@ function findEngineMatch(car, engineRows) {
 // Runs in parallel batches of 4 with 200ms between batches to respect rate limits.
 // Capped at MAX_MODEL_LOOKUPS uncached fetches — the full compatibility list is still
 // built from the article response; only engine-code enrichment is limited.
-const MAX_MODEL_LOOKUPS = 60; // raised from 20 — parts like gaskets can have 40+ unique model series
+const MAX_MODEL_LOOKUPS = 150; // raised from 60 — parts like gaskets/seals can span 80+ unique model series
 
 async function fetchEngineDataByModelIds(cars) {
   const uniqueModelIds = uniq(cars.map(c => String(c.modelId)).filter(Boolean));
@@ -440,7 +456,7 @@ async function fetchEngineDataByModelIds(cars) {
       modelEngineCache.set(modelId, rows);
       result[modelId] = rows;
     }));
-    if (i + BATCH < uncached.length) await sleep(200); // brief pause between batches
+    if (i + BATCH < uncached.length) await sleep(50); // brief pause between batches
   }
 
   return result;
@@ -563,6 +579,7 @@ function normalizeTecdoc(articleResponse, engineDataByModelId) {
     specifications,
     item_specifics:   itemSpecifics,
     compatibility_rows: rows,
+    engine_codes:     uniq(rows.flatMap((r) => r.engine_codes || [])),
     data_supplier_id: article.dataSupplierId || null
   };
 }
@@ -873,6 +890,37 @@ app.post("/search", async (req, res) => {
     res.json({ query, articles });
   } catch (err) {
     console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── Public demo preview (no auth, IP rate-limited) ──────────────────────────
+app.post("/api/demo/preview", demoPreviewLimiter, async (req, res) => {
+  try {
+    const oem = String(req.body.oem || "").trim().replace(/\s+/g, "");
+    if (!oem) return res.status(400).json({ error: "oem is required" });
+
+    const result = await buildListingFromArticle(oem, "clean-default", { targetMarketplace: "ebay-uk" });
+
+    // Return everything needed to power the demo display — skip the full HTML
+    // to keep the payload small; the frontend builds its own structured view.
+    res.json({
+      article_number:      result.article_number,
+      generated_title:     result.generated_title,
+      product_type:        result.product_type,
+      article_image:       result.article_image,
+      oem_numbers:         (result.oem_numbers     || []).slice(0, 8),
+      item_specifics:      (result.item_specifics  || []).slice(0, 10),
+      compatibility_count: result.compatibility_count,
+      top_models:          (result.top_models       || []).slice(0, 5),
+      year_range:          result.year_range,
+      engine_codes:        (result.engine_codes    || []).slice(0, 5),
+      k_number_list:       (result.k_number_list   || []).slice(0, 3),
+      fuel_type:           result.fuel_type,
+      generated_html:      result.generated_html,
+    });
+  } catch (err) {
+    console.error("[demo/preview]", err.message);
     res.status(500).json({ error: err.message });
   }
 });

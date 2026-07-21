@@ -238,16 +238,35 @@ function buildCrossRefsHtml(refs, style = "default") {
   ).join("");
 }
 
-function buildBodyRow(v, i, rowBg1 = "#ffffff", rowBg2 = "#f5f5f5", borderColor = "#000000", showEC = true, L) {
-  const engineCodes = uniq(v.engine_codes || []).join(", ");
+// Reformats "Label [unit]: value" → "Label: value unit"
+function formatSpec(s) {
+  const colonIdx = s.indexOf(":");
+  if (colonIdx === -1) return s;
+  const rawLabel  = s.slice(0, colonIdx).trim();
+  const value     = s.slice(colonIdx + 1).trim();
+  const unitMatch = rawLabel.match(/^(.+?)\s*\[([^\]]+)\]$/);
+  if (unitMatch) return `${unitMatch[1].trim()}: ${value} ${unitMatch[2]}`;
+  return s;
+}
+
+// Same but returns { label, value } for table-cell rendering
+function parseSpec(s) {
+  const colonIdx  = s.indexOf(":");
+  const rawLabel  = colonIdx > -1 ? s.slice(0, colonIdx).trim() : s;
+  const value     = colonIdx > -1 ? s.slice(colonIdx + 1).trim() : "";
+  const unitMatch = rawLabel.match(/^(.+?)\s*\[([^\]]+)\]$/);
+  if (unitMatch) return { label: unitMatch[1].trim(), value: value ? `${value} ${unitMatch[2]}` : value };
+  return { label: rawLabel, value };
+}
+
+function buildBodyRow(v, i, rowBg1 = "#ffffff", rowBg2 = "#f5f5f5", borderColor = "#000000") {
   const bg = i % 2 === 0 ? rowBg1 : rowBg2;
   return `<tr style="background:${bg};">
   <td style="border:1px solid ${borderColor};padding:7px 10px;text-align:left;font-size:13px;">${escapeHtml(v.vehicle)}</td>
-  <td style="border:1px solid ${borderColor};padding:7px 8px;text-align:center;font-size:13px;">${escapeHtml(v.production_years)}</td>
+  <td style="border:1px solid ${borderColor};padding:7px 8px;text-align:center;font-size:13px;white-space:nowrap;">${escapeHtml(v.production_years)}</td>
   <td style="border:1px solid ${borderColor};padding:7px 8px;text-align:center;font-size:13px;">${escapeHtml(v.kw || "")}</td>
   <td style="border:1px solid ${borderColor};padding:7px 8px;text-align:center;font-size:13px;">${escapeHtml(v.hp || "")}</td>
   <td style="border:1px solid ${borderColor};padding:7px 8px;text-align:center;font-size:13px;">${escapeHtml(v.cc || "")}</td>
-  ${showEC ? `<td style="border:1px solid ${borderColor};padding:7px 8px;text-align:center;font-size:13px;">${escapeHtml(engineCodes)}</td>` : ""}
 </tr>`;
 }
 
@@ -265,56 +284,82 @@ function groupByManufacturer(rows) {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 function buildHtmlDefault(data, t, opts, L) {
-  const showCompat = opts.showCompatibilityTable !== false;
-  const showXrefs  = opts.showInterchangeableNumbers !== false;
-  const showEC     = opts.showEngineCodes !== false;
-  const cols       = showEC ? 6 : 5;
+  const showCompat  = opts.showCompatibilityTable !== false;
+  const showXrefs   = opts.showInterchangeableNumbers !== false;
+  const showEC      = opts.showEngineCodes !== false;
+  const engineCodes = uniq(data.engine_codes || []);
+  const red         = t.primaryColor || "#cc0000";
+  const dark        = "#1a1a2e";
 
-  const oems   = uniq(data.oem_numbers || []);
-  const specs  = uniq(data.specifications || []);
-  const rows   = data.compatibility_rows || [];
-  const xrefs  = data.interchangeable_parts || [];
+  const oems    = uniq(data.oem_numbers || []);
+  const specs   = uniq(data.specifications || []);
+  const rows    = data.compatibility_rows || [];
+  const xrefs   = data.interchangeable_parts || [];
   const grouped = groupByManufacturer(rows);
 
-  const manufacturerTables = showCompat ? Object.keys(grouped).sort().map((mfr) => {
-    const bodyRows = grouped[mfr].map((v, i) => buildBodyRow(v, i, "#ffffff", "#f5f5f5", "#000000", showEC, L)).join("\n");
-    return `<div style="margin-bottom:14px;"><table style="width:100%;border-collapse:collapse;font-family:Arial,sans-serif;">
+  const itemSpecs = specs.map(s => parseSpec(s)).filter(s => s.label && s.value);
+
+  const manufacturerTables = showCompat ? Object.keys(grouped)
+    .sort((a, b) => grouped[b].length - grouped[a].length)
+    .map((mfr) => {
+      const bodyRows = grouped[mfr].map((v, i) => buildBodyRow(v, i, "#ffffff", "#f8f8f8", "#e8e8e8")).join("\n");
+      return `<details style="margin-bottom:8px;">
+<summary style="background:#ffffff;color:#111111;font-weight:bold;padding:10px 40px 10px 14px;font-size:14px;cursor:pointer;list-style:none;display:block;position:relative;border-bottom:1px solid #d0d0d0;">${escapeHtml(L.models(mfr))} (${grouped[mfr].length})<span style="position:absolute;right:14px;top:50%;margin-top:-9px;font-size:16px;line-height:1;">&#8964;</span></summary>
+<table style="width:100%;border-collapse:collapse;font-family:Arial,sans-serif;">
   <thead>
-    <tr><th colspan="${cols}" style="border:1px solid #000000;background:#000000;color:${t.primaryColor};font-weight:bold;text-align:center;padding:9px 10px;font-size:16px;">${escapeHtml(L.models(mfr))}</th></tr>
-    <tr style="background:${t.tableHeaderBackground};">
-      <th style="border:1px solid #000000;padding:7px 10px;text-align:center;font-size:13px;color:${t.tableHeaderTextColor};font-weight:bold;">${L.vehicle}</th>
-      <th style="border:1px solid #000000;padding:7px 8px;text-align:center;font-size:13px;color:${t.tableHeaderTextColor};font-weight:bold;">${L.years}</th>
-      <th style="border:1px solid #000000;padding:7px 8px;text-align:center;font-size:13px;color:${t.tableHeaderTextColor};font-weight:bold;">${L.kw}</th>
-      <th style="border:1px solid #000000;padding:7px 8px;text-align:center;font-size:13px;color:${t.tableHeaderTextColor};font-weight:bold;">${L.hp}</th>
-      <th style="border:1px solid #000000;padding:7px 8px;text-align:center;font-size:13px;color:${t.tableHeaderTextColor};font-weight:bold;">${L.cc}</th>
-      ${showEC ? `<th style="border:1px solid #000000;padding:7px 8px;text-align:center;font-size:13px;color:${t.tableHeaderTextColor};font-weight:bold;">${L.engineCodes}</th>` : ""}
+    <tr style="background:#f5f5f5;">
+      <th style="border-bottom:2px solid #e0e0e0;padding:7px 10px;text-align:left;font-size:12px;color:#555555;font-weight:bold;">${L.vehicle}</th>
+      <th style="border-bottom:2px solid #e0e0e0;padding:7px 8px;text-align:center;font-size:12px;color:#555555;font-weight:bold;white-space:nowrap;">${L.years}</th>
+      <th style="border-bottom:2px solid #e0e0e0;padding:7px 8px;text-align:center;font-size:12px;color:#555555;font-weight:bold;">${L.kw}</th>
+      <th style="border-bottom:2px solid #e0e0e0;padding:7px 8px;text-align:center;font-size:12px;color:#555555;font-weight:bold;">${L.hp}</th>
+      <th style="border-bottom:2px solid #e0e0e0;padding:7px 8px;text-align:center;font-size:12px;color:#555555;font-weight:bold;">${L.cc}</th>
     </tr>
   </thead>
   <tbody>${bodyRows}</tbody>
-</table></div>`;
-  }).join("\n") : "";
+</table></details>`;
+    }).join("\n") : "";
 
-  const oemHtml    = oems.length  ? oems.map(escapeHtml).join(", ") : L.notSpecified;
-  const specsHtml  = specs.length ? specs.map((s) => `<div style="padding:2px 0;">${escapeHtml(s)}</div>`).join("") : `<div style="padding:2px 0;">${L.notSpecified}</div>`;
+  const oemHtml = oems.length ? oems.map(escapeHtml).join(", ") : L.notSpecified;
+
+  const specsTableHtml = itemSpecs.length ? `<table style="width:100%;border-collapse:collapse;">${
+    itemSpecs.map((s, i) => {
+      const bg = i % 2 === 0 ? "#ffffff" : "#f8f8f8";
+      return `<tr style="background:${bg};"><td style="padding:8px 14px;font-size:13px;font-weight:bold;width:45%;border-bottom:1px solid #eaeaea;color:#333333;">${escapeHtml(s.label)}</td><td style="padding:8px 14px;font-size:13px;border-bottom:1px solid #eaeaea;color:#555555;">${escapeHtml(s.value)}</td></tr>`;
+    }).join("")
+  }</table>` : `<div style="padding:10px 14px;font-size:13px;color:#888888;">${L.notSpecified}</div>`;
+
   const xrefsBlock = (showXrefs && xrefs.length) ? `
-  <div style="margin:0 0 12px;">
-    <div style="background:${t.primaryColor};color:#ffffff;font-weight:bold;text-align:center;padding:8px 12px;font-size:17px;">${L.interchangeableColon}</div>
-    <div style="background:#ffffff;padding:12px 16px;font-size:14px;line-height:1.8;border:1px solid ${t.primaryColor};border-top:none;">${buildCrossRefsHtml(xrefs)}</div>
-  </div>` : "";
+<div style="margin:0 0 16px;">
+  <div style="background:${dark};color:#ffffff;font-weight:bold;text-align:center;padding:9px 12px;font-size:15px;">${L.interchangeableColon}</div>
+  <div style="border:1px solid #eaeaea;border-top:none;padding:12px 16px;font-size:13px;line-height:1.8;background:#ffffff;">${buildCrossRefsHtml(xrefs)}</div>
+</div>` : "";
 
-  return `<div style="max-width:1100px;margin:0 auto;padding:12px;border:1px solid #cccccc;background:#efefef;font-family:Arial,sans-serif;color:#000000;">
-  <div style="font-size:20px;font-weight:bold;color:#000000;text-align:center;margin:6px 0 16px;line-height:1.4;">${escapeHtml(data.product_name || "")}</div>
-  <div style="max-width:860px;margin:0 auto 16px;background:#ffffff;color:${t.primaryColor};font-weight:bold;text-align:center;padding:12px 18px;border:2px solid ${t.primaryColor};font-size:15px;line-height:1.5;">&#9888; ${escapeHtml(L.warningLong)}</div>
-  <div style="margin:0 0 12px;">
-    <div style="background:${t.primaryColor};color:#ffffff;font-weight:bold;text-align:center;padding:8px 12px;font-size:17px;">${L.oemReplaces}</div>
-    <div style="background:#ffffff;padding:12px 16px;text-align:center;font-size:15px;line-height:1.7;border:1px solid ${t.primaryColor};border-top:none;">${oemHtml}</div>
-  </div>${xrefsBlock}
-  <div style="margin:0 0 12px;">
-    <div style="background:${t.primaryColor};color:#ffffff;font-weight:bold;text-align:center;padding:8px 12px;font-size:17px;">${L.itemSpecificsColon}</div>
-    <div style="background:#ffffff;padding:12px 16px;text-align:center;font-size:15px;line-height:1.7;border:1px solid ${t.primaryColor};border-top:none;">${specsHtml}</div>
-  </div>
-  ${showCompat ? `<div style="background:${t.primaryColor};color:#ffffff;font-weight:bold;text-align:center;padding:8px 12px;font-size:17px;margin:0 0 14px;">${L.compatVehiclesColon}</div>
-  ${manufacturerTables}` : ""}
+  const ecBlock = (showEC && engineCodes.length) ? `
+<div style="border:1.5px solid ${red};padding:12px 16px;margin:0 0 16px;border-radius:4px;background:#ffffff;">
+  <table style="border-collapse:collapse;margin-bottom:6px;"><tr>
+    <td style="padding-right:8px;vertical-align:middle;width:28px;"><svg width="22" height="22" viewBox="0 0 24 24" fill="${red}" xmlns="http://www.w3.org/2000/svg"><path d="M18.92 5.01C18.72 4.42 18.16 4 17.5 4h-11C5.84 4 5.28 4.42 5.08 5.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-6.99zM6.5 15c-.83 0-1.5-.67-1.5-1.5S5.67 12 6.5 12s1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 10l1.5-4.5h11L19 10H5z"/></svg></td>
+    <td style="vertical-align:middle;"><strong style="color:${red};font-size:14px;">${escapeHtml(L.engineCodes)}</strong></td>
+  </tr></table>
+  <div style="font-size:13px;color:#333333;line-height:1.7;">${escapeHtml(engineCodes.join(", "))}</div>
+</div>` : "";
+
+  return `<div style="max-width:900px;margin:0 auto;padding:16px 20px;font-family:Arial,sans-serif;color:#222222;background:#ffffff;">
+<div style="display:flex;align-items:center;margin:0 0 18px;gap:12px;">
+  <div style="flex:1;height:2px;background:${red};"></div>
+  <div style="font-size:24px;font-weight:bold;color:#111111;white-space:nowrap;">${escapeHtml(data.product_name || "")}</div>
+  <div style="flex:1;height:2px;background:${red};"></div>
+</div>
+<div style="border:1.5px solid ${red};padding:10px 14px;margin:0 0 16px;font-size:13px;font-weight:bold;color:${red};border-radius:3px;">&#9888; ${escapeHtml(L.warningLong)}</div>
+<div style="margin:0 0 16px;">
+  <div style="background:${red};color:#ffffff;font-weight:bold;text-align:center;padding:9px 12px;font-size:15px;">${L.oemReplaces}</div>
+  <div style="border:1px solid #eaeaea;border-top:none;padding:12px 16px;text-align:center;font-size:14px;color:#333333;background:#ffffff;">${oemHtml}</div>
+</div>${xrefsBlock}
+<div style="margin:0 0 16px;">
+  <div style="background:${red};color:#ffffff;font-weight:bold;text-align:center;padding:9px 12px;font-size:15px;">${L.itemSpecificsColon}</div>
+  <div style="border:1px solid #eaeaea;border-top:none;">${specsTableHtml}</div>
+</div>
+${ecBlock}${showCompat ? `<div style="font-weight:bold;font-size:16px;margin:0 0 12px;color:#111111;padding-bottom:8px;border-bottom:2px solid #eaeaea;">${L.compatVehiclesColon}</div>
+${manufacturerTables}` : ""}
 </div>`.trim();
 }
 
@@ -323,10 +368,10 @@ function buildHtmlDefault(data, t, opts, L) {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 function buildHtmlDarkHeader(data, t, opts, L) {
-  const showCompat = opts.showCompatibilityTable !== false;
-  const showXrefs  = opts.showInterchangeableNumbers !== false;
-  const showEC     = opts.showEngineCodes !== false;
-  const cols       = showEC ? 6 : 5;
+  const showCompat   = opts.showCompatibilityTable !== false;
+  const showXrefs    = opts.showInterchangeableNumbers !== false;
+  const showEC       = opts.showEngineCodes !== false;
+  const engineCodes  = uniq(data.engine_codes || []);
 
   const oems  = uniq(data.oem_numbers || []);
   const specs = uniq(data.specifications || []);
@@ -334,26 +379,28 @@ function buildHtmlDarkHeader(data, t, opts, L) {
   const xrefs = data.interchangeable_parts || [];
   const grouped = groupByManufacturer(rows);
 
-  const manufacturerTables = showCompat ? Object.keys(grouped).sort().map((mfr) => {
-    const bodyRows = grouped[mfr].map((v, i) => buildBodyRow(v, i, "#ffffff", "#f5f5f5", "#cccccc", showEC, L)).join("\n");
-    return `<div style="margin:0 12px 14px;border:1px solid #dddddd;"><table style="width:100%;border-collapse:collapse;font-family:Arial,sans-serif;">
+  const manufacturerTables = showCompat ? Object.keys(grouped)
+    .sort((a, b) => grouped[b].length - grouped[a].length)
+    .map((mfr) => {
+    const bodyRows = grouped[mfr].map((v, i) => buildBodyRow(v, i, "#ffffff", "#f5f5f5", "#cccccc")).join("\n");
+    return `<details open style="margin:0 12px 14px;border:1px solid #dddddd;">
+<summary style="background:#111111;color:${t.primaryColor};font-weight:bold;padding:10px;font-size:15px;letter-spacing:0.5px;cursor:pointer;list-style:none;display:block;">${escapeHtml(L.models(mfr))} (${grouped[mfr].length})</summary>
+<table style="width:100%;border-collapse:collapse;font-family:Arial,sans-serif;">
   <thead>
-    <tr><th colspan="${cols}" style="border:1px solid #333333;background:#111111;color:${t.primaryColor};font-weight:bold;text-align:center;padding:10px 10px;font-size:15px;letter-spacing:0.5px;">${escapeHtml(L.models(mfr))}</th></tr>
     <tr style="background:${t.tableHeaderBackground};">
       <th style="border:1px solid #444444;padding:7px 10px;text-align:center;font-size:13px;color:${t.tableHeaderTextColor};font-weight:bold;">${L.vehicle}</th>
-      <th style="border:1px solid #444444;padding:7px 8px;text-align:center;font-size:13px;color:${t.tableHeaderTextColor};font-weight:bold;">${L.yearsShort}</th>
+      <th style="border:1px solid #444444;padding:7px 8px;text-align:center;font-size:13px;color:${t.tableHeaderTextColor};font-weight:bold;white-space:nowrap;">${L.yearsShort}</th>
       <th style="border:1px solid #444444;padding:7px 8px;text-align:center;font-size:13px;color:${t.tableHeaderTextColor};font-weight:bold;">${L.kw}</th>
       <th style="border:1px solid #444444;padding:7px 8px;text-align:center;font-size:13px;color:${t.tableHeaderTextColor};font-weight:bold;">${L.hp}</th>
       <th style="border:1px solid #444444;padding:7px 8px;text-align:center;font-size:13px;color:${t.tableHeaderTextColor};font-weight:bold;">${L.cc}</th>
-      ${showEC ? `<th style="border:1px solid #444444;padding:7px 8px;text-align:center;font-size:13px;color:${t.tableHeaderTextColor};font-weight:bold;">${L.engineCodes}</th>` : ""}
     </tr>
   </thead>
   <tbody>${bodyRows}</tbody>
-</table></div>`;
+</table></details>`;
   }).join("\n") : "";
 
   const oemHtml    = oems.length  ? oems.map(escapeHtml).join("&nbsp;&nbsp;|&nbsp;&nbsp;") : L.notSpecified;
-  const specsHtml  = specs.length ? specs.map((s) => `<div style="padding:3px 0;border-bottom:1px solid #eeeeee;">${escapeHtml(s)}</div>`).join("") : `<div style="padding:3px 0;">${L.notSpecified}</div>`;
+  const specsHtml  = specs.length ? specs.map((s) => `<div style="padding:3px 0;border-bottom:1px solid #eeeeee;">${escapeHtml(formatSpec(s))}</div>`).join("") : `<div style="padding:3px 0;">${L.notSpecified}</div>`;
   const xrefsBlock = (showXrefs && xrefs.length) ? `
   <div style="margin:0 12px 10px;">
     <div style="background:#111111;color:${t.primaryColor};font-weight:bold;padding:6px 10px;font-size:14px;text-transform:uppercase;letter-spacing:0.8px;">${L.interchangeable}</div>
@@ -371,6 +418,7 @@ function buildHtmlDarkHeader(data, t, opts, L) {
     <div style="background:#111111;color:${t.primaryColor};font-weight:bold;padding:6px 10px;font-size:14px;text-transform:uppercase;letter-spacing:0.8px;">${L.itemSpecifics}</div>
     <div style="padding:10px 12px;font-size:14px;line-height:1.8;border:1px solid #dddddd;border-top:none;">${specsHtml}</div>
   </div>
+  ${showEC && engineCodes.length ? `<div style="margin:0 12px 10px;padding:10px 12px;font-size:14px;line-height:1.8;border:1px solid #dddddd;"><strong style="color:#111111;display:block;margin-bottom:4px;">${L.engineCodes}:</strong>${escapeHtml(engineCodes.join(", "))}</div>` : ""}
   ${showCompat ? `<div style="margin:0 12px 14px;">
     <div style="background:#111111;color:${t.primaryColor};font-weight:bold;padding:6px 10px;font-size:14px;text-transform:uppercase;letter-spacing:0.8px;">${L.compatVehicles}</div>
   </div>
@@ -383,10 +431,10 @@ function buildHtmlDarkHeader(data, t, opts, L) {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 function buildHtmlTableFocused(data, t, opts, L) {
-  const showCompat = opts.showCompatibilityTable !== false;
-  const showXrefs  = opts.showInterchangeableNumbers !== false;
-  const showEC     = opts.showEngineCodes !== false;
-  const cols       = showEC ? 6 : 5;
+  const showCompat   = opts.showCompatibilityTable !== false;
+  const showXrefs    = opts.showInterchangeableNumbers !== false;
+  const showEC       = opts.showEngineCodes !== false;
+  const engineCodes  = uniq(data.engine_codes || []);
 
   const oems  = uniq(data.oem_numbers || []);
   const specs = uniq(data.specifications || []);
@@ -402,28 +450,31 @@ function buildHtmlTableFocused(data, t, opts, L) {
     metaRows.push(buildCrossRefsHtml(xrefs, "rows"));
   }
   for (const s of specs) {
-    const colonIdx = s.indexOf(":");
-    const label = colonIdx > -1 ? s.slice(0, colonIdx).trim() : s;
-    const value = colonIdx > -1 ? s.slice(colonIdx + 1).trim() : "";
+    const { label, value } = parseSpec(s);
     metaRows.push(`<tr><td style="border:1px solid #999;padding:6px 10px;font-weight:bold;background:#e8e8e8;font-size:13px;">${escapeHtml(label)}</td><td style="border:1px solid #999;padding:6px 10px;font-size:13px;">${escapeHtml(value)}</td></tr>`);
   }
+  if (showEC && engineCodes.length) {
+    metaRows.push(`<tr><td style="border:1px solid #999;padding:6px 10px;font-weight:bold;background:#e8e8e8;font-size:13px;">${L.engineCodes}</td><td style="border:1px solid #999;padding:6px 10px;font-size:13px;">${escapeHtml(engineCodes.join(", "))}</td></tr>`);
+  }
 
-  const manufacturerTables = showCompat ? Object.keys(grouped).sort().map((mfr) => {
-    const bodyRows = grouped[mfr].map((v, i) => buildBodyRow(v, i, "#ffffff", "#f0f0f0", "#999999", showEC, L)).join("\n");
-    return `<div style="margin-bottom:14px;"><table style="width:100%;border-collapse:collapse;font-family:Arial,sans-serif;">
+  const manufacturerTables = showCompat ? Object.keys(grouped)
+    .sort((a, b) => grouped[b].length - grouped[a].length)
+    .map((mfr) => {
+    const bodyRows = grouped[mfr].map((v, i) => buildBodyRow(v, i, "#ffffff", "#f0f0f0", "#999999")).join("\n");
+    return `<details open style="margin-bottom:14px;">
+<summary style="background:${t.primaryColor};color:#ffffff;font-weight:bold;padding:7px 10px;font-size:14px;cursor:pointer;list-style:none;display:block;">${escapeHtml(mfr)} (${grouped[mfr].length})</summary>
+<table style="width:100%;border-collapse:collapse;font-family:Arial,sans-serif;">
   <thead>
-    <tr><th colspan="${cols}" style="border:1px solid #555555;background:${t.primaryColor};color:#ffffff;font-weight:bold;text-align:left;padding:7px 10px;font-size:14px;">${escapeHtml(mfr)}</th></tr>
     <tr style="background:${t.tableHeaderBackground};">
       <th style="border:1px solid #999;padding:6px 8px;font-size:12px;color:${t.tableHeaderTextColor};text-align:left;">${L.vehicle}</th>
-      <th style="border:1px solid #999;padding:6px 8px;font-size:12px;color:${t.tableHeaderTextColor};text-align:center;">${L.yearsShort}</th>
+      <th style="border:1px solid #999;padding:6px 8px;font-size:12px;color:${t.tableHeaderTextColor};text-align:center;white-space:nowrap;">${L.yearsShort}</th>
       <th style="border:1px solid #999;padding:6px 6px;font-size:12px;color:${t.tableHeaderTextColor};text-align:center;">${L.kw}</th>
       <th style="border:1px solid #999;padding:6px 6px;font-size:12px;color:${t.tableHeaderTextColor};text-align:center;">${L.hp}</th>
       <th style="border:1px solid #999;padding:6px 6px;font-size:12px;color:${t.tableHeaderTextColor};text-align:center;">${L.cc}</th>
-      ${showEC ? `<th style="border:1px solid #999;padding:6px 8px;font-size:12px;color:${t.tableHeaderTextColor};text-align:center;">${L.engineCodes}</th>` : ""}
     </tr>
   </thead>
   <tbody>${bodyRows}</tbody>
-</table></div>`;
+</table></details>`;
   }).join("\n") : "";
 
   return `<div style="max-width:1100px;margin:0 auto;padding:10px;background:#f7f7f7;font-family:Arial,sans-serif;color:#111111;border:1px solid #cccccc;">
@@ -442,9 +493,10 @@ function buildHtmlTableFocused(data, t, opts, L) {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 function buildHtmlMinimal(data, t, opts, L) {
-  const showCompat = opts.showCompatibilityTable !== false;
-  const showXrefs  = opts.showInterchangeableNumbers !== false;
-  const showEC     = opts.showEngineCodes !== false;
+  const showCompat   = opts.showCompatibilityTable !== false;
+  const showXrefs    = opts.showInterchangeableNumbers !== false;
+  const showEC       = opts.showEngineCodes !== false;
+  const engineCodes  = uniq(data.engine_codes || []);
 
   const oems  = uniq(data.oem_numbers || []);
   const specs = uniq(data.specifications || []);
@@ -452,37 +504,37 @@ function buildHtmlMinimal(data, t, opts, L) {
   const xrefs = data.interchangeable_parts || [];
   const grouped = groupByManufacturer(rows);
 
-  const manufacturerTables = showCompat ? Object.keys(grouped).sort().map((mfr) => {
+  const manufacturerTables = showCompat ? Object.keys(grouped)
+    .sort((a, b) => grouped[b].length - grouped[a].length)
+    .map((mfr) => {
     const bodyRows = grouped[mfr].map((v, i) => {
-      const engineCodes = uniq(v.engine_codes || []).join(", ");
       const bg = i % 2 === 0 ? "#ffffff" : "#fafafa";
       return `<tr style="background:${bg};">
   <td style="border-bottom:1px solid #e5e5e5;padding:6px 8px;font-size:13px;">${escapeHtml(v.vehicle)}</td>
-  <td style="border-bottom:1px solid #e5e5e5;padding:6px 8px;font-size:13px;text-align:center;">${escapeHtml(v.production_years)}</td>
+  <td style="border-bottom:1px solid #e5e5e5;padding:6px 8px;font-size:13px;text-align:center;white-space:nowrap;">${escapeHtml(v.production_years)}</td>
   <td style="border-bottom:1px solid #e5e5e5;padding:6px 6px;font-size:13px;text-align:center;">${escapeHtml(v.kw || "")}</td>
   <td style="border-bottom:1px solid #e5e5e5;padding:6px 6px;font-size:13px;text-align:center;">${escapeHtml(v.hp || "")}</td>
   <td style="border-bottom:1px solid #e5e5e5;padding:6px 6px;font-size:13px;text-align:center;">${escapeHtml(v.cc || "")}</td>
-  ${showEC ? `<td style="border-bottom:1px solid #e5e5e5;padding:6px 8px;font-size:13px;text-align:center;">${escapeHtml(engineCodes)}</td>` : ""}
 </tr>`;
     }).join("\n");
-    return `<div style="margin-bottom:14px;"><p style="font-weight:bold;font-size:14px;margin:0 0 6px;">${escapeHtml(mfr)}</p>
-<table style="width:100%;border-collapse:collapse;font-family:Arial,sans-serif;border-top:2px solid ${t.primaryColor};">
+    return `<details open style="margin-bottom:14px;">
+<summary style="font-weight:bold;font-size:14px;padding:6px 0;cursor:pointer;list-style:none;display:block;color:${t.primaryColor};border-bottom:2px solid ${t.primaryColor};">${escapeHtml(mfr)} (${grouped[mfr].length})</summary>
+<table style="width:100%;border-collapse:collapse;font-family:Arial,sans-serif;">
   <thead>
     <tr style="background:${t.tableHeaderBackground};">
       <th style="padding:6px 8px;text-align:left;font-size:12px;color:${t.tableHeaderTextColor};">${L.vehicle}</th>
-      <th style="padding:6px 8px;text-align:center;font-size:12px;color:${t.tableHeaderTextColor};">${L.yearsShort}</th>
+      <th style="padding:6px 8px;text-align:center;font-size:12px;color:${t.tableHeaderTextColor};white-space:nowrap;">${L.yearsShort}</th>
       <th style="padding:6px 6px;text-align:center;font-size:12px;color:${t.tableHeaderTextColor};">${L.kw}</th>
       <th style="padding:6px 6px;text-align:center;font-size:12px;color:${t.tableHeaderTextColor};">${L.hp}</th>
       <th style="padding:6px 6px;text-align:center;font-size:12px;color:${t.tableHeaderTextColor};">${L.cc}</th>
-      ${showEC ? `<th style="padding:6px 8px;text-align:center;font-size:12px;color:${t.tableHeaderTextColor};">${L.engineCodes}</th>` : ""}
     </tr>
   </thead>
   <tbody>${bodyRows}</tbody>
-</table></div>`;
+</table></details>`;
   }).join("\n") : "";
 
   const oemText    = oems.length  ? oems.join(", ") : L.notSpecified;
-  const specsHtml  = specs.length ? specs.map((s) => `<div>${escapeHtml(s)}</div>`).join("") : L.notSpecified;
+  const specsHtml  = specs.length ? specs.map((s) => `<div>${escapeHtml(formatSpec(s))}</div>`).join("") : L.notSpecified;
   const xrefsBlock = (showXrefs && xrefs.length) ? `
   <p style="font-weight:bold;font-size:13px;margin:0 0 3px;color:${t.primaryColor};">${L.interchangeable}</p>
   <div style="font-size:13px;color:#444444;line-height:1.8;margin-bottom:12px;">${buildCrossRefsHtml(xrefs, "inline")}</div>` : "";
@@ -494,6 +546,7 @@ function buildHtmlMinimal(data, t, opts, L) {
   <p style="font-size:13px;margin:0 0 12px;color:#444444;">${escapeHtml(oemText)}</p>${xrefsBlock}
   <p style="font-weight:bold;font-size:13px;margin:0 0 3px;color:${t.primaryColor};">${L.itemSpecifics}</p>
   <div style="font-size:13px;color:#444444;line-height:1.8;margin-bottom:12px;">${specsHtml}</div>
+  ${showEC && engineCodes.length ? `<p style="font-weight:bold;font-size:13px;margin:0 0 3px;color:${t.primaryColor};">${L.engineCodes}:</p><div style="font-size:13px;color:#444444;line-height:1.8;margin-bottom:12px;">${escapeHtml(engineCodes.join(", "))}</div>` : ""}
   ${showCompat ? `<p style="font-weight:bold;font-size:13px;margin:0 0 14px;color:${t.primaryColor};">${L.compatVehicles}</p>
   ${manufacturerTables}` : ""}
 </div>`.trim();
@@ -504,10 +557,10 @@ function buildHtmlMinimal(data, t, opts, L) {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 function buildHtmlProfessionalBlue(data, t, opts, L) {
-  const showCompat = opts.showCompatibilityTable !== false;
-  const showXrefs  = opts.showInterchangeableNumbers !== false;
-  const showEC     = opts.showEngineCodes !== false;
-  const cols       = showEC ? 6 : 5;
+  const showCompat   = opts.showCompatibilityTable !== false;
+  const showXrefs    = opts.showInterchangeableNumbers !== false;
+  const showEC       = opts.showEngineCodes !== false;
+  const engineCodes  = uniq(data.engine_codes || []);
 
   const oems  = uniq(data.oem_numbers || []);
   const specs = uniq(data.specifications || []);
@@ -515,40 +568,38 @@ function buildHtmlProfessionalBlue(data, t, opts, L) {
   const xrefs = data.interchangeable_parts || [];
   const grouped = groupByManufacturer(rows);
 
-  const manufacturerTables = showCompat ? Object.keys(grouped).sort().map((mfr) => {
+  const manufacturerTables = showCompat ? Object.keys(grouped)
+    .sort((a, b) => grouped[b].length - grouped[a].length)
+    .map((mfr) => {
     const bodyRows = grouped[mfr].map((v, i) => {
-      const engineCodes = uniq(v.engine_codes || []).join(", ");
       const bg = i % 2 === 0 ? "#ffffff" : "#eef4fb";
       return `<tr style="background:${bg};">
   <td style="border:1px solid #b8d0e8;padding:6px 10px;font-size:13px;">${escapeHtml(v.vehicle)}</td>
-  <td style="border:1px solid #b8d0e8;padding:6px 8px;text-align:center;font-size:13px;">${escapeHtml(v.production_years)}</td>
+  <td style="border:1px solid #b8d0e8;padding:6px 8px;text-align:center;font-size:13px;white-space:nowrap;">${escapeHtml(v.production_years)}</td>
   <td style="border:1px solid #b8d0e8;padding:6px 8px;text-align:center;font-size:13px;">${escapeHtml(v.kw || "")}</td>
   <td style="border:1px solid #b8d0e8;padding:6px 8px;text-align:center;font-size:13px;">${escapeHtml(v.hp || "")}</td>
   <td style="border:1px solid #b8d0e8;padding:6px 8px;text-align:center;font-size:13px;">${escapeHtml(v.cc || "")}</td>
-  ${showEC ? `<td style="border:1px solid #b8d0e8;padding:6px 8px;text-align:center;font-size:13px;">${escapeHtml(engineCodes)}</td>` : ""}
 </tr>`;
     }).join("\n");
-    return `<div style="padding:0 14px 8px;margin-bottom:14px;"><table style="width:100%;border-collapse:collapse;font-family:Arial,sans-serif;">
+    return `<details open style="padding:0 14px 8px;margin-bottom:14px;">
+<summary style="background:${t.primaryColor};color:#ffffff;font-weight:bold;padding:8px 10px;font-size:14px;cursor:pointer;list-style:none;display:block;margin:0 -14px 0 -14px;">${escapeHtml(mfr)} (${grouped[mfr].length})</summary>
+<table style="width:100%;border-collapse:collapse;font-family:Arial,sans-serif;">
   <thead>
-    <tr><th colspan="${cols}" style="border:1px solid #1a3a6b;background:${t.primaryColor};color:#ffffff;font-weight:bold;text-align:center;padding:8px 10px;font-size:14px;">${escapeHtml(mfr)}</th></tr>
     <tr style="background:${t.tableHeaderBackground};">
       <th style="border:1px solid #b8d0e8;padding:6px 10px;text-align:center;font-size:13px;color:${t.tableHeaderTextColor};font-weight:bold;">${L.vehicle}</th>
-      <th style="border:1px solid #b8d0e8;padding:6px 8px;text-align:center;font-size:13px;color:${t.tableHeaderTextColor};font-weight:bold;">${L.years}</th>
+      <th style="border:1px solid #b8d0e8;padding:6px 8px;text-align:center;font-size:13px;color:${t.tableHeaderTextColor};font-weight:bold;white-space:nowrap;">${L.years}</th>
       <th style="border:1px solid #b8d0e8;padding:6px 8px;text-align:center;font-size:13px;color:${t.tableHeaderTextColor};font-weight:bold;">${L.kw}</th>
       <th style="border:1px solid #b8d0e8;padding:6px 8px;text-align:center;font-size:13px;color:${t.tableHeaderTextColor};font-weight:bold;">${L.hp}</th>
       <th style="border:1px solid #b8d0e8;padding:6px 8px;text-align:center;font-size:13px;color:${t.tableHeaderTextColor};font-weight:bold;">${L.cc}</th>
-      ${showEC ? `<th style="border:1px solid #b8d0e8;padding:6px 8px;text-align:center;font-size:13px;color:${t.tableHeaderTextColor};font-weight:bold;">${L.engineCodes}</th>` : ""}
     </tr>
   </thead>
   <tbody>${bodyRows}</tbody>
-</table></div>`;
+</table></details>`;
   }).join("\n") : "";
 
   const oemHtml    = oems.length  ? oems.map(escapeHtml).join("&nbsp; &nbsp;") : L.notSpecified;
   const specsHtml  = specs.length ? `<table style="width:100%;border-collapse:collapse;">${specs.map((s, i) => {
-    const colonIdx = s.indexOf(":");
-    const label = colonIdx > -1 ? s.slice(0, colonIdx).trim() : s;
-    const value = colonIdx > -1 ? s.slice(colonIdx + 1).trim() : "";
+    const { label, value } = parseSpec(s);
     const bg = i % 2 === 0 ? "#ffffff" : "#eef4fb";
     return `<tr style="background:${bg};"><td style="border:1px solid #b8d0e8;padding:5px 10px;font-size:13px;font-weight:bold;width:200px;color:#1a3a6b;">${escapeHtml(label)}</td><td style="border:1px solid #b8d0e8;padding:5px 10px;font-size:13px;">${escapeHtml(value)}</td></tr>`;
   }).join("")}</table>` : `<div style="font-size:13px;color:#666;">${L.notSpecified}</div>`;
@@ -570,6 +621,7 @@ function buildHtmlProfessionalBlue(data, t, opts, L) {
       <div style="background:${t.primaryColor};color:#ffffff;font-weight:bold;padding:6px 12px;font-size:13px;display:inline-block;margin-bottom:4px;">${L.itemSpecifics}</div>
       ${specsHtml}
     </div>
+    ${showEC && engineCodes.length ? `<div style="margin-bottom:12px;padding:8px 12px;background:#ffffff;border:1px solid #b8d0e8;font-size:13px;line-height:1.8;"><strong style="color:#1a3a6b;display:block;margin-bottom:4px;">${L.engineCodes}:</strong>${escapeHtml(engineCodes.join(", "))}</div>` : ""}
   </div>
   ${showCompat ? `<div style="padding:4px 14px 14px;">
     <div style="background:${t.primaryColor};color:#ffffff;font-weight:bold;padding:6px 12px;font-size:13px;display:inline-block;">${L.compatVehicles}</div>
