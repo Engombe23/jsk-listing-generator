@@ -330,7 +330,7 @@ function buildHtmlDefault(data, t, opts, L) {
 
   const xrefsBlock = (showXrefs && xrefs.length) ? `
 <div style="margin:0 0 16px;">
-  <div style="background:${dark};color:#ffffff;font-weight:bold;text-align:center;padding:9px 12px;font-size:15px;">${L.interchangeableColon}</div>
+  <div style="background:${red};color:#ffffff;font-weight:bold;text-align:center;padding:9px 12px;font-size:15px;">${L.interchangeableColon}</div>
   <div style="border:1px solid #eaeaea;border-top:none;padding:12px 16px;font-size:13px;line-height:1.8;background:#ffffff;">${buildCrossRefsHtml(xrefs)}</div>
 </div>` : "";
 
