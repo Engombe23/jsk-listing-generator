@@ -1,6 +1,7 @@
 User-agent: *
 Allow: /
 Disallow: /auth/
-Disallow: /app
+Disallow: /admin/
+Disallow: /checkout
 
 Sitemap: https://partlister.app/sitemap.xml
