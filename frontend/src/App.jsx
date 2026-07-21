@@ -550,6 +550,11 @@ export default function App() {
             onUpdateListing={updateGeneratedListing}
             onRemove={removeGenerated}
             onRemoveBatch={removeBatchGenerated}
+            onCreateTemplate={() => {
+              sessionStorage.setItem("jsk_templates_open_builder", "1");
+              setAccountSubPage("templates");
+              navigateTo("account");
+            }}
           />
         )}
         {page === "calculator" && (
@@ -600,6 +605,7 @@ export default function App() {
 function ListingGenerator({
   prefilledArticle, onPrefilledConsumed, onAutoSave,
   listings, onUpdateStatus, onUpdateStatusBatch, onUpdateListing, onRemove, onRemoveBatch,
+  onCreateTemplate,
 }) {
   const { t } = useTranslation();
   const { session, hasFeature, listingLimit, listingsUsed, refreshPlan } = useSession();
@@ -1055,12 +1061,7 @@ function ListingGenerator({
                   customTemplates={customTemplates}
                   customTemplateHtml={customTemplateHtml}
                   onSelect={(val) => {
-                    if (val === "__create__") {
-                      sessionStorage.setItem("jsk_templates_open_builder", "1");
-                      setAccountSubPage("templates");
-                      navigateTo("account");
-                      return;
-                    }
+                    if (val === "__create__") { onCreateTemplate?.(); return; }
                     const custom = customTemplates.find(ct => ct.id === val);
                     if (custom) setCustomTemplateHtml(custom.html);
                     else handleThemeChange(val);
