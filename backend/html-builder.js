@@ -304,7 +304,7 @@ function buildHtmlDefault(data, t, opts, L) {
     .map((mfr) => {
       const bodyRows = grouped[mfr].map((v, i) => buildBodyRow(v, i, "#ffffff", "#f8f8f8", "#e8e8e8")).join("\n");
       return `<details style="margin-bottom:8px;">
-<summary style="background:#ffffff;color:#111111;font-weight:bold;padding:10px 40px 10px 14px;font-size:14px;cursor:pointer;list-style:none;display:block;position:relative;border-bottom:1px solid #d0d0d0;">${escapeHtml(L.models(mfr))} (${grouped[mfr].length})<span style="position:absolute;right:14px;top:50%;margin-top:-9px;font-size:16px;line-height:1;">&#8964;</span></summary>
+<summary style="background:#ffffff;color:#111111;font-weight:bold;padding:10px 40px 10px 14px;font-size:14px;cursor:pointer;list-style:none;display:block;position:relative;border-bottom:1px solid #d0d0d0;">${escapeHtml(L.models(mfr))} (${grouped[mfr].length})<span style="position:absolute;right:14px;top:50%;transform:translateY(-50%);font-size:12px;line-height:1;color:#666666;">&#9660;</span></summary>
 <table style="width:100%;border-collapse:collapse;font-family:Arial,sans-serif;">
   <thead>
     <tr style="background:#f5f5f5;">
@@ -384,7 +384,7 @@ function buildHtmlDarkHeader(data, t, opts, L) {
     .map((mfr) => {
     const bodyRows = grouped[mfr].map((v, i) => buildBodyRow(v, i, "#ffffff", "#f5f5f5", "#cccccc")).join("\n");
     return `<details open style="margin:0 12px 14px;border:1px solid #dddddd;">
-<summary style="background:#111111;color:${t.primaryColor};font-weight:bold;padding:10px;font-size:15px;letter-spacing:0.5px;cursor:pointer;list-style:none;display:block;">${escapeHtml(L.models(mfr))} (${grouped[mfr].length})</summary>
+<summary style="background:#111111;color:${t.primaryColor};font-weight:bold;padding:10px 40px 10px 10px;font-size:15px;letter-spacing:0.5px;cursor:pointer;list-style:none;display:block;position:relative;">${escapeHtml(L.models(mfr))} (${grouped[mfr].length})<span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:12px;line-height:1;opacity:0.7;">&#9660;</span></summary>
 <table style="width:100%;border-collapse:collapse;font-family:Arial,sans-serif;">
   <thead>
     <tr style="background:${t.tableHeaderBackground};">
@@ -462,7 +462,7 @@ function buildHtmlTableFocused(data, t, opts, L) {
     .map((mfr) => {
     const bodyRows = grouped[mfr].map((v, i) => buildBodyRow(v, i, "#ffffff", "#f0f0f0", "#999999")).join("\n");
     return `<details open style="margin-bottom:14px;">
-<summary style="background:${t.primaryColor};color:#ffffff;font-weight:bold;padding:7px 10px;font-size:14px;cursor:pointer;list-style:none;display:block;">${escapeHtml(mfr)} (${grouped[mfr].length})</summary>
+<summary style="background:${t.primaryColor};color:#ffffff;font-weight:bold;padding:7px 40px 7px 10px;font-size:14px;cursor:pointer;list-style:none;display:block;position:relative;">${escapeHtml(mfr)} (${grouped[mfr].length})<span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:12px;line-height:1;opacity:0.8;">&#9660;</span></summary>
 <table style="width:100%;border-collapse:collapse;font-family:Arial,sans-serif;">
   <thead>
     <tr style="background:${t.tableHeaderBackground};">
@@ -518,7 +518,7 @@ function buildHtmlMinimal(data, t, opts, L) {
 </tr>`;
     }).join("\n");
     return `<details open style="margin-bottom:14px;">
-<summary style="font-weight:bold;font-size:14px;padding:6px 0;cursor:pointer;list-style:none;display:block;color:${t.primaryColor};border-bottom:2px solid ${t.primaryColor};">${escapeHtml(mfr)} (${grouped[mfr].length})</summary>
+<summary style="font-weight:bold;font-size:14px;padding:6px 24px 6px 0;cursor:pointer;list-style:none;display:block;color:${t.primaryColor};border-bottom:2px solid ${t.primaryColor};position:relative;">${escapeHtml(mfr)} (${grouped[mfr].length})<span style="position:absolute;right:2px;top:50%;transform:translateY(-50%);font-size:12px;line-height:1;">&#9660;</span></summary>
 <table style="width:100%;border-collapse:collapse;font-family:Arial,sans-serif;">
   <thead>
     <tr style="background:${t.tableHeaderBackground};">
@@ -582,7 +582,7 @@ function buildHtmlProfessionalBlue(data, t, opts, L) {
 </tr>`;
     }).join("\n");
     return `<details open style="padding:0 14px 8px;margin-bottom:14px;">
-<summary style="background:${t.primaryColor};color:#ffffff;font-weight:bold;padding:8px 10px;font-size:14px;cursor:pointer;list-style:none;display:block;margin:0 -14px 0 -14px;">${escapeHtml(mfr)} (${grouped[mfr].length})</summary>
+<summary style="background:${t.primaryColor};color:#ffffff;font-weight:bold;padding:8px 40px 8px 10px;font-size:14px;cursor:pointer;list-style:none;display:block;margin:0 -14px 0 -14px;position:relative;">${escapeHtml(mfr)} (${grouped[mfr].length})<span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:12px;line-height:1;opacity:0.8;">&#9660;</span></summary>
 <table style="width:100%;border-collapse:collapse;font-family:Arial,sans-serif;">
   <thead>
     <tr style="background:${t.tableHeaderBackground};">
