@@ -212,6 +212,17 @@ function AccountPage({ onOpenBilling }) {
   const [portalError, setPortalError] = useState("");
 
   const timeSavedMinutes = listingsUsed * TIME_SAVED_PER_LISTING;
+  const [animMinutes, setAnimMinutes] = useState(0);
+  useEffect(() => {
+    if (timeSavedMinutes === 0) { setAnimMinutes(0); return; }
+    let current = 0;
+    const id = setInterval(() => {
+      current += TIME_SAVED_PER_LISTING;
+      if (current >= timeSavedMinutes) { setAnimMinutes(timeSavedMinutes); clearInterval(id); }
+      else setAnimMinutes(current);
+    }, Math.max(30, 900 / (timeSavedMinutes / TIME_SAVED_PER_LISTING)));
+    return () => clearInterval(id);
+  }, [timeSavedMinutes]);
 
   const savedTemplates = useMemo(() => {
     try { return JSON.parse(localStorage.getItem("jsk_listing_templates_v1") || "[]").length; }
@@ -322,7 +333,7 @@ function AccountPage({ onOpenBilling }) {
           <SL>Lifetime Statistics</SL>
           <div style={{ textAlign: "center", padding: "14px 0 18px" }}>
             <div style={{ fontSize: 42, fontWeight: 900, color: C.text, lineHeight: 1, letterSpacing: -1.5, fontVariantNumeric: "tabular-nums" }}>
-              {formatTimeSaved(timeSavedMinutes)}
+              {formatTimeSaved(animMinutes)}
             </div>
             <div style={{ fontSize: 10, color: C.muted, marginTop: 7, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1.4 }}>
               Time Saved
