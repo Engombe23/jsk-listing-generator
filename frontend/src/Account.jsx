@@ -52,10 +52,10 @@ const C = {
 };
 
 // ─── Primitives ───────────────────────────────────────────────────────────────
-function SL({ children }) {
+function SL({ children, style }) {
   return (
     <div style={{ fontSize: 9, fontWeight: 800, color: C.muted, textTransform: "uppercase",
-      letterSpacing: 1.5, marginBottom: 12 }}>
+      letterSpacing: 1.5, marginBottom: 12, ...style }}>
       {children}
     </div>
   );
@@ -148,93 +148,260 @@ function UsageBar({ used, total }) {
   );
 }
 
-// ─── PAGE: Account ────────────────────────────────────────────────────────────
+// ─── Account page helpers ─────────────────────────────────────────────────────
+const TIME_SAVED_PER_LISTING = 10; // minutes
+
+function formatTimeSaved(minutes) {
+  if (minutes === 0) return "0m";
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h === 0) return `${m}m`;
+  if (m === 0) return `${h}h`;
+  return `${h}h ${m}m`;
+}
+
+function Toggle({ checked, onChange }) {
+  return (
+    <button
+      role="switch"
+      aria-checked={checked}
+      onClick={() => onChange(!checked)}
+      style={{
+        width: 38, height: 22, borderRadius: 11,
+        background: checked ? C.blue : "var(--border)",
+        border: "none", cursor: "pointer", padding: 0,
+        position: "relative", flexShrink: 0,
+        transition: "background 0.2s",
+      }}
+    >
+      <div style={{
+        width: 16, height: 16, borderRadius: "50%",
+        background: "#fff",
+        position: "absolute",
+        top: 3, left: checked ? 19 : 3,
+        transition: "left 0.2s",
+        boxShadow: "0 1px 3px rgba(0,0,0,0.22)",
+      }} />
+    </button>
+  );
+}
+
+const EMAIL_PREFS_KEY = "jsk_email_prefs_v1";
+const EMAIL_PREFS_DEFAULT = { productUpdates: true, newFeatures: true, maintenance: true, marketing: false };
+
+function loadEmailPrefs() {
+  try { return { ...EMAIL_PREFS_DEFAULT, ...JSON.parse(localStorage.getItem(EMAIL_PREFS_KEY) || "{}") }; }
+  catch { return { ...EMAIL_PREFS_DEFAULT }; }
+}
+
 function AccountPage({ onOpenBilling }) {
   const navigate = useNavigate();
-  const { email, displayName, initials, memberSince, user } = useAuthUser();
-  const { plan, listingLimit, listingsUsed, refreshPlan } = useSession();
+  const { email, displayName, memberSince, user } = useAuthUser();
+  const { plan, listingLimit, listingsUsed, profile, refreshPlan } = useSession();
   const planInfo = getPlan(plan);
-  const usageTotal = listingLimit ?? null;
-  const usageUsed = listingsUsed;
+  const interval = profile?.billing_interval || "monthly";
+  const displayPrice = plan !== "free" && planInfo ? getDisplayPrice(plan, interval) : null;
+  const status = profile?.subscription_status;
+  const isActive = ["active", "trialing"].includes(status);
+
+  const [delConfirm, setDelConfirm] = useState(false);
+  const [delInput, setDelInput]     = useState("");
+  const [emailPrefs, setEmailPrefs] = useState(loadEmailPrefs);
+  const [prefsSaved, setPrefsSaved] = useState(false);
+  const [portalLoading, setPortalLoading] = useState(false);
+  const [portalError, setPortalError] = useState("");
+
+  const timeSavedMinutes = listingsUsed * TIME_SAVED_PER_LISTING;
+
+  const savedTemplates = useMemo(() => {
+    try { return JSON.parse(localStorage.getItem("jsk_listing_templates_v1") || "[]").length; }
+    catch { return 0; }
+  }, []);
+
+  const compatChecks = useMemo(() => {
+    return parseInt(localStorage.getItem("jsk_compat_checks") || "0", 10);
+  }, []);
 
   useEffect(() => {
     if (user?.id) refreshPlan();
   }, [user?.id, refreshPlan]);
 
-  const handleLogout = async () => {
+  const setEmailPref = (key, val) => {
+    const next = { ...emailPrefs, [key]: val };
+    setEmailPrefs(next);
+    localStorage.setItem(EMAIL_PREFS_KEY, JSON.stringify(next));
+    setPrefsSaved(true);
+    setTimeout(() => setPrefsSaved(false), 1800);
+  };
+
+  const openPortal = async () => {
+    if (!profile?.stripe_customer_id) { navigate("/pricing"); return; }
+    setPortalLoading(true);
+    setPortalError("");
+    try {
+      const { url } = await openBillingPortal(profile.stripe_customer_id);
+      if (url) window.location.href = url;
+    } catch (err) {
+      setPortalError(err instanceof Error ? err.message : "Could not open billing portal");
+    } finally {
+      setPortalLoading(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (delInput !== "DELETE") return;
     await supabase.auth.signOut();
     navigate("/auth/login", { replace: true });
   };
 
+  const StatBox = ({ value, label }) => (
+    <div style={{ textAlign: "center" }}>
+      <div style={{ fontSize: 22, fontWeight: 800, color: C.text, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>{value}</div>
+      <div style={{ fontSize: 9, color: C.muted, marginTop: 5, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1 }}>{label}</div>
+    </div>
+  );
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
 
-      {/* Profile */}
-      <Card>
-        <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 16 }}>
-          <div style={{
-            width: 44, height: 44, borderRadius: "50%", flexShrink: 0,
-            background: "linear-gradient(135deg, #135DFF, #0ea5e9)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: 14, fontWeight: 900, color: "var(--text-on-dark)",
-          }}>{initials}</div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 14, fontWeight: 800, color: C.text }}>{displayName}</div>
-            <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>{email || "—"}</div>
-          </div>
-          <Badge color={user?.email_confirmed_at ? C.green : C.amber}>
-            {user?.email_confirmed_at ? "Verified" : "Unverified"}
-          </Badge>
-        </div>
+      {/* Row 1: Profile + Subscription */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
 
-        <div style={{ marginBottom: 0 }}>
+        <Card>
+          <SL>Profile</SL>
+          <div style={{ marginBottom: 18 }}>
+            <div style={{ fontSize: 18, fontWeight: 800, color: C.text, lineHeight: 1.2, marginBottom: 4 }}>{displayName}</div>
+            <div style={{ fontSize: 11, color: C.muted }}>{email || "—"}</div>
+          </div>
           <InfoRow label="Member since" value={memberSince} />
-          <div style={{ borderBottom: "none" }}>
-            <InfoRow label="Current plan" value={formatPlanLabel(plan)} />
-            {usageTotal != null && (
-              <InfoRow label="Monthly usage" value={
-                <div style={{ flex: 1, maxWidth: 260 }}>
-                  <UsageBar used={usageUsed} total={usageTotal} />
-                </div>
-              } />
-            )}
-            {usageTotal == null && planInfo?.listings && (
-              <InfoRow label="Monthly allowance" value={planInfo.listings} />
+          <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "8px 0" }}>
+            <span style={{ fontSize: 11, color: C.muted, width: 140, flexShrink: 0 }}>Current plan</span>
+            <Badge color={plan === "free" ? C.muted : C.blue}>{formatPlanLabel(plan)}</Badge>
+          </div>
+        </Card>
+
+        <Card>
+          <SL>Subscription</SL>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+            <span style={{ fontSize: 16, fontWeight: 800, color: C.text }}>
+              {plan === "free" ? "Free Plan" : `${planInfo?.name || formatPlanLabel(plan)} Plan`}
+            </span>
+            {plan !== "free" && (
+              <Badge color={isActive ? C.green : status === "past_due" ? C.amber : C.red}>
+                {isActive ? "Active" : status ? status.replace(/_/g, " ") : "Pending"}
+              </Badge>
             )}
           </div>
-        </div>
-      </Card>
+          {plan !== "free" && displayPrice && (
+            <InfoRow label="Price" value={`${displayPrice}/mo · ${getBillingLabel(interval)}`} />
+          )}
+          {plan === "free" && (
+            <div style={{ fontSize: 11, color: C.muted, lineHeight: 1.6, marginBottom: 4 }}>
+              Upgrade to unlock more listings, compatibility checks, and advanced features.
+            </div>
+          )}
+          {portalError && <div style={{ fontSize: 11, color: C.red, marginTop: 10 }}>{portalError}</div>}
+          <div style={{ marginTop: 18 }}>
+            {profile?.stripe_customer_id ? (
+              <Btn variant="primary" onClick={openPortal} disabled={portalLoading}>
+                {portalLoading ? "Opening…" : "Manage Billing →"}
+              </Btn>
+            ) : (
+              <Btn variant="primary" onClick={() => navigate("/pricing")}>
+                {plan === "free" ? "Choose a Plan →" : "View Plans →"}
+              </Btn>
+            )}
+          </div>
+        </Card>
+      </div>
 
-      {/* Security */}
-      <Card>
-        <SL>Security</SL>
-        <div>
+      {/* Row 2: Statistics + Security */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+
+        <Card>
+          <SL>Lifetime Statistics</SL>
+          <div style={{ textAlign: "center", padding: "14px 0 18px" }}>
+            <div style={{ fontSize: 42, fontWeight: 900, color: C.text, lineHeight: 1, letterSpacing: -1.5, fontVariantNumeric: "tabular-nums" }}>
+              {formatTimeSaved(timeSavedMinutes)}
+            </div>
+            <div style={{ fontSize: 10, color: C.muted, marginTop: 7, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1.4 }}>
+              Time Saved
+            </div>
+          </div>
+          <Divider />
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, paddingTop: 6 }}>
+            <StatBox value={listingsUsed.toLocaleString()} label="Listings" />
+            <StatBox value={compatChecks.toLocaleString()} label="Checks" />
+            <StatBox value={savedTemplates.toLocaleString()} label="Templates" />
+          </div>
+        </Card>
+
+        <Card>
+          <SL>Security</SL>
           <ActionRow
             label="Password"
             note="Update your account password"
             action={
               <Link to="/auth/update-password" style={{ textDecoration: "none" }}>
-                <Btn>Change Password</Btn>
+                <Btn>Change →</Btn>
               </Link>
             }
           />
-          <ActionRow
-            label="Sign out"
-            note="End your session on this device"
-            action={<Btn variant="danger" onClick={handleLogout}>Log out</Btn>}
-          />
           <div style={{ borderBottom: "none" }}>
-            <ActionRow
-              label="Manage Subscription"
-              note="Billing, plan changes, and invoices"
-              action={
-                <Btn variant="primary" onClick={onOpenBilling}>
-                  Open Billing →
-                </Btn>
-              }
-            />
+            {!delConfirm ? (
+              <ActionRow
+                label="Delete Account"
+                note="Permanently remove your account and all data"
+                action={<Btn variant="danger" onClick={() => setDelConfirm(true)}>Delete →</Btn>}
+              />
+            ) : (
+              <div style={{ padding: "12px 0" }}>
+                <div style={{ fontSize: 11, color: C.red, fontWeight: 600, marginBottom: 8 }}>
+                  Type DELETE to confirm
+                </div>
+                <div style={{ display: "flex", gap: 7, alignItems: "center" }}>
+                  <input
+                    value={delInput}
+                    onChange={e => setDelInput(e.target.value)}
+                    placeholder="DELETE"
+                    style={{
+                      flex: 1, padding: "6px 10px", fontSize: 11,
+                      background: "var(--bg-surface3)", border: `1px solid ${C.red}`,
+                      borderRadius: 7, color: C.text, outline: "none", fontFamily: "inherit",
+                    }}
+                  />
+                  <Btn variant="danger" onClick={handleDeleteAccount} disabled={delInput !== "DELETE"}>Confirm</Btn>
+                  <Btn onClick={() => { setDelConfirm(false); setDelInput(""); }}>Cancel</Btn>
+                </div>
+              </div>
+            )}
           </div>
+        </Card>
+      </div>
+
+      {/* Row 3: Email Preferences */}
+      <Card>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+          <SL style={{ marginBottom: 0 }}>Email Preferences</SL>
+          {prefsSaved && <span style={{ fontSize: 10, color: C.green, fontWeight: 700 }}>Saved</span>}
         </div>
+        {[
+          { key: "productUpdates", label: "Product Updates",  note: "Stay informed about product changes and improvements" },
+          { key: "newFeatures",    label: "New Features",     note: "Be the first to know about new tools and capabilities" },
+          { key: "maintenance",    label: "Maintenance",      note: "System status, planned downtime, and service notices" },
+          { key: "marketing",      label: "Marketing",        note: "Tips, offers, and promotional content" },
+        ].map(({ key, label, note }, i, arr) => (
+          <div key={key} style={{
+            display: "flex", alignItems: "center", gap: 16, padding: "11px 0",
+            borderBottom: i < arr.length - 1 ? `1px solid ${C.border2}` : "none",
+          }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: C.text }}>{label}</div>
+              <div style={{ fontSize: 10, color: C.muted, marginTop: 2 }}>{note}</div>
+            </div>
+            <Toggle checked={emailPrefs[key]} onChange={val => setEmailPref(key, val)} />
+          </div>
+        ))}
       </Card>
 
     </div>
@@ -718,39 +885,88 @@ function ListingPreferencesPage() {
 }
 
 // ─── Sidebar ──────────────────────────────────────────────────────────────────
+const NAV_ICONS = {
+  account: (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+    </svg>
+  ),
+  billing: (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/>
+    </svg>
+  ),
+  appearance: (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>
+    </svg>
+  ),
+  templates: (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/>
+    </svg>
+  ),
+  preferences: (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+      <circle cx="7" cy="6" r="2" fill="currentColor" stroke="none"/>
+      <circle cx="15" cy="12" r="2" fill="currentColor" stroke="none"/>
+      <circle cx="10" cy="18" r="2" fill="currentColor" stroke="none"/>
+    </svg>
+  ),
+};
+
 const NAV_ITEMS = [
-  { key: "account",     tKey: "account.title",       icon: "○" },
-  { key: "billing",     tKey: "account.billing",     icon: "◈" },
-  { key: "appearance",  tKey: "account.appearance",  icon: "◑" },
-  { key: "templates",   tKey: "account.templates",   icon: "⬚" },
-  { key: "preferences", tKey: "account.preferences", icon: "⚙" },
+  { key: "account",     tKey: "account.title"      },
+  { key: "billing",     tKey: "account.billing"    },
+  { key: "appearance",  tKey: "account.appearance" },
+  { key: "templates",   tKey: "account.templates"  },
+  { key: "preferences", tKey: "account.preferences"},
 ];
 
 function Sidebar({ active, onChange }) {
   const { t } = useTranslation();
+  const [hov, setHov] = useState(null);
   return (
     <div style={{
-      width: 180, flexShrink: 0,
+      width: 188, flexShrink: 0,
       background: C.card2, border: `1px solid ${C.border}`,
-      borderRadius: 12, padding: "12px 8px",
+      borderRadius: 14, padding: "14px 10px",
       alignSelf: "flex-start", position: "sticky", top: 0,
     }}>
-      <div style={{ fontSize: 9, fontWeight: 800, color: C.muted, textTransform: "uppercase",
-        letterSpacing: 1.4, padding: "2px 10px 10px" }}>
+      <div style={{
+        fontSize: 9, fontWeight: 800, color: C.muted, textTransform: "uppercase",
+        letterSpacing: 1.6, padding: "2px 10px 12px",
+      }}>
         {t("account.title")}
       </div>
-      {NAV_ITEMS.map(({ key, tKey, icon }) => {
-        const active_ = active === key;
+      {NAV_ITEMS.map(({ key, tKey }) => {
+        const isActive = active === key;
+        const isHov = hov === key && !isActive;
         return (
-          <button key={key} onClick={() => onChange(key)} style={{
-            display: "flex", alignItems: "center", gap: 9, width: "100%",
-            padding: "8px 10px", borderRadius: 8, border: "none",
-            background: active_ ? "rgba(19,93,255,0.13)" : "transparent",
-            color: active_ ? "var(--text-accent)" : C.muted,
-            fontSize: 12, fontWeight: active_ ? 700 : 500,
-            cursor: "pointer", textAlign: "left", transition: "all 0.12s",
-          }}>
-            <span style={{ fontSize: 11, opacity: 0.65 }}>{icon}</span>
+          <button
+            key={key}
+            onClick={() => onChange(key)}
+            onMouseEnter={() => setHov(key)}
+            onMouseLeave={() => setHov(null)}
+            style={{
+              display: "flex", alignItems: "center", gap: 10, width: "100%",
+              padding: "8px 10px", borderRadius: 8, border: "none",
+              background: isActive ? "rgba(19,93,255,0.12)" : isHov ? "var(--bg-surface)" : "transparent",
+              color: isActive ? "var(--blue)" : isHov ? C.text : C.muted,
+              fontSize: 12, fontWeight: isActive ? 700 : 500,
+              cursor: "pointer", textAlign: "left",
+              transition: "background 0.12s, color 0.12s",
+              position: "relative",
+            }}
+          >
+            {isActive && (
+              <div style={{
+                position: "absolute", left: 0, top: "20%", bottom: "20%",
+                width: 3, borderRadius: 2, background: "var(--blue)",
+              }} />
+            )}
+            <span style={{ display: "flex", opacity: isActive ? 1 : 0.6 }}>{NAV_ICONS[key]}</span>
             {t(tKey)}
           </button>
         );
