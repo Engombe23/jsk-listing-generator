@@ -940,9 +940,9 @@ function Sidebar({ active, onChange }) {
   const [hov, setHov] = useState(null);
   return (
     <div style={{
-      width: 188, flexShrink: 0,
+      width: 210, flexShrink: 0,
       background: C.card2, border: `1px solid ${C.border}`,
-      borderRadius: 14, padding: "14px 10px",
+      borderRadius: 14, padding: "16px 10px",
       alignSelf: "flex-start", position: "sticky", top: 0,
     }}>
       <div style={{
@@ -1009,22 +1009,24 @@ export default function Account({ initialPage = "account" }) {
   }, [initialPage]);
 
   return (
-    <div style={{ display: "flex", gap: 18, alignItems: "flex-start" }}>
-      <Sidebar active={page} onChange={setPage} />
+    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+      <div>
+        <div style={{ fontSize: 18, fontWeight: 900, color: C.text }}>{t(PAGE_TITLE_KEYS[page])}</div>
+        {PAGE_SUB_KEYS[page] && (
+          <div style={{ fontSize: 11, color: C.muted, marginTop: 3 }}>{t(PAGE_SUB_KEYS[page])}</div>
+        )}
+      </div>
 
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ marginBottom: 20 }}>
-          <div style={{ fontSize: 18, fontWeight: 900, color: C.text }}>{t(PAGE_TITLE_KEYS[page])}</div>
-          {PAGE_SUB_KEYS[page] && (
-            <div style={{ fontSize: 11, color: C.muted, marginTop: 3 }}>{t(PAGE_SUB_KEYS[page])}</div>
-          )}
+      <div style={{ display: "flex", gap: 18, alignItems: "flex-start" }}>
+        <Sidebar active={page} onChange={setPage} />
+
+        <div style={{ flex: 1, minWidth: 0 }}>
+          {page === "account"     && <AccountPage onOpenBilling={() => setPage("billing")} />}
+          {page === "billing"     && <BillingPage />}
+          {page === "appearance"  && <AppearancePage />}
+          {page === "templates"   && <ListingTemplates />}
+          {page === "preferences" && <ListingPreferencesPage />}
         </div>
-
-        {page === "account"     && <AccountPage onOpenBilling={() => setPage("billing")} />}
-        {page === "billing"     && <BillingPage />}
-        {page === "appearance"  && <AppearancePage />}
-        {page === "templates"   && <ListingTemplates />}
-        {page === "preferences" && <ListingPreferencesPage />}
       </div>
     </div>
   );
