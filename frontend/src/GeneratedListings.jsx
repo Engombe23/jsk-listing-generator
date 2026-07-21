@@ -11,7 +11,6 @@ const API_URL = import.meta.env.VITE_API_URL;
 const LS_THEME_KEY = "jsk_theme_v2";
 const THEMES = [
   { id: "clean-default",     name: "Clean Default" },
-  { id: "dark-header",       name: "Dark Header" },
   { id: "table-focused",     name: "Table Focused" },
   { id: "minimal",           name: "Minimal" },
   { id: "professional-blue", name: "Professional Blue" },

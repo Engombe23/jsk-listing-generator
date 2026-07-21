@@ -39,10 +39,9 @@ import { useTheme } from "./context/ThemeContext";
 
 const THEMES = [
   { id: "clean-default",     name: "Clean Default" },
-  { id: "dark-header",       name: "Dark Header" },
   { id: "table-focused",     name: "Table Focused" },
   { id: "minimal",           name: "Minimal" },
-  { id: "professional-blue", name: "Professional Blue" }
+  { id: "professional-blue", name: "Professional Blue" },
 ];
 
 // ─── LocalStorage helpers ─────────────────────────────────────────────────────
@@ -981,70 +980,48 @@ function ListingGenerator({
                 {/* Description Theme / Preset selector */}
                 <div>
                   <FieldLabel>{t("generator.templatesLabel")}</FieldLabel>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 4 }}>
-                    {THEMES.map((t) => {
-                      const active = themeId === t.id && !customTemplateHtml;
-                      return (
-                        <button
-                          key={t.id}
-                          onClick={() => handleThemeChange(t.id)}
-                          style={{
-                            padding: "6px 12px", borderRadius: 10, fontSize: 12, cursor: "pointer",
-                            border:     active ? "1px solid var(--blue)" : "1px solid var(--border)",
-                            background: active ? "var(--blue-bg)"     : "var(--bg-surface2)",
-                            color:      active ? "var(--blue)"        : "var(--text-muted)",
-                            fontWeight: active ? 700 : 400,
-                            transition: "all 0.15s ease"
-                          }}
-                        >
-                          {t.name}
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  {/* Custom (saved) templates */}
-                  {customTemplates.length > 0 && (
-                    <div style={{ marginTop: 10 }}>
-                      <div style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 700, marginBottom: 6, letterSpacing: 0.4 }}>
-                        SAVED TEMPLATES
-                      </div>
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                        {customTemplates.map((t) => {
-                          const active = customTemplateHtml === t.html;
-                          return (
-                            <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 0 }}>
-                              <button
-                                onClick={() => setCustomTemplateHtml(t.html)}
-                                style={{
-                                  padding: "6px 12px", borderRadius: "10px 0 0 10px", fontSize: 12, cursor: "pointer",
-                                  border:     active ? "1px solid #f59e0b"        : "1px solid rgba(255,255,255,0.14)",
-                                  borderRight: "none",
-                                  background: active ? "rgba(245,158,11,0.18)"    : "var(--border-light)",
-                                  color:      active ? "var(--yellow)"                  : "var(--text-muted)",
-                                  fontWeight: active ? 700 : 400,
-                                  transition: "all 0.15s ease"
-                                }}
-                              >
-                                {t.name}
-                              </button>
-                              <button
-                                onClick={() => handleDeleteTemplate(t.id)}
-                                title="Delete template"
-                                style={{
-                                  padding: "6px 7px", borderRadius: "0 10px 10px 0", fontSize: 11, cursor: "pointer",
-                                  border:     "1px solid rgba(255,255,255,0.14)",
-                                  background: "rgba(220,38,38,0.07)",
-                                  color:      "var(--red)",
-                                  transition: "all 0.15s ease"
-                                }}
-                              >×</button>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
+                  <select
+                    value={customTemplateHtml
+                      ? (customTemplates.find(ct => ct.html === customTemplateHtml)?.id ?? "")
+                      : themeId}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === "__create__") {
+                        sessionStorage.setItem("jsk_templates_open_builder", "1");
+                        setAccountSubPage("templates");
+                        navigateTo("account");
+                        return;
+                      }
+                      const custom = customTemplates.find(ct => ct.id === val);
+                      if (custom) {
+                        setCustomTemplateHtml(custom.html);
+                      } else {
+                        handleThemeChange(val);
+                      }
+                    }}
+                    style={{
+                      width: "100%", marginTop: 4, padding: "8px 10px",
+                      borderRadius: 10, fontSize: 13,
+                      border: "1px solid var(--border)",
+                      background: "var(--bg-surface)",
+                      color: "var(--text)",
+                      cursor: "pointer", outline: "none",
+                    }}
+                  >
+                    <optgroup label="Templates">
+                      {THEMES.map(theme => (
+                        <option key={theme.id} value={theme.id}>{theme.name}</option>
+                      ))}
+                    </optgroup>
+                    {customTemplates.length > 0 && (
+                      <optgroup label="Saved Templates">
+                        {customTemplates.map(ct => (
+                          <option key={ct.id} value={ct.id}>{ct.name}</option>
+                        ))}
+                      </optgroup>
+                    )}
+                    <option value="__create__">+ Create template</option>
+                  </select>
                 </div>
 
                 {/* Listing Content Toggles */}

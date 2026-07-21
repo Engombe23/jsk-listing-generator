@@ -833,6 +833,14 @@ export default function ListingTemplates() {
   const [view,       setView]       = useState("list"); // "list" | "builder"
   const [editing,    setEditing]    = useState(null);   // template being edited
 
+  useEffect(() => {
+    if (sessionStorage.getItem("jsk_templates_open_builder") === "1") {
+      sessionStorage.removeItem("jsk_templates_open_builder");
+      setEditing(blankTemplate(""));
+      setView("builder");
+    }
+  }, []);
+
   const persist = (list) => { setTemplates(list); saveTemplates(list); };
 
   const handleSave = (t) => {
