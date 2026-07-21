@@ -40,3 +40,12 @@ export const aiTitlesLimiter = makeLimiter({
   max: 20, windowMinutes: 10,
   message: "Too many AI title requests. Please wait a few minutes before trying again.",
 });
+
+// Public demo preview — keyed by IP, tight limit to prevent abuse.
+export const demoPreviewLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 8,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "rate_limited", message: "Too many demo requests. Please try again later." },
+});
