@@ -44,6 +44,77 @@ const THEMES = [
   { id: "professional-blue", name: "Professional Blue" },
 ];
 
+// ─── Template dropdown ────────────────────────────────────────────────────────
+
+function TemplateDropdown({ themes, themeId, customTemplates, customTemplateHtml, onSelect, label }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  const activeCustom = customTemplateHtml ? customTemplates.find(ct => ct.html === customTemplateHtml) : null;
+  const activeTheme  = !activeCustom ? themes.find(t => t.id === themeId) : null;
+  const displayName  = activeCustom?.name ?? activeTheme?.name ?? "Select template";
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  const pick = (val) => { setOpen(false); onSelect(val); };
+
+  const itemStyle = (active) => ({
+    padding: "8px 12px", fontSize: 13, cursor: "pointer", borderRadius: 6,
+    background: active ? "var(--blue-bg)" : "transparent",
+    color: active ? "var(--blue)" : "var(--text)",
+    fontWeight: active ? 700 : 400,
+    display: "block", width: "100%", border: "none", textAlign: "left",
+  });
+
+  return (
+    <div ref={ref} style={{ position: "relative", marginTop: 4 }}>
+      {label && <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-muted)", marginBottom: 6 }}>{label}</div>}
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{
+          width: "100%", padding: "8px 12px", borderRadius: 10, fontSize: 13,
+          border: "1px solid var(--border)", background: "var(--bg-surface)",
+          color: "var(--text)", cursor: "pointer", outline: "none",
+          display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8,
+        }}
+      >
+        <span>{displayName}</span>
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ flexShrink: 0, opacity: 0.5, transform: open ? "rotate(180deg)" : "none", transition: "transform 0.15s" }}>
+          <path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      </button>
+      {open && (
+        <div style={{
+          position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, zIndex: 50,
+          background: "var(--bg-surface)", border: "1px solid var(--border)",
+          borderRadius: 10, padding: "6px", boxShadow: "var(--shadow)",
+        }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", padding: "4px 8px 6px", letterSpacing: 0.5 }}>TEMPLATES</div>
+          {themes.map(theme => (
+            <button key={theme.id} style={itemStyle(!activeCustom && themeId === theme.id)} onClick={() => pick(theme.id)}>{theme.name}</button>
+          ))}
+          {customTemplates.length > 0 && (
+            <>
+              <div style={{ borderTop: "1px solid var(--border)", margin: "6px 0" }} />
+              <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", padding: "4px 8px 6px", letterSpacing: 0.5 }}>SAVED TEMPLATES</div>
+              {customTemplates.map(ct => (
+                <button key={ct.id} style={itemStyle(activeCustom?.id === ct.id)} onClick={() => pick(ct.id)}>{ct.name}</button>
+              ))}
+            </>
+          )}
+          <div style={{ borderTop: "1px solid var(--border)", margin: "6px 0" }} />
+          <button style={{ ...itemStyle(false), color: "var(--blue)", fontWeight: 600 }} onClick={() => pick("__create__")}>+ Create template</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── LocalStorage helpers ─────────────────────────────────────────────────────
 
 const LS_THEME_KEY        = "jsk_theme_v2";
@@ -978,51 +1049,24 @@ function ListingGenerator({
                 </div>
 
                 {/* Description Theme / Preset selector */}
-                <div>
-                  <FieldLabel>{t("generator.templatesLabel")}</FieldLabel>
-                  <select
-                    value={customTemplateHtml
-                      ? (customTemplates.find(ct => ct.html === customTemplateHtml)?.id ?? "")
-                      : themeId}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      if (val === "__create__") {
-                        sessionStorage.setItem("jsk_templates_open_builder", "1");
-                        setAccountSubPage("templates");
-                        navigateTo("account");
-                        return;
-                      }
-                      const custom = customTemplates.find(ct => ct.id === val);
-                      if (custom) {
-                        setCustomTemplateHtml(custom.html);
-                      } else {
-                        handleThemeChange(val);
-                      }
-                    }}
-                    style={{
-                      width: "100%", marginTop: 4, padding: "8px 10px",
-                      borderRadius: 10, fontSize: 13,
-                      border: "1px solid var(--border)",
-                      background: "var(--bg-surface)",
-                      color: "var(--text)",
-                      cursor: "pointer", outline: "none",
-                    }}
-                  >
-                    <optgroup label="Templates">
-                      {THEMES.map(theme => (
-                        <option key={theme.id} value={theme.id}>{theme.name}</option>
-                      ))}
-                    </optgroup>
-                    {customTemplates.length > 0 && (
-                      <optgroup label="Saved Templates">
-                        {customTemplates.map(ct => (
-                          <option key={ct.id} value={ct.id}>{ct.name}</option>
-                        ))}
-                      </optgroup>
-                    )}
-                    <option value="__create__">+ Create template</option>
-                  </select>
-                </div>
+                <TemplateDropdown
+                  themes={THEMES}
+                  themeId={themeId}
+                  customTemplates={customTemplates}
+                  customTemplateHtml={customTemplateHtml}
+                  onSelect={(val) => {
+                    if (val === "__create__") {
+                      sessionStorage.setItem("jsk_templates_open_builder", "1");
+                      setAccountSubPage("templates");
+                      navigateTo("account");
+                      return;
+                    }
+                    const custom = customTemplates.find(ct => ct.id === val);
+                    if (custom) setCustomTemplateHtml(custom.html);
+                    else handleThemeChange(val);
+                  }}
+                  label={t("generator.templatesLabel")}
+                />
 
                 {/* Listing Content Toggles */}
                 <div>
