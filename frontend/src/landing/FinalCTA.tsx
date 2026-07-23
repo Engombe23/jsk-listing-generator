@@ -1,104 +1,53 @@
-import { trackEvent } from "../lib/analytics";
-
-const ACCENT = "#135DFF";
-const TEXT = "#132A46";
-const MUTED = "#4d6a8a";
+import { ArrowRight } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Reveal, Section } from "./Primitives";
 
 export default function FinalCTA() {
   return (
-    <section
-      className="lp-section"
-      style={{
-        background: `linear-gradient(135deg, #0d1f35 0%, #135DFF 100%)`,
-        padding: "100px 24px",
-        textAlign: "center",
-      }}
-    >
-      <div style={{ maxWidth: 680, margin: "0 auto" }}>
-        <h2
-          style={{
-            fontSize: "clamp(2rem, 4vw, 2.75rem)",
-            fontWeight: 800,
-            color: "#ffffff",
-            lineHeight: 1.15,
-            letterSpacing: "-0.03em",
-            marginBottom: 20,
-          }}
-        >
-          Ready to build better listings faster?
-        </h2>
-        <p
-          style={{
-            fontSize: "1.1rem",
-            color: "rgba(255,255,255,0.75)",
-            lineHeight: 1.7,
-            marginBottom: 40,
-            maxWidth: 500,
-            margin: "0 auto 40px",
-          }}
-        >
-          Generate your first car parts listing in minutes — no credit card required.
-          Join 2,400+ eBay sellers already saving hours every week.
-        </p>
+    <Section className="pb-24 sm:pb-28">
+      <Reveal>
+        <div className="relative overflow-hidden rounded-[2rem] bg-navy px-6 py-20 text-center sm:px-12 sm:py-24">
+          <div className="pointer-events-none absolute inset-0">
+            <div className="absolute left-1/2 top-0 h-[440px] w-[760px] -translate-x-1/2 rounded-full bg-[radial-gradient(ellipse_at_center,rgba(19,93,255,0.55),transparent_60%)] blur-2xl" />
+            <div className="absolute inset-0 bg-[radial-gradient(circle,rgba(255,255,255,0.04)_1px,transparent_1px)] [background-size:24px_24px] [mask-image:radial-gradient(ellipse_at_center,black,transparent_75%)]" />
+          </div>
 
-        <div
-          className="final-cta-btns"
-          style={{
-            display: "flex",
-            gap: 16,
-            justifyContent: "center",
-            flexWrap: "wrap",
-          }}
-        >
-          <a
-            href="/auth/sign-up"
-            onClick={() => trackEvent("signup_clicked", { cta_location: "final_cta" })}
-            style={{
-              padding: "14px 32px",
-              fontSize: "1rem",
-              fontWeight: 700,
-              color: ACCENT,
-              background: "#ffffff",
-              borderRadius: 12,
-              textDecoration: "none",
-              boxShadow: "0 4px 20px rgba(0,0,0,0.2)",
-              transition: "transform 0.15s, box-shadow 0.15s",
-            }}
-            onMouseEnter={e => {
-              (e.currentTarget as HTMLAnchorElement).style.transform = "translateY(-2px)";
-              (e.currentTarget as HTMLAnchorElement).style.boxShadow = "0 6px 24px rgba(19,93,255,0.45)";
-            }}
-            onMouseLeave={e => {
-              (e.currentTarget as HTMLAnchorElement).style.transform = "translateY(0)";
-              (e.currentTarget as HTMLAnchorElement).style.boxShadow = "0 4px 20px rgba(19,93,255,0.35)";
-            }}
-          >
-            Generate 10 Listings Free
-          </a>
-          <a
-            href="#features"
-            style={{
-              padding: "14px 32px",
-              fontSize: "1rem",
-              fontWeight: 600,
-              color: "rgba(255,255,255,0.9)",
-              background: "rgba(255,255,255,0.12)",
-              borderRadius: 12,
-              textDecoration: "none",
-              border: `2px solid rgba(255,255,255,0.35)`,
-              transition: "background 0.15s",
-            }}
-            onMouseEnter={e => {
-              (e.currentTarget as HTMLAnchorElement).style.background = "rgba(255,255,255,0.22)";
-            }}
-            onMouseLeave={e => {
-              (e.currentTarget as HTMLAnchorElement).style.background = "rgba(255,255,255,0.12)";
-            }}
-          >
-            See How It Works
-          </a>
+          <img
+            src="/parts3d/turbo.png"
+            alt=""
+            aria-hidden
+            className="pointer-events-none absolute -bottom-6 -left-8 hidden h-40 w-40 rotate-[-8deg] object-contain opacity-90 drop-shadow-[0_24px_40px_rgba(0,0,0,0.5)] md:block lg:-left-4 lg:h-48 lg:w-48"
+          />
+          <img
+            src="/parts3d/piston.png"
+            alt=""
+            aria-hidden
+            className="pointer-events-none absolute -right-8 -top-8 hidden h-36 w-36 rotate-[12deg] object-contain opacity-90 drop-shadow-[0_24px_40px_rgba(0,0,0,0.5)] md:block lg:-right-4 lg:h-44 lg:w-44"
+          />
+
+          <div className="relative mx-auto max-w-2xl">
+            <h2 className="text-balance font-display text-[clamp(2rem,4.6vw,3.4rem)] font-extrabold leading-[1.05] tracking-tightest text-white">
+              Ready to create listings in seconds?
+            </h2>
+            <p className="mx-auto mt-5 max-w-lg text-[1.08rem] leading-relaxed text-white/70">
+              Stop copy-pasting part data by hand. Turn your next OEM number into a complete eBay listing right now.
+            </p>
+
+            <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
+              <Link
+                to="/auth/sign-up"
+                className="group inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-8 py-4 text-[1.05rem] font-semibold text-white shadow-[0_16px_40px_-10px_rgba(19,93,255,0.8)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-white hover:text-navy sm:w-auto"
+              >
+                Generate 10 Listings Free
+                <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-0.5" />
+              </Link>
+            </div>
+            <p className="mt-4 font-mono text-[0.78rem] text-white/40">
+              No card required · Cancel anytime
+            </p>
+          </div>
         </div>
-      </div>
-    </section>
+      </Reveal>
+    </Section>
   );
 }

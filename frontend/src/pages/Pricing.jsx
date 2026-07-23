@@ -2,7 +2,7 @@
 import { Link } from "react-router-dom";
 import { useSession } from "../context/SessionContext";
 import { trackEvent } from "../lib/analytics";
-import "../landing/landing.css";
+import "../landing/landing-v2.css";
 import Navbar from "../landing/Navbar";
 import Footer from "../landing/Footer";
 import LandingPricing from "../landing/Pricing";

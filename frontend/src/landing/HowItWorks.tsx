@@ -1,319 +1,133 @@
-import { Link } from "react-router-dom";
-import { trackEvent } from "../lib/analytics";
+import { BarChart3, Check, Crosshair, Lightbulb, Zap } from "lucide-react";
+import { Reveal } from "./Primitives";
+import { AnimatedStep } from "./HowItWorksAnim";
 
-const TEXT = "#132A46";
-const MUTED = "#4d6a8a";
-const DIM = "#7a96b0";
-const ACCENT = "#135DFF";
-const ACCENT_LIGHT = "#EEF5FF";
-const BORDER = "#dde7f5";
-
-const MANUAL_STEPS = [
-  { num: 1, title: "Start with a part number", desc: "Use an OE number, article number, supplier reference or SKU." },
-  { num: 2, title: "Search for product data", desc: "Find the product type, image, item specifics and technical details." },
-  { num: 3, title: "Find OE references", desc: "Collect OE numbers and matching references." },
-  { num: 4, title: "Find interchangeable numbers", desc: "Check cross-reference numbers from other brands or suppliers." },
-  { num: 5, title: "Check compatibility data", desc: "Look up vehicle fitment, engine codes, kW, HP, CC and years." },
-  { num: 6, title: "Build the listing content", desc: "Create the title, description, item specifics and compatibility section." },
-  { num: 7, title: "Copy into eBay or CSV", desc: "Paste the structured data into the listing, HTML template or CSV import sheet." },
-  { num: 8, title: "Review and adjust", desc: "Check the listing before publishing." },
+const steps = [
+  {
+    n: "01",
+    label: "Step 1",
+    title: "Enter OE / OEM / Article Number",
+    body: "Paste any reference number or your internal SKU. No spreadsheets, no manual data entry, no guesswork.",
+    bullets: null,
+  },
+  {
+    n: "02",
+    label: "Step 2",
+    title: "PartLister fetches data from TecDoc",
+    body: "We pull the exact part, vehicle fitment, engine codes and interchangeable numbers straight from TecDoc — verified, not scraped.",
+    bullets: null,
+  },
+  {
+    n: "03",
+    label: "Step 3",
+    title: "Get your complete listing. Export. Done.",
+    body: "Get an optimised title, description, item specifics, compatibility table and images. Copy, export to CSV and list anywhere.",
+    bullets: ["Optimised for eBay", "Ready to copy or export", "CSV export in one click"],
+  },
 ];
 
-const PARTLISTER_STEPS = [
-  {
-    num: 1,
-    title: "Enter OE / OEM / Article Number",
-    desc: "Start with the number you already have.",
-  },
-  {
-    num: 2,
-    title: "Generate structured listing",
-    desc: "Part Lister pulls the product data, OE references, interchangeable numbers, item specifics, image and compatibility details into one output.",
-  },
-  {
-    num: 3,
-    title: "Review, edit and export",
-    desc: "Check the result, make edits, then copy the HTML or export the data.",
-  },
+const chips = [
+  { icon: Zap, title: "Save hours", sub: "every day" },
+  { icon: Crosshair, title: "Improve accuracy", sub: "& consistency" },
+  { icon: BarChart3, title: "List more", sub: "sell more" },
 ];
 
 export default function HowItWorks() {
   return (
-    <section
-      id="how-it-works"
-      className="lp-section"
-      style={{
-        padding: "96px 24px",
-        background: "#f7f9fc",
-        fontFamily: "Plus Jakarta Sans, sans-serif",
-      }}
-    >
-      <div style={{ maxWidth: 1160, margin: "0 auto" }}>
-        {/* Header */}
-        <div style={{ textAlign: "center", marginBottom: 56 }}>
+    <section id="how-it-works" className="relative bg-white">
+      <div className="relative overflow-hidden bg-[#081326] px-6 pb-28 pt-24 text-white sm:pb-32">
+        <div className="pointer-events-none absolute inset-0 overflow-hidden">
           <div
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 8,
-              background: ACCENT_LIGHT,
-              border: `1px solid ${BORDER}`,
-              borderRadius: 999,
-              padding: "6px 16px",
-              fontSize: 12,
-              fontWeight: 700,
-              color: ACCENT,
-              letterSpacing: "0.05em",
-              marginBottom: 20,
-            }}
-          >
-            How It Works
+            className="absolute inset-0"
+            style={{ background: "radial-gradient(ellipse 90% 80% at 50% 32%, #16305a 0%, #0d1f3d 48%, #060f1f 100%)" }}
+          />
+          <div
+            className="absolute inset-0"
+            style={{ background: "radial-gradient(ellipse 40% 60% at 10% 6%, rgba(37,120,255,0.5), transparent 60%), radial-gradient(ellipse 42% 60% at 92% 14%, rgba(90,160,255,0.4), transparent 60%)" }}
+          />
+          <div className="absolute left-1/2 top-1/3 h-[900px] w-[900px] -translate-x-1/2 -translate-y-1/2 opacity-60">
+            <div
+              className="animate-aurora h-full w-full rounded-full blur-[90px]"
+              style={{ background: "conic-gradient(from 0deg, rgba(37,120,255,0.8), rgba(6,15,31,0), rgba(120,175,255,0.65), rgba(6,15,31,0), rgba(37,120,255,0.8))" }}
+            />
           </div>
-          <h2
-            style={{
-              fontSize: "clamp(26px, 3.5vw, 44px)",
-              fontWeight: 900,
-              color: TEXT,
-              letterSpacing: "-0.5px",
-              lineHeight: 1.15,
-              margin: 0,
-            }}
-          >
-            Manual vs Part Lister
-          </h2>
+          <div
+            className="absolute inset-0 opacity-[0.5] [mask-image:radial-gradient(ellipse_at_50%_35%,black,transparent_80%)]"
+            style={{ backgroundImage: "radial-gradient(circle, rgba(255,255,255,0.12) 1px, transparent 1px)", backgroundSize: "24px 24px" }}
+          />
         </div>
 
-        {/* Two columns */}
-        <div
-          className="how-it-works-grid"
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            gap: 24,
-            alignItems: "start",
-          }}
-        >
-          {/* LEFT — Manual */}
-          <div
-            style={{
-              background: "#fff",
-              border: "1px solid #f0d0d0",
-              borderRadius: 20,
-              overflow: "hidden",
-            }}
-          >
-            {/* Header bar */}
-            <div
-              style={{
-                background: "#fff5f5",
-                borderBottom: "1px solid #f0d0d0",
-                padding: "18px 24px",
-              }}
-            >
-              <div style={{ fontSize: 11, fontWeight: 800, color: "#c0392b", letterSpacing: "0.1em", marginBottom: 4 }}>
-                MANUAL WORKFLOW
-              </div>
-              <div style={{ fontSize: 16, fontWeight: 800, color: "#7a1a1a" }}>
-                8 steps to build one listing
-              </div>
-            </div>
-
-            {/* Steps */}
-            <div style={{ padding: "8px 0" }}>
-              {MANUAL_STEPS.map((step) => (
-                <div
-                  key={step.num}
-                  style={{
-                    display: "flex",
-                    gap: 14,
-                    padding: "14px 24px",
-                    borderBottom: step.num < 8 ? "1px solid #fce8e8" : "none",
-                  }}
-                >
-                  <div
-                    style={{
-                      minWidth: 24,
-                      height: 24,
-                      borderRadius: "50%",
-                      background: "#fee2e2",
-                      color: "#c0392b",
-                      fontSize: 11,
-                      fontWeight: 800,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      marginTop: 2,
-                    }}
-                  >
-                    {step.num}
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: TEXT, marginBottom: 2 }}>
-                      {step.title}
-                    </div>
-                    <div style={{ fontSize: 12, color: MUTED, lineHeight: 1.6 }}>
-                      {step.desc}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Footer */}
-            <div
-              style={{
-                background: "#fff5f5",
-                borderTop: "1px solid #f0d0d0",
-                padding: "14px 24px",
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-              }}
-            >
-              <span style={{ fontSize: 16 }}>⏱</span>
-              <span style={{ fontSize: 13, color: "#c0392b", fontWeight: 700 }}>
-                10–15 minutes per listing
-              </span>
-            </div>
+        <Reveal className="relative mx-auto max-w-2xl text-center">
+          <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3.5 py-1.5 font-mono text-[0.72rem] font-medium uppercase tracking-[0.14em] text-blue-200 backdrop-blur">
+            <Lightbulb className="h-3.5 w-3.5" />
+            How it works
           </div>
+          <h2 className="font-display text-[clamp(2.2rem,4.5vw,3.4rem)] font-extrabold leading-[1.03] tracking-tightest text-balance">
+            Three steps.
+            <br />
+            <span className="text-primary">Under a minute.</span>
+          </h2>
+          <p className="mx-auto mt-5 max-w-md text-[1.05rem] leading-relaxed text-blue-100/70">
+            What used to take 15 minutes of copy-paste per listing now happens in a single click.
+          </p>
+        </Reveal>
 
-          {/* RIGHT — Part Lister */}
-          <div
-            className="how-it-works-partlister"
-            style={{
-              background: "#fff",
-              border: `1px solid ${BORDER}`,
-              borderRadius: 20,
-              overflow: "hidden",
-              boxShadow: "0 4px 32px rgba(19,93,255,0.10)",
-            }}
-          >
-            {/* Header bar */}
-            <div
-              style={{
-                background: ACCENT,
-                borderBottom: `1px solid ${BORDER}`,
-                padding: "18px 24px",
-              }}
-            >
-              <div style={{ fontSize: 11, fontWeight: 800, color: "rgba(255,255,255,0.7)", letterSpacing: "0.1em", marginBottom: 4 }}>
-                WITH PART LISTER
+        <Reveal delay={0.1} className="relative mx-auto mt-9 flex max-w-xl flex-wrap items-center justify-center gap-x-3 gap-y-4">
+          {chips.map((c, i) => (
+            <div key={c.title} className="flex items-center">
+              <div className="flex items-center gap-2.5">
+                <span className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/15 bg-white/10 text-blue-200 backdrop-blur">
+                  <c.icon className="h-4 w-4" />
+                </span>
+                <span className="flex flex-col leading-tight">
+                  <span className="text-[0.9rem] font-semibold text-white">{c.title}</span>
+                  <span className="text-[0.78rem] text-blue-100/60">{c.sub}</span>
+                </span>
               </div>
-              <div style={{ fontSize: 16, fontWeight: 800, color: "#fff" }}>
-                3 steps. Done.
-              </div>
+              {i < chips.length - 1 && <span className="mx-4 hidden h-8 w-px bg-white/10 sm:block" />}
             </div>
+          ))}
+        </Reveal>
+      </div>
 
-            {/* Steps */}
-            <div style={{ padding: "24px 24px 16px" }}>
-              {PARTLISTER_STEPS.map((step, i) => (
-                <div key={step.num} style={{ display: "flex", gap: 16, marginBottom: i < 2 ? 28 : 0 }}>
-                  {/* Number + connector */}
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-                    <div
-                      style={{
-                        width: 32,
-                        height: 32,
-                        borderRadius: "50%",
-                        background: ACCENT,
-                        color: "#fff",
-                        fontSize: 13,
-                        fontWeight: 800,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        flexShrink: 0,
-                      }}
-                    >
-                      {step.num}
+      <div className="relative z-10 mx-auto max-w-[1080px] px-6 pb-24 pt-16">
+        <div className="relative">
+          <div className="absolute left-[23px] top-10 bottom-16 hidden w-px bg-gradient-to-b from-primary/40 via-slate-200 to-slate-200 sm:block" />
+          <div className="space-y-12 sm:space-y-14">
+            {steps.map((s, i) => (
+              <Reveal key={s.n} delay={i * 0.05}>
+                <div className="grid grid-cols-1 items-start gap-x-8 gap-y-5 sm:grid-cols-[3rem_minmax(0,19rem)_minmax(0,1fr)]">
+                  <div className="relative flex sm:justify-center">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary font-mono text-[0.95rem] font-bold text-white shadow-[0_10px_28px_-6px_rgba(19,93,255,0.75)] ring-4 ring-white">
+                      {s.n}
                     </div>
-                    {i < 2 && (
-                      <div
-                        style={{
-                          width: 2,
-                          flex: 1,
-                          background: BORDER,
-                          marginTop: 6,
-                          minHeight: 28,
-                        }}
-                      />
+                  </div>
+
+                  <div className="pt-1">
+                    <span className="font-mono text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-primary">{s.label}</span>
+                    <h3 className="mt-2 font-display text-[1.55rem] font-bold leading-[1.12] tracking-tight text-navy">{s.title}</h3>
+                    <p className="mt-3 text-[0.98rem] leading-relaxed text-slate-500">{s.body}</p>
+                    {s.bullets && (
+                      <ul className="mt-4 space-y-2">
+                        {s.bullets.map((b) => (
+                          <li key={b} className="flex items-center gap-2.5 text-[0.95rem] font-medium text-navy">
+                            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#17924a]/12 text-[#17924a]">
+                              <Check className="h-3 w-3" strokeWidth={3.5} />
+                            </span>
+                            {b}
+                          </li>
+                        ))}
+                      </ul>
                     )}
                   </div>
-                  <div style={{ paddingTop: 4 }}>
-                    <div style={{ fontSize: 14, fontWeight: 800, color: TEXT, marginBottom: 4 }}>
-                      {step.title}
-                    </div>
-                    <div style={{ fontSize: 13, color: MUTED, lineHeight: 1.65 }}>
-                      {step.desc}
-                    </div>
+
+                  <div className="group/card overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-[0_28px_64px_-28px_rgba(16,42,86,0.30)] ring-1 ring-slate-100 transition-all duration-300 ease-out hover:-translate-y-1.5 hover:scale-[1.03] hover:border-primary/40 hover:shadow-[0_44px_100px_-30px_rgba(19,93,255,0.42)]">
+                    <AnimatedStep index={i} />
                   </div>
                 </div>
-              ))}
-            </div>
-
-            {/* Output tags */}
-            <div style={{ padding: "16px 24px", borderTop: `1px solid ${BORDER}` }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: DIM, letterSpacing: "0.06em", marginBottom: 10 }}>
-                OUTPUT INCLUDES
-              </div>
-              <div style={{ display: "flex", flexWrap: "wrap" as const, gap: 8 }}>
-                {["OE references", "Cross-references", "Item specifics", "K numbers (eBay compatibility)", "HTML / CSV export"].map((t) => (
-                  <span
-                    key={t}
-                    style={{
-                      fontSize: 12,
-                      fontWeight: 700,
-                      background: ACCENT_LIGHT,
-                      color: ACCENT,
-                      border: `1px solid ${BORDER}`,
-                      borderRadius: 8,
-                      padding: "4px 10px",
-                    }}
-                  >
-                    ✓ {t}
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            {/* Footer */}
-            <div
-              style={{
-                background: ACCENT_LIGHT,
-                borderTop: `1px solid ${BORDER}`,
-                padding: "14px 24px",
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-              }}
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#135DFF" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-              <span style={{ fontSize: 13, color: ACCENT, fontWeight: 700 }}>
-                Under 2 minutes per listing
-              </span>
-            </div>
+              </Reveal>
+            ))}
           </div>
-        </div>
-
-        {/* CTA */}
-        <div style={{ textAlign: "center", marginTop: 48 }}>
-          <Link
-            to="/auth/sign-up"
-            onClick={() => trackEvent("signup_clicked", { cta_location: "how_it_works" })}
-            style={{
-              display: "inline-block",
-              padding: "14px 32px",
-              background: ACCENT,
-              color: "#fff",
-              textDecoration: "none",
-              fontWeight: 700,
-              fontSize: 15,
-              borderRadius: 12,
-              boxShadow: "0 4px 18px rgba(19,93,255,0.28)",
-            }}
-          >
-            Try It Free — No Card Required
-          </Link>
         </div>
       </div>
     </section>

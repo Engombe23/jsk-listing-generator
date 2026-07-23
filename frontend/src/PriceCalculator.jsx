@@ -331,7 +331,7 @@ function PricingBand({ data, price, sym = "£" }) {
       border: "1px solid rgba(19,93,255,0.45)",
       borderRadius: 14,
       padding: "18px 20px 16px",
-      boxShadow: "inset 0 1px 0 var(--border-light), 0 4px 24px rgba(0,0,0,0.4)",
+      boxShadow: "none",
     }}>
       {/* Header */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
@@ -693,7 +693,7 @@ function PriceDistribution({ data, listings, price, onBinSelect, soldCounts = {}
       border: "1px solid var(--chart-border)",
       borderRadius: 16,
       overflow: "hidden",
-      boxShadow: "0 8px 48px rgba(0,0,0,0.65), inset 0 1px 0 var(--border-light)",
+      boxShadow: "var(--shadow)",
       marginTop: 2,
       animation: "pdIn 0.4s ease",
       display: "flex",         // flex row: chart | right panel

@@ -1,167 +1,81 @@
 import { useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
+import { Plus } from "lucide-react";
+import { Eyebrow, Reveal, Section } from "./Primitives";
 
-const TEXT = "#132A46";
-const MUTED = "#4d6a8a";
-const ACCENT = "#135DFF";
-const ACCENT_LIGHT = "#EEF5FF";
-const BORDER = "#dde7f5";
-
-const FAQS = [
+const faqs = [
   {
-    q: "Does this work for eBay listings?",
-    a: "Yes. Part Lister is designed around eBay-style car parts listings, including titles, descriptions, item specifics and compatibility information.",
+    q: "Where does the part and fitment data come from?",
+    a: "Everything comes straight from TecDoc — the industry-standard automotive parts catalogue. We don't scrape it, so the fitment, engine codes and interchangeable numbers you get are the real, verified data.",
   },
   {
-    q: "What number do I enter?",
-    a: "You can enter an OE number, OEM reference or part number.",
+    q: "What can I enter to generate a listing?",
+    a: "Any OE number, OEM number or TecDoc article number. You can also add your own internal SKU. PartLister looks up the part, pulls its data and builds the listing around it.",
   },
   {
-    q: "Do I need TecDoc knowledge?",
-    a: "No. Part Lister is designed to make technical parts data easier to use and format.",
+    q: "How does the free trial work?",
+    a: "You get 10 free listings, no card required. Generate them, export them, use them on eBay. When you're ready for more, pick a plan that fits your volume.",
   },
   {
-    q: "Can I use my own listing templates?",
-    a: "Yes. You can create and manage listing templates in your account.",
+    q: "Can I export straight to eBay?",
+    a: "Yes. PartLister exports clean HTML and CSV that drops straight into an eBay listing — title, description, compatibility table and all.",
   },
   {
-    q: "Can I export the listings?",
-    a: "Yes. You can copy or export listings into your current selling workflow.",
+    q: "How accurate is the pricing data?",
+    a: "The Smart Pricing tool analyses active eBay UK listings and refreshes every 24 hours, giving you low, median, average and high prices plus a full distribution so you can price competitively.",
   },
   {
-    q: "Is it only for new parts?",
-    a: "No. You can create listings for both new and used parts.",
+    q: "Do you handle eBay fees and VAT?",
+    a: "The price calculator factors in final value fees, fixed fees, ad rate, postage and VAT, then works backwards from your target margin — so the price you set is the price that protects your profit.",
   },
 ];
 
-export default function FAQ() {
-  const [open, setOpen] = useState<number | null>(null);
-
+function Item({ q, a, i }) {
+  const [open, setOpen] = useState(false);
   return (
-    <section
-      id="faq"
-      className="lp-section"
-      style={{
-        padding: "96px 24px",
-        background: "#f4f7fc",
-        fontFamily: "Plus Jakarta Sans, sans-serif",
-      }}
-    >
-      <div style={{ maxWidth: 800, margin: "0 auto" }}>
-      <div style={{ textAlign: "center", marginBottom: 56 }}>
-        <div
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 8,
-            background: ACCENT_LIGHT,
-            border: `1px solid ${BORDER}`,
-            borderRadius: 999,
-            padding: "6px 16px",
-            fontSize: 12,
-            fontWeight: 700,
-            color: ACCENT,
-            letterSpacing: "0.05em",
-            marginBottom: 20,
-          }}
+    <Reveal delay={i * 0.04}>
+      <div className={`overflow-hidden rounded-2xl border bg-white transition-colors ${open ? "border-primary/30 shadow-soft" : "border-hair"}`}>
+        <button
+          onClick={() => setOpen((v) => !v)}
+          className="flex w-full items-center justify-between gap-4 px-6 py-5 text-left"
         >
-          FAQ
-        </div>
-        <h2
-          style={{
-            fontSize: "clamp(26px, 3.5vw, 44px)",
-            fontWeight: 900,
-            color: TEXT,
-            letterSpacing: "-0.5px",
-            lineHeight: 1.15,
-          }}
-        >
-          Frequently asked questions
-        </h2>
-      </div>
-
-      <div style={{ display: "flex", flexDirection: "column" as const, gap: 12 }}>
-        {FAQS.map((faq, i) => (
-          <div
-            key={i}
-            style={{
-              background: "#fff",
-              border: `1px solid ${open === i ? ACCENT : BORDER}`,
-              borderRadius: 14,
-              overflow: "hidden",
-              boxShadow: open === i ? "0 4px 20px rgba(19,93,255,0.08)" : "0 1px 4px rgba(19,45,70,0.04)",
-              transition: "border-color 0.2s, box-shadow 0.2s",
-            }}
-          >
-            <button
-              onClick={() => setOpen(open === i ? null : i)}
-              style={{
-                width: "100%",
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                padding: "18px 22px",
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-                textAlign: "left" as const,
-                gap: 16,
-                fontFamily: "inherit",
-              }}
+          <span className="text-[1.02rem] font-semibold text-navy">{q}</span>
+          <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full transition-all duration-300 ${open ? "rotate-45 bg-primary text-white" : "bg-wash text-primary"}`}>
+            <Plus className="h-4 w-4" />
+          </span>
+        </button>
+        <AnimatePresence initial={false}>
+          {open && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
             >
-              <span style={{ fontSize: 15, fontWeight: 700, color: TEXT }}>
-                {faq.q}
-              </span>
-              <span
-                style={{
-                  width: 28,
-                  height: 28,
-                  borderRadius: "50%",
-                  background: open === i ? ACCENT : ACCENT_LIGHT,
-                  border: `1px solid ${BORDER}`,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: 14,
-                  color: open === i ? "#fff" : ACCENT,
-                  fontWeight: 700,
-                  flexShrink: 0,
-                  transition: "all 0.2s",
-                }}
-              >
-                {open === i ? "−" : "+"}
-              </span>
-            </button>
-            {open === i && (
-              <div
-                style={{
-                  padding: "0 22px 18px",
-                  fontSize: 14,
-                  color: MUTED,
-                  lineHeight: 1.75,
-                  borderTop: `1px solid ${BORDER}`,
-                  paddingTop: 16,
-                }}
-              >
-                {faq.a}
-              </div>
-            )}
-          </div>
+              <p className="px-6 pb-6 text-[0.98rem] leading-relaxed text-slate">{a}</p>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </Reveal>
+  );
+}
+
+export default function FAQ() {
+  return (
+    <Section id="faq" className="py-24 sm:py-28">
+      <Reveal className="mx-auto max-w-2xl text-center">
+        <Eyebrow>FAQ</Eyebrow>
+        <h2 className="font-display text-[clamp(2rem,4vw,3rem)] font-extrabold tracking-tightest text-navy text-balance">
+          Questions, answered
+        </h2>
+      </Reveal>
+
+      <div className="mx-auto mt-12 flex max-w-2xl flex-col gap-3">
+        {faqs.map((f, i) => (
+          <Item key={f.q} q={f.q} a={f.a} i={i} />
         ))}
       </div>
-      </div>
-
-      {/* Still have questions */}
-      <div style={{ textAlign: "center", marginTop: 48 }}>
-        <p style={{ fontSize: 15, color: MUTED, margin: "0 0 8px" }}>
-          Still have questions?
-        </p>
-        <a
-          href="mailto:enquiries@partlister.app"
-          style={{ fontSize: 15, fontWeight: 600, color: ACCENT, textDecoration: "none" }}
-        >
-          enquiries@partlister.app
-        </a>
-      </div>
-    </section>
+    </Section>
   );
 }

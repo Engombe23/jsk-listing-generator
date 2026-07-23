@@ -32,7 +32,8 @@ import AdminRoute from "./router/AdminRoute.jsx";
 import AdminAnalytics from "./pages/admin/AdminAnalytics.jsx";
 import About       from "./pages/About.jsx";
 import ContactPage from "./pages/ContactPage.jsx";
-import HelpPage from "./pages/HelpPage.jsx";
+import HelpPage  from "./pages/HelpPage.jsx";
+import DemoPage  from "./pages/DemoPage.jsx";
 import Pricing from "./pages/Pricing.jsx";
 import TermsPage from "./pages/TermsPage.jsx";
 import PrivacyPage from "./pages/PrivacyPage.jsx";
@@ -56,6 +57,7 @@ createRoot(document.getElementById("root")).render(
           <Route path="/about"   element={<About />} />
           <Route path="/contact" element={<ContactPage />} />
           <Route path="/help"    element={<HelpPage />} />
+          <Route path="/demo"    element={<DemoPage />} />
           <Route path="/pricing" element={<Pricing />} />
           <Route path="/terms" element={<TermsPage />} />
           <Route path="/privacy" element={<PrivacyPage />} />

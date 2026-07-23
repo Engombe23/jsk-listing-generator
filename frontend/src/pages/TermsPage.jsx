@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import "../landing/landing-v2.css";
 import Navbar from "../landing/Navbar";
 import Footer from "../landing/Footer";
 import { useSession } from "../context/SessionContext";
