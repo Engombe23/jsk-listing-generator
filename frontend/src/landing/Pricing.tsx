@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Check, ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Reveal, Section } from "./Primitives";
@@ -5,7 +6,7 @@ import { Reveal, Section } from "./Primitives";
 const plans = [
   {
     name: "Starter",
-    price: "19",
+    monthly: 19,
     tagline: "For sellers getting started",
     features: [
       "150 listings / month",
@@ -19,7 +20,7 @@ const plans = [
   },
   {
     name: "Growth",
-    price: "49",
+    monthly: 49,
     tagline: "For growing stores",
     features: [
       "750 listings / month",
@@ -33,7 +34,7 @@ const plans = [
   },
   {
     name: "Pro",
-    price: "99",
+    monthly: 99,
     tagline: "For high-volume traders",
     features: [
       "Unlimited listings",
@@ -47,7 +48,13 @@ const plans = [
   },
 ];
 
+function annualMonthly(monthly: number) {
+  return Math.round((monthly * 10) / 12);
+}
+
 export function Pricing() {
+  const [annual, setAnnual] = useState(false);
+
   return (
     <Section id="pricing" className="relative overflow-hidden bg-[#081326] py-24 text-white sm:py-28">
       <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
@@ -73,9 +80,40 @@ export function Pricing() {
         <h2 className="font-display text-[clamp(2rem,4vw,3rem)] font-extrabold tracking-tightest text-white text-balance">
           Simple pricing that scales with you
         </h2>
-        <p className="mx-auto mt-4 max-w-lg text-[1.05rem] leading-relaxed text-blue-100/70">
+        <p className="mx-auto mt-4 max-w-lg text-center text-[1.05rem] leading-relaxed text-blue-100/70">
           Start free with 10 listings. Upgrade when you are ready. No contracts, cancel anytime.
         </p>
+
+        {/* billing interval toggle */}
+        <div className="mt-8 flex items-center justify-center gap-4">
+          <button
+            onClick={() => setAnnual(false)}
+            className={`text-[0.95rem] font-semibold transition-colors ${!annual ? "text-white" : "text-blue-100/40"}`}
+          >
+            Monthly
+          </button>
+          <button
+            onClick={() => setAnnual((v) => !v)}
+            role="switch"
+            aria-checked={annual}
+            className="relative h-7 w-12 rounded-full border border-white/20 transition-colors"
+            style={{ background: annual ? "rgba(19,93,255,0.6)" : "rgba(255,255,255,0.12)" }}
+          >
+            <span
+              className="absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-transform duration-200"
+              style={{ left: 4, transform: annual ? "translateX(20px)" : "translateX(0)" }}
+            />
+          </button>
+          <button
+            onClick={() => setAnnual(true)}
+            className={`flex items-center gap-2 text-[0.95rem] font-semibold transition-colors ${annual ? "text-white" : "text-blue-100/40"}`}
+          >
+            Annual
+            <span className="rounded-full border border-successg/40 bg-successg/15 px-2 py-0.5 text-[0.68rem] font-bold text-successg">
+              2 months free
+            </span>
+          </button>
+        </div>
       </Reveal>
 
       <div className="mt-14 grid items-start gap-6 lg:grid-cols-3">
@@ -99,10 +137,23 @@ export function Pricing() {
                 <p className={`mt-1 text-[0.9rem] ${p.featured ? "text-white/70" : "text-blue-100/60"}`}>{p.tagline}</p>
               </div>
 
-              <div className="mb-6 flex items-end gap-1">
-                <span className="font-display text-[3.2rem] font-extrabold leading-none tracking-tightest text-white">£{p.price}</span>
-                <span className={`mb-1.5 text-[0.95rem] ${p.featured ? "text-white/60" : "text-blue-100/50"}`}>/month</span>
+              <div className="mb-1 flex items-end gap-1">
+                <span className="font-display text-[3.2rem] font-extrabold leading-none tracking-tightest text-white">
+                  £{annual ? annualMonthly(p.monthly) : p.monthly}
+                </span>
+                <div className="mb-2 flex flex-col leading-tight">
+                  <span className={`text-[0.95rem] ${p.featured ? "text-white/60" : "text-blue-100/50"}`}>/mo</span>
+                  {annual && (
+                    <span className="text-[0.7rem] text-blue-100/40">billed annually</span>
+                  )}
+                </div>
               </div>
+              {annual && (
+                <p className="mb-5 text-[0.8rem] text-successg">
+                  Save £{p.monthly * 2} vs monthly
+                </p>
+              )}
+              {!annual && <div className="mb-5" />}
 
               <Link
                 to="/auth/sign-up"

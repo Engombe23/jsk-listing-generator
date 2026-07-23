@@ -67,7 +67,7 @@ export default function HowItWorks() {
             <br />
             <span className="text-primary">Under a minute.</span>
           </h2>
-          <p className="mx-auto mt-5 max-w-md text-[1.05rem] leading-relaxed text-blue-100/70">
+          <p className="mx-auto mt-5 max-w-md text-center text-[1.05rem] leading-relaxed text-blue-100/70">
             What used to take 15 minutes of copy-paste per listing now happens in a single click.
           </p>
         </Reveal>

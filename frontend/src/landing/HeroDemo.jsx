@@ -94,11 +94,9 @@ export default function HeroDemo() {
 
     at(statusEnd, () => setPhase("building"));
     const buildStart = statusEnd + 120;
-    // reveal main sections
     for (let i = 0; i < SECTIONS.length; i++) {
       at(buildStart + i * 200, () => setBuildStep(i + 1));
     }
-    // reveal compat rows individually, starting after the "rows" section appears
     const rowsAt = buildStart + SECTIONS.indexOf("rows") * 200 + 280;
     for (let i = 0; i < COMPAT_ROWS.length; i++) {
       at(rowsAt + i * 160, () => setRowStep(i + 1));
@@ -192,17 +190,17 @@ export default function HeroDemo() {
         </motion.svg>
       </div>
 
-      {/* app window */}
-      <div className="relative overflow-hidden rounded-2xl border border-hair shadow-float ring-1 ring-black/[0.02]" style={{ background: "#0c111c" }}>
+      {/* app window — light theme */}
+      <div className="relative overflow-hidden rounded-2xl border border-hair shadow-float ring-1 ring-black/[0.02]" style={{ background: "#ffffff" }}>
 
         {/* title bar */}
-        <div className="flex items-center gap-3 border-b px-4 py-3" style={{ background: "#0a0e17", borderColor: "rgba(255,255,255,0.07)" }}>
+        <div className="flex items-center gap-3 border-b px-4 py-3" style={{ background: "#f7f9fc", borderColor: "rgba(0,0,0,0.08)" }}>
           <div className="flex items-center gap-1.5">
             <span className="h-3 w-3 rounded-full bg-[#ff5f57]" />
             <span className="h-3 w-3 rounded-full bg-[#febc2e]" />
             <span className="h-3 w-3 rounded-full bg-[#28c840]" />
           </div>
-          <div className="mx-auto flex w-full max-w-sm items-center justify-center gap-2 rounded-md border px-3 py-1.5" style={{ background: "#141b28", borderColor: "rgba(255,255,255,0.10)" }}>
+          <div className="mx-auto flex w-full max-w-sm items-center justify-center gap-2 rounded-md border px-3 py-1.5" style={{ background: "#eef2f7", borderColor: "rgba(0,0,0,0.10)" }}>
             <span className="font-mono text-[0.72rem]" style={{ color: "#6b7a99" }}>partlister.app/generator</span>
           </div>
           <div className="hidden items-center gap-1.5 rounded-full bg-successg/10 px-2.5 py-1 sm:flex">
@@ -218,11 +216,11 @@ export default function HeroDemo() {
             {bodyMode === "skeleton" && (
               <motion.div key="skeleton" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.4 }} className="space-y-3 pt-2">
                 {[...Array(4)].map((_, i) => (
-                  <div key={i} className="h-3.5 rounded-md" style={{ background: "rgba(255,255,255,0.06)", width: `${[72,90,58,80][i]}%` }} />
+                  <div key={i} className="h-3.5 rounded-md" style={{ background: "rgba(0,0,0,0.06)", width: `${[72,90,58,80][i]}%` }} />
                 ))}
                 <div className="mt-5 flex gap-3">
                   {[...Array(3)].map((_, i) => (
-                    <div key={i} className="h-16 w-20 rounded-xl" style={{ background: "rgba(255,255,255,0.05)" }} />
+                    <div key={i} className="h-16 w-20 rounded-xl" style={{ background: "rgba(0,0,0,0.05)" }} />
                   ))}
                 </div>
               </motion.div>
@@ -239,24 +237,24 @@ export default function HeroDemo() {
                       <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${done ? "bg-successg/15 text-successg" : "text-primary"}`}>
                         {done ? <Check className="h-3 w-3" strokeWidth={3} /> : <Loader2 className="h-3 w-3 animate-spin" />}
                       </span>
-                      <span style={{ color: done ? "#64748b" : "#e2e8f0", fontWeight: done ? 400 : 600 }}>{line}</span>
+                      <span style={{ color: done ? "#94a3b8" : "#1e293b", fontWeight: done ? 400 : 600 }}>{line}</span>
                     </motion.div>
                   );
                 })}
               </motion.div>
             )}
 
-            {/* built listing — dark app UI */}
+            {/* built listing — light app UI */}
             {bodyMode === "build" && (
               <motion.div key="build" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }} className="space-y-3">
 
                 {/* tab bar */}
                 <Block visible={isShown("tabs")}>
-                  <div className="flex gap-1 rounded-xl p-1" style={{ background: "#0a0e17", border: "1px solid rgba(255,255,255,0.07)" }}>
+                  <div className="flex gap-1 rounded-xl p-1" style={{ background: "#f7f9fc", border: "1px solid rgba(0,0,0,0.08)" }}>
                     {TABS.map((t, i) => (
                       <div key={t} className="flex-1 rounded-lg px-2 py-2 text-center text-[0.65rem] font-bold truncate" style={{
                         background: i === 1 ? "#135dff" : "transparent",
-                        color: i === 1 ? "#fff" : "#4b5563",
+                        color: i === 1 ? "#fff" : "#64748b",
                         boxShadow: i === 1 ? "0 0 14px rgba(19,93,255,0.30)" : "none"
                       }}>
                         {t}{i === 1 ? " (58)" : ""}
@@ -267,9 +265,9 @@ export default function HeroDemo() {
 
                 {/* listing title */}
                 <Block visible={isShown("title")}>
-                  <div className="rounded-xl p-3" style={{ background: "#0a0e17", border: "1px solid rgba(255,255,255,0.07)" }}>
+                  <div className="rounded-xl p-3" style={{ background: "#f7f9fc", border: "1px solid rgba(0,0,0,0.08)" }}>
                     <div className="font-mono text-[0.6rem] font-semibold uppercase tracking-widest" style={{ color: "#135dff" }}>Listing Title</div>
-                    <div className="mt-1 font-bold leading-snug" style={{ color: "#e2e8f0", fontSize: "0.82rem" }}>
+                    <div className="mt-1 font-bold leading-snug" style={{ color: "#0f172a", fontSize: "0.82rem" }}>
                       Genuine BMW Connecting Rod 11247807345 — 3 Series E90 E91 320d 325d N47
                     </div>
                   </div>
@@ -277,13 +275,13 @@ export default function HeroDemo() {
 
                 {/* item specifics */}
                 <Block visible={isShown("specifics")}>
-                  <div className="rounded-xl p-3" style={{ background: "#0a0e17", border: "1px solid rgba(255,255,255,0.07)" }}>
-                    <div className="mb-2 font-mono text-[0.6rem] font-semibold uppercase tracking-widest" style={{ color: "#4b5563" }}>Item Specifics</div>
+                  <div className="rounded-xl p-3" style={{ background: "#f7f9fc", border: "1px solid rgba(0,0,0,0.08)" }}>
+                    <div className="mb-2 font-mono text-[0.6rem] font-semibold uppercase tracking-widest" style={{ color: "#64748b" }}>Item Specifics</div>
                     <div className="grid grid-cols-4 gap-1.5">
                       {SPECIFICS.map(([k, v]) => (
-                        <div key={k} className="rounded-lg p-2" style={{ background: "#111827", border: "1px solid rgba(255,255,255,0.08)" }}>
-                          <div className="text-[0.55rem] uppercase tracking-wide" style={{ color: "#4b5563" }}>{k}</div>
-                          <div className="mt-0.5 text-[0.72rem] font-bold" style={{ color: "#e2e8f0" }}>{v}</div>
+                        <div key={k} className="rounded-lg p-2" style={{ background: "#f1f5f9", border: "1px solid rgba(0,0,0,0.08)" }}>
+                          <div className="text-[0.55rem] uppercase tracking-wide" style={{ color: "#64748b" }}>{k}</div>
+                          <div className="mt-0.5 text-[0.72rem] font-bold" style={{ color: "#0f172a" }}>{v}</div>
                         </div>
                       ))}
                     </div>
@@ -292,28 +290,24 @@ export default function HeroDemo() {
 
                 {/* compatibility section */}
                 <Block visible={isShown("compat")}>
-                  <div className="rounded-xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.07)" }}>
-                    {/* section header */}
-                    <div className="flex items-center justify-between px-3 py-2" style={{ background: "#0a0e17" }}>
-                      <div className="font-mono text-[0.6rem] font-semibold uppercase tracking-widest" style={{ color: "#4b5563" }}>Compatibility</div>
+                  <div className="rounded-xl overflow-hidden" style={{ border: "1px solid rgba(0,0,0,0.08)" }}>
+                    <div className="flex items-center justify-between px-3 py-2" style={{ background: "#f7f9fc" }}>
+                      <div className="font-mono text-[0.6rem] font-semibold uppercase tracking-widest" style={{ color: "#64748b" }}>Compatibility</div>
                       <div className="flex items-center gap-1.5 rounded-full px-2 py-0.5" style={{ background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.2)" }}>
                         <span className="h-1.5 w-1.5 rounded-full bg-successg" />
                         <span className="font-mono text-[0.6rem] font-semibold text-successg">58 vehicles</span>
                       </div>
                     </div>
-                    {/* manufacturer group header */}
-                    <div className="px-3 py-1.5 text-center text-[0.72rem] font-bold" style={{ background: "#111827", color: "#cc0000", borderTop: "1px solid rgba(255,255,255,0.06)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+                    <div className="px-3 py-1.5 text-center text-[0.72rem] font-bold" style={{ background: "#f1f5f9", color: "#cc0000", borderTop: "1px solid rgba(0,0,0,0.06)", borderBottom: "1px solid rgba(0,0,0,0.06)" }}>
                       BMW Models:
                     </div>
-                    {/* column headers */}
                     <div className="grid text-[0.6rem] font-bold uppercase tracking-wide" style={{
                       gridTemplateColumns: "2fr 1.4fr 0.6fr 0.6fr 0.7fr 1.4fr",
-                      background: "#1a2030", padding: "5px 10px",
-                      color: "#6b7a99", borderBottom: "1px solid rgba(255,255,255,0.06)"
+                      background: "#e8edf4", padding: "5px 10px",
+                      color: "#6b7a99", borderBottom: "1px solid rgba(0,0,0,0.06)"
                     }}>
                       <span>Vehicle</span><span>Years</span><span className="text-center">kW</span><span className="text-center">HP</span><span className="text-center">CC</span><span>Engine Code</span>
                     </div>
-                    {/* data rows */}
                     {COMPAT_ROWS.slice(0, rowStep).map((r, i) => (
                       <motion.div
                         key={r.vehicle}
@@ -324,17 +318,17 @@ export default function HeroDemo() {
                         style={{
                           gridTemplateColumns: "2fr 1.4fr 0.6fr 0.6fr 0.7fr 1.4fr",
                           padding: "5px 10px",
-                          background: i % 2 === 0 ? "#111827" : "#0e1520",
-                          borderTop: "1px solid rgba(255,255,255,0.04)",
-                          color: "#cbd5e1"
+                          background: i % 2 === 0 ? "#ffffff" : "#f8fafc",
+                          borderTop: "1px solid rgba(0,0,0,0.05)",
+                          color: "#475569"
                         }}
                       >
-                        <span style={{ color: "#e2e8f0", fontWeight: 600 }}>{r.vehicle}</span>
+                        <span style={{ color: "#0f172a", fontWeight: 600 }}>{r.vehicle}</span>
                         <span>{r.years}</span>
                         <span className="text-center">{r.kw}</span>
                         <span className="text-center">{r.hp}</span>
                         <span className="text-center">{r.cc}</span>
-                        <span className="font-mono text-[0.6rem]" style={{ color: "#60a5fa" }}>{r.codes}</span>
+                        <span className="font-mono text-[0.6rem]" style={{ color: "#2563eb" }}>{r.codes}</span>
                       </motion.div>
                     ))}
                   </div>
@@ -343,21 +337,19 @@ export default function HeroDemo() {
                 {/* OE refs + interchange */}
                 <Block visible={isShown("oe")}>
                   <div className="grid gap-2 sm:grid-cols-2">
-                    {/* OE refs */}
-                    <div className="rounded-xl p-3" style={{ background: "#0a0e17", border: "1px solid rgba(255,255,255,0.07)" }}>
-                      <div className="mb-2 font-mono text-[0.6rem] font-semibold uppercase tracking-widest" style={{ color: "#4b5563" }}>OE References</div>
+                    <div className="rounded-xl p-3" style={{ background: "#f7f9fc", border: "1px solid rgba(0,0,0,0.08)" }}>
+                      <div className="mb-2 font-mono text-[0.6rem] font-semibold uppercase tracking-widest" style={{ color: "#64748b" }}>OE References</div>
                       <div className="flex flex-wrap gap-1">
                         {OE_REFS.map((n) => (
-                          <span key={n} className="rounded px-1.5 py-0.5 font-mono text-[0.58rem]" style={{ background: "#111827", border: "1px solid rgba(255,255,255,0.10)", color: "#94a3b8" }}>{n}</span>
+                          <span key={n} className="rounded px-1.5 py-0.5 font-mono text-[0.58rem]" style={{ background: "#f1f5f9", border: "1px solid rgba(0,0,0,0.10)", color: "#64748b" }}>{n}</span>
                         ))}
                       </div>
                     </div>
-                    {/* interchange */}
-                    <div className="rounded-xl p-3" style={{ background: "#0a0e17", border: "1px solid rgba(255,255,255,0.07)" }}>
-                      <div className="mb-2 font-mono text-[0.6rem] font-semibold uppercase tracking-widest" style={{ color: "#4b5563" }}>Interchangeable</div>
+                    <div className="rounded-xl p-3" style={{ background: "#f7f9fc", border: "1px solid rgba(0,0,0,0.08)" }}>
+                      <div className="mb-2 font-mono text-[0.6rem] font-semibold uppercase tracking-widest" style={{ color: "#64748b" }}>Interchangeable</div>
                       <div className="flex flex-wrap gap-1">
                         {INTERCHANGE.map((n) => (
-                          <span key={n} className="rounded px-1.5 py-0.5 font-mono text-[0.58rem]" style={{ background: "#111827", border: "1px solid rgba(255,255,255,0.10)", color: "#94a3b8" }}>{n}</span>
+                          <span key={n} className="rounded px-1.5 py-0.5 font-mono text-[0.58rem]" style={{ background: "#f1f5f9", border: "1px solid rgba(0,0,0,0.10)", color: "#64748b" }}>{n}</span>
                         ))}
                       </div>
                     </div>
@@ -366,11 +358,11 @@ export default function HeroDemo() {
 
                 {/* export bar */}
                 <Block visible={isShown("export")}>
-                  <div className="flex flex-wrap items-center gap-2 rounded-xl px-3 py-3" style={{ background: "#0a0e17", border: "1px solid rgba(255,255,255,0.07)" }}>
+                  <div className="flex flex-wrap items-center gap-2 rounded-xl px-3 py-3" style={{ background: "#f7f9fc", border: "1px solid rgba(0,0,0,0.08)" }}>
                     <span className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-[0.75rem] font-bold text-white" style={{ background: "#17924a" }}>
                       <FileDown className="h-3.5 w-3.5" />Export CSV
                     </span>
-                    <span className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-[0.75rem] font-bold" style={{ background: "#111827", border: "1px solid rgba(255,255,255,0.10)", color: "#94a3b8" }}>
+                    <span className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-[0.75rem] font-bold" style={{ background: "#f1f5f9", border: "1px solid rgba(0,0,0,0.10)", color: "#475569" }}>
                       Copy listing
                     </span>
                     {complete && (
