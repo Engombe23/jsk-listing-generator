@@ -459,17 +459,30 @@ async function fetchEngineDataByModelIds(cars) {
 
 function extractFirstImageUrl(mediaResponse) {
   if (!mediaResponse) return "";
+
+  // Try the documented TecDoc articleImages array first (largest available size)
+  const imgArr = mediaResponse.articleImages ?? mediaResponse.data?.articleImages ?? null;
+  if (Array.isArray(imgArr) && imgArr.length > 0) {
+    for (const img of imgArr) {
+      const url = img.imageURL4 || img.imageURL3 || img.imageURL2 || img.imageURL1 || "";
+      if (url && url.startsWith("http")) return url;
+    }
+  }
+
+  // Fallback: walk the entire response tree for any tecalliance/tecdoc URL or image extension
   const urls = [];
-  const walk = (obj) => {
-    if (!obj) return;
+  const walk = (obj, depth = 0) => {
+    if (!obj || depth > 8) return;
     if (typeof obj === "string") {
-      if (obj.startsWith("http") && (obj.includes("img.tecalliance") || /\.(jpg|jpeg|png|webp)/i.test(obj))) {
-        urls.push(obj);
-      }
+      if (obj.startsWith("http") && (
+        obj.includes("tecalliance") ||
+        obj.includes("tecdoc") ||
+        /\.(jpg|jpeg|png|webp)/i.test(obj)
+      )) { urls.push(obj); }
       return;
     }
-    if (Array.isArray(obj)) { obj.forEach(walk); return; }
-    if (typeof obj === "object") Object.values(obj).forEach(walk);
+    if (Array.isArray(obj)) { obj.forEach((v) => walk(v, depth + 1)); return; }
+    if (typeof obj === "object") Object.values(obj).forEach((v) => walk(v, depth + 1));
   };
   walk(mediaResponse);
   return urls[0] || "";
