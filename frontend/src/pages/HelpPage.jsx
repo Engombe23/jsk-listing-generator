@@ -65,13 +65,13 @@ const TOPICS = [
 
 const ARTICLES = [
   {
-    slug: "generate-first-listing",
+    slug: "how-to-generate-your-first-listing",
     title: "How to generate your first listing",
     desc: "Step-by-step guide to creating a listing from an OEM/Article number.",
     time: "5 min read",
   },
   {
-    slug: "understanding-compatibility",
+    slug: "understanding-compatibility-results",
     title: "Understanding compatibility results",
     desc: "Learn how compatibility matches are found and what they mean.",
     time: "4 min read",
@@ -83,13 +83,13 @@ const ARTICLES = [
     time: "6 min read",
   },
   {
-    slug: "export-listings-ebay",
+    slug: "export-listings-to-ebay",
     title: "Export listings to eBay",
     desc: "How to export and upload your listings to eBay in one click.",
     time: "3 min read",
   },
   {
-    slug: "price-calculator",
+    slug: "using-the-price-calculator",
     title: "Using the Price Calculator",
     desc: "Calculate fees, VAT, profit margin and more with ease.",
     time: "4 min read",
