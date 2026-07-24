@@ -78,7 +78,12 @@ export default function SignUpForm({ submitLabel }) {
       recordSignupFingerprint(data?.session?.access_token);
 
       if (paidSignup && data?.session?.user) {
-        await redirectToStripeCheckout({ plan, interval });
+        await redirectToStripeCheckout({
+          plan,
+          interval,
+          userId: data.session.user.id,
+          email: data.session.user.email,
+        });
         return;
       }
 

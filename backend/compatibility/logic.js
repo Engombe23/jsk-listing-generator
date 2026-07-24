@@ -67,15 +67,41 @@ export function compareVehicleToCompatibility(vehicle, compatibilityList) {
     const conflictingFields = [];
     const notes = [];
 
-    // Make
+    // Engine codes — checked first because an exact engine-code match proves
+    // physical compatibility even when the make differs (e.g. BMW M57D30 engine
+    // fitted to Land Rover Range Rover III — the part fits both).
+    const carEngineCodes = normaliseEngineCode(car.engCodes || car.engineCodes || car.engineCode);
+    let engineCodeMatched = false;
+    if (vehicle.engineCodes && vehicle.engineCodes.length > 0 && carEngineCodes.length > 0) {
+      const overlap = vehicle.engineCodes.filter((ec) => carEngineCodes.includes(ec));
+      if (overlap.length > 0) {
+        score += 55; // dominant signal — overrides make mismatch
+        matchedFields.push("engineCode");
+        notes.push(`Engine code match: ${overlap.join(", ")}`);
+        engineCodeMatched = true;
+      } else {
+        score -= 15;
+        conflictingFields.push("engineCode");
+        notes.push(`Engine code mismatch: vehicle ${vehicle.engineCodes.join(",")} vs part ${carEngineCodes.join(",")}`);
+      }
+    }
+
+    // Make — penalise mismatch but do NOT hard-skip.
+    // A strong engine-code match (above) can legitimately overcome a make
+    // difference (shared-platform engines, badge-engineered vehicles, etc.).
     const carMake = normaliseMake(car.manufacturerName || car.make || car.brand);
     if (vehicle.make && carMake) {
       if (carMake === vehicle.make) {
         score += 20;
         matchedFields.push("make");
-      } else {
-        // make conflict — skip this car entirely
+      } else if (!engineCodeMatched) {
+        // Skip this car only when there is no engine-code evidence of compatibility
         continue;
+      } else {
+        // Engine codes matched despite different make — apply a small penalty and note it
+        score -= 10;
+        conflictingFields.push("make");
+        notes.push(`Make mismatch (${vehicle.make} vs ${carMake}) — overridden by engine code match`);
       }
     }
 
@@ -102,21 +128,6 @@ export function compareVehicleToCompatibility(vehicle, compatibilityList) {
         score -= 20;
         conflictingFields.push("year");
         notes.push(`Year ${vehicle.year} outside range ${carYearFrom}–${carYearTo}`);
-      }
-    }
-
-    // Engine codes
-    const carEngineCodes = normaliseEngineCode(car.engCodes || car.engineCodes || car.engineCode);
-    if (vehicle.engineCodes && vehicle.engineCodes.length > 0 && carEngineCodes.length > 0) {
-      const overlap = vehicle.engineCodes.filter((ec) => carEngineCodes.includes(ec));
-      if (overlap.length > 0) {
-        score += 25;
-        matchedFields.push("engineCode");
-        notes.push(`Engine code match: ${overlap.join(", ")}`);
-      } else {
-        score -= 15;
-        conflictingFields.push("engineCode");
-        notes.push(`Engine code mismatch: vehicle ${vehicle.engineCodes.join(",")} vs part ${carEngineCodes.join(",")}`);
       }
     }
 
@@ -173,8 +184,10 @@ export function compareVehicleToCompatibility(vehicle, compatibilityList) {
     };
   }
 
-  // Hard fail if engine code conflict and score < 50
-  if (bestConflictingFields.includes("engineCode") && bestScore < 50) {
+  // Hard fail if engine code conflict AND score < 50 AND no engine-code match
+  if (bestConflictingFields.includes("engineCode") &&
+      !bestMatchedFields.includes("engineCode") &&
+      bestScore < 50) {
     return {
       matched: false,
       score: 0,

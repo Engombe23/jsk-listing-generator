@@ -49,7 +49,12 @@ export default function LoginForm() {
       if (error) throw error;
 
       if (paidLogin && data?.user) {
-        await redirectToStripeCheckout({ plan, interval });
+        await redirectToStripeCheckout({
+          plan,
+          interval,
+          userId: data.user.id,
+          email: data.user.email,
+        });
         return;
       }
 

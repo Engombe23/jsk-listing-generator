@@ -69,50 +69,26 @@ const ATTEMPT_EVENTS = new Set([
 ]);
 
 // ─── POST /api/events — ingest a single event ──────────────────────────────────
-// user_id and plan are ALWAYS server-derived — never trusted from the client.
-// If a valid Bearer token is present, the verified user ID is used.
-// Anonymous events (landing page, no token) are recorded with user_id = null.
 router.post("/events", async (req, res) => {
   if (!supabaseAdminReady) {
     return res.status(503).json({ error: "Analytics storage is not configured (missing SUPABASE_SERVICE_ROLE_KEY)." });
   }
-
-  const { event_name, session_id, plan: clientPlan, page_url, source, metadata } = req.body || {};
+  const { event_name, user_id, session_id, plan, page_url, source, metadata } = req.body || {};
   if (!event_name || typeof event_name !== "string") {
     return res.status(400).json({ error: "event_name is required" });
   }
 
-  // Validate event_name against the known allowlist — reject unknown events.
-  if (!EVENT_CATEGORY_BY_NAME[event_name]) {
-    return res.status(400).json({ error: "Unknown event_name." });
-  }
-
-  // Derive user identity from the JWT, not from the request body.
-  let serverUserId = null;
-  let serverPlan   = null;
-  const authHeader = req.headers.authorization || "";
-  const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
-  if (token) {
-    const { data } = await supabaseAdmin.auth.getUser(token);
-    if (data?.user) {
-      serverUserId = data.user.id;
-      // Trust the plan the authenticated client reports for their own session —
-      // it's cosmetic analytics data, not an access-control decision.
-      serverPlan = typeof clientPlan === "string" ? clientPlan : null;
-    }
-  }
-
-  const event_category = EVENT_CATEGORY_BY_NAME[event_name];
+  const event_category = EVENT_CATEGORY_BY_NAME[event_name] || null;
 
   const { error } = await supabaseAdmin.from("usage_events").insert({
-    user_id:        serverUserId,
-    session_id:     session_id || null,
+    user_id:       user_id || null,
+    session_id:    session_id || null,
     event_name,
     event_category,
-    plan:           serverPlan,
-    page_url:       page_url || null,
-    source:         source   || null,
-    metadata:       metadata && typeof metadata === "object" ? metadata : {},
+    plan:          plan || null,
+    page_url:      page_url || null,
+    source:        source || null,
+    metadata:      metadata && typeof metadata === "object" ? metadata : {},
   });
 
   if (error) {

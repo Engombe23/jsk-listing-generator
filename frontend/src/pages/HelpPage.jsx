@@ -20,10 +20,10 @@ const TOPICS = [
         <line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
       </svg>
     ),
-    bg: ACCENT_LIGHT, border: BORDER,
+    bg: ACCENT_LIGHT,
+    border: BORDER,
     title: "Getting Started",
     desc: "New to PartLister? Start here.",
-    link: "/help/articles/how-to-generate-your-first-listing",
   },
   {
     icon: (
@@ -32,10 +32,10 @@ const TOPICS = [
         <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
       </svg>
     ),
-    bg: "#f0fdf4", border: "#bbf7d0",
+    bg: "#f0fdf4",
+    border: "#bbf7d0",
     title: "Listing Generator",
     desc: "Create professional listings in seconds.",
-    link: "/help/articles/choosing-a-listing-template",
   },
   {
     icon: (
@@ -44,10 +44,10 @@ const TOPICS = [
         <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
       </svg>
     ),
-    bg: "#faf5ff", border: "#e9d5ff",
+    bg: "#faf5ff",
+    border: "#e9d5ff",
     title: "Compatibility Checker",
     desc: "Verify which vehicles a part fits.",
-    link: "/help/articles/how-to-use-the-compatibility-checker",
   },
   {
     icon: (
@@ -56,61 +56,38 @@ const TOPICS = [
         <line x1="6" y1="20" x2="6" y2="14"/><line x1="2" y1="20" x2="22" y2="20"/>
       </svg>
     ),
-    bg: "#fffbeb", border: "#fde68a",
+    bg: "#fffbeb",
+    border: "#fde68a",
     title: "Pricing Tools",
     desc: "Smart pricing and profit calculations.",
-    link: "/help/articles/using-the-price-calculator",
   },
 ];
 
 const ARTICLES = [
   {
-    slug: "how-to-generate-your-first-listing",
     title: "How to generate your first listing",
     desc: "Step-by-step guide to creating a listing from an OEM/Article number.",
     time: "5 min read",
   },
   {
-    slug: "understanding-compatibility-results",
     title: "Understanding compatibility results",
     desc: "Learn how compatibility matches are found and what they mean.",
     time: "4 min read",
   },
   {
-    slug: "how-to-use-the-compatibility-checker",
-    title: "How to use the Compatibility Checker",
-    desc: "Check fitment against a VIN or part number and read the confidence score.",
-    time: "3 min read",
-  },
-  {
-    slug: "smart-pricing-explained",
     title: "Smart Pricing explained",
     desc: "How our pricing data helps you list competitively and profitably.",
     time: "6 min read",
   },
   {
-    slug: "using-the-price-calculator",
-    title: "Using the Price Calculator",
-    desc: "Calculate fees, VAT, profit margin and more with ease.",
-    time: "4 min read",
-  },
-  {
-    slug: "export-listings-to-ebay",
     title: "Export listings to eBay",
     desc: "How to export and upload your listings to eBay in one click.",
     time: "3 min read",
   },
   {
-    slug: "choosing-a-listing-template",
-    title: "Choosing a listing template",
-    desc: "Understand the built-in templates and content toggles to match your house style.",
-    time: "3 min read",
-  },
-  {
-    slug: "understanding-part-references",
-    title: "Understanding part references",
-    desc: "OE numbers, OEM numbers and TecDoc article numbers — what they are and when to use each.",
-    time: "3 min read",
+    title: "Using the Price Calculator",
+    desc: "Calculate fees, VAT, profit margin and more with ease.",
+    time: "4 min read",
   },
 ];
 
@@ -279,18 +256,21 @@ export default function HelpPage() {
 
         {/* Popular topics */}
         <div style={{ marginBottom: 60 }}>
-          <h2 style={{ margin: "0 0 24px 0", fontSize: 20, fontWeight: 800, color: TEXT }}>Popular topics</h2>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
+            <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: TEXT }}>Popular topics</h2>
+            <Link to="/help/topics" style={{ fontSize: 13, fontWeight: 700, color: ACCENT, textDecoration: "none" }}>
+              View all topics →
+            </Link>
+          </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14 }}>
             {TOPICS.map((t) => (
-              <Link
+              <div
                 key={t.title}
-                to={t.link}
                 style={{
                   background: "#fff", border: `1px solid ${BORDER}`,
                   borderRadius: 14, padding: "18px 16px",
-                  textDecoration: "none",
-                  transition: "box-shadow 0.15s, border-color 0.15s",
+                  cursor: "pointer", transition: "box-shadow 0.15s, border-color 0.15s",
                   display: "flex", flexDirection: "column", gap: 10,
                 }}
                 onMouseEnter={(e) => {
@@ -317,28 +297,32 @@ export default function HelpPage() {
                 <div style={{ marginTop: "auto" }}>
                   <ChevronRight />
                 </div>
-              </Link>
+              </div>
             ))}
           </div>
         </div>
 
         {/* Guides & tutorials */}
         <div style={{ marginBottom: 60 }}>
-          <h2 style={{ margin: "0 0 20px 0", fontSize: 20, fontWeight: 800, color: TEXT }}>Guides &amp; tutorials</h2>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+            <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: TEXT }}>Guides &amp; tutorials</h2>
+            <Link to="/help/articles" style={{ fontSize: 13, fontWeight: 700, color: ACCENT, textDecoration: "none" }}>
+              View all articles →
+            </Link>
+          </div>
 
           <div style={{
             background: "#fff", border: `1px solid ${BORDER}`,
             borderRadius: 16, overflow: "hidden",
           }}>
             {ARTICLES.map((a, i) => (
-              <Link
-                key={a.slug}
-                to={`/help/articles/${a.slug}`}
+              <div
+                key={a.title}
                 style={{
                   display: "flex", alignItems: "center", gap: 14,
                   padding: "16px 20px",
                   borderBottom: i < ARTICLES.length - 1 ? `1px solid ${BORDER}` : "none",
-                  textDecoration: "none", transition: "background 0.12s",
+                  cursor: "pointer", transition: "background 0.12s",
                 }}
                 onMouseEnter={(e) => { e.currentTarget.style.background = ACCENT_LIGHT; }}
                 onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
@@ -356,15 +340,33 @@ export default function HelpPage() {
                 </div>
                 <span style={{ fontSize: 12, color: DIM, whiteSpace: "nowrap", marginRight: 10 }}>{a.time}</span>
                 <ChevronRight />
-              </Link>
+              </div>
             ))}
           </div>
 
+          <div style={{ textAlign: "center", marginTop: 20 }}>
+            <Link to="/help/articles" style={{
+              display: "inline-block", padding: "10px 24px",
+              fontSize: 13.5, fontWeight: 700, color: ACCENT,
+              border: `1.5px solid ${ACCENT}`, borderRadius: 10,
+              textDecoration: "none", transition: "background 0.15s",
+            }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = ACCENT_LIGHT; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+            >
+              Browse all articles
+            </Link>
+          </div>
         </div>
 
         {/* FAQs */}
         <div style={{ marginBottom: 60 }}>
-          <h2 style={{ margin: "0 0 24px 0", fontSize: 20, fontWeight: 800, color: TEXT }}>Frequently asked questions</h2>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
+            <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: TEXT }}>Frequently asked questions</h2>
+            <Link to="/help/faqs" style={{ fontSize: 13, fontWeight: 700, color: ACCENT, textDecoration: "none" }}>
+              View all FAQs →
+            </Link>
+          </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 48px" }}>
             {/* Left column */}

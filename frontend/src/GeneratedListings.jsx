@@ -1,5 +1,4 @@
 ﻿import React, { useState, useMemo } from "react";
-import DOMPurify from "dompurify";
 import { SMALL_BUTTON_STYLE, INPUT_STYLE, CopyButton } from "./shared.jsx";
 import { mapApiSpecsToSchema, SPEC_SCHEMA, SECTION_TITLES } from "./itemSpecificsSchema.js";
 
@@ -12,7 +11,6 @@ const API_URL = import.meta.env.VITE_API_URL;
 const LS_THEME_KEY = "jsk_theme_v2";
 const THEMES = [
   { id: "clean-default",     name: "Clean Default" },
-  { id: "dark-header",       name: "Dark Header" },
   { id: "table-focused",     name: "Table Focused" },
   { id: "minimal",           name: "Minimal" },
   { id: "professional-blue", name: "Professional Blue" },
@@ -842,7 +840,7 @@ function ListingDetail({ listing, onClose, onSave }) {
               background: "var(--text-on-dark)", borderRadius: 14, padding: 16,
               flex: 1, overflowY: "auto", maxHeight: 480, overflowX: "hidden"
             }}>
-              <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(previewHtml) }} />
+              <div dangerouslySetInnerHTML={{ __html: previewHtml }} />
             </div>
           ) : (
             <div style={{
@@ -974,7 +972,6 @@ function ItemSpecificsExport({ listings }) {
 
 export default function GeneratedListings({
   listings,
-  isLoading = false,
   onUpdateStatus,
   onUpdateStatusBatch,
   onUpdateListing,
@@ -1232,18 +1229,6 @@ export default function GeneratedListings({
   }, [selectedIds, filteredIds, listings, selInFilter]);
 
   const exportLabel = selInFilter > 0 ? `${selInFilter} selected` : `${filtered.length} shown`;
-
-  if (isLoading) {
-    return (
-      <div style={{
-        minHeight: 240, display: "grid", placeItems: "center",
-        background: "var(--bg-surface3)", border: "1px dashed var(--border)",
-        borderRadius: 16, color: "var(--text-muted)", fontSize: 14
-      }}>
-        Loading saved listings…
-      </div>
-    );
-  }
 
   // ── Render ──────────────────────────────────────────────────────────────────
   return (

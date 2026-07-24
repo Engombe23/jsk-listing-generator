@@ -33,7 +33,12 @@ export default function CheckoutSummaryPage() {
     setLoading(true);
     setError(null);
     try {
-      await redirectToStripeCheckout({ plan, interval });
+      await redirectToStripeCheckout({
+        plan,
+        interval,
+        userId: user.id,
+        email: user.email,
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not start payment");
       setLoading(false);

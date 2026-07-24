@@ -1,5 +1,4 @@
 ﻿import React, { useState } from "react";
-import DOMPurify from "dompurify";
 import { CopyButton, ReadOnlyTextarea } from "./shared.jsx";
 
 // ─── Feature flag ─────────────────────────────────────────────────────────────
@@ -152,7 +151,7 @@ function PreviewTab({ descHtml, compatCount, topModels, yearRange, onViewCompat 
         boxShadow: "0 0 16px rgba(19,93,255,0.08)"
       }}>
         {descHtml
-          ? <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(descHtml) }} />
+          ? <div dangerouslySetInnerHTML={{ __html: descHtml }} />
           : <div style={{ color: "#999", fontSize: 13, textAlign: "center", padding: 24 }}>No preview available.</div>
         }
       </div>
@@ -280,7 +279,7 @@ function CompatTab({ compatRows, compatHtml, count }) {
         border: "1px solid var(--border)",
         borderRadius: 18, padding: 18, overflowX: "auto"
       }}>
-        <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(compatHtml) }} />
+        <div dangerouslySetInnerHTML={{ __html: compatHtml }} />
       </div>
     );
   }

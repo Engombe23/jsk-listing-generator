@@ -44,7 +44,7 @@
   },
   "compat": {
     "title": "Compatibility Checker",
-    "subtitle": "Verify which vehicles a part fits.",
+    "subtitle": "Verify whether a part is compatible with a specific vehicle.",
     "placeholder": "Article No. or OEM Number",
     "check": "Check Compatibility",
     "checking": "Checking…",

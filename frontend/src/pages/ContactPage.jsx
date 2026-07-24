@@ -156,18 +156,6 @@ export default function ContactPage() {
           <p style={{ fontSize: 16, color: MUTED, margin: 0, maxWidth: 460, marginLeft: "auto", marginRight: "auto", lineHeight: 1.7 }}>
             Have a question, feedback or need support? We'd love to hear from you.
           </p>
-          <div style={{ marginTop: 20 }}>
-            <a
-              href="mailto:enquiries@partlister.app"
-              style={{ fontSize: 14, fontWeight: 600, color: ACCENT, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 6 }}
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={ACCENT} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-                <polyline points="22,6 12,13 2,6"/>
-              </svg>
-              enquiries@partlister.app
-            </a>
-          </div>
         </div>
 
         {/* ── Card ── */}

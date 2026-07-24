@@ -34,7 +34,7 @@ const PRESETS = [
   { key: "90d",    label: "Last 90 days", days: 90 },
   { key: "custom", label: "Custom range" },
 ];
-const PLANS = ["All plans", "Free", "Lite", "Growth", "Scale"];
+const PLANS = ["All plans", "Free", "Starter", "Pro", "Power"];
 
 function presetToRange(presetKey, customFrom, customTo) {
   const now = new Date();

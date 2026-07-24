@@ -40,11 +40,81 @@ import { useTheme } from "./context/ThemeContext";
 
 const THEMES = [
   { id: "clean-default",     name: "Clean Default" },
-  { id: "dark-header",       name: "Dark Header" },
   { id: "table-focused",     name: "Table Focused" },
   { id: "minimal",           name: "Minimal" },
-  { id: "professional-blue", name: "Professional Blue" }
+  { id: "professional-blue", name: "Professional Blue" },
 ];
+
+// ─── Template dropdown ────────────────────────────────────────────────────────
+
+function TemplateDropdown({ themes, themeId, customTemplates, customTemplateHtml, onSelect, label }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  const activeCustom = customTemplateHtml ? customTemplates.find(ct => ct.html === customTemplateHtml) : null;
+  const activeTheme  = !activeCustom ? themes.find(t => t.id === themeId) : null;
+  const displayName  = activeCustom?.name ?? activeTheme?.name ?? "Select template";
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  const pick = (val) => { setOpen(false); onSelect(val); };
+
+  const itemStyle = (active) => ({
+    padding: "8px 12px", fontSize: 13, cursor: "pointer", borderRadius: 6,
+    background: active ? "var(--blue-bg)" : "transparent",
+    color: active ? "var(--blue)" : "var(--text)",
+    fontWeight: active ? 700 : 400,
+    display: "block", width: "100%", border: "none", textAlign: "left",
+  });
+
+  return (
+    <div ref={ref} style={{ position: "relative", marginTop: 4 }}>
+      {label && <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-muted)", marginBottom: 6 }}>{label}</div>}
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{
+          width: "100%", padding: "8px 12px", borderRadius: 10, fontSize: 13,
+          border: "1px solid var(--border)", background: "var(--bg-surface)",
+          color: "var(--text)", cursor: "pointer", outline: "none",
+          display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8,
+        }}
+      >
+        <span>{displayName}</span>
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ flexShrink: 0, opacity: 0.5, transform: open ? "rotate(180deg)" : "none", transition: "transform 0.15s" }}>
+          <path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      </button>
+      {open && (
+        <div style={{
+          position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, zIndex: 50,
+          background: "var(--bg-surface)", border: "1px solid var(--border)",
+          borderRadius: 10, padding: "6px", boxShadow: "var(--shadow)",
+        }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", padding: "4px 8px 6px", letterSpacing: 0.5 }}>TEMPLATES</div>
+          {themes.map(theme => (
+            <button key={theme.id} style={itemStyle(!activeCustom && themeId === theme.id)} onClick={() => pick(theme.id)}>{theme.name}</button>
+          ))}
+          {customTemplates.length > 0 && (
+            <>
+              <div style={{ borderTop: "1px solid var(--border)", margin: "6px 0" }} />
+              <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", padding: "4px 8px 6px", letterSpacing: 0.5 }}>SAVED TEMPLATES</div>
+              {customTemplates.map(ct => (
+                <button key={ct.id} style={itemStyle(activeCustom?.id === ct.id)} onClick={() => pick(ct.id)}>{ct.name}</button>
+              ))}
+            </>
+          )}
+          <div style={{ borderTop: "1px solid var(--border)", margin: "6px 0" }} />
+          <button style={{ ...itemStyle(false), color: "var(--blue)", fontWeight: 600 }} onClick={() => pick("__create__")}>+ Create template</button>
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ─── LocalStorage helpers ─────────────────────────────────────────────────────
 
@@ -486,6 +556,11 @@ export default function App() {
             onUpdateListing={updateGeneratedListing}
             onRemove={removeGenerated}
             onRemoveBatch={removeBatchGenerated}
+            onCreateTemplate={() => {
+              sessionStorage.setItem("jsk_templates_open_builder", "1");
+              setAccountSubPage("templates");
+              navigateTo("account");
+            }}
           />
         )}
         {page === "calculator" && (
@@ -538,6 +613,7 @@ function ListingGenerator({
   prefilledArticle, onPrefilledConsumed, onAutoSave,
   listings, listingsLoading = false,
   onUpdateStatus, onUpdateStatusBatch, onUpdateListing, onRemove, onRemoveBatch,
+  onCreateTemplate,
 }) {
   const { t } = useTranslation();
   const { session, hasFeature, listingLimit, listingsUsed, refreshPlan } = useSession();
@@ -990,73 +1066,20 @@ function ListingGenerator({
                 </div>
 
                 {/* Description Theme / Preset selector */}
-                <div>
-                  <FieldLabel>{t("generator.templatesLabel")}</FieldLabel>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 4 }}>
-                    {THEMES.map((t) => {
-                      const active = themeId === t.id && !customTemplateHtml;
-                      return (
-                        <button
-                          key={t.id}
-                          onClick={() => handleThemeChange(t.id)}
-                          style={{
-                            padding: "6px 12px", borderRadius: 10, fontSize: 12, cursor: "pointer",
-                            border:     active ? "1px solid var(--blue)" : "1px solid var(--border)",
-                            background: active ? "var(--blue-bg)"     : "var(--bg-surface2)",
-                            color:      active ? "var(--blue)"        : "var(--text-muted)",
-                            fontWeight: active ? 700 : 400,
-                            transition: "all 0.15s ease"
-                          }}
-                        >
-                          {t.name}
-                        </button>
-                      );
-                    })}
-                  </div>
+                <TemplateDropdown
+                  themes={THEMES}
+                  themeId={themeId}
+                  customTemplates={customTemplates}
+                  customTemplateHtml={customTemplateHtml}
+                  onSelect={(val) => {
+                    if (val === "__create__") { onCreateTemplate?.(); return; }
+                    const custom = customTemplates.find(ct => ct.id === val);
+                    if (custom) setCustomTemplateHtml(custom.html);
+                    else handleThemeChange(val);
+                  }}
+                  label={t("generator.templatesLabel")}
+                />
 
-                  {/* Custom (saved) templates */}
-                  {customTemplates.length > 0 && (
-                    <div style={{ marginTop: 10 }}>
-                      <div style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 700, marginBottom: 6, letterSpacing: 0.4 }}>
-                        SAVED TEMPLATES
-                      </div>
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                        {customTemplates.map((t) => {
-                          const active = customTemplateHtml === t.html;
-                          return (
-                            <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 0 }}>
-                              <button
-                                onClick={() => setCustomTemplateHtml(t.html)}
-                                style={{
-                                  padding: "6px 12px", borderRadius: "10px 0 0 10px", fontSize: 12, cursor: "pointer",
-                                  border:     active ? "1px solid #f59e0b"        : "1px solid rgba(255,255,255,0.14)",
-                                  borderRight: "none",
-                                  background: active ? "rgba(245,158,11,0.18)"    : "var(--border-light)",
-                                  color:      active ? "var(--yellow)"                  : "var(--text-muted)",
-                                  fontWeight: active ? 700 : 400,
-                                  transition: "all 0.15s ease"
-                                }}
-                              >
-                                {t.name}
-                              </button>
-                              <button
-                                onClick={() => handleDeleteTemplate(t.id)}
-                                title="Delete template"
-                                style={{
-                                  padding: "6px 7px", borderRadius: "0 10px 10px 0", fontSize: 11, cursor: "pointer",
-                                  border:     "1px solid rgba(255,255,255,0.14)",
-                                  background: "rgba(220,38,38,0.07)",
-                                  color:      "var(--red)",
-                                  transition: "all 0.15s ease"
-                                }}
-                              >×</button>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-                </div>
 
                 {/* Listing Content Toggles */}
                 <div>
