@@ -65,26 +65,31 @@ const TOPICS = [
 
 const ARTICLES = [
   {
+    slug: "generate-first-listing",
     title: "How to generate your first listing",
     desc: "Step-by-step guide to creating a listing from an OEM/Article number.",
     time: "5 min read",
   },
   {
+    slug: "understanding-compatibility",
     title: "Understanding compatibility results",
     desc: "Learn how compatibility matches are found and what they mean.",
     time: "4 min read",
   },
   {
+    slug: "smart-pricing-explained",
     title: "Smart Pricing explained",
     desc: "How our pricing data helps you list competitively and profitably.",
     time: "6 min read",
   },
   {
+    slug: "export-listings-ebay",
     title: "Export listings to eBay",
     desc: "How to export and upload your listings to eBay in one click.",
     time: "3 min read",
   },
   {
+    slug: "price-calculator",
     title: "Using the Price Calculator",
     desc: "Calculate fees, VAT, profit margin and more with ease.",
     time: "4 min read",
@@ -316,13 +321,15 @@ export default function HelpPage() {
             borderRadius: 16, overflow: "hidden",
           }}>
             {ARTICLES.map((a, i) => (
-              <div
+              <Link
                 key={a.title}
+                to={`/help/articles/${a.slug}`}
                 style={{
                   display: "flex", alignItems: "center", gap: 14,
                   padding: "16px 20px",
                   borderBottom: i < ARTICLES.length - 1 ? `1px solid ${BORDER}` : "none",
                   cursor: "pointer", transition: "background 0.12s",
+                  textDecoration: "none", color: "inherit",
                 }}
                 onMouseEnter={(e) => { e.currentTarget.style.background = ACCENT_LIGHT; }}
                 onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
@@ -340,7 +347,7 @@ export default function HelpPage() {
                 </div>
                 <span style={{ fontSize: 12, color: DIM, whiteSpace: "nowrap", marginRight: 10 }}>{a.time}</span>
                 <ChevronRight />
-              </div>
+              </Link>
             ))}
           </div>
 
