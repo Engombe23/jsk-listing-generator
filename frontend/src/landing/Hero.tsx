@@ -72,6 +72,7 @@ function VideoModal({ onClose }: { onClose: () => void }) {
 export default function Hero() {
   const [videoOpen, setVideoOpen] = useState(false);
   return (
+    <>
     <section className="relative overflow-hidden px-6 pt-32 pb-24 sm:pt-40">
       <div className="pointer-events-none absolute inset-0 -z-10">
         <div className="absolute left-1/2 top-[-360px] h-[900px] w-[900px] -translate-x-1/2 opacity-[0.28]">
@@ -178,5 +179,6 @@ export default function Hero() {
       </div>
     </section>
     {videoOpen && <VideoModal onClose={() => setVideoOpen(false)} />}
+    </>
   );
 }
