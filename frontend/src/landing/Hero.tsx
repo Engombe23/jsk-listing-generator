@@ -1,11 +1,76 @@
+import { useState, useEffect, useRef } from "react";
 import { motion } from "motion/react";
-import { ArrowRight, PlayCircle, Star } from "lucide-react";
-import { PrimaryButton, GhostButton } from "./Primitives";
+import { ArrowRight, PlayCircle, Star, X } from "lucide-react";
+import { PrimaryButton } from "./Primitives";
 import HeroDemo from "./HeroDemo";
+
+// Paste your hosted video URL here once uploaded (Cloudinary, etc.)
+// Supports: direct .mp4 URL  OR  a YouTube/Vimeo embed URL
+const DEMO_VIDEO_SRC = "https://www.youtube.com/embed/0I_pDFHwIBE?autoplay=1";
 
 const ease = [0.22, 1, 0.36, 1];
 
+function VideoModal({ onClose }: { onClose: () => void }) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const isEmbed = DEMO_VIDEO_SRC.includes("youtube.com") || DEMO_VIDEO_SRC.includes("vimeo.com");
+
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", handleKey);
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", handleKey);
+      document.body.style.overflow = "";
+    };
+  }, [onClose]);
+
+  const handleClose = () => {
+    if (videoRef.current) { videoRef.current.pause(); }
+    onClose();
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/88 backdrop-blur-sm"
+      onClick={handleClose}
+    >
+      <div
+        className="relative w-full max-w-5xl px-4"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          onClick={handleClose}
+          className="absolute -right-1 -top-10 flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
+          aria-label="Close video"
+        >
+          <X className="h-5 w-5" />
+        </button>
+        <div className="aspect-video w-full overflow-hidden rounded-2xl shadow-2xl">
+          {isEmbed ? (
+            <iframe
+              src={DEMO_VIDEO_SRC}
+              className="h-full w-full"
+              allow="autoplay; fullscreen"
+              allowFullScreen
+            />
+          ) : (
+            <video
+              ref={videoRef}
+              src={DEMO_VIDEO_SRC}
+              className="h-full w-full bg-black"
+              controls
+              autoPlay
+              playsInline
+            />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Hero() {
+  const [videoOpen, setVideoOpen] = useState(false);
   return (
     <section className="relative overflow-hidden px-6 pt-32 pb-24 sm:pt-40">
       <div className="pointer-events-none absolute inset-0 -z-10">
@@ -76,10 +141,13 @@ export default function Hero() {
               Generate 10 Listings Free
               <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-0.5" />
             </PrimaryButton>
-            <GhostButton href="/#how-it-works" size="lg" className="w-full sm:w-auto">
+            <button
+              onClick={() => setVideoOpen(true)}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-hair bg-white px-7 py-4 text-[1.02rem] font-semibold text-navy transition-all duration-200 hover:-translate-y-0.5 hover:border-navy/20 hover:shadow-soft sm:w-auto"
+            >
               <PlayCircle className="h-5 w-5 text-primary" />
               See How It Works
-            </GhostButton>
+            </button>
           </motion.div>
 
           <motion.p
@@ -109,5 +177,6 @@ export default function Hero() {
         </motion.div>
       </div>
     </section>
+    {videoOpen && <VideoModal onClose={() => setVideoOpen(false)} />}
   );
 }
