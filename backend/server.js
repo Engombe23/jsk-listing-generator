@@ -84,7 +84,9 @@ function sleep(ms) {
 }
 
 // Wrap fetch with a hard timeout so a hung external API call never blocks forever.
+let _tecdocCallCount = 0;
 function fetchWithTimeout(url, options = {}, ms = 25000) {
+  if (url.includes(RAPIDAPI_HOST)) _tecdocCallCount++;
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), ms);
   return fetch(url, { ...options, signal: ctrl.signal })
@@ -572,6 +574,7 @@ function normalizeTecdoc(articleResponse, engineDataByModelId) {
 // ─── Main listing builder (optimised) ────────────────────────────────────────
 
 async function buildListingFromArticle(articleNumber, themeId = "clean-default") {
+  _tecdocCallCount = 0;
   const template = getTemplateById(themeId);
 
   // ── Cache hit: skip all data fetching, just rebuild HTML ──────────────────
@@ -750,11 +753,14 @@ async function buildListingFromArticle(articleNumber, themeId = "clean-default")
   cappedSet(articleNormCache, articleNumber, cachePayload, 200);
   if (resolvedNumber !== articleNumber) cappedSet(articleNormCache, resolvedNumber, cachePayload, 200);
 
+  console.log(`[Listing] ${articleNumber}: ${_tecdocCallCount} TecDoc API calls total`);
+
   return {
     ...baseResult,
-    generated_html: html,
-    template_id:    template.id,
-    template_name:  template.name
+    generated_html:    html,
+    template_id:       template.id,
+    template_name:     template.name,
+    _debug_api_calls:  _tecdocCallCount,
   };
 }
 
