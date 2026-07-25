@@ -9,6 +9,7 @@ import { Parser } from "json2csv";
 import { buildHtml } from "./html-builder.js";
 import { getTemplateById, THEME_LIST } from "./templates/index.js";
 import { checkCompatibility } from "./compatibility/checker.js";
+import { getCompatibleCarsByArticleNo } from "./compatibility/api.js";
 import {
   detectProductType, buildEbayQuery, detectUnitType, getConfidence,
   conditionOptions, EXCLUSION_REASONS,
@@ -611,6 +612,16 @@ async function buildListingFromArticle(articleNumber, themeId = "clean-default",
   if (cars[0]) console.log(`[Listing] sample car fields:`, JSON.stringify(Object.keys(cars[0])));
   if (cars[0]) console.log(`[Listing] sample car engine codes:`, cars[0].engCodes || cars[0].engineCodes || cars[0].engineCode || cars[0].motorCodes || "NONE");
   if (cars[0]) console.log(`[Listing] sample car kw/hp/cc:`, cars[0].powerKw, cars[0].powerPs, cars[0].capacityTech);
+
+  // ── Test: getCompatibleCarsByArticleNo ────────────────────────────────────
+  if (dataSupplierId) {
+    const compatCars = await getCompatibleCarsByArticleNo(resolvedNumber, dataSupplierId);
+    const sample = Array.isArray(compatCars) ? compatCars[0] : compatCars?.data?.[0] ?? compatCars;
+    console.log(`[CompatCars] count:`, Array.isArray(compatCars) ? compatCars.length : "non-array");
+    console.log(`[CompatCars] sample fields:`, sample ? JSON.stringify(Object.keys(sample)) : "none");
+    console.log(`[CompatCars] sample engine codes:`, sample?.engCodes || sample?.engineCodes || sample?.engineCode || sample?.motorCodes || "NONE");
+    console.log(`[CompatCars] sample kw/hp/cc:`, sample?.powerKw, sample?.powerPs, sample?.capacityTech);
+  }
 
   // ── Fetch engine data grouped by model series ─────────────────────────────
   const engineDataByModelId = await fetchEngineDataByModelIds(cars);
