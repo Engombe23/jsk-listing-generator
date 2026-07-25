@@ -14,7 +14,11 @@ import {
   conditionOptions, EXCLUSION_REASONS,
 } from "./ebay-filter-rules.js";
 import OpenAI from "openai";
-import posthog from "posthog-js";
+import { PostHog } from "posthog-node";
+const posthog = new PostHog(
+  process.env.POSTHOG_API_KEY || "",
+  { host: process.env.POSTHOG_HOST || "https://us.i.posthog.com" }
+);
 import analyticsRouter from "./routes/analytics.js";
 import stripeRouter, { registerStripeWebhook } from "./routes/stripe.js";
 import { stripeReady, CLIENT_URL } from "./lib/stripeConfig.js";
