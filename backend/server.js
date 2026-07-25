@@ -612,15 +612,11 @@ async function buildListingFromArticle(articleNumber, themeId = "clean-default")
   if (cars[0]) console.log(`[Listing] sample car engine codes:`, cars[0].engCodes || cars[0].engineCodes || cars[0].engineCode || cars[0].motorCodes || "NONE");
   if (cars[0]) console.log(`[Listing] sample car kw/hp/cc:`, cars[0].powerKw, cars[0].powerPs, cars[0].capacityTech);
 
-  // ── Fetch engine data grouped by model series ─────────────────────────────
-  // One call per unique modelId (e.g. "Golf IV") returns ALL engine variants for
-  // that series — covers 100 compatible vehicles with ~10 calls instead of 100.
-  const engineDataByModelId = await fetchEngineDataByModelIds(cars);
-  const uniqueModelIds = Object.keys(engineDataByModelId);
-  console.log(`[Listing] ${articleNumber}: fetched engine data for ${uniqueModelIds.length} model series`);
-
   // ── Normalize ─────────────────────────────────────────────────────────────
-  const normalized = normalizeTecdoc(articleResponse, engineDataByModelId);
+  // engineDataByModelId is empty — kW/HP/CC/engine-codes are read directly
+  // from each compatibleCars entry (the article-number-details response already
+  // includes them, so the per-model-series fetch loop is unnecessary).
+  const normalized = normalizeTecdoc(articleResponse, {});
   const kNumbers    = uniq(normalized.compatibility_rows.map((r) => r.k_number));
   const engineCodes = uniq(normalized.compatibility_rows.flatMap((r) => r.engine_codes || []));
 
