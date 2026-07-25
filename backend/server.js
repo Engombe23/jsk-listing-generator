@@ -612,11 +612,12 @@ async function buildListingFromArticle(articleNumber, themeId = "clean-default",
   if (cars[0]) console.log(`[Listing] sample car engine codes:`, cars[0].engCodes || cars[0].engineCodes || cars[0].engineCode || cars[0].motorCodes || "NONE");
   if (cars[0]) console.log(`[Listing] sample car kw/hp/cc:`, cars[0].powerKw, cars[0].powerPs, cars[0].capacityTech);
 
+  // ── Fetch engine data grouped by model series ─────────────────────────────
+  const engineDataByModelId = await fetchEngineDataByModelIds(cars);
+  console.log(`[Listing] ${articleNumber}: fetched engine data for ${Object.keys(engineDataByModelId).length} model series`);
+
   // ── Normalize ─────────────────────────────────────────────────────────────
-  // engineDataByModelId is empty — kW/HP/CC/engine-codes are read directly
-  // from each compatibleCars entry (the article-number-details response already
-  // includes them, so the per-model-series fetch loop is unnecessary).
-  const normalized = normalizeTecdoc(articleResponse, {});
+  const normalized = normalizeTecdoc(articleResponse, engineDataByModelId);
   const kNumbers    = uniq(normalized.compatibility_rows.map((r) => r.k_number));
   const engineCodes = uniq(normalized.compatibility_rows.flatMap((r) => r.engine_codes || []));
 
