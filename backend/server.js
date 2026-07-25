@@ -577,7 +577,7 @@ function normalizeTecdoc(articleResponse, engineDataByModelId) {
 
 // ─── Main listing builder (optimised) ────────────────────────────────────────
 
-async function buildListingFromArticle(articleNumber, themeId = "clean-default") {
+async function buildListingFromArticle(articleNumber, themeId = "clean-default", listingOptions = {}) {
   _tecdocCallCount = 0;
   const template = getTemplateById(themeId);
 
@@ -626,11 +626,12 @@ async function buildListingFromArticle(articleNumber, themeId = "clean-default")
   //   2. select-article-cross-refs     → article-ID specific cross-refs (varies by brand)
   //   3. article-oem-search-no         → ALL aftermarket articles for this OEM number
   //                                      (the real interchangeable list — brand-agnostic)
+  const wantInterchangeable = listingOptions.showInterchangeableNumbers !== false;
   const firstOem = normalized.oem_numbers?.[0] || null;
   const [mediaResponse, crossRefsRaw, oemSearchRaw] = await Promise.all([
     fetchArticleMedia(articleId),
-    fetchArticleCrossReferences(articleId),
-    firstOem ? searchArticleByOem(firstOem) : Promise.resolve(null)
+    wantInterchangeable ? fetchArticleCrossReferences(articleId) : Promise.resolve([]),
+    wantInterchangeable && firstOem ? searchArticleByOem(firstOem) : Promise.resolve(null)
   ]);
 
   const articleBrand = (
@@ -884,8 +885,9 @@ app.post("/search", requireAuth, lookupLimiter, async (req, res) => {
 
 app.post("/lookup", requireAuth, lookupLimiter, async (req, res) => {
   try {
-    const articleNumber = String(req.body.articleNumber || "").trim().replace(/\s+/g, "");
-    const themeId       = req.body.themeId || req.body.templateId || "clean-default";
+    const articleNumber  = String(req.body.articleNumber || "").trim().replace(/\s+/g, "");
+    const themeId        = req.body.themeId || req.body.templateId || "clean-default";
+    const listingOptions = req.body.listingOptions || {};
 
     if (!articleNumber) return res.status(400).json({ error: "Missing articleNumber" });
 
@@ -899,7 +901,7 @@ app.post("/lookup", requireAuth, lookupLimiter, async (req, res) => {
       });
     }
 
-    const result = await buildListingFromArticle(articleNumber, themeId);
+    const result = await buildListingFromArticle(articleNumber, themeId, listingOptions);
 
     // Only increment usage once a real result has been returned — failures,
     // not-found, and server errors above never reach this line.
