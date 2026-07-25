@@ -588,9 +588,10 @@ async function buildListingFromArticle(articleNumber, themeId = "clean-default",
     const html   = buildHtml(cached.normalized, template);
     return {
       ...cached.baseResult,
-      generated_html: html,
-      template_id:    template.id,
-      template_name:  template.name
+      generated_html:   html,
+      template_id:      template.id,
+      template_name:    template.name,
+      _debug_api_calls: 0,
     };
   }
 
