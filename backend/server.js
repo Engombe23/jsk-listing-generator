@@ -604,6 +604,9 @@ async function buildListingFromArticle(articleNumber, themeId = "clean-default")
   const oemNumbers     = uniq((article.oemNo || []).map((o) => o.oemDisplayNo).filter(Boolean));
 
   console.log(`[Listing] ${resolvedNumber}: ${cars.length} compatible vehicles in article response`);
+  if (cars[0]) console.log(`[Listing] sample car fields:`, JSON.stringify(Object.keys(cars[0])));
+  if (cars[0]) console.log(`[Listing] sample car engine codes:`, cars[0].engCodes || cars[0].engineCodes || cars[0].engineCode || cars[0].motorCodes || "NONE");
+  if (cars[0]) console.log(`[Listing] sample car kw/hp/cc:`, cars[0].powerKw, cars[0].powerPs, cars[0].capacityTech);
 
   // ── Fetch engine data grouped by model series ─────────────────────────────
   // One call per unique modelId (e.g. "Golf IV") returns ALL engine variants for
