@@ -14,6 +14,7 @@ import SmartPricingSection from "./sections/SmartPricingSection";
 import CompatibilityCheckerSection from "./sections/CompatibilityCheckerSection";
 import UsersTrialsSection from "./sections/UsersTrialsSection";
 import ApiUsageErrorsSection from "./sections/ApiUsageErrorsSection";
+import TecDocApiSection from "./sections/TecDocApiSection";
 
 const SECTIONS = [
   { key: "overview",       label: "Overview" },
@@ -25,6 +26,7 @@ const SECTIONS = [
   { key: "compatibility",  label: "Compatibility Checker" },
   { key: "users_trials",   label: "Users & Trials" },
   { key: "api_usage",      label: "API Usage & Errors" },
+  { key: "tecdoc_api",    label: "TecDoc API Calls" },
 ];
 
 const PRESETS = [
@@ -449,6 +451,7 @@ export default function AdminAnalytics() {
             {section === "compatibility"      && <CompatibilityCheckerSection {...sectionProps} />}
             {section === "users_trials"       && <UsersTrialsSection {...sectionProps} tableData={tableData} />}
             {section === "api_usage"          && <ApiUsageErrorsSection {...sectionProps} tableData={tableData} />}
+            {section === "tecdoc_api"         && <TecDocApiSection {...sectionProps} />}
           </>
         )}
       </div>

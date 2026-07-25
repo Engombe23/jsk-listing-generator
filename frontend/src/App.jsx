@@ -846,6 +846,7 @@ function ListingGenerator({
       trackEvent("listing_generated", {
         part_number: articleNo,
         generation_time_ms: Date.now() - startedAt,
+        tecdoc_api_calls: data._debug_api_calls ?? null,
         source: "listing_generator",
       });
     } catch (err) {
