@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { useSession } from "./context/SessionContext";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
@@ -186,6 +187,7 @@ function VisualMatchCard({ match }) {
 }
 
 export default function PartIdentifier({ onSendToListing, onSendToPricing }) {
+  const { t } = useTranslation();
   const { session } = useSession();
   const [dragOver, setDragOver] = useState(false);
   const [file, setFile]         = useState(null);
@@ -265,7 +267,7 @@ export default function PartIdentifier({ onSendToListing, onSendToPricing }) {
       <div style={{ marginBottom: 24 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
           <h1 style={{ fontSize: 22, fontWeight: 800, color: "var(--text)", margin: 0, letterSpacing: -0.5 }}>
-            Part Identifier
+            {t("partIdentifier.title")}
           </h1>
           <span style={{
             fontSize: 10, fontWeight: 800, letterSpacing: "0.08em",
@@ -277,7 +279,7 @@ export default function PartIdentifier({ onSendToListing, onSendToPricing }) {
           </span>
         </div>
         <p style={{ fontSize: 14, color: "var(--text-muted)", margin: 0, lineHeight: 1.6 }}>
-          Upload a photo of an automotive part to identify it and verify the part number against the TecDoc database.
+          {t("partIdentifier.subtitle")}
         </p>
       </div>
 
@@ -312,17 +314,17 @@ export default function PartIdentifier({ onSendToListing, onSendToPricing }) {
                 <polyline points="21 15 16 10 5 21"/>
               </svg>
               <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text)", marginBottom: 6 }}>
-                Drop a part photo here
+                {t("partIdentifier.uploadTitle")}
               </div>
               <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 18 }}>
-                or click to browse — JPG, PNG, WEBP up to 10 MB
+                {t("partIdentifier.uploadHint")}
               </div>
               <div style={{
                 display: "inline-block", padding: "9px 22px", borderRadius: 10,
                 background: "var(--blue)", color: "#fff",
                 fontSize: 13, fontWeight: 700, pointerEvents: "none",
               }}>
-                Choose Photo
+                {t("partIdentifier.choosePhoto")}
               </div>
               <input
                 ref={inputRef}
@@ -379,14 +381,14 @@ export default function PartIdentifier({ onSendToListing, onSendToPricing }) {
                         style={{ animation: "ogSpin 0.8s linear infinite" }}>
                         <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
                       </svg>
-                      Identifying…
+                      {t("partIdentifier.identifying")}
                     </>
                   ) : (
                     <>
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                         <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
                       </svg>
-                      Identify Part
+                      {t("partIdentifier.identifyPart")}
                     </>
                   )}
                 </button>
@@ -403,7 +405,7 @@ export default function PartIdentifier({ onSendToListing, onSendToPricing }) {
             }}>
               <div style={{ width: 18, height: 18, borderRadius: "50%", background: "var(--red)", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, color: "#fff", fontWeight: 800 }}>!</div>
               <div style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.55 }}>
-                <strong style={{ color: "var(--red)" }}>Error:</strong> {error}
+                <strong style={{ color: "var(--red)" }}>{t("generator.errorLabel")}:</strong> {error}
               </div>
             </div>
           )}
@@ -414,8 +416,8 @@ export default function PartIdentifier({ onSendToListing, onSendToPricing }) {
               <div style={{ display: "flex", justifyContent: "center", marginBottom: 18 }}>
                 <div style={{ width: 36, height: 36, borderRadius: "50%", border: "3px solid var(--border-blue)", borderTop: "3px solid var(--blue)", animation: "ogSpin 0.8s linear infinite" }} />
               </div>
-              <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-muted)", marginBottom: 4 }}>Identifying part…</div>
-              <div style={{ fontSize: 12, color: "var(--text-dim)" }}>Google Lens → product pages → TecDoc verification</div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-muted)", marginBottom: 4 }}>{t("partIdentifier.identifying")}</div>
+              <div style={{ fontSize: 12, color: "var(--text-dim)" }}>{t("partIdentifier.loadingDetail")}</div>
             </div>
           )}
 
@@ -425,7 +427,7 @@ export default function PartIdentifier({ onSendToListing, onSendToPricing }) {
               {/* Results header */}
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>
-                  {hasBestMatch ? "Verified match found" : hasOtherMatches ? "No verified matches — visual results only" : "No matches found"}
+                  {hasBestMatch ? t("partIdentifier.verifiedMatch") : hasOtherMatches ? t("partIdentifier.visualResultsOnly") : t("partIdentifier.noMatches")}
                 </div>
                 {results.totalVisualMatches > 0 && (
                   <span style={{ fontSize: 11, color: "var(--text-dim)" }}>
@@ -441,7 +443,7 @@ export default function PartIdentifier({ onSendToListing, onSendToPricing }) {
                     color: "var(--text-muted)",
                   }}
                 >
-                  Try Another Photo
+                  {t("partIdentifier.tryAnotherPhoto")}
                 </button>
               </div>
 
@@ -449,7 +451,7 @@ export default function PartIdentifier({ onSendToListing, onSendToPricing }) {
               {hasBestMatch && (
                 <div style={{ marginBottom: 20 }}>
                   <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.05em", textTransform: "uppercase", color: "var(--text-dim)", marginBottom: 8 }}>
-                    Best Matched Part
+                    {t("partIdentifier.bestMatchedPart")}
                   </div>
                   <BestMatchCard
                     match={results.bestMatch}
@@ -464,14 +466,14 @@ export default function PartIdentifier({ onSendToListing, onSendToPricing }) {
                 <div>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
                     <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.05em", textTransform: "uppercase", color: "var(--text-dim)" }}>
-                      {hasBestMatch ? "Other visual matches" : "Visual matches (unverified)"}
+                      {hasBestMatch ? t("partIdentifier.otherVisualMatches") : t("partIdentifier.visualMatchesUnverified")}
                     </div>
                     <div style={{
                       fontSize: 10, fontWeight: 700, color: "var(--text-dim)",
                       background: "var(--bg-surface2)", border: "1px solid var(--border)",
                       borderRadius: 4, padding: "1px 6px",
                     }}>
-                      Not verified · No listing actions available
+                      {t("partIdentifier.notVerified")}
                     </div>
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -486,8 +488,8 @@ export default function PartIdentifier({ onSendToListing, onSendToPricing }) {
               {!hasBestMatch && !hasOtherMatches && (
                 <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 14, padding: "36px 24px", textAlign: "center" }}>
                   <div style={{ fontSize: 14, color: "var(--text-muted)", lineHeight: 1.6 }}>
-                    No part numbers could be identified from this image.<br/>
-                    Try a clearer photo with the part number label visible.
+                    {t("partIdentifier.noPartNumbers")}<br/>
+                    {t("partIdentifier.clearerPhoto")}
                   </div>
                 </div>
               )}

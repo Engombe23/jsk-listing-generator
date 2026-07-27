@@ -1,0 +1,9 @@
+# Paste into Supabase Dashboard → Authentication → Email Templates
+# Subject field max 255 chars (entire Go template). it/es/tr subjects fall back to English;
+# HTML bodies remain fully localized for all languages.
+
+## Confirm signup — Subject (212/255)
+{{if eq .Data.i18n "fr"}}Confirmez votre compte PartLister{{else if eq .Data.i18n "de"}}PartLister-Konto bestätigen{{else if eq .Data.i18n "ar"}}تأكيد حساب PartLister{{else}}Confirm your PartLister account{{end}}
+
+## Reset password — Subject (226/255)
+{{if eq .Data.i18n "fr"}}Réinitialisez votre mot de passe{{else if eq .Data.i18n "de"}}PartLister-Passwort zurücksetzen{{else if eq .Data.i18n "ar"}}إعادة تعيين كلمة مرور PartLister{{else}}Reset your PartLister password{{end}}

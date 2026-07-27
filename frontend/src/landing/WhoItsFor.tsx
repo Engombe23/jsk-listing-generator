@@ -1,3 +1,5 @@
+import { useTranslation } from "react-i18next";
+
 const TEXT = "#132A46";
 const MUTED = "#4d6a8a";
 const ACCENT = "#135DFF";
@@ -5,30 +7,9 @@ const ACCENT_LIGHT = "#EEF5FF";
 const BORDER = "#dde7f5";
 const BG_ALT = "#f4f7fc";
 
-const AUDIENCE = [
-  {
-    icon: "🛒",
-    title: "eBay Parts Sellers",
-    desc: "Speed up listing creation and keep your catalogue consistent across hundreds of parts.",
-  },
-  {
-    icon: "🏭",
-    title: "Aftermarket Parts Suppliers",
-    desc: "Generate structured listings across a broad catalogue without manual data entry.",
-  },
-  {
-    icon: "🔩",
-    title: "Breakers & Dismantlers",
-    desc: "List salvage parts quickly with accurate compatibility and condition data.",
-  },
-  {
-    icon: "📦",
-    title: "Small Parts Businesses",
-    desc: "Compete with larger sellers using professional listings, without a dedicated team.",
-  },
-];
-
 export default function WhoItsFor() {
+  const { t } = useTranslation();
+  const audience = t("landing.who.audience", { returnObjects: true });
   return (
     <div
       style={{
@@ -63,7 +44,7 @@ export default function WhoItsFor() {
               marginBottom: 20,
             }}
           >
-            Who It's For
+            {t("landing.who.eyebrow")}
           </div>
           <h2
             style={{
@@ -74,7 +55,7 @@ export default function WhoItsFor() {
               lineHeight: 1.15,
             }}
           >
-            Built for car parts sellers
+            {t("landing.who.title")}
           </h2>
         </div>
 
@@ -86,7 +67,7 @@ export default function WhoItsFor() {
             gap: 20,
           }}
         >
-          {AUDIENCE.map((a) => (
+          {audience.map((a) => (
             <div
               key={a.title}
               style={{

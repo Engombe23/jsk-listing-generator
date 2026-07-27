@@ -1,0 +1,443 @@
+{
+  "contact": {
+    "badge": "Nous sommes là pour vous aider",
+    "title": "Contactez-nous",
+    "subtitle": "Vous avez une question, un commentaire ou besoin d'aide ? Nous aimerions avoir de vos nouvelles.",
+    "formTitle": "Envoyez-nous un message",
+    "formSubtitle": "Remplissez le formulaire ci-dessous et nous vous répondrons dans les plus brefs délais.",
+    "name": "Votre nom",
+    "email": "Votre e-mail",
+    "subject": "Sujet",
+    "message": "Message",
+    "namePlaceholder": "par ex. John Smith",
+    "emailPlaceholder": "par ex. john@exemple.com",
+    "messagePlaceholder": "Comment pouvons-nous vous aider ?",
+    "selectSubject": "Sélectionnez un sujet",
+    "subjects": {
+      "general": "Question générale",
+      "technical": "Assistance technique",
+      "bug": "Rapport de bug",
+      "feature": "Demande de fonctionnalité",
+      "billing": "Facturation et abonnement",
+      "partnership": "Enquête de partenariat",
+      "other": "Autre"
+    },
+    "attachFile": "Joindre un fichier (facultatif)",
+    "maxFileSize": "Taille maximale du fichier : 10 Mo",
+    "sending": "Envoi…",
+    "sendMessage": "Envoyer un message",
+    "secureNote": "Vos informations sont sécurisées et jamais partagées.",
+    "successTitle": "Message envoyé avec succès",
+    "successBody": "Merci d'avoir contacté PartLister. Nous avons reçu votre message et vous répondrons généralement dans un délai d'un jour ouvrable.",
+    "referenceId": "Numéro de référence",
+    "sendAnother": "Envoyer un autre message",
+    "visitHelp": "Visitez le centre d'aide",
+    "lookingForHelp": "Vous cherchez de l’aide pour quelque chose de spécifique ?",
+    "visitHelpCentre": "Visitez notre centre d'aide pour obtenir des guides et des réponses aux questions courantes. →",
+    "helpCentreLink": "Centre d'aide",
+    "errors": {
+      "nameRequired": "Veuillez entrer votre nom complet.",
+      "emailInvalid": "S'il vous plaît, mettez une adresse email valide.",
+      "subjectRequired": "Veuillez sélectionner un sujet.",
+      "messageShort": "Veuillez saisir un message (au moins 10 caractères).",
+      "attachmentTooLarge": "La pièce jointe doit faire moins de 10 Mo.",
+      "submitFailed": "Nous n'avons pas pu envoyer votre message. Veuillez réessayer dans un instant."
+    }
+  },
+  "help": {
+    "badge": "CENTRE D'AIDE",
+    "title": "Comment pouvons-nous vous aider ?",
+    "subtitle": "Trouvez des guides, des didacticiels et des réponses aux questions courantes sur PartLister.",
+    "searchPlaceholder": "Rechercher des articles, des sujets ou des questions...",
+    "popularTopics": "Sujets populaires",
+    "viewAllTopics": "Voir tous les sujets →",
+    "guidesTutorials": "Guides et tutoriels",
+    "viewAllArticles": "Voir tous les articles →",
+    "browseAllArticles": "Parcourir tous les articles",
+    "faqTitle": "Questions fréquemment posées",
+    "viewAllFaqs": "Voir toutes les FAQ →",
+    "stillNeedHelp": "Vous avez encore besoin d'aide ?",
+    "stillNeedHelpBody": "Notre équipe d'assistance est là pour vous.",
+    "contactUs": "Contactez-nous",
+    "lookingElseTitle": "Vous cherchez autre chose ?",
+    "lookingElseBody": "Si vous ne trouvez pas ce que vous cherchez, envoyez-nous un message et nous vous répondrons dans les plus brefs délais.",
+    "topics": [
+      {
+        "title": "Commencer",
+        "desc": "Nouveau sur PartLister ? Commencez ici."
+      },
+      {
+        "title": "Générateur d'annonces",
+        "desc": "Créez des fiches professionnelles en quelques secondes."
+      },
+      {
+        "title": "Vérificateur de compatibilité",
+        "desc": "Vérifiez à quels véhicules une pièce convient."
+      },
+      {
+        "title": "Outils de tarification",
+        "desc": "Calculs intelligents de tarification et de bénéfices."
+      }
+    ],
+    "articles": [
+      {
+        "slug": "how-to-generate-your-first-listing",
+        "title": "Comment générer votre première annonce",
+        "desc": "Guide étape par étape pour créer une annonce à partir d'un numéro OEM/article.",
+        "time": "5 min de lecture"
+      },
+      {
+        "slug": "understanding-compatibility-results",
+        "title": "Comprendre les résultats de compatibilité",
+        "desc": "Comprendre l'origine et la lecture des résultats de compatibilité.",
+        "time": "4 min de lecture"
+      },
+      {
+        "slug": "smart-pricing-explained",
+        "title": "La tarification intelligente expliquée",
+        "desc": "Comment les données de prix vous aident à lister de façon compétitive.",
+        "time": "6 min de lecture"
+      },
+      {
+        "slug": "export-listings-to-ebay",
+        "title": "Exporter des annonces vers eBay",
+        "desc": "Exporter et importer vos annonces sur eBay en un clic.",
+        "time": "3 min de lecture"
+      },
+      {
+        "slug": "using-the-price-calculator",
+        "title": "Utiliser le calculateur de prix",
+        "desc": "Calculez frais, TVA, marge et plus encore facilement.",
+        "time": "4 min de lecture"
+      },
+      {
+        "slug": "how-to-use-the-compatibility-checker",
+        "title": "Comment utiliser le vérificateur de compatibilité",
+        "desc": "Vérifiez si une pièce convient à un véhicule via numéro ou VIN.",
+        "time": "3 min de lecture"
+      },
+      {
+        "slug": "choosing-a-listing-template",
+        "title": "Choisir un modèle de liste",
+        "desc": "Choisissez modèles et options de contenu adaptés à votre style.",
+        "time": "3 min de lecture"
+      },
+      {
+        "slug": "understanding-part-references",
+        "title": "Comprendre les références de pièces",
+        "desc": "Comprendre les numéros OE, OEM et TecDoc pour de meilleurs résultats.",
+        "time": "3 min de lecture"
+      }
+    ],
+    "faqsLeft": [
+      {
+        "q": "Qu’est-ce que PartLister ?",
+        "a": "PartLister est une plate-forme basée sur l'IA qui aide les vendeurs de pièces automobiles à créer des annonces eBay professionnelles en quelques secondes. Il extrait automatiquement les données produit, les références OE, les informations de compatibilité et les détails de l'article à partir d'un numéro de pièce."
+      },
+      {
+        "q": "Comment fonctionne le générateur d'annonces ?",
+        "a": "Entrez un numéro OEM ou un numéro d'article et PartLister récupère les données produit de TecDoc, génère un titre structuré, une description et des détails sur l'article, puis les formate pour être prêt pour eBay, le tout en moins de 2 minutes."
+      },
+      {
+        "q": "Quelles sources de données PartLister utilise-t-il ?",
+        "a": "PartLister utilise TecDoc pour les données techniques des produits, les références OE et la compatibilité des véhicules. Les données sur les prix du marché proviennent des annonces vendues en direct sur eBay."
+      },
+      {
+        "q": "Puis-je exporter des annonces en masse ?",
+        "a": "Oui. Les abonnés aux forfaits Pro et Business peuvent exporter plusieurs annonces sous forme de fichier CSV compatible avec l'outil d'importation groupée d'annonces d'eBay."
+      }
+    ],
+    "faqsRight": [
+      {
+        "q": "Quelle est la précision du vérificateur de compatibilité ?",
+        "a": "Le vérificateur de compatibilité utilise la base de données de compatibilité des véhicules de TecDoc, qui couvre des millions de combinaisons véhicule/pièce. La précision dépend de l'exhaustivité des données du fabricant."
+      },
+      {
+        "q": "Quelles catégories eBay sont prises en charge ?",
+        "a": "PartLister prend en charge toutes les catégories de pièces automobiles sur eBay, y compris les moteurs, les freins, la suspension, l'électricité, les pièces de carrosserie et bien plus encore."
+      },
+      {
+        "q": "Proposez-vous un essai gratuit ?",
+        "a": "Oui, chaque nouveau compte comprend 10 annonces gratuites sans carte de crédit requise. Vous pouvez effectuer une mise à niveau à tout moment à partir de la page Tarifs."
+      },
+      {
+        "q": "Comment résilier mon abonnement ?",
+        "a": "Vous pouvez annuler votre abonnement à tout moment depuis la page Compte. Votre forfait reste actif jusqu'à la fin de la période de facturation en cours."
+      }
+    ],
+    "articleChrome": {
+      "backToHelp": "Retour au centre d'aide",
+      "minRead": "{{n}} minutes de lecture",
+      "relatedArticles": "Articles connexes",
+      "lastUpdated": "Dernière mise à jour : {{date}}",
+      "tipLabel": "Conseil :"
+    },
+    "visuals": {
+      "exportOptions": {
+        "copyHtmlLabel": "Copier le HTML",
+        "copyHtmlDesc": "Collez directement dans un formulaire d'annonce eBay",
+        "exportCsvLabel": "Exporter en CSV",
+        "exportCsvDesc": "Import en masse via l'outil d'upload eBay Seller Hub",
+        "saveListingLabel": "Enregistrer l'annonce",
+      "saveListingDesc": "Stockez dans Annonces sauvegardées pour réutiliser ou exporter plus tard"
+    },
+    "compatTable": {
+      "title": "Modèles BMW — 58 applications",
+      "colVehicle": "Véhicule",
+      "noteVehicle": "Marque, modèle et variante",
+      "colYears": "Années",
+      "noteYears": "Plage de dates d'application",
+      "colKw": "kW",
+      "noteKw": "Puissance",
+      "colHp": "HP",
+      "noteHp": "Chevaux-vapeur",
+      "colCc": "CC",
+      "noteCc": "Cylindrée",
+      "colEngine": "Code moteur",
+      "noteEngine": "Identifiant du fabricant"
+    },
+    "priceHistogram": {
+      "low": "Bas  £38",
+      "median": "Médiane  £81",
+      "avg": "Moy.  £89",
+      "high": "Haut  £249",
+      "yourPrice": "Votre prix",
+      "caption": "Répartition des prix sur 60 annonces eBay actives · barre la plus haute = concurrence la plus forte"
+    },
+    "calcBreakdown": {
+      "sellingPrice": "Prix de vente",
+      "productCost": "− Coût du produit",
+      "postage": "− Frais de port et d'emballage",
+      "ebayFees": "− Frais eBay (12.8% + £0.30)",
+      "vat": "− TVA → HMRC",
+      "vatNote": "Vous ne conservez rien de ce montant",
+      "netProfit": "= Bénéfice net",
+      "summarySelling": "Prix de vente",
+      "summaryProfit": "Bénéfice net",
+      "summaryMargin": "Marge",
+      "summaryMarkup": "Majoration",
+      "breakEven": "Prix d'équilibre",
+      "breakEvenHint": "Vendre sous ce prix signifie vendre à perte"
+    },
+    "productExample": {
+      "exampleLabel": "Exemple de pièce"
+    },
+    "engineCodeExample": {
+      "imageAlt": "Exemple de joint"
+      }
+    }
+  },
+  "privacy": {
+    "backToApp": "← Retour à l'application",
+    "lastUpdated": "Dernière mise à jour : juin 2025",
+    "title": "Politique de confidentialité",
+    "intro": "PartLister s'engage à protéger votre vie privée. Cette politique explique quelles informations nous collectons, comment nous les utilisons et vos droits concernant vos données personnelles.",
+    "sections": {
+      "collect": {
+        "title": "Informations que nous collectons",
+        "body": "Lorsque vous utilisez PartLister, nous pouvons collecter :",
+        "items": [
+          "Nom et adresse e-mail (lors de l'inscription)",
+          "Informations sur le compte (forfait, préférences, statut de l'abonnement)",
+          "Informations de facturation — traitées en toute sécurité par Stripe ; nous ne voyons ni ne stockons jamais les détails de votre carte",
+          "Annonces et contenu que vous générez au sein de la plateforme",
+          "Produits enregistrés et préférences de référencement",
+          "Analyse d'utilisation (fonctionnalités utilisées, pages consultées, comportement de session)",
+          "Données techniques telles que l'adresse IP, le type de navigateur et les informations sur l'appareil"
+        ]
+      },
+      "notStore": {
+        "title": "Informations que nous ne stockons pas",
+        "body": "PartLister ne stocke pas les détails de la carte de paiement. Tout le traitement des paiements est géré de manière sécurisée par Stripe. Nous recevons uniquement la confirmation d'un paiement réussi et le statut de votre abonnement."
+      },
+      "howWeUse": {
+        "title": "Comment nous utilisons vos informations",
+        "items": [
+          "Fournir, maintenir et améliorer le service PartLister",
+          "Pour gérer votre compte et votre abonnement",
+          "Pour envoyer des e-mails transactionnels (confirmation de compte, reçus de facturation, réinitialisations de mot de passe)",
+          "Pour envoyer des e-mails marketing, uniquement lorsque vous vous êtes inscrit",
+          "Analyser les modèles d'utilisation et améliorer le produit",
+          "Détecter et prévenir les fraudes ou les abus",
+          "Pour respecter les obligations légales"
+        ]
+      },
+      "analytics": {
+        "title": "Analyse",
+        "body": "Nous utilisons Google Analytics pour les pages vues, les sources de trafic et les modèles d'utilisation, et PostHog pour l'utilisation des fonctionnalités, le comportement des sessions et l'analyse des produits.",
+        "items": [
+          "Google Analytics – pages vues, sources de trafic et modèles d'utilisation généraux",
+          "PostHog — utilisation des fonctionnalités, comportement de session et analyses de produits"
+        ],
+        "after": "Ces outils peuvent collecter des données anonymisées pour nous aider à améliorer le produit."
+      },
+      "cookies": {
+        "title": "Biscuits",
+        "body": "PartLister utilise des cookies pour :",
+        "items": [
+          "Authentification : vous permet de rester connecté en toute sécurité",
+          "Sécurité : protéger votre session",
+          "Préférences : mémorisation de vos paramètres",
+          "Analytics – comprendre comment la plateforme est utilisée"
+        ],
+        "after": "Vous pouvez contrôler les cookies dans votre navigateur. Leur désactivation peut affecter certaines fonctionnalités de PartLister."
+      },
+      "thirdParty": {
+        "title": "Services tiers",
+        "body": "PartLister s'intègre aux services suivants, chacun traitant les données selon sa propre politique de confidentialité :",
+        "items": [
+          "Stripe",
+          "Supabase",
+          "Vercel",
+          "Google Analytics",
+          "PostHog",
+          "eBay APIs",
+          "OpenAI"
+        ]
+      },
+      "dataSources": {
+        "title": "Sources de données",
+        "body": "Les informations de compatibilité, les références OEM, les informations sur les prix et autres données automobiles peuvent provenir de fournisseurs tiers. Nous travaillons avec des sources réputées, mais vous devez vérifier les annonces avant de les publier."
+      },
+      "security": {
+        "title": "Sécurité des données",
+        "body": "Nous utilisons des mesures standard du secteur pour protéger les données personnelles :",
+        "items": [
+          "Connexions HTTPS cryptées",
+          "Infrastructure cloud sécurisée via Supabase et Vercel",
+          "Sécurité de la base de données au niveau des lignes",
+          "Contrôles d'accès internes"
+        ]
+      },
+      "retention": {
+        "title": "Conservation des données",
+        "body": "Nous conservons les données personnelles pendant que votre compte est actif ou lorsque cela est nécessaire pour fournir le service. Lorsque vous supprimez votre compte, nous supprimons ou anonymisons les données dans un délai raisonnable, sauf si la loi exige leur conservation."
+      },
+      "rights": {
+        "title": "Vos droits",
+        "body": "En vertu du RGPD britannique et de la loi applicable sur la protection des données, vous avez le droit de :",
+        "items": [
+          "Demander l'accès à vos données personnelles",
+          "Corriger les informations inexactes ou incomplètes",
+          "Demander la suppression de votre compte et de vos données",
+          "Retirer le consentement marketing",
+          "Demandez une copie portable de vos données, le cas échéant",
+          "S'opposer au traitement dans certaines circonstances"
+        ],
+        "after": "Pour exercer ces droits, contactez support@partlister.app."
+      },
+      "marketing": {
+        "title": "E-mails marketing",
+        "body": "Nous envoyons des e-mails marketing uniquement lorsque vous vous êtes explicitement inscrit, et chaque message inclut une option de désabonnement. Les e-mails transactionnels nécessaires à la fourniture du service sont envoyés quelles que soient les préférences marketing."
+      },
+      "changes": {
+        "title": "Modifications de cette politique",
+        "body": "Nous pouvons mettre à jour cette politique de confidentialité. Nous vous informerons des changements importants par e-mail ou par un avis dans l'application. La date en haut indique la dernière mise à jour de cette politique."
+      },
+      "contact": {
+        "title": "Contacter",
+        "body": "Pour toute question concernant cette politique de confidentialité ou la manière dont nous traitons vos données, contactez support@partlister.app."
+      }
+    },
+    "thirdPartyPrivacyLink": "Politique de confidentialité",
+    "footerNote": "Consultez nos conditions générales pour plus d'informations sur vos droits et responsabilités lors de l'utilisation de PartLister.",
+    "termsLink": "Conditions générales"
+  },
+  "terms": {
+    "backToApp": "← Retour à l'application",
+    "lastUpdated": "Dernière mise à jour : juin 2025",
+    "title": "Conditions générales",
+    "intro": "Veuillez lire attentivement ces conditions générales avant d'utiliser PartLister. En créant un compte ou en utilisant notre service, vous acceptez d'être lié par ces conditions.",
+    "sections": {
+      "s1": {
+        "title": "1. Acceptation des conditions",
+        "body": "En accédant ou en utilisant PartLister, vous confirmez que vous avez lu, compris et accepté ces conditions générales. Si vous n'êtes pas d'accord, n'utilisez pas le service."
+      },
+      "s2": {
+        "title": "2. Description des services",
+        "body": "PartLister est une plate-forme basée sur le cloud qui aide les vendeurs à générer des listes de pièces automobiles. Les fonctionnalités incluent :",
+        "items": [
+          "Titres et descriptions générés par l'IA",
+          "Numéros de référence OEM et interchangeables",
+          "Informations sur la compatibilité des véhicules",
+          "Codes moteur",
+          "Informations sur les prix via les données du marché eBay",
+          "Exportations CSV",
+          "Autres fonctionnalités d'automatisation des annonces"
+        ]
+      },
+      "s3": {
+        "title": "3. Comptes",
+        "body": "Lors de la création d'un compte, vous acceptez de :",
+        "items": [
+          "Fournir des informations précises et complètes",
+          "Gardez les informations de connexion sécurisées et confidentielles",
+          "Être responsable de toutes les activités sous votre compte",
+          "Informez-nous immédiatement de toute utilisation non autorisée"
+        ],
+        "after": "Vous ne pouvez pas créer plusieurs comptes ou partager votre compte sans autorisation expresse."
+      },
+      "s4": {
+        "title": "4. Abonnements et facturation",
+        "items": [
+          "Les frais d'abonnement sont facturés à l'avance mensuellement ou annuellement",
+          "Les forfaits payants se renouvellent automatiquement, sauf annulation avant le renouvellement",
+          "Vous pouvez annuler à tout moment depuis les paramètres du compte",
+          "L'accès payant continue jusqu'à la fin de la période de facturation en cours",
+          "Aucun remboursement sauf lorsque la loi l'exige",
+          "Les prix peuvent changer avec un préavis raisonnable"
+        ]
+      },
+      "s5": {
+        "title": "5. Utilisation équitable",
+        "body": "Vous vous engagez à ne pas :",
+        "items": [
+          "Faire de l'ingénierie inverse, décompiler ou extraire le code source de PartLister",
+          "Grattez, copiez ou reproduisez la plateforme ou ses données en masse",
+          "Partagez votre compte ou vos informations d'identification sans autorisation",
+          "Utiliser PartLister de manière illégale, frauduleuse ou abusive",
+          "Abuser ou surcharger les API ou les systèmes automatisés",
+          "Contourner les limites d’abonnement ou les contrôles d’accès"
+        ]
+      },
+      "s6": {
+        "title": "6. Propriété intellectuelle",
+        "body": "Tous les logiciels, marques, conceptions et fonctionnalités PartLister restent sa propriété intellectuelle exclusive. Vous conservez la propriété des annonces et du contenu que vous créez et accordez à PartLister une licence limitée pour les traiter uniquement dans le but de fournir le service."
+      },
+      "s7": {
+        "title": "7. Précision et sources de données",
+        "body": "PartLister utilise des sources de données automobiles fiables et l'IA pour faciliter la création de listes. Cependant :",
+        "items": [
+          "Les données automobiles tierces peuvent être incomplètes ou inexactes",
+          "Vous êtes responsable de vérifier la compatibilité, les prix, les spécifications et les applications avant de les inscrire.",
+          "PartLister assiste la création et ne garantit pas l'exactitude"
+        ]
+      },
+      "s8": {
+        "title": "8. Limitation de responsabilité",
+        "body": "Dans toute la mesure permise par la loi, PartLister n'est pas responsable de :",
+        "items": [
+          "Annonces incorrectes ou inexactes",
+          "Ventes ou revenus perdus",
+          "Pénalités du marché, y compris les violations des règles d'eBay",
+          "Interruption d'activité",
+          "Pertes indirectes, consécutives ou spéciales"
+        ],
+        "after": "Lorsque la responsabilité ne peut être exclue, elle est limitée au montant payé pour la prestation dans les trois mois précédant le sinistre."
+      },
+      "s9": {
+        "title": "9. Résiliation",
+        "body": "Nous pouvons suspendre ou résilier votre compte sans préavis si vous ne respectez pas ces conditions, si vous commettez une fraude ou si vous utilisez mal la plateforme. Vous pouvez résilier votre compte en annulant votre abonnement et en contactant le support."
+      },
+      "s10": {
+        "title": "10. Modifications des conditions",
+        "body": "Nous pouvons mettre à jour ces conditions générales. Les modifications importantes seront notifiées par e-mail ou par notification dans l'application. L'utilisation continue après l'entrée en vigueur des modifications signifie que vous acceptez les conditions révisées."
+      },
+      "s11": {
+        "title": "11. Loi applicable",
+        "body": "Ces conditions générales sont régies par les lois d'Angleterre et du Pays de Galles. Les litiges sont soumis à la compétence exclusive des tribunaux d’Angleterre et du Pays de Galles."
+      }
+    },
+    "questionsFooter": "Des questions sur ces termes ? Contactez-nous au"
+  }
+}

@@ -3,19 +3,29 @@ import { Outlet } from "react-router-dom";
 import { SessionProvider } from "./context/SessionContext";
 import { ThemeProvider } from "./context/ThemeContext";
 import i18n from "./i18n/index.js";
-import { SITE_LANGUAGES } from "./i18n/marketplaces.js";
+import { getSiteLanguageByCode } from "./i18n/marketplaces.js";
+import { applyVisitorLocalisation } from "./useListingPreferences.js";
+
+function applyDocumentLocale(code) {
+  const lang = getSiteLanguageByCode(code);
+  document.documentElement.dir = lang?.dir || "ltr";
+  document.documentElement.lang = code;
+  i18n.changeLanguage(code);
+}
 
 function LocaleApplier() {
   useEffect(() => {
-    // Apply saved language and direction on first mount
-    try {
-      const prefs = JSON.parse(localStorage.getItem("jsk_listing_prefs_v1") || "{}");
-      const code = prefs.siteLanguage || "en";
-      i18n.changeLanguage(code);
-      const lang = SITE_LANGUAGES.find(l => l.code === code);
-      document.documentElement.dir  = lang?.dir  || "ltr";
-      document.documentElement.lang = code;
-    } catch {}
+    let cancelled = false;
+    (async () => {
+      try {
+        const prefs = await applyVisitorLocalisation();
+        if (cancelled) return;
+        applyDocumentLocale(prefs.siteLanguage || "en");
+      } catch {
+        if (!cancelled) applyDocumentLocale(i18n.language || "en");
+      }
+    })();
+    return () => { cancelled = true; };
   }, []);
   return null;
 }

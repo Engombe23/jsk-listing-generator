@@ -1,8 +1,37 @@
 // ─── Per-language string table ─────────────────────────────────────────────
-const MARKETPLACE_TO_LANG = {
+export const MARKETPLACE_TO_LANG = {
   "ebay-uk": "en", "ebay-de": "de", "ebay-fr": "fr",
   "ebay-it": "it", "ebay-es": "es", "ebay-ae": "ar", "ebay-tr": "tr",
 };
+
+// TecDoc LANGUAGES.LNG_ID values (autodoc-parts-catalog / TecDoc catalogue).
+export const MARKETPLACE_TO_TECDOC_LANG_ID = {
+  "ebay-uk": "4",  // English (GB)
+  "ebay-de": "1",  // Deutsch
+  "ebay-fr": "6",  // Français
+  "ebay-it": "7",  // Italiano
+  "ebay-es": "8",  // Español
+  "ebay-ae": "42", // عربي
+  "ebay-tr": "23", // Türkçe
+};
+
+export const MARKETPLACE_LANG_LABELS = {
+  en: "English",
+  de: "German",
+  fr: "French",
+  it: "Italian",
+  es: "Spanish",
+  ar: "Arabic",
+  tr: "Turkish",
+};
+
+export function getLanguageCodeForMarketplace(marketplaceId) {
+  return MARKETPLACE_TO_LANG[marketplaceId] || "en";
+}
+
+export function getTecdocLangId(marketplaceId) {
+  return MARKETPLACE_TO_TECDOC_LANG_ID[marketplaceId] || "4";
+}
 
 const STR = {
   en: {

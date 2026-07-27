@@ -1,7 +1,9 @@
 ﻿import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import "./auth.css";
 
 export default function AuthPageLayout({ title, subtitle, children }) {
+  const { t } = useTranslation();
   return (
     <div
       className="auth-page"
@@ -21,7 +23,7 @@ export default function AuthPageLayout({ title, subtitle, children }) {
         {children}
         <div className="text-center" style={{ marginTop: 24 }}>
           <Link to="/" className="auth-back-link">
-            ← Back to partlister.app
+            {t("auth.backToSite")}
           </Link>
         </div>
       </div>

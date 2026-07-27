@@ -1,8 +1,10 @@
+import { useTranslation } from "react-i18next";
 import { checkoutSearchParams } from "../../lib/plans";
 
-const STEPS = ["Plan", "Account", "Payment"];
-
 export default function CheckoutSteps({ activeStep }) {
+  const { t } = useTranslation();
+  const STEPS = [t("auth.checkoutPlan"), t("auth.checkoutAccount"), t("auth.checkoutPayment")];
+
   return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 28, flexWrap: "wrap" }}>
       {STEPS.map((label, i) => {

@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 const C = {
@@ -19,18 +20,26 @@ const C = {
 
 // ─── Placeholders ─────────────────────────────────────────────────────────────
 export const PLACEHOLDERS = [
-  { key: "{{TITLE}}",                   label: "Product Title",              color: "#6366f1" },
-  { key: "{{DESCRIPTION}}",             label: "Description",                color: "#0ea5e9" },
-  { key: "{{OE_NUMBERS}}",              label: "OE / OEM Numbers",           color: "#10b981" },
-  { key: "{{INTERCHANGEABLE_NUMBERS}}", label: "Interchangeable Numbers",    color: "#f59e0b" },
-  { key: "{{K_NUMBERS}}",              label: "K Numbers",                  color: "#8b5cf6" },
-  { key: "{{ITEM_SPECIFICS}}",          label: "Item Specifics",             color: "#06b6d4" },
-  { key: "{{COMPATIBILITY_TABLE}}",     label: "Compatibility Table",        color: "#3b82f6" },
-  { key: "{{FITMENT_WARNING}}",         label: "Fitment Warning",            color: "#f87171" },
-  { key: "{{WARRANTY}}",                label: "Warranty",                   color: "#34d399" },
-  { key: "{{SHIPPING}}",                label: "Shipping",                   color: "#a78bfa" },
-  { key: "{{RETURNS}}",                 label: "Returns Policy",             color: "#fb923c" },
+  { key: "{{TITLE}}",                   labelKey: "title",          color: "#6366f1" },
+  { key: "{{DESCRIPTION}}",             labelKey: "description",    color: "#0ea5e9" },
+  { key: "{{OE_NUMBERS}}",              labelKey: "oeNumbers",      color: "#10b981" },
+  { key: "{{INTERCHANGEABLE_NUMBERS}}", labelKey: "interchangeable", color: "#f59e0b" },
+  { key: "{{K_NUMBERS}}",               labelKey: "kNumbers",       color: "#8b5cf6" },
+  { key: "{{ITEM_SPECIFICS}}",          labelKey: "itemSpecifics",  color: "#06b6d4" },
+  { key: "{{COMPATIBILITY_TABLE}}",     labelKey: "compatibility",  color: "#3b82f6" },
+  { key: "{{FITMENT_WARNING}}",         labelKey: "fitmentWarning", color: "#f87171" },
+  { key: "{{WARRANTY}}",                labelKey: "warranty",       color: "#34d399" },
+  { key: "{{SHIPPING}}",                labelKey: "shipping",       color: "#a78bfa" },
+  { key: "{{RETURNS}}",                 labelKey: "returns",        color: "#fb923c" },
 ];
+
+function phLabel(labelKey, t) {
+  return t(`templates.ph.${labelKey}`);
+}
+function phLabelByToken(tokenKey, t) {
+  const p = PLACEHOLDERS.find(x => x.key === tokenKey);
+  return p ? phLabel(p.labelKey, t) : tokenKey;
+}
 
 // ─── Storage ──────────────────────────────────────────────────────────────────
 const LS_KEY = "jsk_listing_templates_v1";
@@ -38,7 +47,7 @@ function loadTemplates()      { try { return JSON.parse(localStorage.getItem(LS_
 function saveTemplates(list)  { try { localStorage.setItem(LS_KEY, JSON.stringify(list)); } catch {} }
 function makeId()             { return Math.random().toString(36).slice(2, 10); }
 
-function blankTemplate(name = "New Template") {
+function blankTemplate(name = "") {
   return { id: makeId(), name, isDefault: false, useRawHtml: true, rawHtml: "", sections: {} };
 }
 
@@ -49,7 +58,7 @@ function blankTemplate(name = "New Template") {
 const DETECTION_RULES = [
   {
     key:   "{{TITLE}}",
-    label: "Product Title",
+    labelKey: "title",
     confidence: "high",
     detect(html) {
       // H1/H2 tag, or centre-aligned large bold text
@@ -76,7 +85,7 @@ const DETECTION_RULES = [
 
   {
     key:   "{{OE_NUMBERS}}",
-    label: "OE / OEM Numbers",
+    labelKey: "oeNumbers",
     confidence: "high",
     detect(html) {
       // Heading that mentions OEM/OE/Replaces, followed by content until next heading or end
@@ -95,7 +104,7 @@ const DETECTION_RULES = [
 
   {
     key:   "{{INTERCHANGEABLE_NUMBERS}}",
-    label: "Interchangeable Numbers",
+    labelKey: "interchangeable",
     confidence: "high",
     detect(html) {
       const rx = /(<(?:b|strong|div|p|h[1-6])[^>]*>[^<]*(?:Interchang|Cross.?Ref|Also\s+Fits|Alternative|Aftermarket)[^<]*<\/(?:b|strong|div|p|h[1-6])>)([\s\S]{3,600}?)(?=<(?:b|strong|div|p|h[1-6])[^>]*>[^<]*(?:Item\s+Spec|Compat|OEM|K\s+Num|Warrant|Ship|Return|Warning)|$)/i;
@@ -113,7 +122,7 @@ const DETECTION_RULES = [
 
   {
     key:   "{{K_NUMBERS}}",
-    label: "K Numbers",
+    labelKey: "kNumbers",
     confidence: "medium",
     detect(html) {
       // Section heading mentioning K Numbers
@@ -138,7 +147,7 @@ const DETECTION_RULES = [
 
   {
     key:   "{{ITEM_SPECIFICS}}",
-    label: "Item Specifics",
+    labelKey: "itemSpecifics",
     confidence: "high",
     detect(html) {
       const rx = /(<(?:b|strong|div|p|h[1-6])[^>]*>[^<]*(?:Item\s+Spec|Specifications?|Technical\s+Data|Product\s+Data)[^<]*<\/(?:b|strong|div|p|h[1-6])>)([\s\S]{10,1200}?)(?=<(?:b|strong|div|p|h[1-6])[^>]*>[^<]*(?:Compat|OEM|Interch|K\s+Num|Warrant|Ship|Return|Warning)|$)/i;
@@ -156,17 +165,17 @@ const DETECTION_RULES = [
 
   {
     key:   "{{COMPATIBILITY_TABLE}}",
-    label: "Compatibility Table",
+    labelKey: "compatibility",
     confidence: "high",
     detect(html) {
       // Heading + a table block
       const rx = /(<(?:b|strong|div|p|h[1-6])[^>]*>[^<]*(?:Compatible|Fitment|Fits\s+Vehicles?|Vehicle\s+Compat)[^<]*<\/(?:b|strong|div|p|h[1-6])>)([\s\S]{20,}?<\/table>)/i;
       const m = html.match(rx);
-      if (m) return { heading: m[1], content: m[2], preview: "Compatibility table detected" };
+      if (m) return { heading: m[1], content: m[2], preview: "__COMPAT_TABLE__" };
       // Fallback: just a <table> with kW/HP/CC headers
       const rxTable = /(<table[\s\S]*?(?:kW|HP|cc|Year|Vehicle)[\s\S]*?<\/table>)/i;
       const m2 = html.match(rxTable);
-      if (m2) return { tableOnly: m2[1], preview: "Compatibility table detected" };
+      if (m2) return { tableOnly: m2[1], preview: "__COMPAT_TABLE__" };
       return null;
     },
     replace(html, match) {
@@ -178,7 +187,7 @@ const DETECTION_RULES = [
 
   {
     key:   "{{FITMENT_WARNING}}",
-    label: "Fitment Warning",
+    labelKey: "fitmentWarning",
     confidence: "medium",
     detect(html) {
       const rx = /(<(?:div|p|span|b|strong)[^>]*(?:background[^;:]*(?:#ff|red|warning|f[0-9a-f]{5})|border[^;:]*red)[^>]*>)([\s\S]{10,400}?)(<\/(?:div|p|span|b|strong)>)/i;
@@ -206,7 +215,7 @@ const DETECTION_RULES = [
 
   {
     key:   "{{WARRANTY}}",
-    label: "Warranty",
+    labelKey: "warranty",
     confidence: "medium",
     detect(html) {
       const rx = /(<(?:b|strong|div|p|h[1-6])[^>]*>[^<]*(?:Warrant|Guarantee)[^<]*<\/(?:b|strong|div|p|h[1-6])>)([\s\S]{5,400}?)(?=<(?:b|strong|div|p|h[1-6])|\s*$)/i;
@@ -227,7 +236,7 @@ const DETECTION_RULES = [
 
   {
     key:   "{{SHIPPING}}",
-    label: "Shipping",
+    labelKey: "shipping",
     confidence: "medium",
     detect(html) {
       const rx = /(<(?:b|strong|div|p|h[1-6])[^>]*>[^<]*(?:Shipping|Delivery|Dispatch)[^<]*<\/(?:b|strong|div|p|h[1-6])>)([\s\S]{5,400}?)(?=<(?:b|strong|div|p|h[1-6])|\s*$)/i;
@@ -247,7 +256,7 @@ const DETECTION_RULES = [
 
   {
     key:   "{{RETURNS}}",
-    label: "Returns Policy",
+    labelKey: "returns",
     confidence: "low",
     detect(html) {
       const rx = /(<(?:b|strong|div|p|h[1-6])[^>]*>[^<]*(?:Return|Refund)[^<]*<\/(?:b|strong|div|p|h[1-6])>)([\s\S]{5,400}?)(?=<(?:b|strong|div|p|h[1-6])|\s*$)/i;
@@ -278,9 +287,9 @@ function runDetection(rawHtml) {
         if (newHtml !== processedHtml) {
           detections.push({
             key:        rule.key,
-            label:      rule.label,
+            labelKey:   rule.labelKey,
             confidence: rule.confidence,
-            preview:    match.preview || "(detected)",
+            preview:    match.preview || "__DETECTED__",
             enabled:    true,
           });
           processedHtml = newHtml;
@@ -324,22 +333,24 @@ function Btn({ children, onClick, variant = "ghost", size = "sm", disabled, full
 }
 
 function ConfBadge({ level }) {
+  const { t } = useTranslation();
   const map = {
-    high:   { label: "High",   bg: "rgba(16,185,129,0.10)", color: "#10b981", bd: "rgba(16,185,129,0.25)" },
-    medium: { label: "Medium", bg: "rgba(245,158,11,0.10)", color: "#f59e0b", bd: "rgba(245,158,11,0.25)" },
-    low:    { label: "Low",    bg: "rgba(156,163,175,0.10)", color: "#9ca3af", bd: "rgba(156,163,175,0.25)" },
+    high:   { labelKey: "confHigh",   bg: "rgba(16,185,129,0.10)", color: "#10b981", bd: "rgba(16,185,129,0.25)" },
+    medium: { labelKey: "confMedium", bg: "rgba(245,158,11,0.10)", color: "#f59e0b", bd: "rgba(245,158,11,0.25)" },
+    low:    { labelKey: "confLow",    bg: "rgba(156,163,175,0.10)", color: "#9ca3af", bd: "rgba(156,163,175,0.25)" },
   };
   const m = map[level] || map.low;
   return (
     <span style={{ fontSize: 9, fontWeight: 800, textTransform: "uppercase", letterSpacing: 0.8,
       background: m.bg, color: m.color, border: `1px solid ${m.bd}`, borderRadius: 5, padding: "2px 7px" }}>
-      {m.label}
+      {t(`templates.${m.labelKey}`)}
     </span>
   );
 }
 
 // ─── Template Builder (3-panel inline) ───────────────────────────────────────
 function TemplateBuilder({ initial, onSave, onCancel }) {
+  const { t } = useTranslation();
   const [phase,         setPhase]         = useState(initial?.rawHtml ? "review" : "input"); // "input" | "review"
   const [originalHtml,  setOriginalHtml]  = useState(initial?.rawHtml || "");
   const [processedHtml, setProcessedHtml] = useState(initial?.rawHtml || "");
@@ -377,7 +388,7 @@ function TemplateBuilder({ initial, onSave, onCancel }) {
       if (!det) return prev;
       if (det.enabled) {
         // Disabling — revert placeholder to "(removed)" marker
-        return prev.replace(new RegExp(escapeRegex(key), "g"), `<span style="opacity:0.4;font-style:italic">[${det.label} removed]</span>`);
+        return prev.replace(new RegExp(escapeRegex(key), "g"), `<span style="opacity:0.4;font-style:italic">${t("templates.removedMarker", { label: phLabelByToken(key, t) })}</span>`);
       } else {
         // Re-enabling — re-run full detection and apply
         const { processedHtml: fresh } = runDetection(originalHtml);
@@ -405,19 +416,19 @@ function TemplateBuilder({ initial, onSave, onCancel }) {
       <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "0 0 16px", borderBottom: `1px solid ${C.border}`, marginBottom: 16, flexShrink: 0 }}>
         <button onClick={onCancel} style={{ display: "flex", alignItems: "center", gap: 6, background: "transparent", border: "none", cursor: "pointer", color: C.muted, fontSize: 13, fontWeight: 600, padding: "4px 0" }}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5"/><polyline points="12 19 5 12 12 5"/></svg>
-          Templates
+          {t("templates.breadcrumbs")}
         </button>
         <span style={{ color: C.border, fontSize: 16 }}>/</span>
         <input
           value={name}
           onChange={e => setName(e.target.value)}
-          placeholder="Template name…"
+          placeholder={t("templates.templateNamePlaceholder")}
           style={{ flex: 1, fontSize: 15, fontWeight: 700, color: C.text, background: "transparent", border: "none", outline: "none" }}
         />
         <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
-          {phase === "review" && <Btn variant="ghost" onClick={handleReset}>← Back to edit</Btn>}
+          {phase === "review" && <Btn variant="ghost" onClick={handleReset}>{t("templates.backToEdit")}</Btn>}
           <Btn variant="primary" onClick={handleSave} disabled={!name.trim() || !finalHtml.trim()}>
-            Save Template
+            {t("templates.saveTemplate")}
           </Btn>
         </div>
       </div>
@@ -425,11 +436,11 @@ function TemplateBuilder({ initial, onSave, onCancel }) {
       {/* ── Step indicator ── */}
       {phase === "input" && (
         <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 16, flexShrink: 0 }}>
-          <StepBadge n="1" active label="Paste HTML" />
+          <StepBadge n="1" active label={t("templates.stepPaste")} />
           <div style={{ flex: 1, height: 1, background: C.border }} />
-          <StepBadge n="2" label="Review placeholders" />
+          <StepBadge n="2" label={t("templates.stepReview")} />
           <div style={{ flex: 1, height: 1, background: C.border }} />
-          <StepBadge n="3" label="Save template" />
+          <StepBadge n="3" label={t("templates.stepSave")} />
         </div>
       )}
 
@@ -440,20 +451,20 @@ function TemplateBuilder({ initial, onSave, onCancel }) {
         <div style={{ display: "flex", flexDirection: "column", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, overflow: "hidden", boxShadow: "var(--shadow)" }}>
           <div style={{ padding: "12px 16px", borderBottom: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
             <div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: C.text }}>Paste Listing HTML</div>
-              <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>Paste your existing eBay listing HTML below.</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: C.text }}>{t("templates.pasteTitle")}</div>
+              <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>{t("templates.pasteSubtitle")}</div>
             </div>
             {originalHtml.trim() && (
               <button onClick={() => { setOriginalHtml(""); setProcessedHtml(""); setDetections([]); setPhase("input"); }}
                 style={{ background: "none", border: "none", color: C.muted, cursor: "pointer", fontSize: 12, fontWeight: 600 }}>
-                Clear
+                {t("templates.clear")}
               </button>
             )}
           </div>
           <textarea
             value={originalHtml}
             onChange={e => setOriginalHtml(e.target.value)}
-            placeholder={`<div class="listing">\n  <h2>Oil Pump – Jaguar XF 5.0 V8</h2>\n  <!-- Paste your full eBay HTML here -->\n</div>`}
+            placeholder={t("templates.htmlPlaceholder")}
             spellCheck={false}
             style={{
               flex: 1, padding: "14px 16px", background: "transparent", border: "none",
@@ -463,10 +474,10 @@ function TemplateBuilder({ initial, onSave, onCancel }) {
           />
           <div style={{ padding: "10px 16px", borderTop: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
             <span style={{ fontSize: 11, color: C.muted }}>
-              {originalHtml.length > 0 ? `${originalHtml.length.toLocaleString()} characters` : "No HTML pasted yet"}
+              {originalHtml.length > 0 ? t("templates.charCount", { n: originalHtml.length.toLocaleString() }) : t("templates.noHtmlYet")}
             </span>
             <Btn variant="primary" size="md" onClick={handleDetect} disabled={!originalHtml.trim() || detecting}>
-              {detecting ? "Detecting…" : "Auto-detect placeholders →"}
+              {detecting ? t("templates.detecting") : t("templates.autoDetect")}
             </Btn>
           </div>
         </div>
@@ -479,9 +490,9 @@ function TemplateBuilder({ initial, onSave, onCancel }) {
             <div style={{ padding: "14px 16px", borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: C.text }}>Detected Sections</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: C.text }}>{t("templates.detectedTitle")}</div>
                   <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>
-                    Toggle each section on or off to include it in the template.
+                    {t("templates.detectedSubtitle")}
                   </div>
                 </div>
                 {detections.length > 0 && (
@@ -497,9 +508,9 @@ function TemplateBuilder({ initial, onSave, onCancel }) {
 
               {detections.length === 0 ? (
                 <div style={{ padding: "24px 16px", textAlign: "center" }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: C.muted, marginBottom: 8 }}>Nothing detected automatically</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: C.muted, marginBottom: 8 }}>{t("templates.nothingDetected")}</div>
                   <div style={{ fontSize: 11, color: C.dim, lineHeight: 1.6 }}>
-                    Switch to <strong style={{ color: C.text }}>Template HTML</strong> on the right to manually insert placeholder tokens like <code style={{ fontFamily: "monospace", color: "var(--blue)" }}>{"{{OE_NUMBERS}}"}</code> where needed.
+                    {t("templates.nothingDetectedHint", { token: "{{OE_NUMBERS}}" })}
                   </div>
                 </div>
               ) : (
@@ -524,13 +535,11 @@ function TemplateBuilder({ initial, onSave, onCancel }) {
                     if (!missing.length) return null;
                     return (
                       <div style={{ marginTop: 6 }}>
-                        <div style={{ fontSize: 9, fontWeight: 700, color: C.dim, textTransform: "uppercase", letterSpacing: 1, margin: "6px 4px 6px" }}>
-                          Not detected
-                        </div>
+                        <div style={{ fontSize: 9, fontWeight: 700, color: C.dim, textTransform: "uppercase", letterSpacing: 1, margin: "6px 4px 6px" }}>{t("templates.notDetected")}</div>
                         {missing.map(p => (
                           <div key={p.key} style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 10px", borderRadius: 8, opacity: 0.45 }}>
                             <div style={{ width: 7, height: 7, borderRadius: "50%", background: C.border, flexShrink: 0 }} />
-                            <span style={{ flex: 1, fontSize: 12, color: C.muted }}>{p.label}</span>
+                            <span style={{ flex: 1, fontSize: 12, color: C.muted }}>{phLabel(p.labelKey, t)}</span>
                             <code style={{ fontSize: 9, color: C.dim, fontFamily: "ui-monospace, monospace" }}>{p.key}</code>
                           </div>
                         ))}
@@ -543,7 +552,7 @@ function TemplateBuilder({ initial, onSave, onCancel }) {
 
             {/* Footer note */}
             <div style={{ padding: "10px 14px", borderTop: `1px solid ${C.border}`, flexShrink: 0, fontSize: 11, color: C.muted, lineHeight: 1.5 }}>
-              Need to add something manually? Switch to <strong style={{ color: C.text, fontWeight: 600 }}>Template HTML</strong> on the right and paste a placeholder token directly.
+              {t("templates.manualHint")}
             </div>
           </div>
         )}
@@ -553,7 +562,7 @@ function TemplateBuilder({ initial, onSave, onCancel }) {
           <div style={{ display: "flex", flexDirection: "column", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, overflow: "hidden", boxShadow: "var(--shadow)" }}>
             {/* Preview tabs */}
             <div style={{ display: "flex", borderBottom: `1px solid ${C.border}`, padding: "0 4px", flexShrink: 0 }}>
-              {[["rendered", "Live Preview"], ["raw", "Template HTML"]].map(([k, l]) => (
+              {[["rendered", t("templates.livePreview")], ["raw", t("templates.templateHtml")]].map(([k, l]) => (
                 <button key={k} onClick={() => setPreviewTab(k)} style={{
                   padding: "11px 16px", border: "none", background: "transparent", cursor: "pointer",
                   fontSize: 12, fontWeight: previewTab === k ? 700 : 500,
@@ -566,10 +575,10 @@ function TemplateBuilder({ initial, onSave, onCancel }) {
 
             {previewTab === "rendered" ? (
               <iframe
-                srcDoc={finalHtml || "<p style='padding:24px;font-family:sans-serif;color:#64748b'>No HTML yet.</p>"}
+                srcDoc={finalHtml || `<p style='padding:24px;font-family:sans-serif;color:#64748b'>${t("templates.noHtmlPreview")}</p>`}
                 style={{ flex: 1, border: "none", background: "#fff" }}
                 sandbox="allow-same-origin"
-                title="Template Preview"
+                title={t("templates.previewTitle")}
               />
             ) : (
               <textarea
@@ -608,7 +617,13 @@ function StepBadge({ n, label, active }) {
 }
 
 function DetectionRow({ detection, color, onToggle }) {
+  const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
+  const preview = detection.preview === "__COMPAT_TABLE__"
+    ? t("templates.compatTableDetected")
+    : detection.preview === "__DETECTED__"
+      ? t("templates.detectedFallback")
+      : detection.preview;
   return (
     <div style={{
       border: `1px solid ${detection.enabled ? color + "28" : "var(--border)"}`,
@@ -620,7 +635,7 @@ function DetectionRow({ detection, color, onToggle }) {
       {/* Main row */}
       <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 12px" }}>
         <div style={{ width: 8, height: 8, borderRadius: "50%", background: detection.enabled ? color : "var(--border)", flexShrink: 0 }} />
-        <span style={{ flex: 1, fontSize: 12, fontWeight: 600, color: detection.enabled ? C.text : C.muted }}>{detection.label}</span>
+        <span style={{ flex: 1, fontSize: 12, fontWeight: 600, color: detection.enabled ? C.text : C.muted }}>{phLabel(detection.labelKey, t)}</span>
         <code style={{ fontSize: 9, fontFamily: "ui-monospace, monospace", color: detection.enabled ? color : C.dim, fontWeight: 700, flexShrink: 0 }}>{detection.key}</code>
         <ConfBadge level={detection.confidence} />
         {/* Toggle */}
@@ -638,10 +653,10 @@ function DetectionRow({ detection, color, onToggle }) {
         </button>
       </div>
       {/* Preview (expandable) */}
-      {detection.preview && detection.preview !== "Compatibility table detected" && (
+      {preview && (
         <button onClick={() => setExpanded(e => !e)} style={{ width: "100%", padding: "0 12px 8px 28px", background: "none", border: "none", cursor: "pointer", textAlign: "left" }}>
           <div style={{ fontSize: 10, color: C.dim, fontFamily: "ui-monospace, monospace", lineHeight: 1.4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: expanded ? "normal" : "nowrap" }}>
-            {detection.preview}
+            {preview}
           </div>
         </button>
       )}
@@ -650,6 +665,7 @@ function DetectionRow({ detection, color, onToggle }) {
 }
 
 function PlaceholderChip({ ph, used }) {
+  const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
   const copy = () => {
     navigator.clipboard.writeText(ph.key).then(() => {
@@ -668,22 +684,23 @@ function PlaceholderChip({ ph, used }) {
       onMouseLeave={e => e.currentTarget.style.background = used ? ph.color + "08" : "transparent"}
     >
       <div style={{ width: 7, height: 7, borderRadius: "50%", background: ph.color, flexShrink: 0, opacity: used ? 1 : 0.4 }} />
-      <span style={{ flex: 1, fontSize: 11, fontWeight: 600, color: used ? C.text : C.muted }}>{ph.label}</span>
-      {used && <span style={{ fontSize: 9, color: ph.color, fontWeight: 700 }}>✓ used</span>}
+      <span style={{ flex: 1, fontSize: 11, fontWeight: 600, color: used ? C.text : C.muted }}>{phLabel(ph.labelKey, t)}</span>
+      {used && <span style={{ fontSize: 9, color: ph.color, fontWeight: 700 }}>{t("templates.used")}</span>}
       <code style={{ fontSize: 9, color: copied ? "#10b981" : ph.color, fontFamily: "ui-monospace, monospace", opacity: 0.85 }}>
-        {copied ? "copied!" : ph.key}
+        {copied ? t("templates.copied") : ph.key}
       </code>
     </button>
   );
 }
 
 function PlaceholderReference() {
+  const { t } = useTranslation();
   return (
     <div style={{ display: "flex", flexDirection: "column", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, overflow: "hidden", boxShadow: "var(--shadow)" }}>
       <div style={{ padding: "12px 16px", borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: C.text }}>Available Placeholders</div>
+        <div style={{ fontSize: 13, fontWeight: 700, color: C.text }}>{t("templates.availablePlaceholders")}</div>
         <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>
-          After detection, these will be auto-inserted. You can also copy and paste them manually.
+          {t("templates.availablePlaceholdersHint")}
         </div>
       </div>
       <div style={{ flex: 1, overflowY: "auto", padding: "12px 14px" }}>
@@ -692,16 +709,16 @@ function PlaceholderReference() {
             <div key={p.key} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", borderRadius: 8, border: `1px solid ${C.border}`, background: "var(--bg-surface2)" }}>
               <div style={{ width: 8, height: 8, borderRadius: "50%", background: p.color, flexShrink: 0 }} />
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: C.text }}>{p.label}</div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: C.text }}>{phLabel(p.labelKey, t)}</div>
               </div>
               <code style={{ fontSize: 9, fontFamily: "ui-monospace, monospace", color: p.color, fontWeight: 700 }}>{p.key}</code>
             </div>
           ))}
         </div>
         <div style={{ marginTop: 16, padding: "12px 14px", background: "var(--blue-bg)", border: "1px solid var(--border-blue)", borderRadius: 9 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: "var(--blue)", marginBottom: 5 }}>How it works</div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "var(--blue)", marginBottom: 5 }}>{t("templates.howItWorks")}</div>
           <div style={{ fontSize: 11, color: C.muted, lineHeight: 1.6 }}>
-            Paste your HTML, click <strong style={{ color: C.text }}>Auto-detect</strong>, and Part Lister will scan for product-specific sections and replace them with placeholders. You can then review and adjust before saving.
+            {t("templates.howItWorksBody")}
           </div>
         </div>
       </div>
@@ -711,6 +728,7 @@ function PlaceholderReference() {
 
 // ─── Template card (list view) ────────────────────────────────────────────────
 function TemplateCard({ template, onEdit, onDuplicate, onDelete, onSetDefault }) {
+  const { t } = useTranslation();
   const [hov,      setHov]      = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
@@ -751,10 +769,10 @@ function TemplateCard({ template, onEdit, onDuplicate, onDelete, onSetDefault })
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
           <span style={{ fontSize: 13, fontWeight: 700, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {template.name || "Untitled"}
+            {template.name || t("templates.untitled")}
           </span>
           {template.isDefault && (
-            <span style={{ fontSize: 9, fontWeight: 800, color: "var(--blue)", background: "var(--blue-bg)", border: "1px solid var(--border-blue)", borderRadius: 4, padding: "2px 7px", letterSpacing: 0.6, textTransform: "uppercase" }}>Default</span>
+            <span style={{ fontSize: 9, fontWeight: 800, color: "var(--blue)", background: "var(--blue-bg)", border: "1px solid var(--border-blue)", borderRadius: 4, padding: "2px 7px", letterSpacing: 0.6, textTransform: "uppercase" }}>{t("templates.defaultBadge")}</span>
           )}
         </div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
@@ -763,19 +781,19 @@ function TemplateCard({ template, onEdit, onDuplicate, onDelete, onSetDefault })
               {p.key}
             </span>
           )) : (
-            <span style={{ fontSize: 11, color: C.muted }}>No placeholders detected</span>
+            <span style={{ fontSize: 11, color: C.muted }}>{t("templates.noPlaceholders")}</span>
           )}
-          {usedPhs.length > 6 && <span style={{ fontSize: 10, color: C.muted }}>+{usedPhs.length - 6} more</span>}
+          {usedPhs.length > 6 && <span style={{ fontSize: 10, color: C.muted }}>{t("templates.moreCount", { n: usedPhs.length - 6 })}</span>}
         </div>
       </div>
 
       {/* Actions */}
       <div style={{ display: "flex", gap: 6, alignItems: "center", flexShrink: 0 }}>
         {!template.isDefault && (
-          <ActionBtn onClick={onSetDefault} title="Set as default">Default</ActionBtn>
+          <ActionBtn onClick={onSetDefault} title={t("templates.setAsDefault")}>{t("templates.defaultBadge")}</ActionBtn>
         )}
-        <ActionBtn onClick={onEdit}>Edit</ActionBtn>
-        <ActionBtn onClick={onDuplicate}>Duplicate</ActionBtn>
+        <ActionBtn onClick={onEdit}>{t("templates.edit")}</ActionBtn>
+        <ActionBtn onClick={onDuplicate}>{t("templates.duplicate")}</ActionBtn>
 
         <div ref={menuRef} style={{ position: "relative" }}>
           <ActionBtn onClick={() => setMenuOpen(o => !o)}>⋯</ActionBtn>
@@ -786,11 +804,11 @@ function TemplateCard({ template, onEdit, onDuplicate, onDelete, onSetDefault })
               padding: 5, minWidth: 140, boxShadow: "0 8px 28px rgba(0,0,0,0.12)",
             }}>
               {!template.isDefault && (
-                <MenuBtn onClick={() => { onSetDefault(); setMenuOpen(false); }}>Set as Default</MenuBtn>
+                <MenuBtn onClick={() => { onSetDefault(); setMenuOpen(false); }}>{t("templates.setAsDefaultMenu")}</MenuBtn>
               )}
-              <MenuBtn onClick={() => { onDuplicate(); setMenuOpen(false); }}>Duplicate</MenuBtn>
+              <MenuBtn onClick={() => { onDuplicate(); setMenuOpen(false); }}>{t("templates.duplicate")}</MenuBtn>
               <div style={{ height: 1, background: C.border, margin: "4px 0" }} />
-              <MenuBtn danger onClick={() => { onDelete(); setMenuOpen(false); }}>Delete</MenuBtn>
+              <MenuBtn danger onClick={() => { onDelete(); setMenuOpen(false); }}>{t("templates.delete")}</MenuBtn>
             </div>
           )}
         </div>
@@ -829,6 +847,7 @@ function MenuBtn({ children, onClick, danger }) {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function ListingTemplates() {
+  const { t } = useTranslation();
   const [templates,  setTemplates]  = useState(loadTemplates);
   const [view,       setView]       = useState("list"); // "list" | "builder"
   const [editing,    setEditing]    = useState(null);   // template being edited
@@ -836,10 +855,10 @@ export default function ListingTemplates() {
   useEffect(() => {
     if (sessionStorage.getItem("jsk_templates_open_builder") === "1") {
       sessionStorage.removeItem("jsk_templates_open_builder");
-      setEditing(blankTemplate(""));
+      setEditing(blankTemplate(t("templates.newTemplateName")));
       setView("builder");
     }
-  }, []);
+  }, [t]);
 
   const persist = (list) => { setTemplates(list); saveTemplates(list); };
 
@@ -851,9 +870,9 @@ export default function ListingTemplates() {
   };
 
   const handleEdit      = (t)  => { setEditing(JSON.parse(JSON.stringify(t))); setView("builder"); };
-  const handleNew       = ()   => { setEditing(blankTemplate("")); setView("builder"); };
+  const handleNew       = ()   => { setEditing(blankTemplate(t("templates.newTemplateName"))); setView("builder"); };
   const handleDelete    = (id) => persist(templates.filter(x => x.id !== id));
-  const handleDuplicate = (t)  => persist([...templates, { ...JSON.parse(JSON.stringify(t)), id: makeId(), name: `${t.name} (Copy)`, isDefault: false }]);
+  const handleDuplicate = (template)  => persist([...templates, { ...JSON.parse(JSON.stringify(template)), id: makeId(), name: t("templates.copySuffix", { name: template.name }), isDefault: false }]);
   const handleSetDefault= (id) => persist(templates.map(t => ({ ...t, isDefault: t.id === id })));
   const handleCancel    = ()   => { setView("list"); setEditing(null); };
 
@@ -874,15 +893,17 @@ export default function ListingTemplates() {
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 13, color: C.muted }}>
-            {templates.length} template{templates.length !== 1 ? "s" : ""}
+            {templates.length === 1
+              ? t("templates.countOne", { n: templates.length })
+              : t("templates.countMany", { n: templates.length })}
             {templates.find(t => t.isDefault) && (
-              <span style={{ marginLeft: 8, color: "var(--blue)" }}>· default active</span>
+              <span style={{ marginLeft: 8, color: "var(--blue)" }}>{t("templates.defaultActive")}</span>
             )}
           </div>
         </div>
         <Btn variant="primary" onClick={handleNew}>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline", verticalAlign: "middle", marginRight: 6 }}><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          New Template
+          {t("templates.newTemplate")}
         </Btn>
       </div>
 
@@ -894,12 +915,12 @@ export default function ListingTemplates() {
               <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 8h10M7 12h10M7 16h6"/>
             </svg>
           </div>
-          <div style={{ fontSize: 15, fontWeight: 700, color: C.text, marginBottom: 6 }}>No templates yet</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: C.text, marginBottom: 6 }}>{t("templates.emptyTitle")}</div>
           <div style={{ fontSize: 13, color: C.muted, marginBottom: 24, lineHeight: 1.6, maxWidth: 340, margin: "0 auto 24px" }}>
-            Paste an existing eBay listing HTML and Part Lister will auto-generate a reusable template with placeholders.
+            {t("templates.emptyBody")}
           </div>
           <Btn variant="primary" size="md" onClick={handleNew}>
-            Create your first template
+            {t("templates.createFirst")}
           </Btn>
         </div>
       ) : (
@@ -920,14 +941,14 @@ export default function ListingTemplates() {
       {/* Placeholder reference */}
       <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, padding: "14px 18px", boxShadow: "var(--shadow)" }}>
         <div style={{ fontSize: 10, fontWeight: 800, color: C.dim, textTransform: "uppercase", letterSpacing: 1.2, marginBottom: 10 }}>
-          Available Placeholders
+          {t("templates.availablePlaceholders")}
         </div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
           {PLACEHOLDERS.map(p => (
             <div key={p.key} style={{ display: "flex", alignItems: "center", gap: 5, background: p.color + "0c", border: `1px solid ${p.color}25`, borderRadius: 6, padding: "3px 9px" }}>
               <div style={{ width: 6, height: 6, borderRadius: "50%", background: p.color, flexShrink: 0 }} />
               <code style={{ fontSize: 9, color: p.color, fontFamily: "ui-monospace, monospace", fontWeight: 700 }}>{p.key}</code>
-              <span style={{ fontSize: 9, color: C.muted }}>{p.label}</span>
+              <span style={{ fontSize: 9, color: C.muted }}>{phLabel(p.labelKey, t)}</span>
             </div>
           ))}
         </div>
