@@ -1,3 +1,5 @@
+import { useTranslation } from "react-i18next";
+
 const CARD_DARK = "#0d0f12";
 const BORDER = "rgba(255,255,255,0.07)";
 const TEXT = "#ffffff";
@@ -28,6 +30,7 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 }
 
 export default function TrustSection() {
+  const { t } = useTranslation();
   return (
     <div
       style={{
@@ -44,7 +47,7 @@ export default function TrustSection() {
           textAlign: "center",
         }}
       >
-        <SectionLabel>Why PartLister</SectionLabel>
+        <SectionLabel>{t("landing.trust.eyebrow")}</SectionLabel>
         <h2
           style={{
             fontSize: "clamp(28px, 4vw, 48px)",
@@ -55,7 +58,7 @@ export default function TrustSection() {
             color: TEXT,
           }}
         >
-          Designed for Real Parts Sellers
+          {t("landing.trust.title")}
         </h2>
         <p
           style={{
@@ -66,7 +69,7 @@ export default function TrustSection() {
             lineHeight: 1.75,
           }}
         >
-          Built around real workflows used by automotive eCommerce businesses.
+          {t("landing.trust.body1")}
         </p>
         <p
           style={{
@@ -77,8 +80,7 @@ export default function TrustSection() {
             lineHeight: 1.75,
           }}
         >
-          No fluff. No unnecessary features. Just tools that save time and make
-          money.
+          {t("landing.trust.body2")}
         </p>
       </section>
     </div>

@@ -1,15 +1,16 @@
 import { motion } from "motion/react";
+import { useTranslation } from "react-i18next";
 
-const PARTS = [
-  { src: "/parts3d/engine.png", label: "Engines" },
-  { src: "/parts3d/turbo.png", label: "Turbos" },
-  { src: "/parts3d/radiator.png", label: "Radiators" },
-  { src: "/parts3d/exhaust-v2.png", label: "Exhausts" },
-  { src: "/parts3d/shock.png", label: "Suspension" },
-  { src: "/parts3d/spark-plug.png", label: "Ignition" },
-  { src: "/parts3d/rim.png", label: "Wheels & Tyres" },
-  { src: "/parts3d/piston.png", label: "Engine Internals" },
-  { src: "/parts3d/tacho.png", label: "Instruments" },
+const PART_KEYS = [
+  { src: "/parts3d/engine.png", key: "engines" },
+  { src: "/parts3d/turbo.png", key: "turbos" },
+  { src: "/parts3d/radiator.png", key: "radiators" },
+  { src: "/parts3d/exhaust-v2.png", key: "exhausts" },
+  { src: "/parts3d/shock.png", key: "suspension" },
+  { src: "/parts3d/spark-plug.png", key: "ignition" },
+  { src: "/parts3d/rim.png", key: "wheels" },
+  { src: "/parts3d/piston.png", key: "internals" },
+  { src: "/parts3d/tacho.png", key: "instruments" },
 ];
 
 function Tile({ src, label }) {
@@ -30,7 +31,13 @@ function Tile({ src, label }) {
 }
 
 export default function PartsBand() {
-  const loop = [...PARTS, ...PARTS];
+  const { t } = useTranslation();
+  const parts = PART_KEYS.map((p) => ({
+    src: p.src,
+    label: t(`landing.partsBand.parts.${p.key}`),
+  }));
+  const loop = [...parts, ...parts];
+
   return (
     <section className="relative overflow-hidden border-y border-hair bg-wash py-16 sm:py-20">
       <div className="pointer-events-none absolute inset-0 -z-10">
@@ -40,14 +47,13 @@ export default function PartsBand() {
 
       <div className="mx-auto mb-11 w-full max-w-[1180px] px-6 text-center">
         <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-hair bg-white px-3.5 py-1.5 font-mono text-[0.72rem] font-medium uppercase tracking-[0.14em] text-primary shadow-soft">
-          Every category, covered
+          {t("landing.partsBand.eyebrow")}
         </div>
         <h2 className="font-display text-[clamp(1.75rem,3.4vw,2.6rem)] font-extrabold tracking-tightest text-navy text-balance">
-          From engines to electrics — list any part
+          {t("landing.partsBand.title")}
         </h2>
         <p className="mt-3 text-[1rem] leading-relaxed text-muted2 text-center">
-          If it has an OE, OEM or article number, PartLister can turn it into a
-          verified eBay listing.
+          {t("landing.partsBand.subtitle")}
         </p>
       </div>
 
