@@ -2,6 +2,12 @@
 // Persists user-level listing defaults to localStorage.
 // Import loadPreferences() anywhere to read current values.
 
+import {
+  detectBrowserLanguage,
+  detectBrowserLocalisation,
+  getMarketplaceById,
+} from "./i18n/marketplaces.js";
+
 const LS_KEY = "jsk_listing_prefs_v1";
 
 export const PREF_DEFAULTS = {
@@ -10,9 +16,9 @@ export const PREF_DEFAULTS = {
   warranty:           "",
   countryOfMfr:       "",
   condition:          "",
-  // Localisation
-  siteLanguage:       "en",       // controls app UI language (i18next)
-  targetMarketplace:  "ebay-uk",  // controls listing output language / format
+  // Localisation — static fallbacks; fresh installs seed from the browser
+  siteLanguage:       "en",
+  targetMarketplace:  "ebay-uk",
   currency:           "GBP",
   // Template defaults
   defaultTemplateId:  "",
@@ -20,19 +26,56 @@ export const PREF_DEFAULTS = {
   returnsText:        "",
 };
 
+/** Defaults for a new / reset prefs form: browser locale → marketplace + currency. */
+export function getDefaultPreferences() {
+  const loc = detectBrowserLocalisation();
+  return {
+    ...PREF_DEFAULTS,
+    siteLanguage: loc.siteLanguage,
+    targetMarketplace: loc.targetMarketplace,
+    currency: loc.currency,
+  };
+}
+
 export function loadPreferences() {
   try {
     const raw = localStorage.getItem(LS_KEY);
-    if (!raw) return { ...PREF_DEFAULTS };
-    const saved = JSON.parse(raw);
-    // Migrate legacy 'language' field → targetMarketplace
-    if (saved.language && !saved.targetMarketplace) {
-      saved.targetMarketplace = "ebay-uk";
-      delete saved.language;
+    if (!raw) {
+      const prefs = getDefaultPreferences();
+      savePreferences(prefs);
+      return prefs;
     }
-    return { ...PREF_DEFAULTS, ...saved };
+
+    const saved = JSON.parse(raw);
+    let dirty = false;
+
+    // Migrate legacy 'language' field → targetMarketplace (detect, don't force UK)
+    if (saved.language && !saved.targetMarketplace) {
+      saved.targetMarketplace = detectBrowserLocalisation().targetMarketplace;
+      delete saved.language;
+      dirty = true;
+    }
+
+    // Seed any localisation fields the user has never set.
+    if (!saved.siteLanguage) {
+      saved.siteLanguage = detectBrowserLanguage();
+      dirty = true;
+    }
+    if (!saved.targetMarketplace) {
+      saved.targetMarketplace = detectBrowserLocalisation().targetMarketplace;
+      dirty = true;
+    }
+    if (!saved.currency) {
+      const mp = getMarketplaceById(saved.targetMarketplace);
+      saved.currency = mp.currency;
+      dirty = true;
+    }
+
+    const merged = { ...PREF_DEFAULTS, ...saved };
+    if (dirty) savePreferences(merged);
+    return merged;
   } catch {
-    return { ...PREF_DEFAULTS };
+    return getDefaultPreferences();
   }
 }
 

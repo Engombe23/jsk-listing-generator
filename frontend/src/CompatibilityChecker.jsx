@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useSessionState } from "./useSessionState.js";
 import { trackEvent } from "./lib/analytics";
 import { useSession } from "./context/SessionContext.jsx";
+import { loadPreferences } from "./useListingPreferences.js";
 import {
   BUTTON_BASE,
   SMALL_BUTTON_STYLE,
@@ -47,15 +48,14 @@ function statusColors(status) {
 }
 
 // ─── Progress Steps ───────────────────────────────────────────────────────────
-const STEPS = [
-  "Looking up vehicle from registration...",
-  "Searching OEM number...",
-  "Fetching article details...",
-  "Checking compatibility...",
-  "Searching for compatible alternative..."
-];
-
-function ProgressList({ currentStep }) {
+function ProgressList({ currentStep, t }) {
+  const steps = [
+    t("compat.progress.vehicleLookup"),
+    t("compat.progress.oemSearch"),
+    t("compat.progress.articleDetails"),
+    t("compat.progress.compatibilityCheck"),
+    t("compat.progress.alternativeSearch")
+  ];
   return (
     <div
       style={{
@@ -67,9 +67,9 @@ function ProgressList({ currentStep }) {
       }}
     >
       <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 14, fontWeight: 700 }}>
-        Processing...
+        {t("compat.processing")}
       </div>
-      {STEPS.map((step, i) => {
+      {steps.map((step, i) => {
         const done = i < currentStep;
         const active = i === currentStep;
         return (
@@ -186,7 +186,7 @@ function StatusBadge({ icon, label, color }) {
 }
 
 // ─── Vehicle Card ─────────────────────────────────────────────────────────────
-function VehicleCard({ vehicle }) {
+function VehicleCard({ vehicle, t }) {
   if (!vehicle) return null;
   return (
     <div
@@ -199,7 +199,7 @@ function VehicleCard({ vehicle }) {
       }}
     >
       <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 10, fontWeight: 700 }}>
-        VEHICLE
+        {t("compat.vehicle").toUpperCase()}
       </div>
       {vehicle.vin ? (
         <div
@@ -222,18 +222,18 @@ function VehicleCard({ vehicle }) {
       <table style={{ width: "100%", borderCollapse: "collapse", marginTop: 8 }}>
         <tbody>
           {[
-            ["Make", vehicle.make],
-            ["Model", vehicle.model],
-            ["Variant", vehicle.variant],
-            ["Year", vehicle.year ? `${vehicle.year}${vehicle.yearTo ? ` – ${vehicle.yearTo}` : ""}` : null],
-            ["Fuel", vehicle.fuelType],
-            ["Engine Size", vehicle.engineSizeCc ? `${vehicle.engineSizeCc}cc` : vehicle.engineSizeLitres ? `${vehicle.engineSizeLitres}L` : null],
-            ["Engine Code", vehicle.engineCodes?.length ? vehicle.engineCodes.join(", ") : null],
-            ["Power", vehicle.powerKw || vehicle.powerPs
+            [t("compat.make"), vehicle.make],
+            [t("compat.model"), vehicle.model],
+            [t("compat.variant"), vehicle.variant],
+            [t("compat.year"), vehicle.year ? `${vehicle.year}${vehicle.yearTo ? ` – ${vehicle.yearTo}` : ""}` : null],
+            [t("compat.fuel"), vehicle.fuelType],
+            [t("compat.engineSize"), vehicle.engineSizeCc ? `${vehicle.engineSizeCc}cc` : vehicle.engineSizeLitres ? `${vehicle.engineSizeLitres}L` : null],
+            [t("compat.engineCode"), vehicle.engineCodes?.length ? vehicle.engineCodes.join(", ") : null],
+            [t("compat.power"), vehicle.powerKw || vehicle.powerPs
               ? [vehicle.powerKw ? `${vehicle.powerKw} kW` : null, vehicle.powerPs ? `${vehicle.powerPs} HP` : null].filter(Boolean).join(" / ")
               : null],
-            ["Cylinders", vehicle.cylinders ? String(vehicle.cylinders) : null],
-            ["TecDoc ID", vehicle.vehicleId]
+            [t("compat.cylinders"), vehicle.cylinders ? String(vehicle.cylinders) : null],
+            [t("compat.tecdocId"), vehicle.vehicleId]
           ]
             .filter(([, v]) => v)
             .map(([label, value]) => (
@@ -259,7 +259,7 @@ function VehicleCard({ vehicle }) {
 }
 
 // ─── Part Card ────────────────────────────────────────────────────────────────
-function PartCard({ part, strikethrough = false, recommended = false, onCopyArticle, onSendToListing }) {
+function PartCard({ part, strikethrough = false, recommended = false, onCopyArticle, onSendToListing, t }) {
   if (!part) return null;
   return (
     <div
@@ -292,11 +292,15 @@ function PartCard({ part, strikethrough = false, recommended = false, onCopyArti
             padding: "2px 10px"
           }}
         >
-          RECOMMENDED
+          {t("compat.recommended").toUpperCase()}
         </div>
       )}
       <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 10, fontWeight: 700 }}>
-        {strikethrough ? "CHECKED PART (NOT COMPATIBLE)" : recommended ? "COMPATIBLE PART" : "PART"}
+        {strikethrough
+          ? t("compat.checkedPartNotCompatible").toUpperCase()
+          : recommended
+          ? t("compat.compatiblePart").toUpperCase()
+          : t("compat.part").toUpperCase()}
       </div>
       {part.imageUrl ? (
         <div
@@ -313,7 +317,7 @@ function PartCard({ part, strikethrough = false, recommended = false, onCopyArti
         >
           <img
             src={part.imageUrl}
-            alt={part.productType || "Part"}
+            alt={part.productType || t("compat.part")}
             style={{ maxWidth: "100%", maxHeight: 140, objectFit: "contain" }}
           />
         </div>
@@ -321,9 +325,9 @@ function PartCard({ part, strikethrough = false, recommended = false, onCopyArti
       <table style={{ width: "100%", borderCollapse: "collapse" }}>
         <tbody>
           {[
-            ["Brand", part.brand],
-            ["Article No", part.articleNumber],
-            ["Product Type", part.productType]
+            [t("compat.brand"), part.brand],
+            [t("compat.articleNumber"), part.articleNumber],
+            [t("compat.productType"), part.productType]
           ]
             .filter(([, v]) => v)
             .map(([label, value]) => (
@@ -366,7 +370,7 @@ function PartCard({ part, strikethrough = false, recommended = false, onCopyArti
                   textDecoration: strikethrough ? "line-through" : "none"
                 }}
               >
-                OEM Refs
+                {t("compat.oemReferences")}
               </td>
               <td style={{ paddingBottom: 6 }}>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
@@ -400,7 +404,7 @@ function PartCard({ part, strikethrough = false, recommended = false, onCopyArti
               onClick={() => onCopyArticle(part.articleNumber)}
               style={{ ...SMALL_BUTTON_STYLE, fontSize: 12, padding: "8px 12px" }}
             >
-              Copy Article No
+              {t("compat.copyArticleNumber")}
             </button>
           )}
           {onSendToListing && (
@@ -415,7 +419,7 @@ function PartCard({ part, strikethrough = false, recommended = false, onCopyArti
                 padding: "8px 12px"
               }}
             >
-              Use in Listing Generator
+              {t("compat.useInListingGenerator")}
             </button>
           )}
         </div>
@@ -425,7 +429,7 @@ function PartCard({ part, strikethrough = false, recommended = false, onCopyArti
 }
 
 // ─── Result Section ───────────────────────────────────────────────────────────
-function ResultSection({ result, onSendToListing }) {
+function ResultSection({ result, onSendToListing, t }) {
   const [rawOpen, setRawOpen] = useState(false);
   const [overrideStatus, setOverrideStatus] = useState(null);
 
@@ -443,36 +447,43 @@ function ResultSection({ result, onSendToListing }) {
   const statusConfig = {
     compatible: {
       icon: "✓",
-      label: "Compatible",
-      message: "This part appears to be compatible with the entered vehicle."
+      label: t("compat.status.compatible"),
+      message: t("compat.status.compatibleMessage")
     },
     not_compatible: {
       icon: "✗",
-      label: "Not Compatible",
-      message: `Compatibility could not be confirmed.${
+      label: t("compat.status.notCompatible"),
+      message: t("compat.status.notCompatibleMessage", {
+        fields:
         result.matchReasoning?.conflictingFields?.length
-          ? ` Conflicting fields: ${result.matchReasoning.conflictingFields.join(", ")}.`
+          ? t("compat.status.conflictingFields", { fields: result.matchReasoning.conflictingFields.join(", ") })
           : ""
-      }`
+      })
     },
     alternative_found: {
       icon: "✓",
-      label: "Compatible Part Found",
-      message: "The checked part does not appear compatible, but a compatible part was found."
+      label: t("compat.status.alternativeFound"),
+      message: t("compat.status.alternativeFoundMessage")
     },
     manual_check_required: {
       icon: "⚠",
-      label: "Manual Check Required",
-      message: "Confidence is moderate. Please verify manually before listing."
+      label: t("compat.status.manualCheckRequired"),
+      message: t("compat.status.manualCheckRequiredMessage")
     },
     error: {
       icon: "!",
-      label: "Error",
-      message: "One or more steps failed."
+      label: t("compat.status.error"),
+      message: t("compat.status.errorMessage")
     }
   };
 
   const cfg = statusConfig[displayStatus] || statusConfig.error;
+  const confidenceLabels = {
+    "High Confidence — Compatible": t("compat.confidenceLabels.high"),
+    "Likely Compatible": t("compat.confidenceLabels.likely"),
+    "Possible Match — Manual Check Required": t("compat.confidenceLabels.manualCheck"),
+    "Unable to Confirm": t("compat.confidenceLabels.unableToConfirm")
+  };
 
   return (
     <div
@@ -492,7 +503,7 @@ function ResultSection({ result, onSendToListing }) {
 
       {result.confidenceScore > 0 && (
         <div style={{ marginBottom: 16 }}>
-          <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 6 }}>Confidence</div>
+          <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 6 }}>{t("compat.confidence")}</div>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <div
               style={{
@@ -516,7 +527,9 @@ function ResultSection({ result, onSendToListing }) {
             <span style={{ fontSize: 14, fontWeight: 700, color: accent, minWidth: 36 }}>
               {result.confidenceScore}
             </span>
-            <span style={{ fontSize: 13, color: "var(--text-muted)" }}>{result.confidenceLabel}</span>
+            <span style={{ fontSize: 13, color: "var(--text-muted)" }}>
+              {confidenceLabels[result.confidenceLabel] || result.confidenceLabel}
+            </span>
           </div>
         </div>
       )}
@@ -524,7 +537,7 @@ function ResultSection({ result, onSendToListing }) {
       {/* Match reasoning pills */}
       {result.matchReasoning?.matchedFields?.length > 0 && (
         <div style={{ marginBottom: 12 }}>
-          <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 6 }}>Matched Fields</div>
+          <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 6 }}>{t("compat.matchedFields")}</div>
           <div>
             {result.matchReasoning.matchedFields.map((f) => (
               <Pill key={f} label={f} color={GREEN} />
@@ -534,7 +547,7 @@ function ResultSection({ result, onSendToListing }) {
       )}
       {result.matchReasoning?.conflictingFields?.length > 0 && (
         <div style={{ marginBottom: 12 }}>
-          <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 6 }}>Conflicting Fields</div>
+          <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 6 }}>{t("compat.conflictingFields")}</div>
           <div>
             {result.matchReasoning.conflictingFields.map((f) => (
               <Pill key={f} label={f} color={RED} />
@@ -544,7 +557,7 @@ function ResultSection({ result, onSendToListing }) {
       )}
       {result.matchReasoning?.notes?.length > 0 && (
         <div style={{ marginBottom: 16 }}>
-          <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 6 }}>Notes</div>
+          <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 6 }}>{t("compat.notes")}</div>
           {result.matchReasoning.notes.map((n, i) => (
             <div key={i} style={{ fontSize: 13, color: "var(--text)", marginBottom: 4 }}>
               • {n}
@@ -556,25 +569,26 @@ function ResultSection({ result, onSendToListing }) {
       {/* Vehicle + Part cards */}
       {displayStatus === "compatible" && (
         <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginTop: 16 }}>
-          <VehicleCard vehicle={result.vehicle} />
-          <PartCard part={result.checkedPart} />
+          <VehicleCard vehicle={result.vehicle} t={t} />
+          <PartCard part={result.checkedPart} t={t} />
         </div>
       )}
 
       {displayStatus === "not_compatible" && (
         <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginTop: 16 }}>
-          <VehicleCard vehicle={result.vehicle} />
+          <VehicleCard vehicle={result.vehicle} t={t} />
         </div>
       )}
 
       {displayStatus === "alternative_found" && (
         <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginTop: 16 }}>
-          <VehicleCard vehicle={result.vehicle} />
+          <VehicleCard vehicle={result.vehicle} t={t} />
           <PartCard
             part={result.alternativePart}
             recommended
             onCopyArticle={copyText}
             onSendToListing={onSendToListing}
+            t={t}
           />
         </div>
       )}
@@ -582,7 +596,7 @@ function ResultSection({ result, onSendToListing }) {
       {/* Error list */}
       {result.errors?.length > 0 && (
         <div style={{ marginTop: 16 }}>
-          <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 8 }}>Errors by Step</div>
+          <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 8 }}>{t("compat.errorsByStep")}</div>
           {result.errors.map((e, i) => (
             <div
               key={i}
@@ -605,12 +619,12 @@ function ResultSection({ result, onSendToListing }) {
       {/* Manual overrides */}
       <div style={{ display: "flex", gap: 8, marginTop: 20, flexWrap: "wrap" }}>
         <div style={{ fontSize: 13, color: "var(--text-muted)", alignSelf: "center", marginRight: 4 }}>
-          Override:
+          {t("compat.override")}:
         </div>
         {[
-          { key: "compatible", label: "Mark Compatible", color: GREEN },
-          { key: "not_compatible", label: "Mark Not Compatible", color: RED },
-          { key: "manual_check_required", label: "Needs Manual Check", color: YELLOW }
+          { key: "compatible", label: t("compat.markCompatible"), color: GREEN },
+          { key: "not_compatible", label: t("compat.markNotCompatible"), color: RED },
+          { key: "manual_check_required", label: t("compat.needsManualCheck"), color: YELLOW }
         ].map(({ key, label, color }) => (
           <button
             key={key}
@@ -638,7 +652,7 @@ function ResultSection({ result, onSendToListing }) {
               padding: "8px 12px"
             }}
           >
-            Clear Override
+            {t("compat.clearOverride")}
           </button>
         )}
       </div>
@@ -656,7 +670,7 @@ function ResultSection({ result, onSendToListing }) {
             padding: "8px 14px"
           }}
         >
-          {rawOpen ? "Hide" : "View"} Raw Data
+          {rawOpen ? t("compat.hide") : t("compat.view")} {t("compat.rawData")}
         </button>
         {rawOpen && (
           <div
@@ -689,7 +703,7 @@ function ResultSection({ result, onSendToListing }) {
 }
 
 // ─── Vehicle Selection Step ───────────────────────────────────────────────────
-function VehicleSelectionStep({ options, onSelect, onBack }) {
+function VehicleSelectionStep({ options, onSelect, onBack, t }) {
   const [hoveredId, setHoveredId] = useState(null);
 
   return (
@@ -707,7 +721,7 @@ function VehicleSelectionStep({ options, onSelect, onBack }) {
               <path d="M5 17H3a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h13l4 4v4a2 2 0 0 1-2 2h-1"/>
               <circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/>
             </svg>
-            <div style={{ fontSize: 18, fontWeight: 800, color: "var(--text)" }}>Select Your Vehicle</div>
+            <div style={{ fontSize: 18, fontWeight: 800, color: "var(--text)" }}>{t("compat.selectVehicle")}</div>
           </div>
           <button
             onClick={onBack}
@@ -717,11 +731,11 @@ function VehicleSelectionStep({ options, onSelect, onBack }) {
               fontSize: 12, padding: "7px 14px"
             }}
           >
-            ← Start Over
+            ← {t("compat.startOver")}
           </button>
         </div>
         <div style={{ fontSize: 14, color: "var(--text-muted)", marginBottom: 20 }}>
-          Multiple vehicles match this VIN. Select the correct one to continue the compatibility check.
+          {t("compat.multipleVehiclesMessage")}
         </div>
 
         {/* Vehicle option grid */}
@@ -734,18 +748,18 @@ function VehicleSelectionStep({ options, onSelect, onBack }) {
             const id = v.vehicleId || String(i);
             const isHovered = hoveredId === id;
             const yearStr = v.year
-              ? `${v.year}${v.yearTo ? ` – ${v.yearTo}` : " onwards"}`
+              ? `${v.year}${v.yearTo ? ` – ${v.yearTo}` : ` ${t("compat.onwards")}`}`
               : null;
             const powerStr = v.powerKw || v.powerPs
               ? [v.powerKw ? `${v.powerKw} kW` : null, v.powerPs ? `${v.powerPs} HP` : null].filter(Boolean).join(" / ")
               : null;
             const rows = [
-              ["Year",    yearStr],
-              ["Fuel",    v.fuelType],
-              ["Engine",  v.engineSizeCc ? `${v.engineSizeCc}cc` : v.engineSizeLitres ? `${v.engineSizeLitres}L` : null],
-              ["Power",   powerStr],
-              ["Engine Code", v.engineCodes?.length ? v.engineCodes.join(", ") : null],
-              ["TecDoc ID",   v.vehicleId]
+              [t("compat.year"), yearStr],
+              [t("compat.fuel"), v.fuelType],
+              [t("compat.engine"), v.engineSizeCc ? `${v.engineSizeCc}cc` : v.engineSizeLitres ? `${v.engineSizeLitres}L` : null],
+              [t("compat.power"), powerStr],
+              [t("compat.engineCode"), v.engineCodes?.length ? v.engineCodes.join(", ") : null],
+              [t("compat.tecdocId"), v.vehicleId]
             ].filter(([, val]) => val);
 
             return (
@@ -788,7 +802,7 @@ function VehicleSelectionStep({ options, onSelect, onBack }) {
                     marginTop: 10, fontSize: 12, fontWeight: 700,
                     color: "var(--blue)", display: "flex", alignItems: "center", gap: 5
                   }}>
-                    Select this vehicle →
+                    {t("compat.selectThisVehicle")} →
                   </div>
                 )}
               </button>
@@ -824,13 +838,14 @@ export default function CompatibilityChecker({ onSendToListing }) {
   const stepTimerRef = useRef(null);
 
   const canCheck = oemNumber.trim().length > 0 && vin.trim().length > 0;
+  const progressStepCount = 5;
 
   const startProgressSimulation = () => {
     setCurrentStep(0);
     let step = 0;
     stepTimerRef.current = setInterval(() => {
       step += 1;
-      if (step < STEPS.length) {
+      if (step < progressStepCount) {
         setCurrentStep(step);
       }
     }, 2000);
@@ -871,7 +886,8 @@ export default function CompatibilityChecker({ onSendToListing }) {
           year: year.trim() || undefined,
           fuelType: fuelType.trim() || undefined,
           engineSize: engineSize.trim() || undefined,
-          selectedVehicleId: selectedVehicleId || undefined
+          selectedVehicleId: selectedVehicleId || undefined,
+          targetMarketplace: loadPreferences().targetMarketplace || "ebay-uk"
         })
       });
 
@@ -886,7 +902,7 @@ export default function CompatibilityChecker({ onSendToListing }) {
         if (res.status === 403 && data.error === "feature_restricted") {
           throw new Error(data.message);
         }
-        throw new Error(data.message || data.error || "Compatibility check failed");
+        throw new Error(data.message || data.error || t("compat.checkFailed"));
       }
 
       setResult(data);
@@ -901,7 +917,7 @@ export default function CompatibilityChecker({ onSendToListing }) {
       trackEvent("compat_check_failed", { oem_number: oemNumber.trim(), error: String(err.message || err), source: "compatibility_checker" });
     } finally {
       stopProgressSimulation();
-      setCurrentStep(STEPS.length);
+      setCurrentStep(progressStepCount);
       setLoading(false);
     }
   };
@@ -942,7 +958,7 @@ export default function CompatibilityChecker({ onSendToListing }) {
             boxShadow: "0 0 20px rgba(19,93,255,0.14)"
           }}
         >
-          <strong>Error:</strong> {error}
+          <strong>{t("compat.status.error")}:</strong> {error}
         </div>
       )}
 
@@ -956,19 +972,19 @@ export default function CompatibilityChecker({ onSendToListing }) {
           }}
         >
           <div>
-            <FieldLabel>VIN Number</FieldLabel>
+            <FieldLabel>{t("compat.vinNumber")}</FieldLabel>
             <TextInput
               value={vin}
               onChange={(e) => setVin(e.target.value.toUpperCase())}
-              placeholder="e.g. WDBFA68F42F202731"
+              placeholder={t("compat.vinPlaceholder")}
             />
           </div>
           <div>
-            <FieldLabel>OEM / Part Number</FieldLabel>
+            <FieldLabel>{t("compat.oemPartNumber")}</FieldLabel>
             <TextInput
               value={oemNumber}
               onChange={(e) => setOemNumber(e.target.value)}
-              placeholder="e.g. 038198119A"
+              placeholder={t("compat.oemPartNumberPlaceholder")}
             />
           </div>
           <button
@@ -990,13 +1006,13 @@ export default function CompatibilityChecker({ onSendToListing }) {
             }}
           >
             {[
-              ["Part Type", partType, setPartType, "e.g. Timing Belt Kit"],
-              ["Engine Code", engineCode, setEngineCode, "e.g. BKD"],
-              ["Make", make, setMake, "e.g. VW"],
-              ["Model", model, setModel, "e.g. Golf"],
-              ["Year", year, setYear, "e.g. 2008"],
-              ["Fuel Type", fuelType, setFuelType, "e.g. diesel"],
-              ["Engine Size", engineSize, setEngineSize, "e.g. 2.0"]
+              [t("compat.partType"), partType, setPartType, t("compat.partTypePlaceholder")],
+              [t("compat.engineCode"), engineCode, setEngineCode, t("compat.engineCodePlaceholder")],
+              [t("compat.make"), make, setMake, t("compat.makePlaceholder")],
+              [t("compat.model"), model, setModel, t("compat.modelPlaceholder")],
+              [t("compat.year"), year, setYear, t("compat.yearPlaceholder")],
+              [t("compat.fuelType"), fuelType, setFuelType, t("compat.fuelTypePlaceholder")],
+              [t("compat.engineSize"), engineSize, setEngineSize, t("compat.engineSizePlaceholder")]
             ].map(([label, val, setter, placeholder]) => (
               <div key={label}>
                 <FieldLabel>{label}</FieldLabel>
@@ -1012,7 +1028,7 @@ export default function CompatibilityChecker({ onSendToListing }) {
       </Card>
 
       {/* Progress */}
-      {loading && <ProgressList currentStep={currentStep} />}
+      {loading && <ProgressList currentStep={currentStep} t={t} />}
 
       {/* Vehicle selection — shown when VIN returns multiple matches */}
       {vehicleOptions && !loading && (
@@ -1020,12 +1036,13 @@ export default function CompatibilityChecker({ onSendToListing }) {
           options={vehicleOptions}
           onSelect={handleVehicleSelect}
           onBack={handleReset}
+          t={t}
         />
       )}
 
       {/* Result */}
       {result && !loading && (
-        <ResultSection result={result} onSendToListing={onSendToListing} />
+        <ResultSection result={result} onSendToListing={onSendToListing} t={t} />
       )}
     </>
   );

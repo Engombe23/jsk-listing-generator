@@ -2,17 +2,18 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import ListingTemplates from "./ListingTemplates.jsx";
-import { loadPreferences, savePreferences, PREF_DEFAULTS } from "./useListingPreferences.js";
+import { loadPreferences, savePreferences, getDefaultPreferences } from "./useListingPreferences.js";
 import { useSession } from "./context/SessionContext";
 import { useTheme } from "./context/ThemeContext";
 import { supabase } from "./lib/supabaseClient";
 import { formatPlanLabel, openBillingPortal } from "./lib/billing";
-import { getBillingLabel, getDisplayPrice, getNextPlan, getPlan } from "./lib/plans";
+import { getDisplayPrice, getNextPlan, getPlan } from "./lib/plans";
 import i18n from "./i18n/index.js";
-import { MARKETPLACES, SITE_LANGUAGES } from "./i18n/marketplaces.js";
+import { MARKETPLACES, SITE_LANGUAGES, getMarketplaceById } from "./i18n/marketplaces.js";
 
 function useAuthUser() {
   const { session } = useSession();
+  const { t, i18n } = useTranslation();
   return useMemo(() => {
     const user = session?.user;
     const email = user?.email ?? "";
@@ -20,7 +21,7 @@ function useAuthUser() {
     const displayName =
       meta.full_name ||
       meta.name ||
-      (email ? email.split("@")[0].replace(/[._-]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()) : "User");
+      (email ? email.split("@")[0].replace(/[._-]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()) : t("account.userFallback"));
     const initials = displayName
       .split(/\s+/)
       .filter(Boolean)
@@ -28,10 +29,21 @@ function useAuthUser() {
       .map((w) => w[0]?.toUpperCase() ?? "")
       .join("") || (email[0]?.toUpperCase() ?? "?");
     const memberSince = user?.created_at
-      ? new Date(user.created_at).toLocaleDateString("en-GB", { month: "long", year: "numeric" })
+      ? new Date(user.created_at).toLocaleDateString(i18n.language || "en", { month: "long", year: "numeric" })
       : "—";
     return { user, email, displayName, initials, memberSince };
-  }, [session]);
+  }, [session, t, i18n.language]);
+}
+
+function planStatusLabel(status, isActive, t) {
+  if (isActive) return t("account.statusActive");
+  if (status === "past_due") return t("account.statusPastDue");
+  if (status) return String(status).replace(/_/g, " ");
+  return t("account.statusPending");
+}
+
+function billingIntervalLabel(interval, t) {
+  return interval === "annual" ? t("account.billedAnnually") : t("account.billedMonthly");
 }
 
 // ─── Colour tokens ────────────────────────────────────────────────────────────
@@ -133,12 +145,15 @@ function ActionRow({ label, note, action }) {
 }
 
 function UsageBar({ used, total }) {
+  const { t } = useTranslation();
   const pct = Math.min(100, (used / total) * 100);
   const color = pct > 85 ? C.red : pct > 65 ? C.amber : C.blue;
   return (
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5 }}>
-        <span style={{ fontSize: 11, color: C.sub }}>{used.toLocaleString()} / {total.toLocaleString()} listings</span>
+        <span style={{ fontSize: 11, color: C.sub }}>
+          {t("account.listingsUsedOf", { used: used.toLocaleString(), total: total.toLocaleString() })}
+        </span>
         <span style={{ fontSize: 11, color, fontWeight: 700 }}>{pct.toFixed(0)}%</span>
       </div>
       <div style={{ height: 4, background: "var(--border)", borderRadius: 99, overflow: "hidden" }}>
@@ -151,13 +166,13 @@ function UsageBar({ used, total }) {
 // ─── Account page helpers ─────────────────────────────────────────────────────
 const TIME_SAVED_PER_LISTING = 10; // minutes
 
-function formatTimeSaved(minutes) {
-  if (minutes === 0) return "0m";
+function formatTimeSaved(minutes, t) {
+  if (minutes === 0) return t("account.timeSavedZero");
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
-  if (h === 0) return `${m}m`;
-  if (m === 0) return `${h}h`;
-  return `${h}h ${m}m`;
+  if (h === 0) return t("account.timeSavedMinutes", { m });
+  if (m === 0) return t("account.timeSavedHours", { h });
+  return t("account.timeSavedHoursMinutes", { h, m });
 }
 
 function Toggle({ checked, onChange }) {
@@ -195,6 +210,7 @@ function loadEmailPrefs() {
 }
 
 function AccountPage({ onOpenBilling }) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { email, displayName, memberSince, user } = useAuthUser();
   const { plan, listingLimit, listingsUsed, profile, refreshPlan } = useSession();
@@ -253,14 +269,14 @@ function AccountPage({ onOpenBilling }) {
       const { url } = await openBillingPortal(profile.stripe_customer_id);
       if (url) window.location.href = url;
     } catch (err) {
-      setPortalError(err instanceof Error ? err.message : "Could not open billing portal");
+      setPortalError(err instanceof Error ? err.message : t("account.portalError"));
     } finally {
       setPortalLoading(false);
     }
   };
 
   const handleDeleteAccount = async () => {
-    if (delInput !== "DELETE") return;
+    if (delInput !== t("account.deleteConfirmWord")) return;
     await supabase.auth.signOut();
     navigate("/auth/login", { replace: true });
   };
@@ -279,47 +295,49 @@ function AccountPage({ onOpenBilling }) {
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
 
         <Card>
-          <SL>Profile</SL>
+          <SL>{t("account.profile")}</SL>
           <div style={{ marginBottom: 18 }}>
             <div style={{ fontSize: 18, fontWeight: 800, color: C.text, lineHeight: 1.2, marginBottom: 4 }}>{displayName}</div>
             <div style={{ fontSize: 11, color: C.muted }}>{email || "—"}</div>
           </div>
-          <InfoRow label="Member since" value={memberSince} />
+          <InfoRow label={t("account.memberSince")} value={memberSince} />
           <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "8px 0" }}>
-            <span style={{ fontSize: 11, color: C.muted, width: 140, flexShrink: 0 }}>Current plan</span>
+            <span style={{ fontSize: 11, color: C.muted, width: 140, flexShrink: 0 }}>{t("account.currentPlan")}</span>
             <Badge color={plan === "free" ? C.muted : C.blue}>{formatPlanLabel(plan)}</Badge>
           </div>
         </Card>
 
         <Card>
-          <SL>Subscription</SL>
+          <SL>{t("account.subscription")}</SL>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
             <span style={{ fontSize: 16, fontWeight: 800, color: C.text }}>
-              {plan === "free" ? "Free Plan" : `${planInfo?.name || formatPlanLabel(plan)} Plan`}
+              {plan === "free"
+                ? t("account.freePlan")
+                : t("account.namedPlan", { name: planInfo?.name || formatPlanLabel(plan) })}
             </span>
             {plan !== "free" && (
               <Badge color={isActive ? C.green : status === "past_due" ? C.amber : C.red}>
-                {isActive ? "Active" : status ? status.replace(/_/g, " ") : "Pending"}
+                {planStatusLabel(status, isActive, t)}
               </Badge>
             )}
           </div>
           {plan !== "free" && displayPrice && (
-            <InfoRow label="Price" value={`${displayPrice}/mo · ${getBillingLabel(interval)}`} />
+            <InfoRow label={t("account.price")} value={t("account.pricePerMonth", { price: displayPrice, billing: billingIntervalLabel(interval, t) })} />
           )}
           {plan === "free" && (
             <div style={{ fontSize: 11, color: C.muted, lineHeight: 1.6, marginBottom: 4 }}>
-              Upgrade to unlock more listings, compatibility checks, and advanced features.
+              {t("account.freeUpgradeHint")}
             </div>
           )}
           {portalError && <div style={{ fontSize: 11, color: C.red, marginTop: 10 }}>{portalError}</div>}
           <div style={{ marginTop: 18 }}>
             {profile?.stripe_customer_id ? (
               <Btn variant="primary" onClick={openPortal} disabled={portalLoading}>
-                {portalLoading ? "Opening…" : "Manage Billing →"}
+                {portalLoading ? t("account.opening") : t("account.manageBilling")}
               </Btn>
             ) : (
               <Btn variant="primary" onClick={() => navigate("/pricing")}>
-                {plan === "free" ? "Choose a Plan →" : "View Plans →"}
+                {plan === "free" ? t("account.choosePlan") : t("account.viewPlans")}
               </Btn>
             )}
           </div>
@@ -330,59 +348,59 @@ function AccountPage({ onOpenBilling }) {
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
 
         <Card>
-          <SL>Lifetime Statistics</SL>
+          <SL>{t("account.usageStats")}</SL>
           <div style={{ textAlign: "center", padding: "14px 0 18px" }}>
             <div style={{ fontSize: 42, fontWeight: 900, color: C.text, lineHeight: 1, letterSpacing: -1.5, fontVariantNumeric: "tabular-nums" }}>
-              {formatTimeSaved(animMinutes)}
+              {formatTimeSaved(animMinutes, t)}
             </div>
             <div style={{ fontSize: 10, color: C.muted, marginTop: 7, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1.4 }}>
-              Time Saved
+              {t("account.timeSaved")}
             </div>
           </div>
           <Divider />
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, paddingTop: 6 }}>
-            <StatBox value={listingsUsed.toLocaleString()} label="Listings" />
-            <StatBox value={compatChecks.toLocaleString()} label="Checks" />
-            <StatBox value={savedTemplates.toLocaleString()} label="Templates" />
+            <StatBox value={listingsUsed.toLocaleString()} label={t("account.statListings")} />
+            <StatBox value={compatChecks.toLocaleString()} label={t("account.statChecks")} />
+            <StatBox value={savedTemplates.toLocaleString()} label={t("account.statTemplates")} />
           </div>
         </Card>
 
         <Card>
-          <SL>Security</SL>
+          <SL>{t("account.security")}</SL>
           <ActionRow
-            label="Password"
-            note="Update your account password"
+            label={t("account.password")}
+            note={t("account.passwordNote")}
             action={
               <Link to="/auth/update-password" style={{ textDecoration: "none" }}>
-                <Btn>Change →</Btn>
+                <Btn>{t("account.changePassword")}</Btn>
               </Link>
             }
           />
           <div style={{ borderBottom: "none" }}>
             {!delConfirm ? (
               <ActionRow
-                label="Delete Account"
-                note="Permanently remove your account and all data"
-                action={<Btn variant="danger" onClick={() => setDelConfirm(true)}>Delete →</Btn>}
+                label={t("account.deleteAccount")}
+                note={t("account.deleteAccountNote")}
+                action={<Btn variant="danger" onClick={() => setDelConfirm(true)}>{t("account.deleteAction")}</Btn>}
               />
             ) : (
               <div style={{ padding: "12px 0" }}>
                 <div style={{ fontSize: 11, color: C.red, fontWeight: 600, marginBottom: 8 }}>
-                  Type DELETE to confirm
+                  {t("account.deleteConfirmPrompt")}
                 </div>
                 <div style={{ display: "flex", gap: 7, alignItems: "center" }}>
                   <input
                     value={delInput}
                     onChange={e => setDelInput(e.target.value)}
-                    placeholder="DELETE"
+                    placeholder={t("account.deleteConfirmWord")}
                     style={{
                       flex: 1, padding: "6px 10px", fontSize: 11,
                       background: "var(--bg-surface3)", border: `1px solid ${C.red}`,
                       borderRadius: 7, color: C.text, outline: "none", fontFamily: "inherit",
                     }}
                   />
-                  <Btn variant="danger" onClick={handleDeleteAccount} disabled={delInput !== "DELETE"}>Confirm</Btn>
-                  <Btn onClick={() => { setDelConfirm(false); setDelInput(""); }}>Cancel</Btn>
+                  <Btn variant="danger" onClick={handleDeleteAccount} disabled={delInput !== t("account.deleteConfirmWord")}>{t("account.confirm")}</Btn>
+                  <Btn onClick={() => { setDelConfirm(false); setDelInput(""); }}>{t("account.cancel")}</Btn>
                 </div>
               </div>
             )}
@@ -393,14 +411,14 @@ function AccountPage({ onOpenBilling }) {
       {/* Row 3: Email Preferences */}
       <Card>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-          <SL style={{ marginBottom: 0 }}>Email Preferences</SL>
-          {prefsSaved && <span style={{ fontSize: 10, color: C.green, fontWeight: 700 }}>Saved</span>}
+          <SL style={{ marginBottom: 0 }}>{t("account.emailPreferences")}</SL>
+          {prefsSaved && <span style={{ fontSize: 10, color: C.green, fontWeight: 700 }}>{t("account.prefsSaved")}</span>}
         </div>
         {[
-          { key: "productUpdates", label: "Product Updates",  note: "Stay informed about product changes and improvements" },
-          { key: "newFeatures",    label: "New Features",     note: "Be the first to know about new tools and capabilities" },
-          { key: "maintenance",    label: "Maintenance",      note: "System status, planned downtime, and service notices" },
-          { key: "marketing",      label: "Marketing",        note: "Tips, offers, and promotional content" },
+          { key: "productUpdates", label: t("account.emailProductUpdates"), note: t("account.emailProductUpdatesNote") },
+          { key: "newFeatures", label: t("account.emailNewFeatures"), note: t("account.emailNewFeaturesNote") },
+          { key: "maintenance", label: t("account.emailMaintenance"), note: t("account.emailMaintenanceNote") },
+          { key: "marketing", label: t("account.emailMarketing"), note: t("account.emailMarketingNote") },
         ].map(({ key, label, note }, i, arr) => (
           <div key={key} style={{
             display: "flex", alignItems: "center", gap: 16, padding: "11px 0",
@@ -421,6 +439,7 @@ function AccountPage({ onOpenBilling }) {
 
 // ─── PAGE: Billing ────────────────────────────────────────────────────────────
 function BillingPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { plan, profile, refreshPlan } = useSession();
   const [portalLoading, setPortalLoading] = useState(false);
@@ -476,7 +495,7 @@ function BillingPage() {
       const { url } = await openBillingPortal(profile.stripe_customer_id);
       if (url) window.location.href = url;
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not open billing portal");
+      setError(err instanceof Error ? err.message : t("account.portalError"));
     } finally {
       setPortalLoading(false);
     }
@@ -494,8 +513,8 @@ function BillingPage() {
         }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--green)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
           <div>
-            <div style={{ fontSize: 12, fontWeight: 700, color: "var(--green)" }}>Subscription activated!</div>
-            <div style={{ fontSize: 11, color: C.muted, marginTop: 1 }}>Your {planInfo?.name} plan is now live. All features are unlocked.</div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: "var(--green)" }}>{t("account.subscriptionActivated")}</div>
+            <div style={{ fontSize: 11, color: C.muted, marginTop: 1 }}>{t("account.subscriptionActivatedBody", { name: planInfo?.name })}</div>
           </div>
         </div>
       )}
@@ -510,38 +529,42 @@ function BillingPage() {
             borderRadius: 10, padding: "12px 16px",
           }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ animation: "blSpin 1s linear infinite" }}><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
-            <span style={{ fontSize: 12, color: "var(--blue)", fontWeight: 600 }}>Confirming your subscription…</span>
+            <span style={{ fontSize: 12, color: "var(--blue)", fontWeight: 600 }}>{t("account.confirmingSubscription")}</span>
           </div>
         </>
       )}
 
       {/* Plan */}
       <Card>
-        <SL>Current Plan</SL>
+        <SL>{t("account.currentPlanHeading")}</SL>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
           <span style={{ fontSize: 16, fontWeight: 900, color: C.text }}>
-            {syncing && plan === "free" ? "Activating…" : plan === "free" ? "No active plan" : `${planInfo?.name || formatPlanLabel(plan)} Plan`}
+            {syncing && plan === "free"
+              ? t("account.activating")
+              : plan === "free"
+                ? t("account.noActivePlan")
+                : t("account.namedPlan", { name: planInfo?.name || formatPlanLabel(plan) })}
           </span>
           {plan !== "free" && (
             <Badge color={isActive ? C.green : status === "past_due" ? C.amber : C.red}>
-              {isActive ? "Active" : status ? status.replace(/_/g, " ") : "Pending"}
+              {planStatusLabel(status, isActive, t)}
             </Badge>
           )}
         </div>
         <div>
           {plan !== "free" && displayPrice && (
-            <InfoRow label="Price" value={`${displayPrice}/mo · ${getBillingLabel(interval)}`} />
+            <InfoRow label={t("account.price")} value={t("account.pricePerMonth", { price: displayPrice, billing: billingIntervalLabel(interval, t) })} />
           )}
           {planInfo?.listings && (
-            <InfoRow label="Listings" value={planInfo.listings} />
+            <InfoRow label={t("account.listings")} value={planInfo.listings} />
           )}
           {interval && plan !== "free" && (
-            <InfoRow label="Billing cycle" value={interval === "annual" ? "Annual" : "Monthly"} />
+            <InfoRow label={t("account.billingCycle")} value={interval === "annual" ? t("account.billingAnnual") : t("account.billingMonthly")} />
           )}
           <div style={{ borderBottom: "none" }}>
             <InfoRow
-              label="Payment & invoices"
-              value={profile?.stripe_customer_id ? "Managed via Stripe" : "Not set up yet"}
+              label={t("account.paymentInvoices")}
+              value={profile?.stripe_customer_id ? t("account.managedViaStripe") : t("account.notSetUpYet")}
             />
           </div>
         </div>
@@ -552,12 +575,12 @@ function BillingPage() {
           {profile?.stripe_customer_id ? (
             <>
               <Btn variant="primary" onClick={openPortal} disabled={portalLoading}>
-                {portalLoading ? "Opening…" : "Manage Billing →"}
+                {portalLoading ? t("account.opening") : t("account.manageBilling")}
               </Btn>
-              <Btn onClick={openPortal} disabled={portalLoading}>View Invoices</Btn>
+              <Btn onClick={openPortal} disabled={portalLoading}>{t("account.viewInvoices")}</Btn>
             </>
           ) : (
-            <Btn variant="primary" onClick={() => navigate("/pricing")}>Choose a Plan →</Btn>
+            <Btn variant="primary" onClick={() => navigate("/pricing")}>{t("account.choosePlan")}</Btn>
           )}
         </div>
       </Card>
@@ -569,27 +592,29 @@ function BillingPage() {
           border: "1px solid var(--border-blue)", borderRadius: 12, padding: "16px 20px",
         }}>
           <div style={{ fontSize: 13, fontWeight: 800, color: C.text, marginBottom: 4 }}>
-            Need more capacity?
+            {t("account.needMoreCapacity")}
           </div>
           <div style={{ fontSize: 11, color: C.muted, marginBottom: 14, lineHeight: 1.6 }}>
-            Upgrade to {getPlan(nextPlan)?.name} for {getPlan(nextPlan)?.listings?.toLowerCase()}
-            {nextPlan === "growth" ? ", compatibility checker, smart pricing, and priority support" : ", bulk tools, and early access features"}.
+            {t(nextPlan === "growth" ? "account.upgradeGrowthBody" : "account.upgradeScaleBody", {
+              name: getPlan(nextPlan)?.name,
+              listings: getPlan(nextPlan)?.listings?.toLowerCase(),
+            })}
           </div>
-          <Btn variant="primary" onClick={() => navigate("/pricing")}>View Plans →</Btn>
+          <Btn variant="primary" onClick={() => navigate("/pricing")}>{t("account.viewPlans")}</Btn>
         </div>
       )}
 
       {/* Billing note */}
       <Card>
-        <SL>Billing History</SL>
+        <SL>{t("account.billingHistory")}</SL>
         <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.6 }}>
           {profile?.stripe_customer_id
-            ? "Invoices and payment history are available in the Stripe billing portal."
-            : "Subscribe to a plan to start billing. Your plan details will appear here after checkout."}
+            ? t("account.billingHistoryPortal")
+            : t("account.billingHistoryEmpty")}
         </div>
         {profile?.stripe_customer_id && (
           <div style={{ marginTop: 14 }}>
-            <Btn onClick={openPortal} disabled={portalLoading}>Open Billing Portal →</Btn>
+            <Btn onClick={openPortal} disabled={portalLoading}>{t("account.openBillingPortal")}</Btn>
           </div>
         )}
       </Card>
@@ -600,16 +625,17 @@ function BillingPage() {
 
 // ─── PAGE: Appearance ─────────────────────────────────────────────────────────
 function AppearancePage() {
+  const { t } = useTranslation();
   const { theme, setTheme } = useTheme();
   const options = [
-    { key: "light", label: "Light", desc: "Clean white interface" },
-    { key: "dark",  label: "Dark",  desc: "Dark navy interface" },
+    { key: "light", label: t("account.themeLight"), desc: t("account.themeLightDesc") },
+    { key: "dark", label: t("account.themeDark"), desc: t("account.themeDarkDesc") },
   ];
   return (
     <Card>
-      <SL>Appearance</SL>
+      <SL>{t("account.appearanceTitle")}</SL>
       <div style={{ fontSize: 13, color: C.muted, marginBottom: 20, lineHeight: 1.6 }}>
-        Choose how Part Lister looks to you. Your preference is saved locally and will persist across sessions.
+        {t("account.appearanceBody")}
       </div>
       <div style={{ display: "flex", gap: 10 }}>
         {options.map(({ key, label, desc }) => {
@@ -639,7 +665,7 @@ function AppearancePage() {
 
 // ─── PAGE: Listing Preferences ────────────────────────────────────────────────
 const CONDITIONS = ["", "New", "New other (see details)", "Manufacturer refurbished", "Used", "Parts only"];
-const CURRENCIES = ["GBP", "USD", "EUR", "AUD", "CAD", "CHF", "SEK", "NOK", "DKK"];
+const CURRENCIES = ["GBP", "EUR", "USD", "TRY", "AUD", "CAD", "CHF", "SEK", "NOK", "DKK"];
 const COUNTRIES = [
   "", "Afghanistan", "Albania", "Algeria", "Andorra", "Angola", "Argentina", "Armenia",
   "Australia", "Austria", "Azerbaijan", "Bahrain", "Bangladesh", "Belarus", "Belgium",
@@ -681,21 +707,23 @@ const inputBase = {
 };
 
 function PrefInput({ value, onChange, placeholder }) {
+  const { t } = useTranslation();
   return (
     <input value={value} onChange={e => onChange(e.target.value)}
-      placeholder={placeholder || "Leave blank to use generated value"}
+      placeholder={placeholder || t("prefs.blankPlaceholder")}
       style={inputBase} />
   );
 }
 
 function PrefSelect({ value, onChange, options, narrow }) {
+  const { t } = useTranslation();
   return (
     <select value={value} onChange={e => onChange(e.target.value)}
       style={{ ...inputBase, width: narrow ? "auto" : "100%", cursor: "pointer",
         color: value ? C.text : C.muted }}>
       {options.map(o => (
         <option key={o.value ?? o} value={o.value ?? o} style={{ background: "var(--bg-surface3)" }}>
-          {o.label ?? (o === "" ? "— Not set —" : o)}
+          {o.label ?? (o === "" ? t("common.notSet") : o)}
         </option>
       ))}
     </select>
@@ -769,9 +797,10 @@ function FlagSelect({ value, onChange, options }) {
 }
 
 function PrefTextarea({ value, onChange, placeholder }) {
+  const { t } = useTranslation();
   return (
     <textarea value={value} onChange={e => onChange(e.target.value)}
-      placeholder={placeholder || "Leave blank to use generated value"}
+      placeholder={placeholder || t("prefs.blankPlaceholder")}
       rows={3}
       style={{ ...inputBase, resize: "vertical", lineHeight: 1.6 }} />
   );
@@ -854,11 +883,15 @@ function ListingPreferencesPage() {
         <PrefRow label={t("prefs.targetMarketplace")} hint={t("prefs.targetMarketplaceHint")}>
           <FlagSelect
             value={prefs.targetMarketplace}
-            onChange={v => set("targetMarketplace", v)}
+            onChange={v => {
+              const mp = getMarketplaceById(v);
+              setPrefs(p => ({ ...p, targetMarketplace: v, currency: mp.currency }));
+              setSaved(false);
+            }}
             options={MARKETPLACES.map(m => ({ value: m.id, label: m.label, flag: m.flag }))}
           />
         </PrefRow>
-        <PrefRow label={t("prefs.currency")}>
+        <PrefRow label={t("prefs.currency")} hint={t("prefs.currencyHint")}>
           <PrefSelect value={prefs.currency} onChange={v => set("currency", v)} options={CURRENCIES} narrow />
         </PrefRow>
       </PrefGroup>
@@ -886,7 +919,7 @@ function ListingPreferencesPage() {
           {saved ? t("prefs.saved") : t("prefs.unsaved")}
         </span>
         <div style={{ display: "flex", gap: 8 }}>
-          <Btn onClick={() => { setPrefs({ ...PREF_DEFAULTS }); setSaved(false); }}>{t("prefs.reset")}</Btn>
+          <Btn onClick={() => { setPrefs(getDefaultPreferences()); setSaved(false); }}>{t("prefs.reset")}</Btn>
           <Btn variant="primary" onClick={handleSave}>{t("prefs.save")}</Btn>
         </div>
       </div>
@@ -1066,7 +1099,7 @@ export function ProfileDropdown({ onNavigate, onClose }) {
     }}>
       <div style={{ padding: "9px 11px 9px", borderBottom: `1px solid ${C.border2}`, marginBottom: 4 }}>
         <div style={{ fontSize: 12, fontWeight: 800, color: C.text }}>{displayName}</div>
-        <div style={{ fontSize: 10, color: C.muted, marginTop: 2 }}>{email || "Signed in"}</div>
+        <div style={{ fontSize: 10, color: C.muted, marginTop: 2 }}>{email || t("account.signedIn")}</div>
       </div>
 
       {items.map((item, i) => {
