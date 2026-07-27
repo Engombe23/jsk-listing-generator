@@ -4,6 +4,9 @@
  *          + subjects.txt for Dashboard subject lines (also Go-templated).
  *
  * Requires per-lang HTML from _generate.cjs first.
+ *
+ * Logo: https://partlister.app/logo.png (Gmail blocks data:image URIs in mail).
+ * Keep public/logo.png small + Cache-Control so the fetch is fast.
  */
 const fs = require("fs");
 const path = require("path");
@@ -11,6 +14,7 @@ const path = require("path");
 const LANGS = ["fr", "de", "it", "es", "ar", "tr", "en"]; // en last as {{ else }}
 const root = __dirname;
 const outDir = path.join(root, "dashboard");
+const MAX_BODY_CHARS = 50000;
 
 // Supabase subject field max is 255 chars for the *entire* Go template source.
 // Seven full language branches exceed that (boilerplate alone ≈ 200). Keep
@@ -36,7 +40,6 @@ function toGoBody(html) {
   // Dashboard uses Go template ConfirmationURL, not our Edge Function token
   return html
     .split("{{CONFIRMATION_URL}}").join("{{ .ConfirmationURL }}")
-    // Avoid nested {{ }} conflicts — none expected besides the URL
     .trim();
 }
 
@@ -55,6 +58,27 @@ function wrapLangBranches(fileName) {
     }
   }
   return chunks.join("\n\n");
+}
+
+function buildBody(fileName) {
+  // Keep readable multi-line HTML for Dashboard paste / review.
+  const out = wrapLangBranches(fileName) + "\n";
+  if (out.length > MAX_BODY_CHARS) {
+    throw new Error(
+      `${fileName} is ${out.length} chars (max ${MAX_BODY_CHARS}).`,
+    );
+  }
+  if (!out.includes("https://partlister.app/logo.png")) {
+    throw new Error(
+      `${fileName} is missing https://partlister.app/logo.png — run _generate.cjs first.`,
+    );
+  }
+  if (out.includes("data:image")) {
+    throw new Error(
+      `${fileName} still has data:image URIs — Gmail will not show those.`,
+    );
+  }
+  return out;
 }
 
 function wrapSubjectBranches(map) {
@@ -85,16 +109,10 @@ function wrapSubjectBranches(map) {
 const LTR_LOCK = "\u200E";
 
 fs.mkdirSync(outDir, { recursive: true });
-fs.writeFileSync(
-  path.join(outDir, "signup-confirmation.html"),
-  LTR_LOCK + wrapLangBranches("signup-confirmation.html") + "\n",
-  "utf8",
-);
-fs.writeFileSync(
-  path.join(outDir, "password-reset.html"),
-  LTR_LOCK + wrapLangBranches("password-reset.html") + "\n",
-  "utf8",
-);
+const signupBody = LTR_LOCK + buildBody("signup-confirmation.html");
+const resetBody = LTR_LOCK + buildBody("password-reset.html");
+fs.writeFileSync(path.join(outDir, "signup-confirmation.html"), signupBody, "utf8");
+fs.writeFileSync(path.join(outDir, "password-reset.html"), resetBody, "utf8");
 const signupSubject = wrapSubjectBranches(SUBJECTS.signup);
 const resetSubject = wrapSubjectBranches(SUBJECTS.reset);
 
@@ -116,5 +134,7 @@ fs.writeFileSync(
 );
 
 console.log("Wrote dashboard Go templates to", outDir);
+console.log("signup body:", signupBody.length, "/", MAX_BODY_CHARS);
+console.log("reset body:", resetBody.length, "/", MAX_BODY_CHARS);
 console.log("signup subject:", signupSubject.length, "/255");
 console.log("reset subject:", resetSubject.length, "/255");

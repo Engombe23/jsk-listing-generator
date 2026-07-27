@@ -23,3 +23,6 @@ dist-ssr
 *.sln
 *.sw?
 .env
+
+# Local email template previews
+email-templates/preview/
