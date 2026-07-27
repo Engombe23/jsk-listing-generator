@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { supabase, getAuthCallbackUrl } from "../lib/supabaseClient";
 import { trackEvent } from "../lib/analytics";
 import { redirectToStripeCheckout } from "../lib/billing";
@@ -11,6 +12,8 @@ import {
 } from "../lib/plans";
 import { checkoutAuthHref } from "../pages/checkout/CheckoutSteps";
 import CheckoutSteps from "../pages/checkout/CheckoutSteps";
+import { loadPreferences } from "../useListingPreferences.js";
+import i18n from "../i18n/index.js";
 
 const EyeIcon = ({ off }) => (
   <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -31,6 +34,7 @@ const EyeIcon = ({ off }) => (
 );
 
 export default function SignUpForm({ submitLabel }) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const plan = searchParams.get("plan") || "";
@@ -52,7 +56,7 @@ export default function SignUpForm({ submitLabel }) {
     setError(null);
 
     if (password !== repeatPassword) {
-      setError("Passwords do not match");
+      setError(t("auth.passwordsMismatch"));
       setIsLoading(false);
       return;
     }
@@ -60,16 +64,24 @@ export default function SignUpForm({ submitLabel }) {
     try {
       if (paidSignup) savePendingCheckout(plan, interval);
 
+      const siteLanguage = String(
+        loadPreferences().siteLanguage || i18n.language || "en",
+      )
+        .toLowerCase()
+        .split("-")[0];
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          data: paidSignup
-            ? { pending_plan: plan, pending_interval: interval }
-            : undefined,
+          data: {
+            i18n: siteLanguage,
+            ...(paidSignup
+              ? { pending_plan: plan, pending_interval: interval }
+              : {}),
+          },
           emailRedirectTo: paidSignup
-            ? getAuthCallbackUrl({ plan, interval })
-            : getAuthCallbackUrl(),
+            ? getAuthCallbackUrl({ plan, interval, lang: siteLanguage })
+            : getAuthCallbackUrl({ lang: siteLanguage }),
         },
       });
       if (error) throw error;
@@ -98,7 +110,7 @@ export default function SignUpForm({ submitLabel }) {
           : undefined,
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred");
+      setError(err instanceof Error ? err.message : t("common.error"));
     } finally {
       setIsLoading(false);
     }
@@ -112,12 +124,12 @@ export default function SignUpForm({ submitLabel }) {
 
       <div className="flex flex-col gap-6">
         <div className="grid gap-2">
-          <label htmlFor="email">Email address</label>
+          <label htmlFor="email">{t("auth.emailAddress")}</label>
           <div className="input-wrap">
             <input
               id="email"
               type="email"
-              placeholder="you@example.com"
+              placeholder={t("auth.emailPlaceholder")}
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -125,12 +137,12 @@ export default function SignUpForm({ submitLabel }) {
           </div>
         </div>
         <div className="grid gap-2">
-          <label htmlFor="password">Password</label>
+          <label htmlFor="password">{t("auth.password")}</label>
           <div className="input-wrap">
             <input
               id="password"
               type={showPassword ? "text" : "password"}
-              placeholder="Create a password"
+              placeholder={t("auth.createPasswordPlaceholder")}
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -140,19 +152,19 @@ export default function SignUpForm({ submitLabel }) {
               type="button"
               className="password-toggle"
               onClick={() => setShowPassword((v) => !v)}
-              aria-label={showPassword ? "Hide password" : "Show password"}
+              aria-label={showPassword ? t("auth.hidePassword") : t("auth.showPassword")}
             >
               <EyeIcon off={showPassword} />
             </button>
           </div>
         </div>
         <div className="grid gap-2">
-          <label htmlFor="repeat-password">Repeat password</label>
+          <label htmlFor="repeat-password">{t("auth.repeatPassword")}</label>
           <div className="input-wrap">
             <input
               id="repeat-password"
               type={showRepeatPassword ? "text" : "password"}
-              placeholder="Repeat your password"
+              placeholder={t("auth.repeatPasswordPlaceholder")}
               required
               value={repeatPassword}
               onChange={(e) => setRepeatPassword(e.target.value)}
@@ -162,7 +174,7 @@ export default function SignUpForm({ submitLabel }) {
               type="button"
               className="password-toggle"
               onClick={() => setShowRepeatPassword((v) => !v)}
-              aria-label={showRepeatPassword ? "Hide password" : "Show password"}
+              aria-label={showRepeatPassword ? t("auth.hidePassword") : t("auth.showPassword")}
             >
               <EyeIcon off={showRepeatPassword} />
             </button>
@@ -170,7 +182,7 @@ export default function SignUpForm({ submitLabel }) {
         </div>
         {error && <p className="text-sm text-red-500">{error}</p>}
         <button type="submit" disabled={isLoading}>
-          {isLoading ? "Creating account…" : (
+          {isLoading ? t("auth.creatingAccount") : (
             <>
               {submitLabel}
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
@@ -179,11 +191,11 @@ export default function SignUpForm({ submitLabel }) {
         </button>
       </div>
 
-      <div className="auth-divider"><span>or</span></div>
+      <div className="auth-divider"><span>{t("common.or")}</span></div>
 
       <div className="text-center text-sm">
-        <span className="auth-footer-text">Already have an account? </span>
-        <Link to={loginHref}>Sign in</Link>
+        <span className="auth-footer-text">{t("auth.haveAccount")} </span>
+        <Link to={loginHref}>{t("auth.signIn")}</Link>
       </div>
     </form>
   );

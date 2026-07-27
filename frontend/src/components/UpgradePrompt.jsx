@@ -1,10 +1,12 @@
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 
 // Dismissible "you've hit your listing limit" banner — used in the Listing
 // Generator. Compatibility Checker / Smart Pricing already have their own
 // bespoke locked-feature panels (App.jsx tab hiding, PriceCalculator's
 // SmartPricingLocked), so this is just for the usage-limit case.
 export function UpgradeBanner({ message, onDismiss }) {
+  const { t } = useTranslation();
   return (
     <div style={{
       display: "flex", alignItems: "flex-start", gap: 12,
@@ -18,7 +20,7 @@ export function UpgradeBanner({ message, onDismiss }) {
           display: "inline-flex", alignItems: "center", gap: 6, marginTop: 10,
           fontSize: 12.5, fontWeight: 700, color: "var(--blue)", textDecoration: "none",
         }}>
-          Upgrade Plan →
+          {t("generator.upgrade")}
         </Link>
       </div>
       {onDismiss && (
