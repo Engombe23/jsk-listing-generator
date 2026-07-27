@@ -2,7 +2,7 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import ListingTemplates from "./ListingTemplates.jsx";
-import { loadPreferences, savePreferences, getDefaultPreferences } from "./useListingPreferences.js";
+import { loadPreferences, savePreferences, getDefaultPreferencesAsync } from "./useListingPreferences.js";
 import { useSession } from "./context/SessionContext";
 import { useTheme } from "./context/ThemeContext";
 import { supabase } from "./lib/supabaseClient";
@@ -871,7 +871,8 @@ function ListingPreferencesPage() {
           <FlagSelect
             value={prefs.siteLanguage}
             onChange={v => {
-              set("siteLanguage", v);
+              setPrefs(p => ({ ...p, siteLanguage: v, siteLanguageSetByUser: true }));
+              setSaved(false);
               i18n.changeLanguage(v);
               const lang = SITE_LANGUAGES.find(l => l.code === v);
               document.documentElement.dir = lang?.dir || "ltr";
@@ -885,7 +886,12 @@ function ListingPreferencesPage() {
             value={prefs.targetMarketplace}
             onChange={v => {
               const mp = getMarketplaceById(v);
-              setPrefs(p => ({ ...p, targetMarketplace: v, currency: mp.currency }));
+              setPrefs(p => ({
+                ...p,
+                targetMarketplace: v,
+                currency: mp.currency,
+                marketplaceSetByUser: true,
+              }));
               setSaved(false);
             }}
             options={MARKETPLACES.map(m => ({ value: m.id, label: m.label, flag: m.flag }))}
@@ -919,7 +925,10 @@ function ListingPreferencesPage() {
           {saved ? t("prefs.saved") : t("prefs.unsaved")}
         </span>
         <div style={{ display: "flex", gap: 8 }}>
-          <Btn onClick={() => { setPrefs(getDefaultPreferences()); setSaved(false); }}>{t("prefs.reset")}</Btn>
+          <Btn onClick={async () => {
+            setPrefs(await getDefaultPreferencesAsync());
+            setSaved(false);
+          }}>{t("prefs.reset")}</Btn>
           <Btn variant="primary" onClick={handleSave}>{t("prefs.save")}</Btn>
         </div>
       </div>

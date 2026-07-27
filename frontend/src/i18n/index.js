@@ -34,7 +34,7 @@ import articlesEs from "../help/articles/es.json";
 import articlesAr from "../help/articles/ar.json";
 import articlesTr from "../help/articles/tr.json";
 
-import { resolveSiteLanguage, detectBrowserLanguage, getSiteLanguageByCode } from "./marketplaces.js";
+import { resolveSiteLanguage, getSiteLanguageByCode } from "./marketplaces.js";
 import { applyDocumentMeta } from "./documentMeta.js";
 
 function withPacks(base, landingPack, guidesPack, articlesPack) {
@@ -54,13 +54,14 @@ function withPacks(base, landingPack, guidesPack, articlesPack) {
   };
 }
 
-// Load language before first render so there's no flash of the wrong locale.
+// First paint: user override, else cached country/browser language.
+// LocaleApplier then refreshes from /api/geo when language was not set by the user.
 function getInitialLanguage() {
   try {
     const raw = JSON.parse(localStorage.getItem("jsk_listing_prefs_v1") || "{}");
     return resolveSiteLanguage(raw);
   } catch {
-    return detectBrowserLanguage();
+    return "en";
   }
 }
 
