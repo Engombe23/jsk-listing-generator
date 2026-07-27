@@ -688,12 +688,12 @@ async function buildListingFromArticle(articleNumber, themeId = "clean-default",
   //   2. select-article-cross-refs     → article-ID specific cross-refs (varies by brand)
   //   3. article-oem-search-no         → ALL aftermarket articles for this OEM number
   //                                      (the real interchangeable list — brand-agnostic)
-  const wantInterchangeable = listingOptions.showInterchangeableNumbers !== false;
+  const wantInterchangeable = opts.showInterchangeableNumbers !== false;
   const firstOem = normalized.oem_numbers?.[0] || null;
   const [mediaResponse, crossRefsRaw, oemSearchRaw] = await Promise.all([
     fetchArticleMedia(articleId, langId),
-    fetchArticleCrossReferences(articleId, langId),
-    firstOem ? searchArticleByOem(firstOem, langId) : Promise.resolve(null)
+    wantInterchangeable ? fetchArticleCrossReferences(articleId, langId) : Promise.resolve([]),
+    wantInterchangeable && firstOem ? searchArticleByOem(firstOem, langId) : Promise.resolve(null)
   ]);
 
   const articleBrand = (
