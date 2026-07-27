@@ -14,11 +14,14 @@ export const supabase = createClient(supabaseUrl, supabasePublishableKey, {
 
 export const AUTH_CALLBACK_PATH = "/auth/callback";
 
-export function getAuthCallbackUrl({ plan, interval } = {}) {
+export function getAuthCallbackUrl({ plan, interval, lang } = {}) {
   const url = new URL(`${window.location.origin}${AUTH_CALLBACK_PATH}`);
   if (plan && interval) {
     url.searchParams.set("plan", plan);
     url.searchParams.set("interval", interval);
+  }
+  if (lang) {
+    url.searchParams.set("lang", lang);
   }
   return url.toString();
 }
