@@ -3,8 +3,8 @@
 // Import loadPreferences() anywhere to read current values.
 
 import {
-  detectBrowserLanguage,
-  detectBrowserLocalisation,
+  fetchVisitorLocalisation,
+  getCachedLocalisation,
   getMarketplaceById,
 } from "./i18n/marketplaces.js";
 
@@ -16,24 +16,41 @@ export const PREF_DEFAULTS = {
   warranty:           "",
   countryOfMfr:       "",
   condition:          "",
-  // Localisation — static fallbacks; fresh installs seed from the browser
+  // Localisation — auto defaults from IP country (browser fallback)
   siteLanguage:       "en",
   targetMarketplace:  "ebay-uk",
   currency:           "GBP",
+  siteLanguageSetByUser: false,
+  marketplaceSetByUser:  false,
   // Template defaults
   defaultTemplateId:  "",
   shippingText:       "",
   returnsText:        "",
 };
 
-/** Defaults for a new / reset prefs form: browser locale → marketplace + currency. */
+/** Sync defaults for forms: cached geo/browser localisation. */
 export function getDefaultPreferences() {
-  const loc = detectBrowserLocalisation();
+  const loc = getCachedLocalisation();
   return {
     ...PREF_DEFAULTS,
     siteLanguage: loc.siteLanguage,
     targetMarketplace: loc.targetMarketplace,
     currency: loc.currency,
+    siteLanguageSetByUser: false,
+    marketplaceSetByUser: false,
+  };
+}
+
+/** Async defaults from live IP country / browser fallback (Reset). */
+export async function getDefaultPreferencesAsync() {
+  const loc = await fetchVisitorLocalisation();
+  return {
+    ...PREF_DEFAULTS,
+    siteLanguage: loc.siteLanguage,
+    targetMarketplace: loc.targetMarketplace,
+    currency: loc.currency,
+    siteLanguageSetByUser: false,
+    marketplaceSetByUser: false,
   };
 }
 
@@ -49,23 +66,36 @@ export function loadPreferences() {
     const saved = JSON.parse(raw);
     let dirty = false;
 
-    // Migrate legacy 'language' field → targetMarketplace (detect, don't force UK)
     if (saved.language && !saved.targetMarketplace) {
-      saved.targetMarketplace = detectBrowserLocalisation().targetMarketplace;
+      saved.targetMarketplace = getCachedLocalisation().targetMarketplace;
       delete saved.language;
       dirty = true;
     }
 
-    // Seed any localisation fields the user has never set.
-    if (!saved.siteLanguage) {
-      saved.siteLanguage = detectBrowserLanguage();
+    if (saved.siteLanguageSetByUser == null) {
+      saved.siteLanguageSetByUser = false;
       dirty = true;
     }
-    if (!saved.targetMarketplace) {
-      saved.targetMarketplace = detectBrowserLocalisation().targetMarketplace;
+    if (saved.marketplaceSetByUser == null) {
+      saved.marketplaceSetByUser = false;
       dirty = true;
     }
-    if (!saved.currency) {
+
+    if (!saved.siteLanguageSetByUser) {
+      const loc = getCachedLocalisation();
+      if (saved.siteLanguage !== loc.siteLanguage) {
+        saved.siteLanguage = loc.siteLanguage;
+        dirty = true;
+      }
+    }
+    if (!saved.marketplaceSetByUser) {
+      const loc = getCachedLocalisation();
+      if (saved.targetMarketplace !== loc.targetMarketplace || saved.currency !== loc.currency) {
+        saved.targetMarketplace = loc.targetMarketplace;
+        saved.currency = loc.currency;
+        dirty = true;
+      }
+    } else if (!saved.currency && saved.targetMarketplace) {
       const mp = getMarketplaceById(saved.targetMarketplace);
       saved.currency = mp.currency;
       dirty = true;
@@ -77,6 +107,31 @@ export function loadPreferences() {
   } catch {
     return getDefaultPreferences();
   }
+}
+
+/**
+ * Apply IP-country (or browser fallback) localisation when the user has not locked prefs.
+ */
+export async function applyVisitorLocalisation() {
+  const loc = await fetchVisitorLocalisation();
+  const prefs = loadPreferences();
+  let dirty = false;
+  const next = { ...prefs };
+
+  if (!prefs.siteLanguageSetByUser && prefs.siteLanguage !== loc.siteLanguage) {
+    next.siteLanguage = loc.siteLanguage;
+    dirty = true;
+  }
+  if (!prefs.marketplaceSetByUser) {
+    if (prefs.targetMarketplace !== loc.targetMarketplace || prefs.currency !== loc.currency) {
+      next.targetMarketplace = loc.targetMarketplace;
+      next.currency = loc.currency;
+      dirty = true;
+    }
+  }
+
+  if (dirty) savePreferences(next);
+  return next;
 }
 
 export function savePreferences(prefs) {
