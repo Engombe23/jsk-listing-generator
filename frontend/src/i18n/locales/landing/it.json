@@ -1,0 +1,673 @@
+{
+  "marketing": {
+    "features": "Funzionalità",
+    "howItWorks": "Come funziona",
+    "pricing": "Prezzi",
+    "faq": "FAQ",
+    "login": "Accedi",
+    "ctaFree": "Genera 10 inserzioni gratis",
+    "menu": "Menu",
+    "helpCentre": "Centro assistenza",
+    "contact": "Contatti",
+    "privacy": "Privacy",
+    "terms": "Termini"
+  },
+  "footer": {
+    "tagline": "Dall'OEM all'inserzione in un clic. Inserzioni eBay accurate con TecDoc per venditori di ricambi auto.",
+    "slogan": "Lista in modo smart. Vendi di più.",
+    "product": "Prodotto",
+    "support": "Supporto",
+    "legal": "Note legali",
+    "copyright": "© {{year}} PartLister. Tutti i diritti riservati."
+  },
+  "landing": {
+    "hero": {
+      "badge": "Basato su dati di compatibilità OEM reali",
+      "titleBefore": "Dall'OEM all'inserzione in ",
+      "titleHighlight": "un clic",
+      "subtitle": "Incolla un numero OE, OEM o articolo e genera un'inserzione eBay completa in pochi secondi.",
+      "ctaSecondary": "Scopri come funziona",
+      "microcopy": "Nessuna carta richiesta · 10 inserzioni gratis · Cancella quando vuoi",
+      "socialProof": "Scelto dai venditori eBay Motors ad alto volume",
+      "closeVideo": "Chiudi video"
+    },
+    "how": {
+      "eyebrow": "Come funziona",
+      "title": "Tre passaggi.",
+      "titleAccent": "In meno di un minuto.",
+      "subtitle": "Quello che richiedeva 15 minuti di copia-incolla per inserzione ora avviene con un solo clic.",
+      "chip1Title": "Risparmia ore",
+      "chip1Sub": "ogni giorno",
+      "chip2Title": "Migliora l'accuratezza",
+      "chip2Sub": "e la coerenza",
+      "chip3Title": "Pubblica di più",
+      "chip3Sub": "vendi di più",
+      "step1Label": "Passaggio 1",
+      "step1Title": "Inserisci il numero OE / OEM / articolo",
+      "step1Body": "Incolla qualsiasi numero di riferimento o il tuo SKU interno. Niente fogli di calcolo, niente inserimento manuale, niente ipotesi.",
+      "step2Label": "Passaggio 2",
+      "step2Title": "PartLister recupera i dati da TecDoc",
+      "step2Body": "Estraiamo il pezzo esatto, la compatibilità veicolo, i codici motore e i numeri intercambiabili direttamente da TecDoc — verificati, non scrapati.",
+      "step3Label": "Passaggio 3",
+      "step3Title": "Ottieni l'inserzione completa. Esporta. Fatto.",
+      "step3Body": "Ottieni un titolo ottimizzato, descrizione, specifiche articolo, tabella di compatibilità e immagini. Copia, esporta in CSV e pubblica ovunque.",
+      "step3Bullet1": "Ottimizzato per eBay",
+      "step3Bullet2": "Pronto da copiare o esportare",
+      "step3Bullet3": "Export CSV in un clic"
+    },
+    "features": {
+      "eyebrow": "Funzionalità",
+      "title": "Pensato per i venditori ad alto volume",
+      "subtitle": "Genera, prezzo e verifica la compatibilità senza mai lasciare PartLister — ogni fase dell'inserzione in un unico posto.",
+      "listingTag": "Generatore di inserzioni",
+      "listingTitle": "Trasforma un numero pezzo in un'inserzione pronta",
+      "listingBody": "Inserisci un numero OEM o articolo e PartLister scrive per te un titolo, una descrizione e una tabella di compatibilità pronti per eBay. Scegli un modello, attiva le sezioni che vuoi e genera.",
+      "listingP1": "Titoli scritti con l'IA per la ricerca eBay",
+      "listingP2": "Cinque modelli di inserzione pronti all'uso",
+      "listingP3": "Tabella di compatibilità, numeri intercambiabili e codici motore",
+      "priceTag": "Analisi prezzi eBay",
+      "priceTitle": "Vedi esattamente dove si colloca il tuo prezzo sul mercato",
+      "priceBody": "Recupera i prezzi in tempo reale dalle inserzioni eBay attive e visualizza la distribuzione completa — basso, mediana, media e alto — così sai se sei competitivo prima di pubblicare.",
+      "priceP1": "Grafico di distribuzione in tempo reale dalle inserzioni eBay attive",
+      "priceP2": "Basso, mediana, media e alto in un'unica vista",
+      "priceP3": "L'insight per cluster indica dove avvengono la maggior parte delle transazioni",
+      "calcTag": "Calcolatore prezzi",
+      "calcTitle": "Parti dal margine obiettivo",
+      "calcBody": "Inserisci un prezzo di vendita e PartLister sottrae automaticamente commissioni eBay, IVA e spedizione — così sai sempre quanto ti resta. Imposta un margine obiettivo e trova il prezzo minimo che lo raggiunge.",
+      "calcP1": "Commissioni eBay, IVA e spedizione sottratte automaticamente",
+      "calcP2": "Inserisci il margine obiettivo — vedi il prezzo di vendita minimo",
+      "calcP3": "Funziona per qualsiasi marketplace e valuta",
+      "compatTag": "Controllo compatibilità",
+      "compatTitle": "Non vendere più il pezzo sbagliato",
+      "compatBody": "Verifica un pezzo rispetto a un VIN o a un numero OEM e ottieni un risultato di compatibilità con punteggio di confidenza direttamente da TecDoc. Meno resi, meno dispute, feedback migliori.",
+      "compatP1": "Compatibilità VIN e OEM in pochi secondi",
+      "compatP2": "Punteggio di confidenza con corrispondenza TecDoc esatta",
+      "compatP3": "Scheda veicolo completa: motore, potenza, anni di produzione"
+    },
+    "pricing": {
+      "eyebrow": "Prezzi",
+      "title": "Prezzi semplici che crescono con te",
+      "subtitle": "Inizia gratis con 10 inserzioni. Passa al piano superiore quando sei pronto. Nessun contratto, cancella quando vuoi.",
+      "mostPopular": "Più popolare",
+      "perMonth": "/mese",
+      "redirecting": "Reindirizzamento…",
+      "checkoutError": "Checkout non riuscito. Riprova.",
+      "backToApp": "← Torna all'app",
+      "liteName": "Lite",
+      "liteTagline": "Per venditori occasionali e inventari più piccoli.",
+      "liteCta": "Inizia con Lite",
+      "liteF1": "50 inserzioni / mese",
+      "liteF2": "Generatore di inserzioni",
+      "liteF3": "Calcolatore prezzi",
+      "liteF4": "Preferenze venditore",
+      "liteF5": "Esporta inserzioni in CSV",
+      "liteF6": "Inserzioni salvate",
+      "growthName": "Growth",
+      "growthTagline": "Per attività automotive in crescita.",
+      "growthCta": "Inizia con Growth",
+      "growthF1": "200 inserzioni / mese",
+      "growthF2": "Tutto ciò che è incluso in Lite",
+      "growthF3": "Controllo compatibilità",
+      "growthF4": "Smart Pricing",
+      "growthF5": "Supporto prioritario",
+      "scaleName": "Scale",
+      "scaleTagline": "Per operazioni e team più grandi.",
+      "scaleCta": "Inizia con Scale",
+      "scaleF1": "Inserzioni illimitate",
+      "scaleF2": "Tutto ciò che è incluso in Growth",
+      "scaleF3": "Generazione inserzioni in blocco",
+      "scaleF4": "Export CSV in blocco",
+      "scaleF5": "Funzionalità in accesso anticipato"
+    },
+    "faq": {
+      "eyebrow": "FAQ",
+      "title": "Tutto quello che ti serve sapere",
+      "q1": "Da dove arrivano i dati su pezzi e compatibilità?",
+      "a1": "PartLister usa dati prodotto e veicolo TecDoc affidabili per generare inserzioni con riferimenti OE, numeri intercambiabili, compatibilità, codici motore e specifiche tecniche. Non inventiamo i dati prodotto con l'IA.",
+      "q2": "Cosa posso inserire per generare un'inserzione?",
+      "a2": "Puoi generare un'inserzione con un numero OE, un numero OEM o un numero articolo TecDoc. Incolla semplicemente il riferimento e PartLister costruisce l'inserzione automaticamente.",
+      "q3": "Cosa genera PartLister?",
+      "a3": "Ogni inserzione può includere un titolo ottimizzato SEO, descrizione prodotto, specifiche articolo, compatibilità veicolo, codici motore, riferimenti OE, numeri intercambiabili, prezzi di mercato ed export CSV.",
+      "q4": "I dati di compatibilità sono accurati?",
+      "a4": "La compatibilità è generata direttamente dai dati di applicazione veicolo TecDoc. Consigliamo sempre di verificare prima della pubblicazione, ma PartLister elimina la necessità di ricercare manualmente centinaia di applicazioni.",
+      "q5": "Come funziona la prova gratuita?",
+      "a5": "Ogni nuovo account include 10 inserzioni gratis. Nessuna carta di credito richiesta. Puoi esplorare tutte le funzionalità principali prima di scegliere un abbonamento.",
+      "q6": "Posso esportare le mie inserzioni?",
+      "a6": "Sì. Puoi copiare subito l'HTML, esportare in CSV, salvare le inserzioni per dopo e usare il flusso di lavoro del marketplace che preferisci.",
+      "q7": "PartLister calcola commissioni eBay e profitto?",
+      "a7": "Sì. Il nostro strumento Smart Pricing calcola commissioni eBay, IVA, spedizione, imballaggio, costi pubblicitari, profitto, margine e markup — così puoi prezzare ogni inserzione con sicurezza.",
+      "q8": "L'IA scrive le mie inserzioni?",
+      "a8": "L'IA aiuta a ottimizzare titoli e descrizioni. Specifiche prodotto, compatibilità e riferimenti OE provengono da fonti automotive affidabili, non generati dall'IA. Hai la velocità dell'IA con l'affidabilità dei dati di catalogo verificati.",
+      "q9": "A chi è rivolto PartLister?",
+      "a9": "PartLister è pensato per venditori eBay, ricambisti, rivenditori automotive, ricostruttori di motori, distributori di ricambi, autodemolitori, specialisti di veicoli commerciali — chiunque crei inserzioni di ricambi auto su larga scala.",
+      "q10": "Perché usare PartLister invece di copiare da TecDoc?",
+      "a10": "Invece di copiare manualmente tra TecDoc, eBay e fogli di calcolo, PartLister genera un'inserzione completa in pochi secondi — meno lavoro manuale, meno errori, SEO migliore, inserzioni coerenti e più tempo per vendere."
+    },
+    "finalCta": {
+      "title": "Pronto a creare inserzioni in pochi secondi?",
+      "body": "Smetti di copiare e incollare i dati dei pezzi a mano. Trasforma il prossimo numero OEM in un'inserzione eBay completa adesso.",
+      "microcopy": "Nessuna carta richiesta · Cancella quando vuoi"
+    },
+    "partsBand": {
+      "eyebrow": "Ogni categoria coperta",
+      "title": "Dal motore all'elettronica — elenca qualsiasi ricambio",
+      "subtitle": "Se ha un numero OE, OEM o articolo, PartLister lo trasforma in un'inserzione eBay verificata.",
+      "parts": {
+        "engines": "Motori",
+        "turbos": "Turbocompressori",
+        "radiators": "Radiatori",
+        "exhausts": "Scarichi",
+        "suspension": "Sospensioni",
+        "ignition": "Accensione",
+        "wheels": "Ruote e pneumatici",
+        "internals": "Parti interne motore",
+        "instruments": "Strumenti"
+      }
+    },
+    "heroDemo": {
+      "inputLabel": "Inserisci numero OE / OEM / articolo",
+      "generating": "Generazione…",
+      "ready": "Inserzione pronta",
+      "generate": "Genera inserzione",
+      "live": "Live",
+      "status": [
+        "Ricerca nel database TecDoc",
+        "Ricambio identificato — biella",
+        "Ricerca delle applicazioni veicolo",
+        "Recupero riferimenti OEM",
+        "Creazione tabella compatibilità",
+        "Generazione titolo SEO",
+        "Ricerca numeri intercambiabili",
+        "Preparazione esportazione"
+      ],
+      "badges": {
+        "vehicles": "58 veicoli compatibili",
+        "references": "74 riferimenti OE",
+        "seo": "Titolo SEO generato",
+        "export": "Pronto per l’esportazione CSV"
+      },
+      "specifics": {
+        "brand": "Marca",
+        "oeNumber": "Numero OE",
+        "condition": "Condizione",
+        "placement": "Posizione"
+      },
+      "values": {
+        "new": "Nuovo",
+        "engine": "Motore"
+      },
+      "tabs": [
+        "Descrizione",
+        "Compatibilità",
+        "Specifiche articolo",
+        "HTML"
+      ],
+      "listingTitle": "Titolo inserzione",
+      "generatedTitle": "Biella BMW originale 11247807345 — Serie 3 E90 E91 320d 325d N47",
+      "itemSpecifics": "Specifiche articolo",
+      "compatibility": "Compatibilità",
+      "vehicles": "{{count}} veicoli",
+      "models": "Modelli {{brand}}",
+      "columns": {
+        "vehicle": "Veicolo",
+        "years": "Anni",
+        "engineCode": "Codice motore"
+      },
+      "oeReferences": "Riferimenti OE",
+      "interchangeable": "Intercambiabile",
+      "save": "Salva inserzione",
+      "copyHtml": "Copia HTML"
+    },
+    "howAnim": {
+      "inputLabel": "OE / OEM / numero articolo",
+      "generate": "Genera inserzione",
+      "oemNumbers": "Numeri OEM",
+      "oilPump": "Pompa dell’olio",
+      "verifyCompatibility": "Verifica la compatibilità prima di ordinare",
+      "compatibleVehicles": "Veicoli compatibili ({{count}} applicazioni)",
+      "compatibleVehiclesShort": "{{count}} veicoli compatibili",
+      "vehicle": "Veicolo",
+      "years": "Anni",
+      "engine": "Motore",
+      "checkPrices": "Controlla i prezzi di mercato",
+      "kNumbers": "NUMERI K",
+      "markExported": "Segna come esportato ({{count}})",
+      "deleteSelected": "Elimina {{count}} selezionati",
+      "exportCsv": "Esporta CSV ({{count}} selezionati)",
+      "type": "Tipo",
+      "status": "Stato",
+      "exported": "Esportato",
+      "listingsExported": "{{count}} inserzioni esportate in CSV"
+    },
+    "who": {
+      "eyebrow": "Per chi è",
+      "title": "Creato per i venditori di ricambi auto",
+      "audience": [
+        {
+          "icon": "🛒",
+          "title": "Venditori di ricambi eBay",
+          "desc": "Velocizza la creazione delle inserzioni e mantieni il catalogo coerente su centinaia di ricambi."
+        },
+        {
+          "icon": "🏭",
+          "title": "Fornitori di ricambi aftermarket",
+          "desc": "Genera inserzioni strutturate per un ampio catalogo senza inserimento manuale."
+        },
+        {
+          "icon": "🔩",
+          "title": "Autodemolitori e smontatori",
+          "desc": "Pubblica rapidamente ricambi usati con dati accurati su compatibilità e condizioni."
+        },
+        {
+          "icon": "📦",
+          "title": "Piccole attività di ricambi",
+          "desc": "Competi con venditori più grandi grazie a inserzioni professionali, senza un team dedicato."
+        }
+      ]
+    },
+    "demo": {
+      "eyebrow": "Vantaggi",
+      "title": "Creato per venditori automotive che vogliono crescere",
+      "benefits": [
+        "Pubblica prodotti 5–10× più velocemente",
+        "Riduci errori e resi",
+        "Fissa i prezzi con sicurezza",
+        "Crea inserzioni coerenti e professionali",
+        "Dedica meno tempo a pubblicare, più tempo a vendere"
+      ],
+      "timeSaved": "Tempo risparmiato per inserzione",
+      "timeSavedBody": "Tempo medio risparmiato per inserzione rispetto al flusso manuale",
+      "errorsEliminated": "Errori di inserzione eliminati",
+      "errorsEliminatedBody": "Riduzione degli errori di compatibilità e prezzo"
+    },
+    "trust": {
+      "eyebrow": "Perché PartLister",
+      "title": "Progettato per veri venditori di ricambi",
+      "body1": "Creato attorno ai flussi di lavoro reali delle aziende eCommerce automotive.",
+      "body2": "Niente fronzoli. Nessuna funzione inutile. Solo strumenti che fanno risparmiare tempo e guadagnare."
+    },
+    "smartPricing": {
+      "badge": "PREZZI INTELLIGENTI",
+      "titleBefore": "Non andare a intuito.",
+      "titleAccent": "Prezzi basati su dati di mercato reali.",
+      "body": "PartLister analizza le inserzioni eBay attive e vendute di recente per creare una reale distribuzione dei prezzi per il tuo ricambio. Scopri quanto pagano davvero gli acquirenti, non solo quanto chiedono i venditori.",
+      "benefits": [
+        "Inserzioni eBay attive e vendute analizzate per ogni codice ricambio",
+        "Indicatori di prezzo minimo, mediano, medio e massimo",
+        "Scopri quanti venditori attivi competono a ogni prezzo"
+      ],
+      "insightTitle": "Insight di mercato",
+      "insightBody": "Per {{partNumber}} — 15 inserzioni attive tra {{low}} e {{high}}. Prezzo mediano venduto: {{median}}. 3 inserzioni sotto costo.",
+      "distributionTitle": "Distribuzione dei prezzi",
+      "listingsCount": "{{count}} inserzioni · {{partNumber}}",
+      "liveData": "Dati in tempo reale",
+      "markers": [
+        {
+          "label": "Minimo",
+          "val": "£185",
+          "sub": "base"
+        },
+        {
+          "label": "Mediano",
+          "val": "£295",
+          "sub": "punto ideale",
+          "highlight": true
+        },
+        {
+          "label": "Media",
+          "val": "£309",
+          "sub": "media"
+        },
+        {
+          "label": "Massimo",
+          "val": "£415",
+          "sub": "tetto"
+        }
+      ],
+      "similarListings": "Inserzioni eBay simili",
+      "sold": "Venduto",
+      "active": "Attiva",
+      "listings": [
+        {
+          "title": "Pinza freno anteriore sinistra VW Golf MK5 — specifica OE",
+          "price": "£299",
+          "sold": true
+        },
+        {
+          "title": "Pinza freno 1K0615123A VW Audi Skoda Seat",
+          "price": "£315",
+          "sold": true
+        },
+        {
+          "title": "Pinza freno anteriore Golf MK5 MK6 — nuova",
+          "price": "£329",
+          "sold": false
+        },
+        {
+          "title": "Pinza freno VW 1K0615123A — spedizione rapida",
+          "price": "£349",
+          "sold": false
+        }
+      ]
+    },
+    "beforeAfter": {
+      "flowRows": [
+        "OE",
+        "Intercambio",
+        "Numero N",
+        "Compatibilità",
+        "Specifiche articolo"
+      ],
+      "rawData": "Dati grezzi",
+      "rawRows": [
+        "OE: 123 1241 A55",
+        "Intercambio:",
+        "12345, 123451…",
+        "Compatibilità:",
+        "Audi A4 2001–",
+        "Specifiche articolo:",
+        "Marca:",
+        "Garanzia:"
+      ],
+      "structuredListing": "Inserzione strutturata",
+      "description": "Descrizione",
+      "compatibility": "Compatibilità",
+      "itemSpecifics": "Specifiche articolo",
+      "manualWorkflow": "Flusso manuale",
+      "copyTitle": "Copia e incolla tutto",
+      "copyBody": "Numeri OE, riferimenti intercambiabili, dati di compatibilità e specifiche articolo spesso devono essere copiati manualmente nella stessa struttura di inserzione.",
+      "formatTitle": "Formatta l’inserzione manualmente",
+      "formatBody": "Le descrizioni richiedono titoli, sezioni, avvisi, specifiche articolo e compatibilità disposti chiaramente per ogni SKU.",
+      "withPartLister": "Con PartLister",
+      "steps": [
+        {
+          "title": "Inserisci il numero OE / OEM / articolo",
+          "desc": "Inizia dal numero del ricambio che hai già."
+        },
+        {
+          "title": "Genera un’inserzione strutturata",
+          "desc": "PartLister organizza titolo, riferimenti OE, numeri intercambiabili, specifiche articolo e compatibilità in un output pulito."
+        },
+        {
+          "title": "Output pronto da pubblicare",
+          "desc": "Rivedi l’inserzione generata, poi copia l’HTML o esporta i dati."
+        }
+      ],
+      "resultTitle": "Output dell’inserzione strutturata",
+      "resultInput": "Numero OE / OEM / articolo",
+      "resultOutput": "Compatibilità e specifiche articolo",
+      "faster": "Fino a 20× più veloce",
+      "cta": "Genera 10 inserzioni gratis"
+    },
+    "proof": {
+      "eyebrow": "L’intero flusso, automatizzato",
+      "steps": [
+        {
+          "label": "Numero OE",
+          "detail": "es. 1K0615123A"
+        },
+        {
+          "label": "Codice motore",
+          "detail": "AXW, BLY, BVY…"
+        },
+        {
+          "label": "Compatibilità",
+          "detail": "VW, Audi, Skoda, Seat"
+        },
+        {
+          "label": "Specifiche articolo",
+          "detail": "Marca, posizione, rif."
+        },
+        {
+          "label": "Prezzi intelligenti",
+          "detail": "fascia £185–£415"
+        },
+        {
+          "label": "Export CSV",
+          "detail": "pronto per upload eBay in blocco"
+        }
+      ],
+      "stats": [
+        {
+          "stat": "< 30 s",
+          "desc": "Dal numero OE all’inserzione completa"
+        },
+        {
+          "stat": "100%",
+          "desc": "Specifiche eBay compilate"
+        },
+        {
+          "stat": "Live",
+          "desc": "Dati di mercato eBay per il prezzo"
+        },
+        {
+          "stat": "Blocco",
+          "desc": "Export CSV per caricamento di massa"
+        }
+      ]
+    },
+    "featureDemos": {
+      "common": {
+        "on": "ON",
+        "oilPump": "Pompa dell’olio",
+        "saveListing": "Salva inserzione",
+        "copyHtml": "Copia HTML",
+        "title": "Titolo",
+        "sellingPrice": "Prezzo di vendita",
+        "netProfit": "Utile netto",
+        "margin": "Margine",
+        "markup": "Ricarico"
+      },
+      "listing": {
+        "title": "Generatore di inserzioni",
+        "subtitle": "Inserisci un numero articolo TecDoc o un numero OEM / di riferimento.",
+        "articleNumber": "N. articolo o numero OEM",
+        "templates": "Modelli",
+        "templateNames": {
+          "cleanDefault": "Default pulito",
+          "darkHeader": "Intestazione scura",
+          "tableFocused": "Focalizzato sulla tabella",
+          "minimal": "Minimale",
+          "professionalBlue": "Blu professionale"
+        },
+        "contentOptions": "Opzioni contenuto",
+        "contentOptionNames": {
+          "compatibilityTable": "Tabella di compatibilità",
+          "interchangeableNumbers": "Numeri intercambiabili",
+          "engineCodes": "Codici motore"
+        },
+        "searchGenerate": "Cerca e genera",
+        "unlimitedListings": "Inserzioni illimitate",
+        "tabs": {
+          "preview": "Anteprima",
+          "itemSpecifics": "Specifiche articolo"
+        },
+        "editDescription": "Modifica descrizione",
+        "verifyCompatibility": "Verifica la compatibilità prima di ordinare",
+        "oemNumbers": "Numeri OEM",
+        "compatibleVehicles": "Veicoli compatibili ({{count}} applicazioni)",
+        "compatibleVehiclesShort": "{{count}} veicoli compatibili",
+        "columns": {
+          "vehicle": "Veicolo",
+          "years": "Anni",
+          "kw": "kW",
+          "hp": "HP",
+          "cc": "CC",
+          "engineCodes": "Codici motore"
+        },
+        "article": "Articolo",
+        "checkMarketPrices": "Controlla i prezzi di mercato",
+        "compatRows": [
+          "JAGUAR F-TYPE Conv. (X152) 3.0 SCV6",
+          "JAGUAR F-TYPE Conv. (X152) 3.0 SCV6 S",
+          "JAGUAR F-TYPE Conv. (X152) 3.0 SCV6 S AWD",
+          "JAGUAR F-TYPE Conv. (X152) 5.0 SCV8 P450",
+          "JAGUAR F-TYPE Conv. (X152) 5.0 SCV8 R"
+        ]
+      },
+      "price": {
+        "title": "Prezzi eBay intelligenti",
+        "listingsCount": "{{count}} inserzioni",
+        "distribution": "Distribuzione prezzi",
+        "low": "LOW",
+        "median": "MED",
+        "your": "YOUR",
+        "average": "AVG",
+        "high": "HIGH",
+        "chartCaption": "£38–£380 · fasce di prezzo da £20 · {{count}} inserzioni",
+        "allResults": "Tutti i risultati",
+        "listingsFound": "{{count}} inserzioni trovate",
+        "lowToHigh": "Prezzo: dal più basso",
+        "new": "Nuovo",
+        "freeDelivery": "Spedizione gratuita",
+        "listings": [
+          "OIL PUMP LR002465 Range Rover Sport TDV6 SDV6 NEW 276DT 306DT 2.7 3.0",
+          "Oil Pump For JAGUAR XF XJ 2.7 3.0 SDV6 306DT 276DT Engine NEW",
+          "OIL PUMP Range Rover Mk4 Diesel TDV6 SDV6 NEW 276DT 306DT LR002465",
+          "OIL PUMP LR002465 Land Rover DISCOVERY TDV6 SDV6 NEW 3.0 306DT",
+          "Oil Pump LAND ROVER DISCOVERY III IV V Range Rover Sport 2.7 3.0 306DT",
+          "OIL PUMP & SEALS Range Rover Sport L320 2005-2013 LR002465 NEW 2.7 3.0",
+          "Genuine Land Rover Oil Pump Assembly LR002465 Discovery 3 4 Range Rover"
+        ]
+      },
+      "calculator": {
+        "costPricingInputs": "Costi e prezzi",
+        "product": "Prodotto",
+        "productSku": "Prodotto / SKU",
+        "yourCosts": "I tuoi costi",
+        "itemCost": "Costo articolo",
+        "postage": "Spedizione",
+        "packaging": "Imballaggio",
+        "ebayFeesTitle": "Commissioni eBay",
+        "finalValue": "Valore finale (%)",
+        "fixedFee": "Commissione fissa",
+        "adRate": "Tasso ads (%)",
+        "vatRegistered": "Registrato IVA (20%)",
+        "includingVat": "IVA inclusa",
+        "costBreakdown": "Dettaglio costi",
+        "productCost": "Costo prodotto",
+        "postagePackaging": "Spedizione e imballaggio",
+        "ebayFees": "Commissioni eBay (12,8% + £0.30)",
+        "vatCollected": "IVA riscossa → HMRC",
+        "vatNote": "Non trattieni nulla di questo",
+        "breakEven": "Prezzo di pareggio"
+      },
+      "compat": {
+        "title": "Controllo di compatibilità",
+        "vinNumber": "Numero VIN",
+        "oemPartNumber": "Numero OEM / ricambio",
+        "checkCompatibility": "Verifica compatibilità",
+        "progress": {
+          "vehicleLookup": "Ricerca veicolo dalla targa…",
+          "oemSearch": "Ricerca numero OEM in TecDoc…",
+          "compatibilityCheck": "Verifica compatibilità del ricambio…"
+        },
+        "compatible": "Compatibile",
+        "compatibleDescription": "Questo ricambio risulta compatibile con il veicolo inserito.",
+        "confidence": "Affidabilità",
+        "highConfidence": "Alta affidabilità — Compatibile",
+        "vehicle": "Veicolo",
+        "part": "Ricambio",
+        "diesel": "diesel",
+        "vehicleFields": {
+          "make": "Marca",
+          "variant": "Variante",
+          "year": "Anno",
+          "fuel": "Carburante",
+          "engineSize": "Cilindrata",
+          "engineCode": "Codice motore",
+          "power": "Potenza"
+        },
+        "partFields": {
+          "articleNumber": "N. articolo",
+          "productType": "Tipo di prodotto"
+        }
+      }
+    },
+    "problem": {
+      "eyebrow": "Il problema",
+      "titleBefore": "Creare inserzioni di ricambi auto",
+      "titleMiddle": "è ancora",
+      "titleAccent": "troppo manuale",
+      "subtitle": "La maggior parte dei venditori dedica troppo tempo all’inserimento dati, alla formattazione e alle stime — per ogni singolo ricambio.",
+      "sourceData": "Dati di origine",
+      "ebayListing": "Inserzione eBay",
+      "copiedFieldByField": "Copiato campo per campo per ogni inserzione",
+      "rows": {
+        "oeNumber": "Numero OE",
+        "crossReferences": "Riferimenti incrociati",
+        "compatibilityTable": "Tabella di compatibilità",
+        "itemSpecifics": "Specifiche articolo",
+        "kTypeNumbers": "Numeri K-Type"
+      },
+      "cards": {
+        "manual": {
+          "title": "Flusso manuale",
+          "body": "Copiare a mano numeri OE, dati di compatibilità, specifiche e campi dell’inserzione rallenta ogni pubblicazione."
+        },
+        "inconsistent": {
+          "title": "Inserzioni incoerenti",
+          "body": "Specifiche, codici motore, numeri OE e dettagli di compatibilità mancanti possono ridurre visibilità e fiducia degli acquirenti."
+        },
+        "pricing": {
+          "title": "Prezzi a intuito",
+          "body": "Un prezzo troppo basso riduce il margine. Troppo alto, il ricambio può restare invenduto per settimane."
+        }
+      },
+      "missingFields": {
+        "referenceOem": "Numero OE/OEM di riferimento",
+        "interchangeable": "Numeri di ricambio intercambiabili",
+        "engineCodes": "Codici motore",
+        "boreDiameter": "Diametro alesaggio",
+        "pinDiameter": "Diametro perno",
+        "length": "Lunghezza"
+      },
+      "present": "Presente",
+      "missing": "Mancante",
+      "marketRange": "Fascia di mercato per questo ricambio",
+      "yourGuess": "La tua stima: £310?",
+      "bridge": "PartLister automatizza tutto questo — numero ricambio in ingresso, inserzione pronta in uscita."
+    }
+  },
+  "authExtra": {
+    "welcomeBack": "Bentornato",
+    "signInContinue": "Accedi per continuare su PartLister",
+    "signInPaid": "Accedi per continuare con {{plan}} — {{price}}/{{period}}",
+    "createAccountTitle": "Crea il tuo account",
+    "signupSubtitle": "Inizia a generare inserzioni in pochi secondi",
+    "signupPaidSubtitle": "Crea il tuo account per iniziare con {{plan}}",
+    "resetTitle": "Reimposta la password",
+    "resetSubtitle": "Inserisci la tua email e ti invieremo un link di reset",
+    "updatePasswordTitle": "Imposta una nuova password",
+    "updatePasswordSubtitle": "Scegli una nuova password per il tuo account PartLister",
+    "newPasswordPlaceholder": "Inserisci la nuova password",
+    "emailAddress": "Indirizzo email",
+    "emailPlaceholder": "tu@esempio.com",
+    "passwordPlaceholder": "La tua password",
+    "createPasswordPlaceholder": "Crea una password",
+    "repeatPassword": "Ripeti password",
+    "repeatPasswordPlaceholder": "Ripeti la password",
+    "hidePassword": "Nascondi password",
+    "showPassword": "Mostra password",
+    "signIn": "Accedi",
+    "signingIn": "Accesso in corso…",
+    "continuingPayment": "Passaggio al pagamento…",
+    "signInContinuePayment": "Accedi e continua al pagamento",
+    "creatingAccount": "Creazione account…",
+    "passwordsMismatch": "Le password non coincidono",
+    "checkEmailReset": "Controlla l'email per il link di reset",
+    "sendResetEmail": "Invia email di reset",
+    "sending": "Invio…",
+    "backToSite": "← Torna al sito",
+    "confirmEmailTitle": "Conferma la tua email",
+    "confirmEmailPaidSubtitle": "Abbiamo inviato un link di conferma per il piano {{plan}}",
+    "checkInbox": "Controlla la posta in arrivo",
+    "checkEmailTitle": "Controlla la tua email",
+    "checkEmailSubtitle": "Ti abbiamo inviato un link di conferma. Cliccalo per attivare l'account.",
+    "goToSignIn": "Vai all'accesso",
+    "createAccountContinuePayment": "Crea account e continua al pagamento",
+    "checkoutPlan": "Piano",
+    "checkoutAccount": "Account",
+    "checkoutPayment": "Pagamento"
+  }
+}
