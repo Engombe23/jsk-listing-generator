@@ -1,5 +1,6 @@
 ﻿import { useEffect } from "react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useSession } from "../context/SessionContext";
 import { trackEvent } from "../lib/analytics";
 import "../landing/landing-v2.css";
@@ -8,6 +9,7 @@ import Footer from "../landing/Footer";
 import LandingPricing from "../landing/Pricing";
 
 export default function Pricing() {
+  const { t } = useTranslation();
   const { session } = useSession();
 
   useEffect(() => {
@@ -22,7 +24,7 @@ export default function Pricing() {
             to="/"
             style={{ color: "#9aa3b8", textDecoration: "none", fontSize: 13, fontWeight: 600 }}
           >
-            ← Back to app
+            {t("landing.pricing.backToApp")}
           </Link>
         </div>
       ) : (
