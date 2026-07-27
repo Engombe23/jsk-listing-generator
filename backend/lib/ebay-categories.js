@@ -220,6 +220,36 @@ const MAPS = {
 // Fall back to eBay UK for marketplaces without a dedicated map
 const FALLBACK = "ebay-uk";
 
+// Browse API X-EBAY-C-MARKETPLACE-ID values.
+// AE / TR have no dedicated Browse marketplace today — fall back to EBAY_GB.
+export const MARKETPLACE_TO_EBAY_ID = {
+  "ebay-uk": "EBAY_GB",
+  "ebay-de": "EBAY_DE",
+  "ebay-fr": "EBAY_FR",
+  "ebay-it": "EBAY_IT",
+  "ebay-es": "EBAY_ES",
+  "ebay-ae": "EBAY_GB",
+  "ebay-tr": "EBAY_GB",
+};
+
+export const MARKETPLACE_TO_CURRENCY = {
+  "ebay-uk": "GBP",
+  "ebay-de": "EUR",
+  "ebay-fr": "EUR",
+  "ebay-it": "EUR",
+  "ebay-es": "EUR",
+  "ebay-ae": "USD",
+  "ebay-tr": "TRY",
+};
+
+export function getEbayMarketplaceId(marketplaceId = "ebay-uk") {
+  return MARKETPLACE_TO_EBAY_ID[marketplaceId] || "EBAY_GB";
+}
+
+export function getMarketplaceCurrency(marketplaceId = "ebay-uk") {
+  return MARKETPLACE_TO_CURRENCY[marketplaceId] || "GBP";
+}
+
 /**
  * Returns { id, name } for the best-matching eBay category, or null if unrecognised.
  * @param {string} productName  - TecDoc articleProductName (English)

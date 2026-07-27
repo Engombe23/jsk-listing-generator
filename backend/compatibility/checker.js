@@ -26,6 +26,7 @@ import {
   extractArticleInfo,
   extractFirstImageUrl
 } from "./logic.js";
+import { LANG_ID } from "./config.js";
 
 // ─── VIN response helpers ─────────────────────────────────────────────────────
 
@@ -213,7 +214,7 @@ function extractOemStringsFromResponse(raw) {
 // selection screen can show HP, kW, engine codes, fuel type, and year range.
 // Caps at 20 to avoid exploding the API quota.
 
-async function enrichVehicleOptions(vehicles, vin) {
+async function enrichVehicleOptions(vehicles, vin, langId) {
   const CAP = 20;
   const toEnrich = vehicles.slice(0, CAP);
 
@@ -227,7 +228,7 @@ async function enrichVehicleOptions(vehicles, vin) {
 
       let raw = {};
       try {
-        const detail = await getVehicleTypeDetails(vId);
+        const detail = await getVehicleTypeDetails(vId, langId);
         console.log(`[enrichVehicle] vId=${vId} detail keys: ${Object.keys(detail || {}).join(", ")}`);
         console.log(`[enrichVehicle] vId=${vId} raw detail (first 400): ${JSON.stringify(detail).slice(0, 400)}`);
 
@@ -281,7 +282,8 @@ export async function checkCompatibility({
   year,
   fuelType,
   engineSize,
-  selectedVehicleId
+  selectedVehicleId,
+  langId = LANG_ID
 }) {
   const result = {
     status: "error",
@@ -302,14 +304,14 @@ export async function checkCompatibility({
   if (selectedVehicleId) {
     // User already picked a vehicle from the multi-vehicle selection screen
     vehicleId = String(selectedVehicleId).trim();
-    const selCacheKey = `sel:${vehicleId}`;
+    const selCacheKey = `sel:${vehicleId}:${langId}`;
     const cached = _vinCache.get(selCacheKey);
     if (cached) {
       normalisedVehicle = cached.vehicle;
       console.log(`[VIN] selected vehicle cache hit → vehicleId=${vehicleId}`);
     } else {
       try {
-        const detail = await getVehicleTypeDetails(vehicleId);
+        const detail = await getVehicleTypeDetails(vehicleId, langId);
         const rawVehicle =
           detail?.vehicleType        ||
           detail?.vehicleTypeDetails ||
@@ -324,7 +326,8 @@ export async function checkCompatibility({
       }
     }
   } else if (vin) {
-    const cached = _vinCache.get(vin);
+    const vinCacheKey = `${vin}:${langId}`;
+    const cached = _vinCache.get(vinCacheKey);
     if (cached) {
       if (cached.multipleVehicles) {
         return {
@@ -359,8 +362,8 @@ export async function checkCompatibility({
 
         if (tecdocVehicles.length > 1) {
           // Multiple TecDoc matches → fetch full details then show picker
-          const vehicleOptions = await enrichVehicleOptions(tecdocVehicles, vin);
-          _vinCache.set(vin, { multipleVehicles: true, vehicleOptions });
+          const vehicleOptions = await enrichVehicleOptions(tecdocVehicles, vin, langId);
+          _vinCache.set(vinCacheKey, { multipleVehicles: true, vehicleOptions });
           console.log(`[VIN] ${tecdocVehicles.length} vehicles → manual_vehicle_selection_required`);
           return {
             status: "manual_vehicle_selection_required",
@@ -371,7 +374,7 @@ export async function checkCompatibility({
           const v = tecdocVehicles[0];
           vehicleId = String(v.vehicleId || v.typeId || v.kType || v.kTypeId || v.id || "").trim() || null;
           if (vehicleId) {
-            const detail = await getVehicleTypeDetails(vehicleId);
+            const detail = await getVehicleTypeDetails(vehicleId, langId);
             const rawVehicle =
               detail?.vehicleType        ||
               detail?.vehicleTypeDetails ||
@@ -386,7 +389,7 @@ export async function checkCompatibility({
             vehicleId = normalisedVehicle?.vehicleId || null;
           }
           if (normalisedVehicle) {
-            _vinCache.set(vin, { vehicleId, vehicle: normalisedVehicle });
+            _vinCache.set(vinCacheKey, { vehicleId, vehicle: normalisedVehicle });
             console.log(`[VIN] K=${vehicleId} make=${normalisedVehicle.make} model=${normalisedVehicle.model} variant=${normalisedVehicle.variant}`);
           }
         } else {
@@ -438,23 +441,24 @@ export async function checkCompatibility({
   let productType;
   let compatibleVehicles = [];
 
-  const oemCached = _oemArticleCache.get(oemNumber);
+  const oemCacheKey = `${oemNumber}:${langId}`;
+  const oemCached = _oemArticleCache.get(oemCacheKey);
   if (oemCached) {
     articleInfo        = oemCached.articleInfo;
     productType        = oemCached.productType;
-    compatibleVehicles = _oemVehiclesCache.get(oemNumber) || [];
+    compatibleVehicles = _oemVehiclesCache.get(oemCacheKey) || [];
     console.log(`[OEM] cache hit → ${compatibleVehicles.length} vehicles`);
   } else {
     let articles = [];
     try {
-      articles = extractArticlesArray(await searchArticleByOem(oemNumber));
+      articles = extractArticlesArray(await searchArticleByOem(oemNumber, langId));
     } catch (err) {
       result.errors.push({ step: "oemSearch", message: err.message });
     }
 
     if (articles.length === 0) {
       try {
-        articles = extractArticlesArray(await artlookupByArticleNo(oemNumber));
+        articles = extractArticlesArray(await artlookupByArticleNo(oemNumber, langId));
       } catch (err) {
         result.errors.push({ step: "oemSearch", message: err.message });
       }
@@ -476,7 +480,7 @@ export async function checkCompatibility({
     let fullArticle = best;
     if (articleId) {
       try {
-        const detailArticles = extractArticlesArray(await getArticleDetailsById(articleId));
+        const detailArticles = extractArticlesArray(await getArticleDetailsById(articleId, langId));
         if (detailArticles.length > 0 && detailArticles[0]) fullArticle = detailArticles[0];
       } catch (err) {
         result.errors.push({ step: "articleDetails", message: err.message });
@@ -503,7 +507,7 @@ export async function checkCompatibility({
 
     // Fetch image (silent)
     try {
-      const imgUrl = extractFirstImageUrl(await getArticleMedia(articleInfo.articleId || articleId));
+      const imgUrl = extractFirstImageUrl(await getArticleMedia(articleInfo.articleId || articleId, langId));
       if (imgUrl) articleInfo.imageUrl = imgUrl;
     } catch {}
 
@@ -532,7 +536,7 @@ export async function checkCompatibility({
     // Asks TecDoc "which vehicles is this OEM number listed for?" and returns
     // vehicleIds directly. Works for any OEM number regardless of supplierId.
     try {
-      const oemVehicles = await getVehiclesByOem(oemNumber);
+      const oemVehicles = await getVehiclesByOem(oemNumber, langId);
       const oemVehicleList = Array.isArray(oemVehicles)
         ? oemVehicles
         : (oemVehicles?.vehicles || oemVehicles?.data || []);
@@ -549,7 +553,7 @@ export async function checkCompatibility({
     // article's compatibility list (catches cross-references not in OEM list).
     if (articleInfo.articleNo && articleInfo.supplierId) {
       try {
-        const raw = await getCompatibleCarsByArticleNo(articleInfo.articleNo, articleInfo.supplierId);
+        const raw = await getCompatibleCarsByArticleNo(articleInfo.articleNo, articleInfo.supplierId, langId);
         if (raw?.articles && Array.isArray(raw.articles)) {
           for (const art of raw.articles) {
             if (Array.isArray(art.compatibleCars)) compatibleVehicles.push(...art.compatibleCars);
@@ -573,8 +577,8 @@ export async function checkCompatibility({
     });
     console.log(`[OEM] deduplicated compatible vehicles → ${compatibleVehicles.length}`);
 
-    _oemArticleCache.set(oemNumber, { articleInfo, productType });
-    _oemVehiclesCache.set(oemNumber, compatibleVehicles);
+    _oemArticleCache.set(oemCacheKey, { articleInfo, productType });
+    _oemVehiclesCache.set(oemCacheKey, compatibleVehicles);
   }
 
   if (!articleInfo) {
@@ -633,7 +637,7 @@ export async function checkCompatibility({
     searchTerms.push("filter"); // broad fallback
 
     for (const term of searchTerms) {
-      const raw   = await searchPartsByVehicle(vehicleId, term);
+      const raw   = await searchPartsByVehicle(vehicleId, term, langId);
       const parts = extractPartsArray(raw);
       console.log(`[preload] searchPartsByVehicle(${vehicleId}, "${term}") → ${parts.length}`);
       if (parts.length > 0) { cachedVehicleOemParts = parts; cachedUsedTerm = term; break; }
@@ -809,7 +813,7 @@ export async function checkCompatibility({
     const oemResults = await Promise.all(
       oemNosFromVehicle.slice(0, 9).map(async (oem) => {
         try {
-          const found = extractArticlesArray(await searchArticleByOem(oem));
+          const found = extractArticlesArray(await searchArticleByOem(oem, langId));
           console.log(`[STEP6] OEM "${oem}" → ${found.length} aftermarket articles`);
           return found;
         } catch (err) {
@@ -861,7 +865,7 @@ export async function checkCompatibility({
 
     if (bestAltId) {
       try {
-        const details = extractArticlesArray(await getArticleDetailsById(bestAltId));
+        const details = extractArticlesArray(await getArticleDetailsById(bestAltId, langId));
         if (details.length > 0 && details[0]) fullAltArticle = details[0];
       } catch {}
     }
@@ -900,7 +904,7 @@ export async function checkCompatibility({
 
     // Fetch image
     try {
-      const altImg = extractFirstImageUrl(await getArticleMedia(altInfo.articleId));
+      const altImg = extractFirstImageUrl(await getArticleMedia(altInfo.articleId, langId));
       if (altImg) altInfo.imageUrl = altImg;
     } catch {}
 
