@@ -1,0 +1,673 @@
+{
+  "marketing": {
+    "features": "Özellikler",
+    "howItWorks": "Nasıl çalışır",
+    "pricing": "Fiyatlandırma",
+    "faq": "SSS",
+    "login": "Giriş yap",
+    "ctaFree": "10 ilanı ücretsiz oluştur",
+    "menu": "Menü",
+    "helpCentre": "Yardım Merkezi",
+    "contact": "İletişim",
+    "privacy": "Gizlilik",
+    "terms": "Şartlar"
+  },
+  "footer": {
+    "tagline": "OEM'den ilana tek tıkla. Otomotiv yedek parça satıcıları için TecDoc doğruluğunda eBay ilanları.",
+    "slogan": "Akıllı listele. Daha çok sat.",
+    "product": "Ürün",
+    "support": "Destek",
+    "legal": "Yasal",
+    "copyright": "© {{year}} PartLister. Tüm hakları saklıdır."
+  },
+  "landing": {
+    "hero": {
+      "badge": "Gerçek OEM uyumluluk verileriyle güçlendirildi",
+      "titleBefore": "OEM'den ilana ",
+      "titleHighlight": "tek tıkla",
+      "subtitle": "Bir OE, OEM veya ürün numarası yapıştırın ve saniyeler içinde eksiksiz bir eBay ilanı oluşturun.",
+      "ctaSecondary": "Nasıl çalıştığını görün",
+      "microcopy": "Kart gerekmez · 10 ücretsiz ilan · İstediğiniz zaman iptal",
+      "socialProof": "Yüksek hacimli eBay Motors satıcılarının tercihi",
+      "closeVideo": "Videoyu kapat"
+    },
+    "how": {
+      "eyebrow": "Nasıl çalışır",
+      "title": "Üç adım.",
+      "titleAccent": "Bir dakikadan az.",
+      "subtitle": "İlan başına 15 dakika kopyala-yapıştır artık tek tıkla gerçekleşiyor.",
+      "chip1Title": "Saatler kazanın",
+      "chip1Sub": "her gün",
+      "chip2Title": "Doğruluğu artırın",
+      "chip2Sub": "ve tutarlılığı",
+      "chip3Title": "Daha çok listeleyin",
+      "chip3Sub": "daha çok satın",
+      "step1Label": "Adım 1",
+      "step1Title": "OE / OEM / ürün numarasını girin",
+      "step1Body": "Herhangi bir referans numarası veya dahili SKU'nuzu yapıştırın. Tablo yok, manuel veri girişi yok, tahmin yok.",
+      "step2Label": "Adım 2",
+      "step2Title": "PartLister verileri TecDoc'tan alır",
+      "step2Body": "Tam parçayı, araç uyumluluğunu, motor kodlarını ve değiştirilebilir numaraları doğrudan TecDoc'tan çekiyoruz — doğrulanmış, kazınmış değil.",
+      "step3Label": "Adım 3",
+      "step3Title": "Eksiksiz ilanınızı alın. Dışa aktarın. Bitti.",
+      "step3Body": "Optimize edilmiş başlık, açıklama, ürün özellikleri, uyumluluk tablosu ve görseller alın. Kopyalayın, CSV olarak dışa aktarın ve istediğiniz yerde listeleyin.",
+      "step3Bullet1": "eBay için optimize",
+      "step3Bullet2": "Kopyalamaya veya dışa aktarmaya hazır",
+      "step3Bullet3": "Tek tıkla CSV dışa aktarma"
+    },
+    "features": {
+      "eyebrow": "Özellikler",
+      "title": "Yüksek hacimli satıcılar için tasarlandı",
+      "subtitle": "PartLister'dan çıkmadan oluşturun, fiyatlandırın ve uyumluluğu doğrulayın — ilanın her adımı tek yerde.",
+      "listingTag": "İlan Oluşturucu",
+      "listingTitle": "Parça numarasını bitmiş ilana dönüştürün",
+      "listingBody": "Bir OEM veya ürün numarası girin; PartLister sizin için eBay'e hazır başlık, açıklama ve uyumluluk tablosu yazar. Şablon seçin, istediğiniz bölümleri açın ve oluşturun.",
+      "listingP1": "eBay araması için yapay zekâ ile yazılmış başlıklar",
+      "listingP2": "Beş hazır ilan şablonu",
+      "listingP3": "Uyumluluk tablosu, değiştirilebilir numaralar ve motor kodları",
+      "priceTag": "eBay Fiyat Analizi",
+      "priceTitle": "Fiyatınızın piyasada tam olarak nerede durduğunu görün",
+      "priceBody": "Aktif eBay ilanlarından canlı fiyat verisi çekin ve tam dağılımı görün — düşük, medyan, ortalama ve yüksek — böylece listelemeden önce rekabetçi olup olmadığınızı bilirsiniz.",
+      "priceP1": "Aktif eBay ilanlarından canlı dağılım grafiği",
+      "priceP2": "Düşük, medyan, ortalama ve yüksek tek görünümde",
+      "priceP3": "Küme içgörüsü çoğu alıcının nerede işlem yaptığını gösterir",
+      "calcTag": "Fiyat Hesaplayıcı",
+      "calcTitle": "Hedef kâr marjınızdan geriye doğru hesaplayın",
+      "calcBody": "Satış fiyatı girin; PartLister eBay ücretlerini, KDV'yi ve gönderiyi otomatik düşer — ne kadar kaldığını her zaman bilirsiniz. Hedef marj belirleyin ve bunu karşılayan minimum fiyatı bulun.",
+      "calcP1": "eBay ücretleri, KDV ve gönderi otomatik düşülür",
+      "calcP2": "Hedef marjınızı girin — minimum satış fiyatını görün",
+      "calcP3": "Her pazar yeri ve her para birimi için çalışır",
+      "compatTag": "Uyumluluk Kontrolü",
+      "compatTitle": "Bir daha yanlış parça satmayın",
+      "compatBody": "Bir parçayı VIN veya OEM numarasına göre kontrol edin ve doğrudan TecDoc'tan güven skoru olan uyumluluk sonucu alın. Daha az iade, daha az anlaşmazlık, daha iyi geri bildirim.",
+      "compatP1": "Saniyeler içinde VIN ve OEM uyumluluğu",
+      "compatP2": "Tam TecDoc eşleşmesiyle güven skoru",
+      "compatP3": "Tam araç özellikleri: motor, güç, yıl aralığı"
+    },
+    "pricing": {
+      "eyebrow": "Fiyatlandırma",
+      "title": "Sizinle büyüyen basit fiyatlandırma",
+      "subtitle": "10 ilanla ücretsiz başlayın. Hazır olduğunuzda yükseltin. Sözleşme yok, istediğiniz zaman iptal.",
+      "mostPopular": "En popüler",
+      "perMonth": "/ay",
+      "redirecting": "Yönlendiriliyor…",
+      "checkoutError": "Ödeme başarısız. Lütfen tekrar deneyin.",
+      "backToApp": "← Uygulamaya dön",
+      "liteName": "Lite",
+      "liteTagline": "Ara sıra satanlar ve daha küçük envanterler için.",
+      "liteCta": "Lite ile başla",
+      "liteF1": "50 ilan / ay",
+      "liteF2": "İlan Oluşturucu",
+      "liteF3": "Fiyat Hesaplayıcı",
+      "liteF4": "Satıcı Tercihleri",
+      "liteF5": "İlanları CSV'ye aktar",
+      "liteF6": "Kaydedilmiş İlanlar",
+      "growthName": "Growth",
+      "growthTagline": "Büyüyen otomotiv işletmeleri için.",
+      "growthCta": "Growth ile başla",
+      "growthF1": "200 ilan / ay",
+      "growthF2": "Lite'daki her şey",
+      "growthF3": "Uyumluluk Kontrolü",
+      "growthF4": "Smart Pricing",
+      "growthF5": "Öncelikli destek",
+      "scaleName": "Scale",
+      "scaleTagline": "Daha büyük operasyonlar ve ekipler için.",
+      "scaleCta": "Scale ile başla",
+      "scaleF1": "Sınırsız ilan",
+      "scaleF2": "Growth'taki her şey",
+      "scaleF3": "Toplu ilan oluşturma",
+      "scaleF4": "Toplu CSV dışa aktarma",
+      "scaleF5": "Erken erişim özellikleri"
+    },
+    "faq": {
+      "eyebrow": "SSS",
+      "title": "Bilmeniz gereken her şey",
+      "q1": "Parça ve uyumluluk verileri nereden geliyor?",
+      "a1": "PartLister, OE referansları, değiştirilebilir numaralar, uyumluluk, motor kodları ve teknik özelliklerle ilan oluşturmak için güvenilir TecDoc ürün ve araç verilerini kullanır. Ürün verilerini yapay zekâ ile uydurmayız.",
+      "q2": "İlan oluşturmak için ne girebilirim?",
+      "a2": "OE Numarası, OEM Numarası veya TecDoc Ürün Numarası ile ilan oluşturabilirsiniz. Referans numaranızı yapıştırmanız yeterli; PartLister ilanı otomatik oluşturur.",
+      "q3": "PartLister ne üretir?",
+      "a3": "Her ilan SEO optimize başlık, ürün açıklaması, ürün özellikleri, araç uyumluluğu, motor kodları, OE referansları, değiştirilebilir numaralar, piyasa fiyatlandırması ve CSV dışa aktarma içerebilir.",
+      "q4": "Uyumluluk verileri doğru mu?",
+      "a4": "Uyumluluk doğrudan TecDoc araç uygulama verilerinden oluşturulur. Yayınlamadan önce her zaman doğrulamanızı öneririz; ancak PartLister yüzlerce uygulamayı elle araştırmanıza gerek bırakmaz.",
+      "q5": "Ücretsiz deneme nasıl çalışır?",
+      "a5": "Her yeni hesap 10 ücretsiz ilan içerir. Kredi kartı gerekmez. Abonelik seçmeden önce tüm temel özellikleri keşfedebilirsiniz.",
+      "q6": "İlanlarımı dışa aktarabilir miyim?",
+      "a6": "Evet. HTML'yi anında kopyalayabilir, CSV'ye aktarabilir, ilanları sonraya kaydedebilir ve tercih ettiğiniz pazar yeri iş akışını kullanabilirsiniz.",
+      "q7": "PartLister eBay ücretlerini ve kârı hesaplar mı?",
+      "a7": "Evet. Smart Pricing aracımız eBay ücretlerini, KDV'yi, kargoyu, paketlemeyi, reklam maliyetlerini, kârı, marjı ve markup'ı hesaplar — her ilanı güvenle fiyatlandırmanıza yardımcı olur.",
+      "q8": "İlanlarımı yapay zekâ mı yazıyor?",
+      "a8": "Yapay zekâ başlık ve açıklamaları optimize etmeye yardımcı olur. Ürün özellikleri, uyumluluk ve OE referansları yapay zekâdan değil, güvenilir otomotiv veri kaynaklarından gelir. Doğrulanmış katalog verisinin güvenilirliğiyle yapay zekâ hızını bir arada sunar.",
+      "q9": "PartLister kimler için?",
+      "a9": "PartLister eBay satıcıları, yedek parça tedarikçileri, otomotiv perakendecileri, motor yenileyicileri, parça distribütörleri, hurdalıklar ve ticari araç uzmanları için — ölçekte otomotiv yedek parça ilanı oluşturan herkes için tasarlandı.",
+      "q10": "TecDoc'tan kopyalamak yerine neden PartLister kullanmalıyım?",
+      "a10": "TecDoc, eBay ve tablolar arasında elle kopyalamak yerine PartLister saniyeler içinde eksiksiz bir ilan oluşturur — daha az elle iş, daha az hata, daha iyi SEO, tutarlı ilanlar ve satmaya daha fazla zaman."
+    },
+    "finalCta": {
+      "title": "Saniyeler içinde ilan oluşturmaya hazır mısınız?",
+      "body": "Parça verilerini elle kopyala-yapıştırmayı bırakın. Bir sonraki OEM numaranızı hemen eksiksiz bir eBay ilanına dönüştürün.",
+      "microcopy": "Kart gerekmez · İstediğiniz zaman iptal"
+    },
+    "partsBand": {
+      "eyebrow": "Her kategori kapsanır",
+      "title": "Motorlardan elektriğe — her parçayı listeleyin",
+      "subtitle": "OE, OEM veya makale numarası varsa PartLister bunu doğrulanmış bir eBay ilanına dönüştürebilir.",
+      "parts": {
+        "engines": "Motorlar",
+        "turbos": "Turbolar",
+        "radiators": "Radyatörler",
+        "exhausts": "Egzozlar",
+        "suspension": "Süspansiyon",
+        "ignition": "Ateşleme",
+        "wheels": "Jant & lastik",
+        "internals": "Motor iç parçaları",
+        "instruments": "Göstergeler"
+      }
+    },
+    "heroDemo": {
+      "inputLabel": "OE / OEM / parça numarası girin",
+      "generating": "Oluşturuluyor…",
+      "ready": "İlan hazır",
+      "generate": "İlan oluştur",
+      "live": "Canlı",
+      "status": [
+        "TecDoc veritabanı aranıyor",
+        "Parça tanımlandı — biyel kolu",
+        "Araç uygulamaları eşleştiriliyor",
+        "OEM referansları getiriliyor",
+        "Uyumluluk tablosu oluşturuluyor",
+        "SEO başlığı oluşturuluyor",
+        "Değiştirilebilir numaralar aranıyor",
+        "Dışa aktarma hazırlanıyor"
+      ],
+      "badges": {
+        "vehicles": "58 uyumlu araç",
+        "references": "74 OE referansı",
+        "seo": "SEO başlığı oluşturuldu",
+        "export": "CSV dışa aktarımına hazır"
+      },
+      "specifics": {
+        "brand": "Marka",
+        "oeNumber": "OE Numarası",
+        "condition": "Durum",
+        "placement": "Konum"
+      },
+      "values": {
+        "new": "Yeni",
+        "engine": "Motor"
+      },
+      "tabs": [
+        "Açıklama",
+        "Uyumluluk",
+        "Ürün özellikleri",
+        "HTML"
+      ],
+      "listingTitle": "İlan başlığı",
+      "generatedTitle": "Orijinal BMW biyel kolu 11247807345 — 3 Serisi E90 E91 320d 325d N47",
+      "itemSpecifics": "Ürün özellikleri",
+      "compatibility": "Uyumluluk",
+      "vehicles": "{{count}} araç",
+      "models": "{{brand}} Modelleri",
+      "columns": {
+        "vehicle": "Araç",
+        "years": "Yıllar",
+        "engineCode": "Motor kodu"
+      },
+      "oeReferences": "OE referansları",
+      "interchangeable": "Değiştirilebilir",
+      "save": "İlanı kaydet",
+      "copyHtml": "HTML kopyala"
+    },
+    "howAnim": {
+      "inputLabel": "OE / OEM / ürün numarası",
+      "generate": "İlan oluştur",
+      "oemNumbers": "OEM Numaraları",
+      "oilPump": "Yağ Pompası",
+      "verifyCompatibility": "Lütfen sipariş vermeden önce uyumluluğu doğrulayın",
+      "compatibleVehicles": "Uyumlu Araçlar ({{count}} uygulama)",
+      "compatibleVehiclesShort": "{{count}} uyumlu araç",
+      "vehicle": "Araç",
+      "years": "Yıllar",
+      "engine": "Motor",
+      "checkPrices": "Piyasa Fiyatlarını Kontrol Et",
+      "kNumbers": "K NUMARALARI",
+      "markExported": "Dışa Aktarıldı Olarak İşaretle ({{count}})",
+      "deleteSelected": "Seçili {{count}} öğeyi sil",
+      "exportCsv": "CSV Dışa Aktar ({{count}} seçili)",
+      "type": "Tür",
+      "status": "Durum",
+      "exported": "Dışa aktarıldı",
+      "listingsExported": "{{count}} ilan CSV’ye aktarıldı"
+    },
+    "who": {
+      "eyebrow": "Kimler için",
+      "title": "Otomotiv parça satıcıları için tasarlandı",
+      "audience": [
+        {
+          "icon": "🛒",
+          "title": "eBay Parça Satıcıları",
+          "desc": "İlan oluşturmayı hızlandırın ve yüzlerce parçada kataloğunuzu tutarlı tutun."
+        },
+        {
+          "icon": "🏭",
+          "title": "Satış Sonrası Parça Tedarikçileri",
+          "desc": "Manuel veri girişi olmadan geniş bir katalog için yapılandırılmış ilanlar oluşturun."
+        },
+        {
+          "icon": "🔩",
+          "title": "Hurdacılar ve Söküm İşletmeleri",
+          "desc": "Doğru uyumluluk ve durum verileriyle çıkma parçaları hızla listeleyin."
+        },
+        {
+          "icon": "📦",
+          "title": "Küçük Parça İşletmeleri",
+          "desc": "Özel bir ekip olmadan profesyonel ilanlarla büyük satıcılarla rekabet edin."
+        }
+      ]
+    },
+    "demo": {
+      "eyebrow": "Faydalar",
+      "title": "Büyümek isteyen otomotiv satıcıları için tasarlandı",
+      "benefits": [
+        "Ürünleri 5–10 kat daha hızlı listeleyin",
+        "Hataları ve iadeleri azaltın",
+        "Güvenle fiyatlandırın",
+        "Tutarlı, profesyonel ilanlar oluşturun",
+        "Listelemeye daha az, satışa daha çok zaman ayırın"
+      ],
+      "timeSaved": "İlan başına kazanılan zaman",
+      "timeSavedBody": "Manuel iş akışına göre ilan başına ortalama zaman tasarrufu",
+      "errorsEliminated": "Giderilen ilan hataları",
+      "errorsEliminatedBody": "Uyumluluk ve fiyatlandırma hatalarında azalma"
+    },
+    "trust": {
+      "eyebrow": "Neden PartLister",
+      "title": "Gerçek parça satıcıları için tasarlandı",
+      "body1": "Otomotiv e-ticaret işletmelerinin kullandığı gerçek iş akışları etrafında geliştirildi.",
+      "body2": "Gösteriş yok. Gereksiz özellik yok. Sadece zaman kazandıran ve para kazandıran araçlar."
+    },
+    "smartPricing": {
+      "badge": "AKILLI FİYATLANDIRMA",
+      "titleBefore": "Tahmin etmeyi bırakın.",
+      "titleAccent": "Gerçek piyasa verileriyle fiyatlandırın.",
+      "body": "PartLister, parçanız için gerçek bir fiyat dağılımı oluşturmak üzere aktif ve yakın zamanda satılmış eBay ilanlarını tarar. Satıcıların istediğini değil, alıcıların gerçekten ne ödediğini görün.",
+      "benefits": [
+        "Parça numarasına göre aktif ve satılmış eBay ilanları analiz edilir",
+        "Düşük, medyan, ortalama ve yüksek fiyat göstergeleri",
+        "Her fiyatta kaç aktif satıcının rekabet ettiğini görün"
+      ],
+      "insightTitle": "Piyasa içgörüsü",
+      "insightBody": "{{partNumber}} için — {{low}} ile {{high}} arasında 15 aktif ilan. Medyan satış fiyatı: {{median}}. Maliyetin altında 3 ilan.",
+      "distributionTitle": "Fiyat dağılımı",
+      "listingsCount": "{{count}} ilan · {{partNumber}}",
+      "liveData": "Canlı veriler",
+      "markers": [
+        {
+          "label": "Düşük",
+          "val": "£185",
+          "sub": "taban"
+        },
+        {
+          "label": "Medyan",
+          "val": "£295",
+          "sub": "ideal nokta",
+          "highlight": true
+        },
+        {
+          "label": "Ortalama",
+          "val": "£309",
+          "sub": "ortalama"
+        },
+        {
+          "label": "Yüksek",
+          "val": "£415",
+          "sub": "tavan"
+        }
+      ],
+      "similarListings": "Benzer eBay ilanları",
+      "sold": "Satıldı",
+      "active": "Aktif",
+      "listings": [
+        {
+          "title": "VW Golf MK5 ön sol fren kaliperi — OE özellikli",
+          "price": "£299",
+          "sold": true
+        },
+        {
+          "title": "Fren kaliperi 1K0615123A VW Audi Skoda Seat",
+          "price": "£315",
+          "sold": true
+        },
+        {
+          "title": "Golf MK5 MK6 ön fren kaliperi — yeni",
+          "price": "£329",
+          "sold": false
+        },
+        {
+          "title": "VW 1K0615123A fren kaliperi — hızlı gönderim",
+          "price": "£349",
+          "sold": false
+        }
+      ]
+    },
+    "beforeAfter": {
+      "flowRows": [
+        "OE",
+        "Değişim",
+        "N Numarası",
+        "Uyumluluk",
+        "Ürün özellikleri"
+      ],
+      "rawData": "Ham veri",
+      "rawRows": [
+        "OE: 123 1241 A55",
+        "Değişim:",
+        "12345, 123451…",
+        "Uyumluluk:",
+        "Audi A4 2001–",
+        "Ürün özellikleri:",
+        "Marka:",
+        "Garanti:"
+      ],
+      "structuredListing": "Yapılandırılmış ilan",
+      "description": "Açıklama",
+      "compatibility": "Uyumluluk",
+      "itemSpecifics": "Ürün özellikleri",
+      "manualWorkflow": "Manuel iş akışı",
+      "copyTitle": "Her şeyi kopyalayıp yapıştırın",
+      "copyBody": "OE numaraları, değiştirilebilir referanslar, uyumluluk verileri ve ürün özellikleri genellikle aynı ilan yapısına elle kopyalanmalıdır.",
+      "formatTitle": "İlanı manuel biçimlendirin",
+      "formatBody": "Açıklamalar her SKU için başlıklar, bölümler, uyarılar, ürün özellikleri ve uyumluluğun açıkça düzenlenmesini gerektirir.",
+      "withPartLister": "PartLister ile",
+      "steps": [
+        {
+          "title": "OE / OEM / ürün numarasını girin",
+          "desc": "Halihazırda sahip olduğunuz parça numarasıyla başlayın."
+        },
+        {
+          "title": "Yapılandırılmış ilan oluşturun",
+          "desc": "PartLister başlığı, OE referanslarını, değiştirilebilir numaraları, ürün özelliklerini ve uyumluluğu temiz bir ilan çıktısında düzenler."
+        },
+        {
+          "title": "Listelemeye hazır çıktı",
+          "desc": "Oluşturulan ilanı gözden geçirin, ardından HTML'yi kopyalayın veya verileri dışa aktarın."
+        }
+      ],
+      "resultTitle": "Yapılandırılmış ilan çıktısı",
+      "resultInput": "OE / OEM / ürün numarası",
+      "resultOutput": "Uyumluluk ve ürün özellikleri",
+      "faster": "20 kata kadar daha hızlı",
+      "cta": "10 ilanı ücretsiz oluştur"
+    },
+    "proof": {
+      "eyebrow": "Tüm iş akışı, otomatik",
+      "steps": [
+        {
+          "label": "OE Numarası",
+          "detail": "ör. 1K0615123A"
+        },
+        {
+          "label": "Motor Kodu",
+          "detail": "AXW, BLY, BVY…"
+        },
+        {
+          "label": "Uyumluluk",
+          "detail": "VW, Audi, Skoda, Seat"
+        },
+        {
+          "label": "Ürün özellikleri",
+          "detail": "Marka, konum, ref."
+        },
+        {
+          "label": "Akıllı Fiyatlandırma",
+          "detail": "£185–£415 aralığı"
+        },
+        {
+          "label": "CSV Dışa Aktarma",
+          "detail": "toplu eBay yüklemesine hazır"
+        }
+      ],
+      "stats": [
+        {
+          "stat": "< 30 sn",
+          "desc": "OE numarasından eksiksiz ilana"
+        },
+        {
+          "stat": "%100",
+          "desc": "eBay ürün özellikleri dolduruldu"
+        },
+        {
+          "stat": "Canlı",
+          "desc": "Fiyatlandırma için eBay piyasa verileri"
+        },
+        {
+          "stat": "Toplu",
+          "desc": "Toplu yükleme için CSV dışa aktarma"
+        }
+      ]
+    },
+    "featureDemos": {
+      "common": {
+        "on": "ON",
+        "oilPump": "Yağ Pompası",
+        "saveListing": "İlanı kaydet",
+        "copyHtml": "HTML kopyala",
+        "title": "Başlık",
+        "sellingPrice": "Satış fiyatı",
+        "netProfit": "Net kâr",
+        "margin": "Marj",
+        "markup": "Kar payı"
+      },
+      "listing": {
+        "title": "İlan oluşturucu",
+        "subtitle": "Bir TecDoc makale numarası veya OEM / referans numarası girin.",
+        "articleNumber": "Makale no. veya OEM numarası",
+        "templates": "Şablonlar",
+        "templateNames": {
+          "cleanDefault": "Sade varsayılan",
+          "darkHeader": "Koyu üst bilgi",
+          "tableFocused": "Tablo odaklı",
+          "minimal": "Minimal",
+          "professionalBlue": "Profesyonel mavi"
+        },
+        "contentOptions": "İçerik seçenekleri",
+        "contentOptionNames": {
+          "compatibilityTable": "Uyumluluk tablosu",
+          "interchangeableNumbers": "Değiştirilebilir numaralar",
+          "engineCodes": "Motor kodları"
+        },
+        "searchGenerate": "Ara ve oluştur",
+        "unlimitedListings": "Sınırsız ilan",
+        "tabs": {
+          "preview": "Önizleme",
+          "itemSpecifics": "Öğe özellikleri"
+        },
+        "editDescription": "Açıklamayı düzenle",
+        "verifyCompatibility": "Sipariş vermeden önce uyumluluğu doğrulayın",
+        "oemNumbers": "OEM numaraları",
+        "compatibleVehicles": "Uyumlu araçlar ({{count}} uygulama)",
+        "compatibleVehiclesShort": "{{count}} uyumlu araç",
+        "columns": {
+          "vehicle": "Araç",
+          "years": "Yıllar",
+          "kw": "kW",
+          "hp": "HP",
+          "cc": "CC",
+          "engineCodes": "Motor kodları"
+        },
+        "article": "Makale",
+        "checkMarketPrices": "Piyasa fiyatlarını kontrol et",
+        "compatRows": [
+          "JAGUAR F-TYPE Conv. (X152) 3.0 SCV6",
+          "JAGUAR F-TYPE Conv. (X152) 3.0 SCV6 S",
+          "JAGUAR F-TYPE Conv. (X152) 3.0 SCV6 S AWD",
+          "JAGUAR F-TYPE Conv. (X152) 5.0 SCV8 P450",
+          "JAGUAR F-TYPE Conv. (X152) 5.0 SCV8 R"
+        ]
+      },
+      "price": {
+        "title": "Akıllı eBay fiyatlandırma",
+        "listingsCount": "{{count}} ilan",
+        "distribution": "Fiyat dağılımı",
+        "low": "LOW",
+        "median": "MED",
+        "your": "YOUR",
+        "average": "AVG",
+        "high": "HIGH",
+        "chartCaption": "£38–£380 · £20 fiyat aralıkları · {{count}} ilan",
+        "allResults": "Tüm sonuçlar",
+        "listingsFound": "{{count}} ilan bulundu",
+        "lowToHigh": "Fiyat: düşükten yükseğe",
+        "new": "Yeni",
+        "freeDelivery": "Ücretsiz kargo",
+        "listings": [
+          "OIL PUMP LR002465 Range Rover Sport TDV6 SDV6 NEW 276DT 306DT 2.7 3.0",
+          "Oil Pump For JAGUAR XF XJ 2.7 3.0 SDV6 306DT 276DT Engine NEW",
+          "OIL PUMP Range Rover Mk4 Diesel TDV6 SDV6 NEW 276DT 306DT LR002465",
+          "OIL PUMP LR002465 Land Rover DISCOVERY TDV6 SDV6 NEW 3.0 306DT",
+          "Oil Pump LAND ROVER DISCOVERY III IV V Range Rover Sport 2.7 3.0 306DT",
+          "OIL PUMP & SEALS Range Rover Sport L320 2005-2013 LR002465 NEW 2.7 3.0",
+          "Genuine Land Rover Oil Pump Assembly LR002465 Discovery 3 4 Range Rover"
+        ]
+      },
+      "calculator": {
+        "costPricingInputs": "Maliyet ve fiyatlandırma",
+        "product": "Ürün",
+        "productSku": "Ürün / SKU",
+        "yourCosts": "Maliyetleriniz",
+        "itemCost": "Ürün maliyeti",
+        "postage": "Kargo",
+        "packaging": "Paketleme",
+        "ebayFeesTitle": "eBay ücretleri",
+        "finalValue": "Nihai değer (%)",
+        "fixedFee": "Sabit ücret",
+        "adRate": "Reklam oranı (%)",
+        "vatRegistered": "KDV kayıtlı (%20)",
+        "includingVat": "KDV dahil",
+        "costBreakdown": "Maliyet dökümü",
+        "productCost": "Ürün maliyeti",
+        "postagePackaging": "Kargo ve paketleme",
+        "ebayFees": "eBay ücretleri (%12,8 + £0.30)",
+        "vatCollected": "Toplanan KDV → HMRC",
+        "vatNote": "Bunun hiçbirini tutmazsınız",
+        "breakEven": "Başabaş satış fiyatı"
+      },
+      "compat": {
+        "title": "Uyumluluk denetleyicisi",
+        "vinNumber": "VIN numarası",
+        "oemPartNumber": "OEM / parça numarası",
+        "checkCompatibility": "Uyumluluğu kontrol et",
+        "progress": {
+          "vehicleLookup": "Plakadan araç aranıyor…",
+          "oemSearch": "TecDoc’ta OEM numarası aranıyor…",
+          "compatibilityCheck": "Parça uyumluluğu kontrol ediliyor…"
+        },
+        "compatible": "Uyumlu",
+        "compatibleDescription": "Bu parça girilen araçla uyumlu görünüyor.",
+        "confidence": "Güven",
+        "highConfidence": "Yüksek güven — Uyumlu",
+        "vehicle": "Araç",
+        "part": "Parça",
+        "diesel": "diesel",
+        "vehicleFields": {
+          "make": "Marka",
+          "variant": "Varyant",
+          "year": "Yıl",
+          "fuel": "Yakıt",
+          "engineSize": "Motor hacmi",
+          "engineCode": "Motor kodu",
+          "power": "Güç"
+        },
+        "partFields": {
+          "articleNumber": "Makale no.",
+          "productType": "Ürün türü"
+        }
+      }
+    },
+    "problem": {
+      "eyebrow": "Sorun",
+      "titleBefore": "Otomobil parçası ilanları oluşturmak",
+      "titleMiddle": "hâlâ",
+      "titleAccent": "fazla manuel",
+      "subtitle": "Çoğu satıcı, her bir parça için veri girişi, biçimlendirme ve tahmine çok fazla zaman harcıyor.",
+      "sourceData": "Kaynak Veriler",
+      "ebayListing": "eBay İlanı",
+      "copiedFieldByField": "Her ilan için alan alan kopyalanır",
+      "rows": {
+        "oeNumber": "OE Numarası",
+        "crossReferences": "Çapraz Referanslar",
+        "compatibilityTable": "Uyumluluk tablosu",
+        "itemSpecifics": "Ürün özellikleri",
+        "kTypeNumbers": "K-Tipi Numaraları"
+      },
+      "cards": {
+        "manual": {
+          "title": "Manuel İş Akışı",
+          "body": "OE numaralarını, uyumluluk verilerini, ürün özelliklerini ve ilan alanlarını elle kopyalamak her ilanı yavaşlatır."
+        },
+        "inconsistent": {
+          "title": "Tutarsız İlanlar",
+          "body": "Eksik ürün özellikleri, motor kodları, OE numaraları ve uyumluluk ayrıntıları görünürlüğe ve alıcı güvenine zarar verebilir."
+        },
+        "pricing": {
+          "title": "Fiyat Tahmini",
+          "body": "Fiyat çok düşükse marj kaybedersiniz. Çok yüksekse parça haftalarca satılmadan kalabilir."
+        }
+      },
+      "missingFields": {
+        "referenceOem": "Referans OE/OEM Numarası",
+        "interchangeable": "Değiştirilebilir Parça Numaraları",
+        "engineCodes": "Motor Kodları",
+        "boreDiameter": "Silindir Çapı",
+        "pinDiameter": "Pim Çapı",
+        "length": "Uzunluk"
+      },
+      "present": "Mevcut",
+      "missing": "Eksik",
+      "marketRange": "Bu parça için piyasa aralığı",
+      "yourGuess": "Tahmininiz: £310?",
+      "bridge": "PartLister tüm bunları otomatikleştirir — parça numarası girilir, listelenmeye hazır sonuç çıkar."
+    }
+  },
+  "authExtra": {
+    "welcomeBack": "Tekrar hoş geldiniz",
+    "signInContinue": "PartLister'a devam etmek için giriş yapın",
+    "signInPaid": "{{plan}} ile devam etmek için giriş yapın — {{price}}/{{period}}",
+    "createAccountTitle": "Hesabınızı oluşturun",
+    "signupSubtitle": "Saniyeler içinde ilan oluşturmaya başlayın",
+    "signupPaidSubtitle": "{{plan}} ile başlamak için hesabınızı oluşturun",
+    "resetTitle": "Şifrenizi sıfırlayın",
+    "resetSubtitle": "E-postanızı girin, size bir sıfırlama bağlantısı gönderelim",
+    "updatePasswordTitle": "Yeni bir şifre belirleyin",
+    "updatePasswordSubtitle": "PartLister hesabınız için yeni bir şifre seçin",
+    "newPasswordPlaceholder": "Yeni şifrenizi girin",
+    "emailAddress": "E-posta adresi",
+    "emailPlaceholder": "siz@ornek.com",
+    "passwordPlaceholder": "Şifreniz",
+    "createPasswordPlaceholder": "Bir şifre oluşturun",
+    "repeatPassword": "Şifreyi tekrarla",
+    "repeatPasswordPlaceholder": "Şifrenizi tekrar girin",
+    "hidePassword": "Şifreyi gizle",
+    "showPassword": "Şifreyi göster",
+    "signIn": "Giriş yap",
+    "signingIn": "Giriş yapılıyor…",
+    "continuingPayment": "Ödemeye devam ediliyor…",
+    "signInContinuePayment": "Giriş yap ve ödemeye devam et",
+    "creatingAccount": "Hesap oluşturuluyor…",
+    "passwordsMismatch": "Şifreler eşleşmiyor",
+    "checkEmailReset": "Sıfırlama bağlantısı için e-postanızı kontrol edin",
+    "sendResetEmail": "Sıfırlama e-postası gönder",
+    "sending": "Gönderiliyor…",
+    "backToSite": "← Siteye dön",
+    "confirmEmailTitle": "E-postanızı onaylayın",
+    "confirmEmailPaidSubtitle": "{{plan}} planınız için bir onay bağlantısı gönderdik",
+    "checkInbox": "Gelen kutunuzu kontrol edin",
+    "checkEmailTitle": "E-postanızı kontrol edin",
+    "checkEmailSubtitle": "Size bir onay bağlantısı gönderdik. Hesabınızı etkinleştirmek için tıklayın.",
+    "goToSignIn": "Girişe git",
+    "createAccountContinuePayment": "Hesap oluştur ve ödemeye devam et",
+    "checkoutPlan": "Plan",
+    "checkoutAccount": "Hesap",
+    "checkoutPayment": "Ödeme"
+  }
+}

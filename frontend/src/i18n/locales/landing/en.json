@@ -1,0 +1,673 @@
+{
+  "marketing": {
+    "features": "Features",
+    "howItWorks": "How It Works",
+    "pricing": "Pricing",
+    "faq": "FAQ",
+    "login": "Log in",
+    "ctaFree": "Generate 10 Listings Free",
+    "menu": "Menu",
+    "helpCentre": "Help Centre",
+    "contact": "Contact",
+    "privacy": "Privacy",
+    "terms": "Terms"
+  },
+  "footer": {
+    "tagline": "OEM to listing in one click. TecDoc-accurate eBay listings for automotive parts sellers.",
+    "slogan": "List Smart. Sell More.",
+    "product": "Product",
+    "support": "Support",
+    "legal": "Legal",
+    "copyright": "© {{year}} PartLister. All rights reserved."
+  },
+  "landing": {
+    "hero": {
+      "badge": "Powered by real OEM fitment data",
+      "titleBefore": "OEM to Listing in ",
+      "titleHighlight": "One Click",
+      "subtitle": "Paste an OE, OEM or article number and generate a complete eBay listing in seconds.",
+      "ctaSecondary": "See How It Works",
+      "microcopy": "No card required · 10 free listings · Cancel anytime",
+      "socialProof": "Trusted by high-volume eBay motor sellers",
+      "closeVideo": "Close video"
+    },
+    "how": {
+      "eyebrow": "How it works",
+      "title": "Three steps.",
+      "titleAccent": "Under a minute.",
+      "subtitle": "What used to take 15 minutes of copy-paste per listing now happens in a single click.",
+      "chip1Title": "Save hours",
+      "chip1Sub": "every day",
+      "chip2Title": "Improve accuracy",
+      "chip2Sub": "& consistency",
+      "chip3Title": "List more",
+      "chip3Sub": "sell more",
+      "step1Label": "Step 1",
+      "step1Title": "Enter OE / OEM / Article Number",
+      "step1Body": "Paste any reference number or your internal SKU. No spreadsheets, no manual data entry, no guesswork.",
+      "step2Label": "Step 2",
+      "step2Title": "PartLister fetches data from TecDoc",
+      "step2Body": "We pull the exact part, vehicle fitment, engine codes and interchangeable numbers straight from TecDoc — verified, not scraped.",
+      "step3Label": "Step 3",
+      "step3Title": "Get your complete listing. Export. Done.",
+      "step3Body": "Get an optimised title, description, item specifics, compatibility table and images. Copy, export to CSV and list anywhere.",
+      "step3Bullet1": "Optimised for eBay",
+      "step3Bullet2": "Ready to copy or export",
+      "step3Bullet3": "CSV export in one click"
+    },
+    "features": {
+      "eyebrow": "Features",
+      "title": "Built for sellers who move volume",
+      "subtitle": "Generate, price and verify fitment without ever leaving PartLister — every step of the listing in one place.",
+      "listingTag": "Listing Generator",
+      "listingTitle": "Turn a part number into a finished listing",
+      "listingBody": "Enter an OEM or article number and PartLister writes an eBay-ready title, description and compatibility table for you. Pick a template, toggle the sections you want, and generate.",
+      "listingP1": "AI-written titles built for eBay search",
+      "listingP2": "Five ready-made listing templates",
+      "listingP3": "Compatibility table, interchangeable numbers & engine codes",
+      "priceTag": "eBay Price Analysis",
+      "priceTitle": "See exactly where your price sits in the market",
+      "priceBody": "Pull live price data from active eBay listings and see a full distribution — low, median, average and high — so you know whether you're competitive before you list.",
+      "priceP1": "Live distribution chart from active eBay listings",
+      "priceP2": "Low, median, average & high in one view",
+      "priceP3": "Cluster insight tells you where most buyers transact",
+      "calcTag": "Price Calculator",
+      "calcTitle": "Work backwards from your target margin",
+      "calcBody": "Enter a sale price and PartLister deducts eBay fees, VAT and postage automatically — so you always know exactly what you keep. Set a target margin and find the minimum price that hits it.",
+      "calcP1": "eBay fees, VAT & postage deducted automatically",
+      "calcP2": "Enter your target margin — see the minimum sell price",
+      "calcP3": "Works for any marketplace in any currency",
+      "compatTag": "Compatibility Checker",
+      "compatTitle": "Never sell the wrong part again",
+      "compatBody": "Check a part against a VIN or OEM number and get a confidence-scored fitment result straight from TecDoc. Fewer returns, fewer disputes, better feedback.",
+      "compatP1": "VIN and OEM compatibility in seconds",
+      "compatP2": "Confidence score with exact TecDoc match",
+      "compatP3": "Full vehicle spec: engine, power, year range"
+    },
+    "pricing": {
+      "eyebrow": "Pricing",
+      "title": "Simple pricing that scales with you",
+      "subtitle": "Start free with 10 listings. Upgrade when you are ready. No contracts, cancel anytime.",
+      "mostPopular": "Most Popular",
+      "perMonth": "/month",
+      "redirecting": "Redirecting…",
+      "checkoutError": "Checkout failed. Please try again.",
+      "backToApp": "← Back to app",
+      "liteName": "Lite",
+      "liteTagline": "For occasional sellers and smaller inventories.",
+      "liteCta": "Start with Lite",
+      "liteF1": "50 listings / month",
+      "liteF2": "Listing Generator",
+      "liteF3": "Price Calculator",
+      "liteF4": "Seller Preferences",
+      "liteF5": "Export Listings to CSV",
+      "liteF6": "Saved Listings",
+      "growthName": "Growth",
+      "growthTagline": "For growing automotive businesses.",
+      "growthCta": "Start with Growth",
+      "growthF1": "200 listings / month",
+      "growthF2": "Everything in Lite",
+      "growthF3": "Compatibility Checker",
+      "growthF4": "Smart Pricing",
+      "growthF5": "Priority Support",
+      "scaleName": "Scale",
+      "scaleTagline": "For larger operations and teams.",
+      "scaleCta": "Start with Scale",
+      "scaleF1": "Unlimited listings",
+      "scaleF2": "Everything in Growth",
+      "scaleF3": "Bulk Listing Generation",
+      "scaleF4": "Bulk CSV Export",
+      "scaleF5": "Early Access Features"
+    },
+    "faq": {
+      "eyebrow": "FAQ",
+      "title": "Everything you need to know",
+      "q1": "Where does the part and fitment data come from?",
+      "a1": "PartLister uses trusted TecDoc product and vehicle data to generate listings with OE references, interchangeable numbers, compatibility, engine codes and technical specifications. We don't invent product data with AI.",
+      "q2": "What can I enter to generate a listing?",
+      "a2": "You can generate a listing using an OE Number, OEM Number, or TecDoc Article Number. Simply paste your reference number and PartLister builds the listing automatically.",
+      "q3": "What does PartLister generate?",
+      "a3": "Every listing can include an SEO-optimised title, product description, item specifics, vehicle compatibility, engine codes, OE references, interchangeable numbers, market pricing, and CSV export.",
+      "q4": "Is the compatibility data accurate?",
+      "a4": "Compatibility is generated directly from TecDoc vehicle application data. We always recommend verifying compatibility before publishing, but PartLister removes the need to manually research hundreds of applications yourself.",
+      "q5": "How does the free trial work?",
+      "a5": "Every new account includes 10 free listings. No credit card required. You can explore every core feature before choosing a subscription.",
+      "q6": "Can I export my listings?",
+      "a6": "Yes. You can instantly copy HTML, export to CSV, save listings for later, and use your preferred marketplace workflow.",
+      "q7": "Does PartLister calculate eBay fees and profit?",
+      "a7": "Yes. Our Smart Pricing tool calculates eBay fees, VAT, shipping, packaging, advertising costs, profit, margin and markup — helping you price every listing confidently.",
+      "q8": "Is AI writing my listings?",
+      "a8": "AI helps optimise titles and descriptions. Your product specifications, compatibility and OE references come from trusted automotive data sources rather than being generated by AI. This gives you the speed of AI with the reliability of verified catalogue data.",
+      "q9": "Who is PartLister for?",
+      "a9": "PartLister is built for eBay sellers, motor factors, automotive retailers, engine rebuilders, parts distributors, salvage yards, commercial vehicle specialists — anyone creating automotive parts listings at scale.",
+      "q10": "Why use PartLister instead of copying from TecDoc?",
+      "a10": "Instead of manually copying information between TecDoc, eBay and spreadsheets, PartLister generates a complete listing in seconds — less manual work, fewer mistakes, better SEO, consistent listings, and more time selling."
+    },
+    "finalCta": {
+      "title": "Ready to create listings in seconds?",
+      "body": "Stop copy-pasting part data by hand. Turn your next OEM number into a complete eBay listing right now.",
+      "microcopy": "No card required · Cancel anytime"
+    },
+    "partsBand": {
+      "eyebrow": "Every category, covered",
+      "title": "From engines to electrics — list any part",
+      "subtitle": "If it has an OE, OEM or article number, PartLister can turn it into a verified eBay listing.",
+      "parts": {
+        "engines": "Engines",
+        "turbos": "Turbos",
+        "radiators": "Radiators",
+        "exhausts": "Exhausts",
+        "suspension": "Suspension",
+        "ignition": "Ignition",
+        "wheels": "Wheels & Tyres",
+        "internals": "Engine Internals",
+        "instruments": "Instruments"
+      }
+    },
+    "heroDemo": {
+      "inputLabel": "Enter OE / OEM / Article Number",
+      "generating": "Generating…",
+      "ready": "Listing ready",
+      "generate": "Generate Listing",
+      "live": "Live",
+      "status": [
+        "Searching TecDoc database",
+        "Part identified — Connecting Rod",
+        "Matching vehicle applications",
+        "Fetching OEM references",
+        "Building compatibility table",
+        "Generating SEO title",
+        "Finding interchangeable numbers",
+        "Preparing export"
+      ],
+      "badges": {
+        "vehicles": "58 compatible vehicles",
+        "references": "74 OE references",
+        "seo": "SEO title generated",
+        "export": "Ready for CSV export"
+      },
+      "specifics": {
+        "brand": "Brand",
+        "oeNumber": "OE Number",
+        "condition": "Condition",
+        "placement": "Placement"
+      },
+      "values": {
+        "new": "New",
+        "engine": "Engine"
+      },
+      "tabs": [
+        "Description",
+        "Compatibility",
+        "Item Specifics",
+        "HTML"
+      ],
+      "listingTitle": "Listing Title",
+      "generatedTitle": "Genuine BMW Connecting Rod 11247807345 — 3 Series E90 E91 320d 325d N47",
+      "itemSpecifics": "Item Specifics",
+      "compatibility": "Compatibility",
+      "vehicles": "{{count}} vehicles",
+      "models": "{{brand}} Models",
+      "columns": {
+        "vehicle": "Vehicle",
+        "years": "Years",
+        "engineCode": "Engine Code"
+      },
+      "oeReferences": "OE References",
+      "interchangeable": "Interchangeable",
+      "save": "Save Listing",
+      "copyHtml": "Copy HTML"
+    },
+    "howAnim": {
+      "inputLabel": "OE / OEM / Article number",
+      "generate": "Generate listing",
+      "oemNumbers": "OEM Numbers",
+      "oilPump": "Oil Pump",
+      "verifyCompatibility": "Please verify compatibility before ordering",
+      "compatibleVehicles": "Compatible Vehicles ({{count}} applications)",
+      "compatibleVehiclesShort": "{{count}} compatible vehicles",
+      "vehicle": "Vehicle",
+      "years": "Years",
+      "engine": "Engine",
+      "checkPrices": "Check Market Prices",
+      "kNumbers": "K NUMBERS",
+      "markExported": "Mark Exported ({{count}})",
+      "deleteSelected": "Delete {{count}} selected",
+      "exportCsv": "Export CSV ({{count}} selected)",
+      "type": "Type",
+      "status": "Status",
+      "exported": "Exported",
+      "listingsExported": "{{count}} listings exported to CSV"
+    },
+    "who": {
+      "eyebrow": "Who It's For",
+      "title": "Built for car parts sellers",
+      "audience": [
+        {
+          "icon": "🛒",
+          "title": "eBay Parts Sellers",
+          "desc": "Speed up listing creation and keep your catalogue consistent across hundreds of parts."
+        },
+        {
+          "icon": "🏭",
+          "title": "Aftermarket Parts Suppliers",
+          "desc": "Generate structured listings across a broad catalogue without manual data entry."
+        },
+        {
+          "icon": "🔩",
+          "title": "Breakers & Dismantlers",
+          "desc": "List salvage parts quickly with accurate compatibility and condition data."
+        },
+        {
+          "icon": "📦",
+          "title": "Small Parts Businesses",
+          "desc": "Compete with larger sellers using professional listings, without a dedicated team."
+        }
+      ]
+    },
+    "demo": {
+      "eyebrow": "Benefits",
+      "title": "Built for Automotive Sellers Who Want to Scale",
+      "benefits": [
+        "List products 5–10x faster",
+        "Reduce errors and returns",
+        "Price with confidence",
+        "Create consistent, professional listings",
+        "Spend less time listing, more time selling"
+      ],
+      "timeSaved": "Time Saved Per Listing",
+      "timeSavedBody": "Average time saved per listing vs. manual workflow",
+      "errorsEliminated": "Listing Errors Eliminated",
+      "errorsEliminatedBody": "Reduction in compatibility and pricing mistakes"
+    },
+    "trust": {
+      "eyebrow": "Why PartLister",
+      "title": "Designed for Real Parts Sellers",
+      "body1": "Built around real workflows used by automotive eCommerce businesses.",
+      "body2": "No fluff. No unnecessary features. Just tools that save time and make money."
+    },
+    "smartPricing": {
+      "badge": "SMART PRICING",
+      "titleBefore": "Stop guessing.",
+      "titleAccent": "Price from real market data.",
+      "body": "PartLister scans live and recently sold eBay listings to build a real price distribution for your exact part. See what buyers are actually paying — not just what sellers are asking.",
+      "benefits": [
+        "Live and sold eBay listings analysed per part number",
+        "Low, median, average, and high price markers",
+        "See how many active sellers are competing at each price"
+      ],
+      "insightTitle": "Market insight",
+      "insightBody": "For {{partNumber}} — 15 active listings between {{low}}–{{high}}. Median sold price: {{median}}. 3 listings below cost.",
+      "distributionTitle": "Price distribution",
+      "listingsCount": "{{count}} listings · {{partNumber}}",
+      "liveData": "Live data",
+      "markers": [
+        {
+          "label": "Low",
+          "val": "£185",
+          "sub": "floor"
+        },
+        {
+          "label": "Median",
+          "val": "£295",
+          "sub": "sweet spot",
+          "highlight": true
+        },
+        {
+          "label": "Average",
+          "val": "£309",
+          "sub": "mean"
+        },
+        {
+          "label": "High",
+          "val": "£415",
+          "sub": "ceiling"
+        }
+      ],
+      "similarListings": "Similar eBay listings",
+      "sold": "Sold",
+      "active": "Active",
+      "listings": [
+        {
+          "title": "VW Golf MK5 Brake Caliper Front Left — OE Spec",
+          "price": "£299",
+          "sold": true
+        },
+        {
+          "title": "Brake Caliper 1K0615123A VW Audi Skoda Seat",
+          "price": "£315",
+          "sold": true
+        },
+        {
+          "title": "Front Brake Caliper Golf MK5 MK6 — New",
+          "price": "£329",
+          "sold": false
+        },
+        {
+          "title": "VW 1K0615123A Brake Caliper — Fast Dispatch",
+          "price": "£349",
+          "sold": false
+        }
+      ]
+    },
+    "beforeAfter": {
+      "flowRows": [
+        "OE",
+        "Interchange",
+        "N Number",
+        "Fitment",
+        "Item specifics"
+      ],
+      "rawData": "Raw data",
+      "rawRows": [
+        "OE: 123 1241 A55",
+        "Interchange:",
+        "12345, 123451…",
+        "Fitment:",
+        "Audi A4 2001–",
+        "Item specifics:",
+        "Brand:",
+        "Warranty:"
+      ],
+      "structuredListing": "Structured listing",
+      "description": "Description",
+      "compatibility": "Compatibility",
+      "itemSpecifics": "Item Specifics",
+      "manualWorkflow": "Manual Workflow",
+      "copyTitle": "Copy & paste everything",
+      "copyBody": "OE numbers, interchangeable references, fitment data and item specifics often need copying into the same listing structure manually.",
+      "formatTitle": "Format the listing manually",
+      "formatBody": "Descriptions need headings, sections, warnings, item specifics and compatibility laid out clearly for every SKU.",
+      "withPartLister": "With PartLister",
+      "steps": [
+        {
+          "title": "Enter OE / OEM / Article Number",
+          "desc": "Start with the part number you already have."
+        },
+        {
+          "title": "Generate structured listing",
+          "desc": "PartLister organises the title, OE references, interchangeable numbers, item specifics and compatibility into a clean listing output."
+        },
+        {
+          "title": "Ready-to-list output",
+          "desc": "Review the generated listing, then copy the HTML or export the data."
+        }
+      ],
+      "resultTitle": "Structured listing output",
+      "resultInput": "OE / OEM / Article Number",
+      "resultOutput": "Compatibility & Item Specifics",
+      "faster": "Up to 20× Faster",
+      "cta": "Generate 10 Listings Free"
+    },
+    "proof": {
+      "eyebrow": "The full workflow, automated",
+      "steps": [
+        {
+          "label": "OE Number",
+          "detail": "e.g. 1K0615123A"
+        },
+        {
+          "label": "Engine Code",
+          "detail": "AXW, BLY, BVY…"
+        },
+        {
+          "label": "Compatibility",
+          "detail": "VW, Audi, Skoda, Seat"
+        },
+        {
+          "label": "Item Specifics",
+          "detail": "Brand, Placement, Ref"
+        },
+        {
+          "label": "Smart Pricing",
+          "detail": "£185–£415 range"
+        },
+        {
+          "label": "CSV Export",
+          "detail": "eBay bulk upload ready"
+        }
+      ],
+      "stats": [
+        {
+          "stat": "< 30s",
+          "desc": "From OE number to complete listing"
+        },
+        {
+          "stat": "100%",
+          "desc": "eBay item specifics populated"
+        },
+        {
+          "stat": "Live",
+          "desc": "eBay market data for pricing"
+        },
+        {
+          "stat": "Bulk",
+          "desc": "CSV export for mass upload"
+        }
+      ]
+    },
+    "featureDemos": {
+      "common": {
+        "on": "ON",
+        "oilPump": "Oil Pump",
+        "saveListing": "Save Listing",
+        "copyHtml": "Copy HTML",
+        "title": "Title",
+        "sellingPrice": "Selling Price",
+        "netProfit": "Net Profit",
+        "margin": "Margin",
+        "markup": "Markup"
+      },
+      "listing": {
+        "title": "Listing Generator",
+        "subtitle": "Enter a TecDoc article number or OEM / reference number.",
+        "articleNumber": "Article No. or OEM Number",
+        "templates": "Templates",
+        "templateNames": {
+          "cleanDefault": "Clean Default",
+          "darkHeader": "Dark Header",
+          "tableFocused": "Table Focused",
+          "minimal": "Minimal",
+          "professionalBlue": "Professional Blue"
+        },
+        "contentOptions": "Content Options",
+        "contentOptionNames": {
+          "compatibilityTable": "Compatibility Table",
+          "interchangeableNumbers": "Interchangeable Numbers",
+          "engineCodes": "Engine Codes"
+        },
+        "searchGenerate": "Search & Generate",
+        "unlimitedListings": "Unlimited Listings",
+        "tabs": {
+          "preview": "Preview",
+          "itemSpecifics": "Item Specifics"
+        },
+        "editDescription": "Edit Description",
+        "verifyCompatibility": "Please verify compatibility before ordering",
+        "oemNumbers": "OEM Numbers",
+        "compatibleVehicles": "Compatible Vehicles ({{count}} applications)",
+        "compatibleVehiclesShort": "{{count}} compatible vehicles",
+        "columns": {
+          "vehicle": "Vehicle",
+          "years": "Years",
+          "kw": "kW",
+          "hp": "HP",
+          "cc": "CC",
+          "engineCodes": "Engine Codes"
+        },
+        "article": "Article",
+        "checkMarketPrices": "Check Market Prices",
+        "compatRows": [
+          "JAGUAR F-TYPE Conv. (X152) 3.0 SCV6",
+          "JAGUAR F-TYPE Conv. (X152) 3.0 SCV6 S",
+          "JAGUAR F-TYPE Conv. (X152) 3.0 SCV6 S AWD",
+          "JAGUAR F-TYPE Conv. (X152) 5.0 SCV8 P450",
+          "JAGUAR F-TYPE Conv. (X152) 5.0 SCV8 R"
+        ]
+      },
+      "price": {
+        "title": "Smart eBay Pricing",
+        "listingsCount": "{{count}} listings",
+        "distribution": "Price Distribution",
+        "low": "LOW",
+        "median": "MED",
+        "your": "YOUR",
+        "average": "AVG",
+        "high": "HIGH",
+        "chartCaption": "£38–£380 · £20 price bands · {{count}} listings",
+        "allResults": "All Results",
+        "listingsFound": "{{count}} listings found",
+        "lowToHigh": "Price: Low to High",
+        "new": "New",
+        "freeDelivery": "Free delivery",
+        "listings": [
+          "OIL PUMP LR002465 Range Rover Sport TDV6 SDV6 NEW 276DT 306DT 2.7 3.0",
+          "Oil Pump For JAGUAR XF XJ 2.7 3.0 SDV6 306DT 276DT Engine NEW",
+          "OIL PUMP Range Rover Mk4 Diesel TDV6 SDV6 NEW 276DT 306DT LR002465",
+          "OIL PUMP LR002465 Land Rover DISCOVERY TDV6 SDV6 NEW 3.0 306DT",
+          "Oil Pump LAND ROVER DISCOVERY III IV V Range Rover Sport 2.7 3.0 306DT",
+          "OIL PUMP & SEALS Range Rover Sport L320 2005-2013 LR002465 NEW 2.7 3.0",
+          "Genuine Land Rover Oil Pump Assembly LR002465 Discovery 3 4 Range Rover"
+        ]
+      },
+      "calculator": {
+        "costPricingInputs": "Cost & Pricing Inputs",
+        "product": "Product",
+        "productSku": "Product / SKU",
+        "yourCosts": "Your Costs",
+        "itemCost": "Item cost",
+        "postage": "Postage",
+        "packaging": "Packaging",
+        "ebayFeesTitle": "eBay Fees",
+        "finalValue": "Final value (%)",
+        "fixedFee": "Fixed fee",
+        "adRate": "Ad rate (%)",
+        "vatRegistered": "VAT registered (20%)",
+        "includingVat": "inc. VAT",
+        "costBreakdown": "Cost Breakdown",
+        "productCost": "Product cost",
+        "postagePackaging": "Postage & packaging",
+        "ebayFees": "eBay fees (12.8% + £0.30)",
+        "vatCollected": "VAT collected → HMRC",
+        "vatNote": "You keep none of this",
+        "breakEven": "Break-even selling price"
+      },
+      "compat": {
+        "title": "Compatibility Checker",
+        "vinNumber": "VIN Number",
+        "oemPartNumber": "OEM / Part Number",
+        "checkCompatibility": "Check Compatibility",
+        "progress": {
+          "vehicleLookup": "Looking up vehicle from registration...",
+          "oemSearch": "Searching OEM number in TecDoc...",
+          "compatibilityCheck": "Checking part compatibility..."
+        },
+        "compatible": "Compatible",
+        "compatibleDescription": "This part appears to be compatible with the entered vehicle.",
+        "confidence": "Confidence",
+        "highConfidence": "High Confidence — Compatible",
+        "vehicle": "Vehicle",
+        "part": "Part",
+        "diesel": "diesel",
+        "vehicleFields": {
+          "make": "Make",
+          "variant": "Variant",
+          "year": "Year",
+          "fuel": "Fuel",
+          "engineSize": "Engine Size",
+          "engineCode": "Engine Code",
+          "power": "Power"
+        },
+        "partFields": {
+          "articleNumber": "Article No.",
+          "productType": "Product Type"
+        }
+      }
+    },
+    "problem": {
+      "eyebrow": "The Problem",
+      "titleBefore": "Building car parts listings",
+      "titleMiddle": "is still",
+      "titleAccent": "too manual",
+      "subtitle": "Most sellers spend too much time on data entry, formatting and guessing — for every single part.",
+      "sourceData": "Source Data",
+      "ebayListing": "eBay Listing",
+      "copiedFieldByField": "Copied field-by-field for every listing",
+      "rows": {
+        "oeNumber": "OE Number",
+        "crossReferences": "Cross References",
+        "compatibilityTable": "Compatibility table",
+        "itemSpecifics": "Item specifics",
+        "kTypeNumbers": "K-Type Numbers"
+      },
+      "cards": {
+        "manual": {
+          "title": "Manual Workflow",
+          "body": "Copying OE numbers, compatibility data, item specifics and listing fields by hand slows down every listing."
+        },
+        "inconsistent": {
+          "title": "Inconsistent Listings",
+          "body": "Missing item specifics, engine codes, OE numbers and fitment details can hurt search visibility and buyer trust."
+        },
+        "pricing": {
+          "title": "Guessing Prices",
+          "body": "Price too low and you lose margin. Price too high and the part can sit unsold for weeks."
+        }
+      },
+      "missingFields": {
+        "referenceOem": "Reference OE/OEM Number",
+        "interchangeable": "Interchangeable Part Numbers",
+        "engineCodes": "Engine Codes",
+        "boreDiameter": "Bore Diameter",
+        "pinDiameter": "Pin Diameter",
+        "length": "Length"
+      },
+      "present": "Present",
+      "missing": "Missing",
+      "marketRange": "Market range for this part",
+      "yourGuess": "Your guess: £310?",
+      "bridge": "PartLister automates all of this — part number in, ready-to-list out."
+    }
+  },
+  "authExtra": {
+    "welcomeBack": "Welcome back",
+    "signInContinue": "Sign in to continue to PartLister",
+    "signInPaid": "Sign in to continue with {{plan}} — {{price}}/{{period}}",
+    "createAccountTitle": "Create your account",
+    "signupSubtitle": "Start generating listings in seconds",
+    "signupPaidSubtitle": "Create your account to start with {{plan}}",
+    "resetTitle": "Reset your password",
+    "resetSubtitle": "Enter your email and we'll send you a reset link",
+    "updatePasswordTitle": "Set a new password",
+    "updatePasswordSubtitle": "Choose a new password for your PartLister account",
+    "newPasswordPlaceholder": "Enter your new password",
+    "emailAddress": "Email address",
+    "emailPlaceholder": "you@example.com",
+    "passwordPlaceholder": "Your password",
+    "createPasswordPlaceholder": "Create a password",
+    "repeatPassword": "Repeat password",
+    "repeatPasswordPlaceholder": "Repeat your password",
+    "hidePassword": "Hide password",
+    "showPassword": "Show password",
+    "signIn": "Sign in",
+    "signingIn": "Signing in…",
+    "continuingPayment": "Continuing to payment…",
+    "signInContinuePayment": "Sign in & continue to payment",
+    "creatingAccount": "Creating account…",
+    "passwordsMismatch": "Passwords do not match",
+    "checkEmailReset": "Check your email for a reset link",
+    "sendResetEmail": "Send reset email",
+    "sending": "Sending…",
+    "backToSite": "← Back to site",
+    "confirmEmailTitle": "Confirm your email",
+    "confirmEmailPaidSubtitle": "We've sent a confirmation link for your {{plan}} plan",
+    "checkInbox": "Check your inbox",
+    "checkEmailTitle": "Check your email",
+    "checkEmailSubtitle": "We've sent you a confirmation link. Click it to activate your account.",
+    "goToSignIn": "Go to sign in",
+    "createAccountContinuePayment": "Create account & continue to payment",
+    "checkoutPlan": "Plan",
+    "checkoutAccount": "Account",
+    "checkoutPayment": "Payment"
+  }
+}

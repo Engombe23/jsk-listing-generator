@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 
 const TEXT    = "#132A46";
 const MUTED   = "#4d6a8a";
@@ -8,8 +9,7 @@ const BORDER  = "#dde7f5";
 const BG_ALT  = "#f4f7fc";
 
 /* ── tiny reusable mini-visual: data flow diagram ── */
-function MiniDataFlow() {
-  const rows = ["OE", "Interchange", "N Number", "Fitment", "Item specifics"];
+function MiniDataFlow({ rows }: { rows: string[] }) {
   const colors = [ACCENT, ACCENT, ACCENT, "#f59e0b", ACCENT];
   return (
     <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
@@ -37,13 +37,13 @@ function MiniDataFlow() {
 }
 
 /* ── mini raw→structured visual ── */
-function MiniRawToStructured() {
+function MiniRawToStructured({ t }: { t: (key: string) => string }) {
   return (
     <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
       {/* raw data column */}
       <div style={{ flex: 1, background: "#f8faff", border: `1px solid ${BORDER}`, borderRadius: 6, padding: "7px 8px" }}>
-        <div style={{ fontSize: 8, fontWeight: 700, color: DIM, marginBottom: 5, fontFamily: "monospace" }}>Raw data</div>
-        {["OE: 123 1241 A55", "Interchange:", "12345, 123451…", "Fitment:", "Audi A4 2001–", "Item specifics:", "Brand:", "Warranty:"].map((l, i) => (
+        <div style={{ fontSize: 8, fontWeight: 700, color: DIM, marginBottom: 5, fontFamily: "monospace" }}>{t("landing.beforeAfter.rawData")}</div>
+        {t("landing.beforeAfter.rawRows", { returnObjects: true }).map((l: string, i: number) => (
           <div key={i} style={{ fontSize: 7.5, color: i % 2 === 0 ? MUTED : DIM, fontFamily: "monospace", lineHeight: 1.6 }}>{l}</div>
         ))}
       </div>
@@ -55,11 +55,11 @@ function MiniRawToStructured() {
       </div>
       {/* structured listing */}
       <div style={{ flex: 1, background: "#f8faff", border: `1px solid ${BORDER}`, borderRadius: 6, padding: "7px 8px" }}>
-        <div style={{ fontSize: 8, fontWeight: 700, color: DIM, marginBottom: 5, fontFamily: "Plus Jakarta Sans, sans-serif" }}>Structured listing</div>
+        <div style={{ fontSize: 8, fontWeight: 700, color: DIM, marginBottom: 5, fontFamily: "Plus Jakarta Sans, sans-serif" }}>{t("landing.beforeAfter.structuredListing")}</div>
         {[
-          { label: "Description",   w: "85%" },
-          { label: "Compatibility", w: "70%" },
-          { label: "Item Specifics",w: "90%" },
+          { label: t("landing.beforeAfter.description"), w: "85%" },
+          { label: t("landing.beforeAfter.compatibility"), w: "70%" },
+          { label: t("landing.beforeAfter.itemSpecifics"),w: "90%" },
         ].map((r, i) => (
           <div key={i} style={{ marginBottom: 6 }}>
             <div style={{ fontSize: 7.5, color: DIM, fontFamily: "Plus Jakarta Sans, sans-serif", marginBottom: 2 }}>{r.label}</div>
@@ -72,37 +72,28 @@ function MiniRawToStructured() {
   );
 }
 
-const STEPS = [
-  {
-    icon: (
+const STEP_ICONS = [
+  (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
       </svg>
-    ),
-    title: "Enter OE / OEM / Article Number",
-    desc: "Start with the part number you already have.",
-  },
-  {
-    icon: (
+  ),
+  (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M12 2 L15.09 8.26 L22 9.27 L17 14.14 L18.18 21.02 L12 17.77 L5.82 21.02 L7 14.14 L2 9.27 L8.91 8.26 Z"/>
       </svg>
-    ),
-    title: "Generate structured listing",
-    desc: "Part Lister organises the title, OE references, interchangeable numbers, item specifics and compatibility into a clean listing output.",
-  },
-  {
-    icon: (
+  ),
+  (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M20 6L9 17l-5-5"/>
       </svg>
-    ),
-    title: "Ready-to-list output",
-    desc: "Review the generated listing, then copy the HTML or export the data.",
-  },
+  ),
 ];
 
 export default function BeforeAfter() {
+  const { t } = useTranslation();
+  const steps = t("landing.beforeAfter.steps", { returnObjects: true }) as Array<{ title: string; desc: string }>;
+
   return (
     <section className="lp-section" style={{ padding: "100px 24px", background: "#fff", fontFamily: "Plus Jakarta Sans, sans-serif" }}>
       <div style={{ maxWidth: 1120, margin: "0 auto" }}>
@@ -120,7 +111,7 @@ export default function BeforeAfter() {
             {/* badge */}
             <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#fff0f0", border: "1px solid #fecaca", borderRadius: 8, padding: "5px 14px", fontSize: 12, fontWeight: 800, color: "#dc2626", marginBottom: 32 }}>
               <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M2 2l8 8M10 2l-8 8" stroke="#dc2626" strokeWidth="1.6" strokeLinecap="round"/></svg>
-              Manual Workflow
+              {t("landing.beforeAfter.manualWorkflow")}
             </div>
 
             {/* Problem 1 */}
@@ -131,11 +122,11 @@ export default function BeforeAfter() {
                 </svg>
               </div>
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 15, fontWeight: 800, color: TEXT, marginBottom: 6 }}>Copy &amp; paste everything</div>
+                <div style={{ fontSize: 15, fontWeight: 800, color: TEXT, marginBottom: 6 }}>{t("landing.beforeAfter.copyTitle")}</div>
                 <p style={{ fontSize: 13, color: MUTED, lineHeight: 1.6, margin: "0 0 14px" }}>
-                  OE numbers, interchangeable references, fitment data and item specifics often need copying into the same listing structure manually.
+                  {t("landing.beforeAfter.copyBody")}
                 </p>
-                <MiniDataFlow />
+                <MiniDataFlow rows={t("landing.beforeAfter.flowRows", { returnObjects: true }) as string[]} />
               </div>
             </div>
 
@@ -150,11 +141,11 @@ export default function BeforeAfter() {
                 </svg>
               </div>
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 15, fontWeight: 800, color: TEXT, marginBottom: 6 }}>Format the listing manually</div>
+                <div style={{ fontSize: 15, fontWeight: 800, color: TEXT, marginBottom: 6 }}>{t("landing.beforeAfter.formatTitle")}</div>
                 <p style={{ fontSize: 13, color: MUTED, lineHeight: 1.6, margin: "0 0 14px" }}>
-                  Descriptions need headings, sections, warnings, item specifics and compatibility laid out clearly for every SKU.
+                  {t("landing.beforeAfter.formatBody")}
                 </p>
-                <MiniRawToStructured />
+                <MiniRawToStructured t={t} />
               </div>
             </div>
           </div>
@@ -172,18 +163,18 @@ export default function BeforeAfter() {
             {/* badge */}
             <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: ACCENT, borderRadius: 8, padding: "5px 14px", fontSize: 12, fontWeight: 800, color: "#fff", marginBottom: 32, alignSelf: "flex-start" }}>
               <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="#fff" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
-              With PartLister
+              {t("landing.beforeAfter.withPartLister")}
             </div>
 
             {/* Steps */}
             <div style={{ display: "flex", flexDirection: "column", gap: 0, flex: 1 }}>
-              {STEPS.map((s, i) => (
+              {steps.map((s, i) => (
                 <div key={i}>
                   <div style={{ display: "flex", gap: 16, alignItems: "flex-start", padding: "18px 20px", background: "#fff", borderRadius: 14, border: `1px solid ${BORDER}`, boxShadow: "0 2px 12px rgba(19,45,70,0.05)" }}>
                     {/* number + icon */}
                     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, flexShrink: 0 }}>
                       <div style={{ width: 36, height: 36, borderRadius: "50%", background: `linear-gradient(135deg, ${ACCENT}, #0040cc)`, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 12px rgba(19,93,255,0.30)" }}>
-                        {s.icon}
+                        {STEP_ICONS[i]}
                       </div>
                       <div style={{ fontSize: 11, fontWeight: 800, color: ACCENT }}>{i + 1}</div>
                     </div>
@@ -209,19 +200,19 @@ export default function BeforeAfter() {
                   <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M2.5 7l3 3 6-6" stroke="#16a34a" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
                 </div>
                 <div>
-                  <div style={{ fontSize: 13, fontWeight: 800, color: TEXT }}>Structured listing output</div>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: TEXT }}>{t("landing.beforeAfter.resultTitle")}</div>
                   <div style={{ fontSize: 10.5, color: DIM, marginTop: 2 }}>
-                    OE / OEM / Article Number&nbsp;
+                    {t("landing.beforeAfter.resultInput")}&nbsp;
                     <span style={{ color: ACCENT }}>→</span>&nbsp;
-                    Structured Listing&nbsp;
+                    {t("landing.beforeAfter.structuredListing")}&nbsp;
                     <span style={{ color: ACCENT }}>→</span>&nbsp;
-                    Compatibility &amp; Item Specifics
+                    {t("landing.beforeAfter.resultOutput")}
                   </div>
                 </div>
               </div>
               <div style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "#EEF5FF", border: `1px solid ${BORDER}`, borderRadius: 8, padding: "5px 11px", flexShrink: 0 }}>
                 <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M6.5 1L4 6.5h4L5 11" stroke={ACCENT} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                <span style={{ fontSize: 11, fontWeight: 800, color: ACCENT, whiteSpace: "nowrap" }}>Up to 20× Faster</span>
+                <span style={{ fontSize: 11, fontWeight: 800, color: ACCENT, whiteSpace: "nowrap" }}>{t("landing.beforeAfter.faster")}</span>
               </div>
             </div>
           </div>
@@ -230,7 +221,7 @@ export default function BeforeAfter() {
         {/* CTA */}
         <div style={{ textAlign: "center", marginTop: 48 }}>
           <Link to="/auth/sign-up" style={{ display: "inline-block", padding: "14px 32px", background: ACCENT, color: "#fff", textDecoration: "none", fontWeight: 700, fontSize: 15, borderRadius: 12, boxShadow: "0 4px 18px rgba(19,93,255,0.28)", letterSpacing: "-0.2px" }}>
-            Generate 10 Listings Free →
+            {t("landing.beforeAfter.cta")} →
           </Link>
         </div>
 

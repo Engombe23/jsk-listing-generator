@@ -1,38 +1,45 @@
 import { BarChart3, Check, Crosshair, Lightbulb, Zap } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Reveal } from "./Primitives";
 import { AnimatedStep } from "./HowItWorksAnim";
 
-const steps = [
-  {
-    n: "01",
-    label: "Step 1",
-    title: "Enter OE / OEM / Article Number",
-    body: "Paste any reference number or your internal SKU. No spreadsheets, no manual data entry, no guesswork.",
-    bullets: null,
-  },
-  {
-    n: "02",
-    label: "Step 2",
-    title: "PartLister fetches data from TecDoc",
-    body: "We pull the exact part, vehicle fitment, engine codes and interchangeable numbers straight from TecDoc — verified, not scraped.",
-    bullets: null,
-  },
-  {
-    n: "03",
-    label: "Step 3",
-    title: "Get your complete listing. Export. Done.",
-    body: "Get an optimised title, description, item specifics, compatibility table and images. Copy, export to CSV and list anywhere.",
-    bullets: ["Optimised for eBay", "Ready to copy or export", "CSV export in one click"],
-  },
-];
-
-const chips = [
-  { icon: Zap, title: "Save hours", sub: "every day" },
-  { icon: Crosshair, title: "Improve accuracy", sub: "& consistency" },
-  { icon: BarChart3, title: "List more", sub: "sell more" },
-];
-
 export default function HowItWorks() {
+  const { t } = useTranslation();
+
+  const chips = [
+    { icon: Zap, title: t("landing.how.chip1Title"), sub: t("landing.how.chip1Sub") },
+    { icon: Crosshair, title: t("landing.how.chip2Title"), sub: t("landing.how.chip2Sub") },
+    { icon: BarChart3, title: t("landing.how.chip3Title"), sub: t("landing.how.chip3Sub") },
+  ];
+
+  const steps = [
+    {
+      n: "01",
+      label: t("landing.how.step1Label"),
+      title: t("landing.how.step1Title"),
+      body: t("landing.how.step1Body"),
+      bullets: null as string[] | null,
+    },
+    {
+      n: "02",
+      label: t("landing.how.step2Label"),
+      title: t("landing.how.step2Title"),
+      body: t("landing.how.step2Body"),
+      bullets: null as string[] | null,
+    },
+    {
+      n: "03",
+      label: t("landing.how.step3Label"),
+      title: t("landing.how.step3Title"),
+      body: t("landing.how.step3Body"),
+      bullets: [
+        t("landing.how.step3Bullet1"),
+        t("landing.how.step3Bullet2"),
+        t("landing.how.step3Bullet3"),
+      ],
+    },
+  ];
+
   return (
     <section id="how-it-works" className="relative bg-white">
       <div className="relative overflow-hidden bg-[#081326] px-6 pb-28 pt-24 text-white sm:pb-32">
@@ -60,15 +67,15 @@ export default function HowItWorks() {
         <Reveal className="relative mx-auto max-w-2xl text-center">
           <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3.5 py-1.5 font-mono text-[0.72rem] font-medium uppercase tracking-[0.14em] text-blue-200 backdrop-blur">
             <Lightbulb className="h-3.5 w-3.5" />
-            How it works
+            {t("landing.how.eyebrow")}
           </div>
           <h2 className="font-display text-[clamp(2.2rem,4.5vw,3.4rem)] font-extrabold leading-[1.03] tracking-tightest text-balance">
-            Three steps.
+            {t("landing.how.title")}
             <br />
-            <span className="text-primary">Under a minute.</span>
+            <span className="text-primary">{t("landing.how.titleAccent")}</span>
           </h2>
           <p className="mt-5 text-balance text-center text-[1.05rem] leading-relaxed text-blue-100/70">
-            What used to take 15 minutes of copy-paste per listing now happens in a single click.
+            {t("landing.how.subtitle")}
           </p>
         </Reveal>
 

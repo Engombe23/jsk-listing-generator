@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { motion } from "motion/react";
 import { ArrowRight, PlayCircle, Star, X } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { PrimaryButton } from "./Primitives";
 import HeroDemo from "./HeroDemo";
 
@@ -11,6 +12,7 @@ const DEMO_VIDEO_SRC = "https://www.youtube.com/embed/0I_pDFHwIBE?autoplay=1";
 const ease = [0.22, 1, 0.36, 1];
 
 function VideoModal({ onClose }: { onClose: () => void }) {
+  const { t } = useTranslation();
   const videoRef = useRef<HTMLVideoElement>(null);
   const isEmbed = DEMO_VIDEO_SRC.includes("youtube.com") || DEMO_VIDEO_SRC.includes("vimeo.com");
 
@@ -41,7 +43,7 @@ function VideoModal({ onClose }: { onClose: () => void }) {
         <button
           onClick={handleClose}
           className="absolute -right-1 -top-10 flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
-          aria-label="Close video"
+          aria-label={t("landing.hero.closeVideo")}
         >
           <X className="h-5 w-5" />
         </button>
@@ -70,6 +72,7 @@ function VideoModal({ onClose }: { onClose: () => void }) {
 }
 
 export default function Hero() {
+  const { t } = useTranslation();
   const [videoOpen, setVideoOpen] = useState(false);
   return (
     <>
@@ -110,7 +113,7 @@ export default function Hero() {
             className="group mb-6 inline-flex items-center gap-2 rounded-full border border-hair bg-white/80 px-3.5 py-1.5 text-[0.8rem] font-medium text-slate shadow-soft backdrop-blur transition-colors hover:border-primary/30"
           >
             <span className="flex h-5 items-center rounded-full bg-primary px-2 font-mono text-[0.62rem] font-semibold uppercase tracking-wider text-white">TecDoc</span>
-            Powered by real OEM fitment data
+            {t("landing.hero.badge")}
             <ArrowRight className="h-3.5 w-3.5 text-faint transition-transform group-hover:translate-x-0.5" />
           </motion.a>
 
@@ -120,7 +123,7 @@ export default function Hero() {
             transition={{ duration: 0.6, delay: 0.06, ease }}
             className="text-balance font-display text-[clamp(2.75rem,6.4vw,5rem)] font-extrabold leading-[1.02] tracking-tightest text-navy"
           >
-            OEM to Listing in <span className="grad-shine">One Click</span>
+            {t("landing.hero.titleBefore")}<span className="grad-shine">{t("landing.hero.titleHighlight")}</span>
           </motion.h1>
 
           <motion.p
@@ -129,7 +132,7 @@ export default function Hero() {
             transition={{ duration: 0.6, delay: 0.14, ease }}
             className="mt-6 text-balance text-center text-[1.12rem] leading-relaxed text-slate"
           >
-            Paste an OE, OEM or article number and generate a complete eBay listing in seconds.
+            {t("landing.hero.subtitle")}
           </motion.p>
 
           <motion.div
@@ -139,7 +142,7 @@ export default function Hero() {
             className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row"
           >
             <PrimaryButton href="/auth/sign-up" size="lg" className="w-full sm:w-auto">
-              Generate 10 Listings Free
+              {t("marketing.ctaFree")}
               <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-0.5" />
             </PrimaryButton>
             <button
@@ -147,7 +150,7 @@ export default function Hero() {
               className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-hair bg-white px-7 py-4 text-[1.02rem] font-semibold text-navy transition-all duration-200 hover:-translate-y-0.5 hover:border-navy/20 hover:shadow-soft sm:w-auto"
             >
               <PlayCircle className="h-5 w-5 text-primary" />
-              See How It Works
+              {t("landing.hero.ctaSecondary")}
             </button>
           </motion.div>
 
@@ -157,7 +160,7 @@ export default function Hero() {
             transition={{ duration: 0.6, delay: 0.32 }}
             className="mt-4 font-mono text-[0.78rem] text-faint"
           >
-            No card required · 10 free listings · Cancel anytime
+            {t("landing.hero.microcopy")}
           </motion.p>
         </div>
 
@@ -173,7 +176,7 @@ export default function Hero() {
             {Array.from({ length: 5 }).map((_, i) => (
               <Star key={i} className="h-4 w-4 fill-[#f5a623] text-[#f5a623]" />
             ))}
-            <span className="ml-2 text-[0.85rem] text-muted2">Trusted by high-volume eBay motor sellers</span>
+            <span className="ml-2 text-[0.85rem] text-muted2">{t("landing.hero.socialProof")}</span>
           </div>
         </motion.div>
       </div>

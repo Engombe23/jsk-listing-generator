@@ -1,6 +1,7 @@
 import React from "react";
 import { motion } from "motion/react";
 import { Check } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Eyebrow, Reveal, Section } from "./Primitives";
 import { AmbientBg } from "./Decor";
 import { ListingDemo, PriceChartDemo, PriceCalcDemo, CompatDemo } from "./FeatureDemos";
@@ -14,58 +15,60 @@ type Feature = {
   part: string;
 };
 
-const features: Feature[] = [
-  {
-    tag: "Listing Generator",
-    title: "Turn a part number into a finished listing",
-    body: "Enter an OEM or article number and PartLister writes an eBay-ready title, description and compatibility table for you. Pick a template, toggle the sections you want, and generate.",
-    points: [
-      "AI-written titles built for eBay search",
-      "Five ready-made listing templates",
-      "Compatibility table, interchangeable numbers & engine codes",
-    ],
-    Demo: ListingDemo,
-    part: "/parts3d/engine.png",
-  },
-  {
-    tag: "eBay Price Analysis",
-    title: "See exactly where your price sits in the market",
-    body: "Pull live price data from active eBay listings and see a full distribution — low, median, average and high — so you know whether you're competitive before you list.",
-    points: [
-      "Live distribution chart from active eBay listings",
-      "Low, median, average & high in one view",
-      "Cluster insight tells you where most buyers transact",
-    ],
-    Demo: PriceChartDemo,
-    part: "/parts3d/tacho.png",
-  },
-  {
-    tag: "Price Calculator",
-    title: "Work backwards from your target margin",
-    body: "Enter a sale price and PartLister deducts eBay fees, VAT and postage automatically — so you always know exactly what you keep. Set a target margin and find the minimum price that hits it.",
-    points: [
-      "eBay fees, VAT & postage deducted automatically",
-      "Enter your target margin — see the minimum sell price",
-      "Works for any marketplace in any currency",
-    ],
-    Demo: PriceCalcDemo,
-    part: "/parts3d/tacho.png",
-  },
-  {
-    tag: "Compatibility Checker",
-    title: "Never sell the wrong part again",
-    body: "Check a part against a VIN or OEM number and get a confidence-scored fitment result straight from TecDoc. Fewer returns, fewer disputes, better feedback.",
-    points: [
-      "VIN and OEM compatibility in seconds",
-      "Confidence score with exact TecDoc match",
-      "Full vehicle spec: engine, power, year range",
-    ],
-    Demo: CompatDemo,
-    part: "/parts3d/shock.png",
-  },
-];
-
 export default function Features() {
+  const { t } = useTranslation();
+
+  const features: Feature[] = [
+    {
+      tag: t("landing.features.listingTag"),
+      title: t("landing.features.listingTitle"),
+      body: t("landing.features.listingBody"),
+      points: [
+        t("landing.features.listingP1"),
+        t("landing.features.listingP2"),
+        t("landing.features.listingP3"),
+      ],
+      Demo: ListingDemo,
+      part: "/parts3d/engine.png",
+    },
+    {
+      tag: t("landing.features.priceTag"),
+      title: t("landing.features.priceTitle"),
+      body: t("landing.features.priceBody"),
+      points: [
+        t("landing.features.priceP1"),
+        t("landing.features.priceP2"),
+        t("landing.features.priceP3"),
+      ],
+      Demo: PriceChartDemo,
+      part: "/parts3d/tacho.png",
+    },
+    {
+      tag: t("landing.features.calcTag"),
+      title: t("landing.features.calcTitle"),
+      body: t("landing.features.calcBody"),
+      points: [
+        t("landing.features.calcP1"),
+        t("landing.features.calcP2"),
+        t("landing.features.calcP3"),
+      ],
+      Demo: PriceCalcDemo,
+      part: "/parts3d/tacho.png",
+    },
+    {
+      tag: t("landing.features.compatTag"),
+      title: t("landing.features.compatTitle"),
+      body: t("landing.features.compatBody"),
+      points: [
+        t("landing.features.compatP1"),
+        t("landing.features.compatP2"),
+        t("landing.features.compatP3"),
+      ],
+      Demo: CompatDemo,
+      part: "/parts3d/shock.png",
+    },
+  ];
+
   return (
     <Section id="features" className="relative border-t border-hair bg-gradient-to-b from-wash/70 via-white to-white py-24 sm:py-28">
       <div className="pointer-events-none absolute inset-x-0 top-0">
@@ -73,12 +76,12 @@ export default function Features() {
       </div>
       <AmbientBg variant="wash" />
       <Reveal className="mx-auto max-w-2xl text-center">
-        <Eyebrow>Features</Eyebrow>
+        <Eyebrow>{t("landing.features.eyebrow")}</Eyebrow>
         <h2 className="font-display text-[clamp(2rem,4vw,3rem)] font-extrabold tracking-tightest text-navy text-balance">
-          Built for sellers who move volume
+          {t("landing.features.title")}
         </h2>
         <p className="mt-4 text-balance text-center text-[1.05rem] leading-relaxed text-slate">
-          Generate, price and verify fitment without ever leaving PartLister — every step of the listing in one place.
+          {t("landing.features.subtitle")}
         </p>
       </Reveal>
 

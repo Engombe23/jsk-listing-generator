@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabaseClient";
 import { redirectToStripeCheckout } from "../lib/billing";
 import { isValidPaidPlan } from "../lib/plans";
@@ -24,6 +25,7 @@ const EyeIcon = ({ off }) => (
 );
 
 export default function LoginForm() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const plan = searchParams.get("plan") || "";
@@ -60,25 +62,25 @@ export default function LoginForm() {
 
       navigate("/", { replace: true });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred");
+      setError(err instanceof Error ? err.message : t("common.error"));
     } finally {
       setIsLoading(false);
     }
   };
 
   const signUpHref = paidLogin ? checkoutAuthHref("/auth/sign-up", plan, interval) : "/auth/sign-up";
-  const signUpLabel = paidLogin ? "Create account" : "Start free trial";
+  const signUpLabel = paidLogin ? t("auth.createAccount") : t("common.tryFree");
 
   return (
     <form onSubmit={handleLogin}>
       <div className="flex flex-col gap-6">
         <div className="grid gap-2">
-          <label htmlFor="email">Email address</label>
+          <label htmlFor="email">{t("auth.emailAddress")}</label>
           <div className="input-wrap">
             <input
               id="email"
               type="email"
-              placeholder="you@example.com"
+              placeholder={t("auth.emailPlaceholder")}
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -86,12 +88,12 @@ export default function LoginForm() {
           </div>
         </div>
         <div className="grid gap-2">
-          <label htmlFor="password">Password</label>
+          <label htmlFor="password">{t("auth.password")}</label>
           <div className="input-wrap">
             <input
               id="password"
               type={showPassword ? "text" : "password"}
-              placeholder="Enter your password"
+              placeholder={t("auth.passwordPlaceholder")}
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -101,30 +103,30 @@ export default function LoginForm() {
               type="button"
               className="password-toggle"
               onClick={() => setShowPassword((v) => !v)}
-              aria-label={showPassword ? "Hide password" : "Show password"}
+              aria-label={showPassword ? t("auth.hidePassword") : t("auth.showPassword")}
             >
               <EyeIcon off={showPassword} />
             </button>
           </div>
           <Link to="/auth/forget-password" className="text-sm" style={{ alignSelf: "flex-end", marginTop: -2 }}>
-            Forgot password?
+            {t("auth.forgotPassword")}
           </Link>
         </div>
         {error && <p className="text-sm text-red-500">{error}</p>}
         <button type="submit" disabled={isLoading}>
-          {isLoading ? (paidLogin ? "Continuing to payment…" : "Signing in…") : (
+          {isLoading ? (paidLogin ? t("auth.continuingPayment") : t("auth.signingIn")) : (
             <>
-              {paidLogin ? "Sign in & continue to payment" : "Sign In"}
+              {paidLogin ? t("auth.signInContinuePayment") : t("auth.signIn")}
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
             </>
           )}
         </button>
       </div>
 
-      <div className="auth-divider"><span>or</span></div>
+      <div className="auth-divider"><span>{t("common.or")}</span></div>
 
       <div className="text-center text-sm">
-        <span className="auth-footer-text">Don&apos;t have an account? </span>
+        <span className="auth-footer-text">{t("auth.noAccount")} </span>
         <Link to={signUpHref}>{signUpLabel}</Link>
       </div>
     </form>

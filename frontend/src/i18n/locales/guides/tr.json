@@ -1,0 +1,443 @@
+{
+  "contact": {
+    "badge": "Yardım etmek için buradayız",
+    "title": "Bize Ulaşın",
+    "subtitle": "Bir sorunuz, geri bildiriminiz mi var veya desteğe mi ihtiyacınız var? Sizden haber almayı çok isteriz.",
+    "formTitle": "Bize bir mesaj gönderin",
+    "formSubtitle": "Aşağıdaki formu doldurun, en kısa sürede size geri dönüş yapacağız.",
+    "name": "Adınız",
+    "email": "E-postanız",
+    "subject": "Ders",
+    "message": "Mesaj",
+    "namePlaceholder": "örneğin John Smith",
+    "emailPlaceholder": "örneğin john@example.com",
+    "messagePlaceholder": "Size nasıl yardımcı olabiliriz?",
+    "selectSubject": "Bir konu seçin",
+    "subjects": {
+      "general": "Genel Soru",
+      "technical": "Teknik Destek",
+      "bug": "Hata Raporu",
+      "feature": "Özellik İsteği",
+      "billing": "Faturalandırma ve Abonelik",
+      "partnership": "Ortaklık Sorgulama",
+      "other": "Diğer"
+    },
+    "attachFile": "Bir dosya ekleyin (isteğe bağlı)",
+    "maxFileSize": "Maksimum dosya boyutu: 10MB",
+    "sending": "Gönderiliyor…",
+    "sendMessage": "Mesaj Gönder",
+    "secureNote": "Bilgileriniz güvendedir ve asla paylaşılmaz.",
+    "successTitle": "Mesaj Başarıyla Gönderildi",
+    "successBody": "PartLister ile iletişime geçtiğiniz için teşekkür ederiz. Mesajınızı aldık ve genellikle bir iş günü içinde yanıt vereceğiz.",
+    "referenceId": "Referans Kimliği",
+    "sendAnother": "Başka Bir Mesaj Gönder",
+    "visitHelp": "Yardım Merkezini Ziyaret Edin",
+    "lookingForHelp": "Belirli bir konuda yardım mı arıyorsunuz?",
+    "visitHelpCentre": "Kılavuzlar ve sık sorulan soruların yanıtları için Yardım Merkezimizi ziyaret edin. →",
+    "helpCentreLink": "Yardım Merkezi",
+    "errors": {
+      "nameRequired": "Lütfen tam adınızı girin.",
+      "emailInvalid": "Geçerli bir e.",
+      "subjectRequired": "Lütfen bir konu seçin.",
+      "messageShort": "Lütfen bir mesaj giriniz (en az 10 karakter).",
+      "attachmentTooLarge": "Ekin boyutu 10 MB'ın altında olmalıdır.",
+      "submitFailed": "Mesajınızı gönderemedik. Lütfen kısa bir süre sonra tekrar deneyin."
+    }
+  },
+  "help": {
+    "badge": "YARDIM MERKEZİ",
+    "title": "Nasıl yardımcı olabiliriz?",
+    "subtitle": "PartLister hakkında kılavuzlar, eğitimler ve sık sorulan soruların yanıtlarını bulun.",
+    "searchPlaceholder": "Makaleleri, konuları veya soruları arayın...",
+    "popularTopics": "Popüler konular",
+    "viewAllTopics": "Tüm konuları görüntüle →",
+    "guidesTutorials": "Kılavuzlar ve öğreticiler",
+    "viewAllArticles": "Tüm makaleleri görüntüle →",
+    "browseAllArticles": "Tüm makalelere göz atın",
+    "faqTitle": "Sık sorulan sorular",
+    "viewAllFaqs": "Tüm SSS'leri görüntüleyin →",
+    "stillNeedHelp": "Hala yardıma mı ihtiyacınız var?",
+    "stillNeedHelpBody": "Destek ekibimiz sizin için burada.",
+    "contactUs": "Bize Ulaşın",
+    "lookingElseTitle": "Başka bir şey mi arıyorsunuz?",
+    "lookingElseBody": "Aradığınızı bulamıyorsanız bize mesaj gönderin, en kısa sürede size geri dönüş yapalım.",
+    "topics": [
+      {
+        "title": "Başlarken",
+        "desc": "PartLister'de yeni misiniz? Buradan başlayın."
+      },
+      {
+        "title": "Liste Oluşturucu",
+        "desc": "Saniyeler içinde profesyonel listeler oluşturun."
+      },
+      {
+        "title": "Uyumluluk Denetleyicisi",
+        "desc": "Bir parçanın hangi araçlara uyduğunu doğrulayın."
+      },
+      {
+        "title": "Fiyatlandırma Araçları",
+        "desc": "Akıllı fiyatlandırma ve kar hesaplamaları."
+      }
+    ],
+    "articles": [
+      {
+        "slug": "how-to-generate-your-first-listing",
+        "title": "İlk girişinizi nasıl oluşturabilirsiniz?",
+        "desc": "OEM/makale numarasından ilan oluşturmak için adım adım rehber.",
+        "time": "5 dk okuma"
+      },
+      {
+        "slug": "understanding-compatibility-results",
+        "title": "Uyumluluk sonuçlarını anlama",
+        "desc": "Uyumluluk sonuçlarının nasıl bulunduğunu ve ne anlama geldiğini öğrenin.",
+        "time": "4 dk okuma"
+      },
+      {
+        "slug": "smart-pricing-explained",
+        "title": "Akıllı Fiyatlandırma açıklandı",
+        "desc": "Fiyat verilerinin rekabetçi listelemenize nasıl yardımcı olduğu.",
+        "time": "6 dk okuma"
+      },
+      {
+        "slug": "export-listings-to-ebay",
+        "title": "Listeleri eBay'ye aktar",
+        "desc": "İlanlarınızı tek tıkla eBay'e dışa aktarın ve yükleyin.",
+        "time": "3 dk okuma"
+      },
+      {
+        "slug": "using-the-price-calculator",
+        "title": "Fiyat Hesaplayıcıyı Kullanma",
+        "desc": "Ücretleri, KDV'yi, marjı ve daha fazlasını kolayca hesaplayın.",
+        "time": "4 dk okuma"
+      },
+      {
+        "slug": "how-to-use-the-compatibility-checker",
+        "title": "Uyumluluk Denetleyicisi nasıl kullanılır?",
+        "desc": "Parça numarası veya VIN ile uyumluluğu doğrulayın.",
+        "time": "3 dk okuma"
+      },
+      {
+        "slug": "choosing-a-listing-template",
+        "title": "Listeleme şablonu seçme",
+        "desc": "İlan stilinize uygun şablon ve içerik seçeneklerini seçin.",
+        "time": "3 dk okuma"
+      },
+      {
+        "slug": "understanding-part-references",
+        "title": "Parça referanslarını anlama",
+        "desc": "Daha iyi eşleşmeler için OE, OEM ve TecDoc numaralarını anlayın.",
+        "time": "3 dk okuma"
+      }
+    ],
+    "faqsLeft": [
+      {
+        "q": "PartLister nedir?",
+        "a": "PartLister, otomotiv parçası satıcılarının saniyeler içinde profesyonel eBay listeleri oluşturmasına yardımcı olan yapay zeka destekli bir platformdur. Ürün verilerini, OE referanslarını, uyumluluk bilgilerini ve ürün özelliklerini bir parça numarasından otomatik olarak alır."
+      },
+      {
+        "q": "Liste Oluşturucu nasıl çalışır?",
+        "a": "Bir OEM veya ürün numarası girin ve PartLister, TecDoc'den ürün verilerini alır, yapılandırılmış bir başlık, açıklama ve öğe özellikleri oluşturur ve ardından bunu eBay için hazır hale getirecek şekilde formatlar - üstelik hepsi 2 dakikadan kısa sürede."
+      },
+      {
+        "q": "PartLister hangi veri kaynaklarını kullanıyor?",
+        "a": "PartLister, teknik ürün verileri, OE referansları ve araç uyumluluğu için TecDoc'yi kullanır. Piyasa fiyatlandırma verileri canlı eBay satılan listelerinden alınmıştır."
+      },
+      {
+        "q": "Listelemeleri toplu olarak dışa aktarabilir miyim?",
+        "a": "Evet. Pro ve İş planı aboneleri, birden fazla listeyi eBay'nin toplu liste içe aktarma aracıyla uyumlu bir CSV dosyası olarak dışa aktarabilir."
+      }
+    ],
+    "faqsRight": [
+      {
+        "q": "Uyumluluk denetleyicisi ne kadar doğrudur?",
+        "a": "Uyumluluk denetleyicisi, TecDoc'nin milyonlarca araç/parça kombinasyonunu kapsayan araç teçhizatı veritabanını kullanır. Doğruluk, üreticinin verilerinin eksiksizliğine bağlıdır."
+      },
+      {
+        "q": "Hangi eBay kategorileri destekleniyor?",
+        "a": "PartLister, motorlar, frenler, süspansiyon, elektrik, gövde parçaları ve daha fazlası dahil olmak üzere eBay'deki tüm otomotiv parça kategorilerini destekler."
+      },
+      {
+        "q": "Ücretsiz deneme sunuyor musunuz?",
+        "a": "Evet — her yeni hesap, kredi kartı gerektirmeyen 10 ücretsiz listeleme içerir. Fiyatlandırma sayfasından istediğiniz zaman yükseltme yapabilirsiniz."
+      },
+      {
+        "q": "Aboneliğimi nasıl iptal edebilirim?",
+        "a": "Aboneliğinizi istediğiniz zaman Hesap sayfasından iptal edebilirsiniz. Planınız mevcut fatura döneminin sonuna kadar etkin kalır."
+      }
+    ],
+    "articleChrome": {
+      "backToHelp": "Yardım Merkezine Geri Dön",
+      "minRead": "{{n}} dk. okuma",
+      "relatedArticles": "İlgili makaleler",
+      "lastUpdated": "Son güncelleme: {{date}}",
+      "tipLabel": "İpucu:"
+    },
+    "visuals": {
+      "exportOptions": {
+        "copyHtmlLabel": "HTML kopyala",
+        "copyHtmlDesc": "Doğrudan bir eBay ilan formuna yapıştırın",
+        "exportCsvLabel": "CSV dışa aktar",
+        "exportCsvDesc": "eBay Seller Hub yükleme aracıyla toplu içe aktarma",
+        "saveListingLabel": "İlanı kaydet",
+      "saveListingDesc": "Daha sonra kullanmak veya dışa aktarmak için Kayıtlı İlanlar'da saklayın"
+    },
+    "compatTable": {
+      "title": "BMW Modelleri — 58 uygulama",
+      "colVehicle": "Araç",
+      "noteVehicle": "Marka, model ve varyant",
+      "colYears": "Yıllar",
+      "noteYears": "Uygulama tarih aralığı",
+      "colKw": "kW",
+      "noteKw": "Güç",
+      "colHp": "HP",
+      "noteHp": "Beygir gücü",
+      "colCc": "CC",
+      "noteCc": "Motor hacmi",
+      "colEngine": "Motor Kodu",
+      "noteEngine": "Üretici kimliği"
+    },
+    "priceHistogram": {
+      "low": "Düşük  £38",
+      "median": "Medyan  £81",
+      "avg": "Ort.  £89",
+      "high": "Yüksek  £249",
+      "yourPrice": "Fiyatınız",
+      "caption": "60 aktif eBay ilanındaki fiyat dağılımı · en yüksek çubuk = en fazla rekabet"
+    },
+    "calcBreakdown": {
+      "sellingPrice": "Satış fiyatı",
+      "productCost": "− Ürün maliyeti",
+      "postage": "− Kargo ve paketleme",
+      "ebayFees": "− eBay ücretleri (12.8% + £0.30)",
+      "vat": "− KDV → HMRC",
+      "vatNote": "Bunun hiçbirini siz almazsınız",
+      "netProfit": "= Net kâr",
+      "summarySelling": "Satış Fiyatı",
+      "summaryProfit": "Net Kâr",
+      "summaryMargin": "Marj",
+      "summaryMarkup": "Kâr marjı",
+      "breakEven": "Başabaş fiyatı",
+      "breakEvenHint": "Bu fiyatın altında satış yapmak zararla satış demektir"
+    },
+    "productExample": {
+      "exampleLabel": "Örnek parça"
+    },
+    "engineCodeExample": {
+      "imageAlt": "Conta örneği"
+      }
+    }
+  },
+  "privacy": {
+    "backToApp": "← Uygulamaya geri dön",
+    "lastUpdated": "Son güncelleme: Haziran 2025",
+    "title": "Gizlilik Politikası",
+    "intro": "PartLister gizliliğinizi korumaya kararlıdır. Bu politika, hangi bilgileri topladığımızı, bunları nasıl kullandığımızı ve kişisel verilerinizle ilgili haklarınızı açıklamaktadır.",
+    "sections": {
+      "collect": {
+        "title": "Topladığımız Bilgiler",
+        "body": "PartLister'yi kullandığınızda şunları toplayabiliriz:",
+        "items": [
+          "Ad ve e-posta adresi (kayıt sırasında)",
+          "Hesap bilgileri (plan, tercihler, abonelik durumu)",
+          "Fatura bilgileri — Stripe tarafından güvenli bir şekilde işlenir; kart bilgilerinizi asla görmeyiz veya saklamayız",
+          "Platformda oluşturduğunuz listeler ve içerikler",
+          "Kaydedilen ürünler ve listeleme tercihleri",
+          "Kullanım analitiği (kullanılan özellikler, görüntülenen sayfalar, oturum davranışı)",
+          "IP adresi, tarayıcı türü ve cihaz bilgileri gibi teknik veriler"
+        ]
+      },
+      "notStore": {
+        "title": "Saklamadığımız Bilgiler",
+        "body": "PartLister ödeme kartı ayrıntılarını saklamaz. Tüm ödeme işlemleri Stripe tarafından güvenli bir şekilde gerçekleştirilir. Yalnızca başarılı ödemenin ve abonelik durumunuzun onayını alırız."
+      },
+      "howWeUse": {
+        "title": "Bilgilerinizi Nasıl Kullanıyoruz",
+        "items": [
+          "PartLister hizmetini sağlamak, sürdürmek ve geliştirmek",
+          "Hesabınızı ve aboneliğinizi yönetmek için",
+          "İşlem e-postaları göndermek için (hesap onayı, fatura makbuzları, şifre sıfırlamalar)",
+          "Pazarlama e-postalarını yalnızca etkinleştirdiğiniz yere göndermek için",
+          "Kullanım kalıplarını analiz etmek ve ürünü geliştirmek",
+          "Dolandırıcılığı veya kötüye kullanımı tespit etmek ve önlemek için",
+          "Yasal yükümlülüklere uymak"
+        ]
+      },
+      "analytics": {
+        "title": "Analitik",
+        "body": "Sayfa görünümleri, trafik kaynakları ve kullanım kalıpları için Google Analytics'yi ve özellik kullanımı, oturum davranışı ve ürün analitiği için PostHog'yi kullanıyoruz.",
+        "items": [
+          "Google Analytics — sayfa görünümleri, trafik kaynakları ve genel kullanım kalıpları",
+          "PostHog — özellik kullanımı, oturum davranışı ve ürün analitiği"
+        ],
+        "after": "Bu araçlar, ürünü geliştirmemize yardımcı olmak için anonimleştirilmiş veriler toplayabilir."
+      },
+      "cookies": {
+        "title": "Çerezler",
+        "body": "PartLister aşağıdakiler için çerezleri kullanır:",
+        "items": [
+          "Kimlik doğrulama — oturumunuzun güvenli bir şekilde açık kalmasını sağlar",
+          "Güvenlik — oturumunuzu koruma",
+          "Tercihler — ayarlarınızın hatırlanması",
+          "Analytics — platformun nasıl kullanıldığını anlamak"
+        ],
+        "after": "Çerezleri tarayıcınızdan kontrol edebilirsiniz. Bunların devre dışı bırakılması bazı PartLister özelliklerini etkileyebilir."
+      },
+      "thirdParty": {
+        "title": "Üçüncü Taraf Hizmetleri",
+        "body": "PartLister, her biri verileri kendi gizlilik politikası kapsamında işleyen aşağıdaki hizmetlerle entegre olur:",
+        "items": [
+          "Stripe",
+          "Supabase",
+          "Vercel",
+          "Google Analytics",
+          "PostHog",
+          "eBay APIs",
+          "OpenAI"
+        ]
+      },
+      "dataSources": {
+        "title": "Veri Kaynakları",
+        "body": "Uyumluluk bilgileri, OEM referansları, fiyatlandırma bilgileri ve diğer otomotiv verileri üçüncü taraf sağlayıcılardan gelebilir. Saygın kaynaklarla çalışıyoruz ancak ilanları yayınlamadan önce doğrulamanız gerekir."
+      },
+      "security": {
+        "title": "Veri Güvenliği",
+        "body": "Kişisel verileri korumak için endüstri standardı önlemler kullanıyoruz:",
+        "items": [
+          "Şifrelenmiş HTTPS bağlantıları",
+          "Supabase ve Vercel aracılığıyla güvenli bulut altyapısı",
+          "Satır düzeyinde veritabanı güvenliği",
+          "Dahili erişim kontrolleri"
+        ]
+      },
+      "retention": {
+        "title": "Veri Saklama",
+        "body": "Hesabınız aktif olduğu sürece veya hizmeti sağlamak için ihtiyaç duyulduğunda kişisel verileri saklıyoruz. Hesabınızı sildiğinizde, yasalar saklamayı gerektirmediği sürece verileri makul bir süre içinde siler veya anonimleştiririz."
+      },
+      "rights": {
+        "title": "Haklarınız",
+        "body": "UK GDPR ve geçerli veri koruma kanunu uyarınca aşağıdaki haklara sahipsiniz:",
+        "items": [
+          "Kişisel verilerinize erişim isteyin",
+          "Yanlış veya eksik bilgileri düzeltin",
+          "Hesabınızın ve verilerinizin silinmesini isteyin",
+          "Pazarlama iznini geri çekme",
+          "Mümkün olduğunda verilerinizin taşınabilir bir kopyasını isteyin",
+          "Belirli durumlarda işlemeye itiraz"
+        ],
+        "after": "Bu hakları kullanmak için support@partlister.app ile iletişime geçin."
+      },
+      "marketing": {
+        "title": "Pazarlama E-postaları",
+        "body": "Pazarlama e-postalarını yalnızca açıkça tercih ettiğinizde göndeririz ve her mesaj bir abonelikten çıkma seçeneği içerir. Hizmeti sağlamak için gereken işlemsel e-postalar, pazarlama tercihlerine bakılmaksızın gönderilir."
+      },
+      "changes": {
+        "title": "Bu Politikadaki Değişiklikler",
+        "body": "Bu Gizlilik Politikasını güncelleyebiliriz. Önemli değişiklikleri size e-postayla veya uygulamadaki bir bildirimle bildireceğiz. Üstteki tarih, bu politikanın en son ne zaman güncellendiğini gösterir."
+      },
+      "contact": {
+        "title": "Temas etmek",
+        "body": "Bu Gizlilik Politikasına veya verilerinizi nasıl işlediğimize ilişkin sorularınız için support@partlister.app ile iletişime geçin."
+      }
+    },
+    "thirdPartyPrivacyLink": "Gizlilik Politikası",
+    "footerNote": "PartLister kullanırken haklarınız ve sorumluluklarınız hakkında bilgi için Şartlar ve Koşullarımızı görüntüleyin.",
+    "termsLink": "Şartlar ve Koşullar"
+  },
+  "terms": {
+    "backToApp": "← Uygulamaya geri dön",
+    "lastUpdated": "Son güncelleme: Haziran 2025",
+    "title": "Şartlar ve Koşullar",
+    "intro": "PartLister'yi kullanmadan önce lütfen bu Şartlar ve Koşulları dikkatlice okuyun. Bir hesap oluşturarak veya hizmetimizi kullanarak bu şartlara bağlı kalmayı kabul etmiş olursunuz.",
+    "sections": {
+      "s1": {
+        "title": "1. Şartların Kabulü",
+        "body": "PartLister'ye erişerek veya PartLister'yi kullanarak bu Şartlar ve Koşulları okuduğunuzu, anladığınızı ve kabul ettiğinizi onaylamış olursunuz. Kabul etmiyorsanız hizmeti kullanmayın."
+      },
+      "s2": {
+        "title": "2. Hizmet Açıklaması",
+        "body": "PartLister, satıcıların otomotiv parça listeleri oluşturmasına yardımcı olan bulut tabanlı bir platformdur. Özellikler şunları içerir:",
+        "items": [
+          "Yapay zeka tarafından oluşturulan başlıklar ve açıklamalar",
+          "OEM ve değiştirilebilir referans numaraları",
+          "Araç uyumluluk bilgileri",
+          "Motor kodları",
+          "eBay piyasa verileri aracılığıyla fiyatlandırma öngörüleri",
+          "CSV ihracatı",
+          "Diğer listeleme otomasyonu özellikleri"
+        ]
+      },
+      "s3": {
+        "title": "3. Hesaplar",
+        "body": "Bir hesap oluşturduğunuzda şunları kabul etmiş olursunuz:",
+        "items": [
+          "Doğru ve eksiksiz bilgi sağlayın",
+          "Oturum açma kimlik bilgilerinizi güvenli ve gizli tutun",
+          "Hesabınız altındaki tüm etkinliklerden sorumlu olun",
+          "Yetkisiz kullanım durumunda derhal bizi bilgilendirin"
+        ],
+        "after": "Açık izin olmadan birden fazla hesap oluşturamaz veya hesabınızı paylaşamazsınız."
+      },
+      "s4": {
+        "title": "4. Abonelikler ve Faturalandırma",
+        "items": [
+          "Abonelik ücretleri aylık veya yıllık olarak peşin olarak faturalandırılır",
+          "Ücretli planlar, yenilenmeden önce iptal edilmediği sürece otomatik olarak yenilenir",
+          "Hesap ayarlarından istediğiniz zaman iptal edebilirsiniz",
+          "Ücretli erişim mevcut fatura dönemi sona erene kadar devam eder",
+          "Yasaların gerektirdiği durumlar dışında geri ödeme yapılmaz",
+          "Fiyatlandırma makul bir süre önceden bildirilerek değişebilir"
+        ]
+      },
+      "s5": {
+        "title": "5. Adil Kullanım",
+        "body": "Aşağıdakileri yapmamayı kabul edersiniz:",
+        "items": [
+          "PartLister kaynak kodunu tersine mühendislik yapın, kaynak koda dönüştürün veya çıkarın",
+          "Platformu veya verilerini toplu olarak kazıyın, kopyalayın veya çoğaltın",
+          "Hesabınızı veya kimlik bilgilerinizi izinsiz paylaşın",
+          "PartLister'yi yasa dışı, hileli veya kötü amaçlı olarak kullanın",
+          "API'leri veya otomatik sistemleri kötüye kullanma veya aşırı yükleme",
+          "Abonelik sınırlarını veya erişim kontrollerini atlatın"
+        ]
+      },
+      "s6": {
+        "title": "6. Fikri Mülkiyet",
+        "body": "Tüm PartLister yazılımları, markaları, tasarımları ve işlevleri, münhasır fikri mülkiyetinde kalır. Oluşturduğunuz listelemelerin ve içeriğin mülkiyeti sizde kalır ve PartLister'ye bunları yalnızca hizmeti sağlamak amacıyla işlemesi için sınırlı bir lisans verirsiniz."
+      },
+      "s7": {
+        "title": "7. Doğruluk ve Veri Kaynakları",
+        "body": "PartLister, liste oluşturmaya yardımcı olmak için güvenilir otomotiv veri kaynaklarını ve yapay zekayı kullanır. Fakat:",
+        "items": [
+          "Üçüncü taraf otomotiv verileri eksik veya yanlış olabilir",
+          "Listelemeden önce uyumluluğu, fiyatlandırmayı, özellikleri ve uygulamaları doğrulamaktan siz sorumlusunuz",
+          "PartLister oluşturmaya yardımcı olur ve doğruluğu garanti etmez"
+        ]
+      },
+      "s8": {
+        "title": "8. Sorumluluğun Sınırlandırılması",
+        "body": "Yasaların izin verdiği ölçüde, PartLister aşağıdakilerden sorumlu değildir:",
+        "items": [
+          "Yanlış veya hatalı listelemeler",
+          "Satış veya gelir kaybı",
+          "eBay politika ihlalleri de dahil olmak üzere pazar yeri cezaları",
+          "İş kesintisi",
+          "Dolaylı, sonuçsal veya özel kayıplar"
+        ],
+        "after": "Sorumluluğun hariç tutulamadığı durumlarda bu, talepten önceki üç ay içinde hizmet için ödenen tutarla sınırlıdır."
+      },
+      "s9": {
+        "title": "9. Fesih",
+        "body": "Bu koşulları ihlal etmeniz, dolandırıcılık yapmanız veya platformu kötüye kullanmanız durumunda hesabınızı bildirimde bulunmaksızın askıya alabilir veya sonlandırabiliriz. Aboneliğinizi iptal ederek ve destek ekibiyle iletişime geçerek hesabınızı sonlandırabilirsiniz."
+      },
+      "s10": {
+        "title": "10. Şartlardaki Değişiklikler",
+        "body": "Bu Şartlar ve Koşulları güncelleyebiliriz. Önemli değişiklikler e-posta veya uygulama içi bildirim yoluyla bildirilecektir. Değişiklikler yürürlüğe girdikten sonra kullanmaya devam etmeniz, revize edilen şartları kabul ettiğiniz anlamına gelir."
+      },
+      "s11": {
+        "title": "11. Geçerli Kanun",
+        "body": "Bu Şartlar ve Koşullar İngiltere ve Galler yasalarına tabidir. Anlaşmazlıklar İngiltere ve Galler mahkemelerinin münhasır yargı yetkisine tabidir."
+      }
+    },
+    "questionsFooter": "Bu terimlerle ilgili sorularınız mı var? Bize şu adresten ulaşın:"
+  }
+}

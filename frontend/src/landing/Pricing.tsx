@@ -1,61 +1,66 @@
 import React from "react";
 import { Check, ArrowRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Reveal, Section } from "./Primitives";
 import { useSession } from "../context/SessionContext";
 import { redirectToStripeCheckout } from "../lib/billing";
 
-const plans = [
-  {
-    name: "Lite",
-    price: "19",
-    tagline: "For occasional sellers and smaller inventories.",
-    features: [
-      "50 listings / month",
-      "Listing Generator",
-      "Price Calculator",
-      "Seller Preferences",
-      "Export Listings to CSV",
-      "Saved Listings",
-    ],
-    cta: "Start with Lite",
-    featured: false,
-  },
-  {
-    name: "Growth",
-    price: "49",
-    tagline: "For growing automotive businesses.",
-    features: [
-      "200 listings / month",
-      "Everything in Lite",
-      "Compatibility Checker",
-      "Smart Pricing",
-      "Priority Support",
-    ],
-    cta: "Start with Growth",
-    featured: true,
-  },
-  {
-    name: "Scale",
-    price: "99",
-    tagline: "For larger operations and teams.",
-    features: [
-      "Unlimited listings",
-      "Everything in Growth",
-      "Bulk Listing Generation",
-      "Bulk CSV Export",
-      "Early Access Features",
-    ],
-    cta: "Start with Scale",
-    featured: false,
-  },
-];
-
 export function Pricing() {
+  const { t } = useTranslation();
   const { session } = useSession();
   const navigate = useNavigate();
   const [loadingPlan, setLoadingPlan] = React.useState<string | null>(null);
   const [checkoutError, setCheckoutError] = React.useState<string | null>(null);
+
+  const plans = [
+    {
+      key: "lite",
+      name: t("landing.pricing.liteName"),
+      price: "19",
+      tagline: t("landing.pricing.liteTagline"),
+      features: [
+        t("landing.pricing.liteF1"),
+        t("landing.pricing.liteF2"),
+        t("landing.pricing.liteF3"),
+        t("landing.pricing.liteF4"),
+        t("landing.pricing.liteF5"),
+        t("landing.pricing.liteF6"),
+      ],
+      cta: t("landing.pricing.liteCta"),
+      featured: false,
+    },
+    {
+      key: "growth",
+      name: t("landing.pricing.growthName"),
+      price: "49",
+      tagline: t("landing.pricing.growthTagline"),
+      features: [
+        t("landing.pricing.growthF1"),
+        t("landing.pricing.growthF2"),
+        t("landing.pricing.growthF3"),
+        t("landing.pricing.growthF4"),
+        t("landing.pricing.growthF5"),
+      ],
+      cta: t("landing.pricing.growthCta"),
+      featured: true,
+    },
+    {
+      key: "scale",
+      name: t("landing.pricing.scaleName"),
+      price: "99",
+      tagline: t("landing.pricing.scaleTagline"),
+      features: [
+        t("landing.pricing.scaleF1"),
+        t("landing.pricing.scaleF2"),
+        t("landing.pricing.scaleF3"),
+        t("landing.pricing.scaleF4"),
+        t("landing.pricing.scaleF5"),
+      ],
+      cta: t("landing.pricing.scaleCta"),
+      featured: false,
+    },
+  ];
 
   const handlePlanClick = async (planKey: string) => {
     setCheckoutError(null);
@@ -64,7 +69,7 @@ export function Pricing() {
       try {
         await redirectToStripeCheckout({ plan: planKey, interval: "monthly" });
       } catch (err: any) {
-        setCheckoutError(err?.message || "Checkout failed. Please try again.");
+        setCheckoutError(err?.message || t("landing.pricing.checkoutError"));
         setLoadingPlan(null);
       }
     } else {
@@ -92,19 +97,19 @@ export function Pricing() {
 
       <Reveal className="mx-auto max-w-2xl text-center">
         <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3.5 py-1.5 font-mono text-[0.72rem] font-medium uppercase tracking-[0.14em] text-blue-200 backdrop-blur">
-          Pricing
+          {t("landing.pricing.eyebrow")}
         </div>
         <h2 className="font-display text-[clamp(2rem,4vw,3rem)] font-extrabold tracking-tightest text-white text-balance">
-          Simple pricing that scales with you
+          {t("landing.pricing.title")}
         </h2>
         <p className="mt-4 text-balance text-center text-[1.05rem] leading-relaxed text-blue-100/70">
-          Start free with 10 listings. Upgrade when you are ready. No contracts, cancel anytime.
+          {t("landing.pricing.subtitle")}
         </p>
       </Reveal>
 
       <div className="mt-14 grid items-start gap-6 lg:grid-cols-3">
         {plans.map((p, i) => (
-          <Reveal key={p.name} delay={i * 0.08}>
+          <Reveal key={p.key} delay={i * 0.08}>
             <div
               className={`relative flex h-full flex-col rounded-3xl p-8 backdrop-blur transition-all duration-300 ${
                 p.featured
@@ -114,7 +119,7 @@ export function Pricing() {
             >
               {p.featured && (
                 <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-primary px-3.5 py-1 font-mono text-[0.68rem] font-semibold uppercase tracking-wider text-white shadow-chip">
-                  Most Popular
+                  {t("landing.pricing.mostPopular")}
                 </span>
               )}
 
@@ -125,19 +130,19 @@ export function Pricing() {
 
               <div className="mb-6 flex items-end gap-1">
                 <span className="font-display text-[3.2rem] font-extrabold leading-none tracking-tightest text-white">£{p.price}</span>
-                <span className={`mb-1.5 text-[0.95rem] ${p.featured ? "text-white/60" : "text-blue-100/50"}`}>/month</span>
+                <span className={`mb-1.5 text-[0.95rem] ${p.featured ? "text-white/60" : "text-blue-100/50"}`}>{t("landing.pricing.perMonth")}</span>
               </div>
 
               <button
-                onClick={() => handlePlanClick(p.name.toLowerCase())}
-                disabled={loadingPlan === p.name.toLowerCase()}
+                onClick={() => handlePlanClick(p.key)}
+                disabled={loadingPlan === p.key}
                 className={`group inline-flex w-full items-center justify-center gap-2 rounded-xl px-5 py-3.5 font-semibold transition-all duration-200 hover:-translate-y-0.5 cursor-pointer disabled:opacity-70 disabled:cursor-wait ${
                   p.featured
                     ? "bg-primary text-white shadow-[0_10px_28px_-8px_rgba(19,93,255,0.7)] hover:bg-white hover:text-navy"
                     : "border border-white/15 bg-white/10 text-white hover:border-primary hover:bg-primary"
                 }`}
               >
-                {loadingPlan === p.name.toLowerCase() ? "Redirecting…" : p.cta}
+                {loadingPlan === p.key ? t("landing.pricing.redirecting") : p.cta}
                 <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
               </button>
 

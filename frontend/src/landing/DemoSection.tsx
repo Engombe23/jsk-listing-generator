@@ -1,17 +1,11 @@
+import { useTranslation } from "react-i18next";
+
 const R = "#b70017";
 const CARD = "#111317";
 const BORDER = "rgba(255,255,255,0.07)";
 const TEXT = "#ffffff";
 const MUTED = "#9ca3af";
 const DIM = "#6b7280";
-
-const BENEFITS = [
-  "List products 5–10x faster",
-  "Reduce errors and returns",
-  "Price with confidence",
-  "Create consistent, professional listings",
-  "Spend less time listing, more time selling",
-];
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
@@ -38,6 +32,8 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 }
 
 export default function DemoSection() {
+  const { t } = useTranslation();
+  const benefits = t("landing.demo.benefits", { returnObjects: true });
   return (
     <section
       style={{
@@ -56,7 +52,7 @@ export default function DemoSection() {
       >
         {/* Left: benefits list */}
         <div>
-          <SectionLabel>Benefits</SectionLabel>
+          <SectionLabel>{t("landing.demo.eyebrow")}</SectionLabel>
           <h2
             style={{
               fontSize: "clamp(26px, 3.5vw, 44px)",
@@ -67,10 +63,10 @@ export default function DemoSection() {
               color: TEXT,
             }}
           >
-            Built for Automotive Sellers Who Want to Scale
+            {t("landing.demo.title")}
           </h2>
           <div style={{ display: "grid", gap: 16 }}>
-            {BENEFITS.map((b) => (
+            {benefits.map((b) => (
               <div
                 key={b}
                 style={{
@@ -129,7 +125,7 @@ export default function DemoSection() {
               letterSpacing: "0.06em",
             }}
           >
-            Time Saved Per Listing
+            {t("landing.demo.timeSaved")}
           </div>
           <div
             style={{
@@ -144,7 +140,7 @@ export default function DemoSection() {
             ~15 min
           </div>
           <div style={{ fontSize: 15, color: MUTED, marginBottom: 32 }}>
-            Average time saved per listing vs. manual workflow
+            {t("landing.demo.timeSavedBody")}
           </div>
 
           <div style={{ height: 1, background: BORDER, marginBottom: 32 }} />
@@ -159,7 +155,7 @@ export default function DemoSection() {
               letterSpacing: "0.06em",
             }}
           >
-            Listing Errors Eliminated
+            {t("landing.demo.errorsEliminated")}
           </div>
           <div
             style={{
@@ -174,7 +170,7 @@ export default function DemoSection() {
             95%
           </div>
           <div style={{ fontSize: 15, color: MUTED }}>
-            Reduction in compatibility and pricing mistakes
+            {t("landing.demo.errorsEliminatedBody")}
           </div>
         </div>
       </div>

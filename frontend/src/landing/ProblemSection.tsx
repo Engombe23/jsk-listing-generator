@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 const TEXT = "#132A46";
 const MUTED = "#4d6a8a";
@@ -7,45 +8,46 @@ const ACCENT = "#135DFF";
 const BORDER = "#dde7f5";
 const BG = "#ffffff";
 
-const ROWS = [
+const getRows = (t: (key: string) => string) => [
   {
-    label: "OE Number",
-    ebayLabel: "OE Number",
+    label: t("landing.problem.rows.oeNumber"),
+    ebayLabel: t("landing.problem.rows.oeNumber"),
     value: "LR073640, JDE36769",
     color: "#135DFF", bg: "#eef3ff",
     iconPath: <><path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18"/></>,
   },
   {
-    label: "Cross References",
-    ebayLabel: "Cross References",
+    label: t("landing.problem.rows.crossReferences"),
+    ebayLabel: t("landing.problem.rows.crossReferences"),
     value: "AJUSA 10237.00, ELRING 207.140",
     color: "#0891b2", bg: "#ecfeff",
     iconPath: <><polyline points="16 3 21 3 21 8"/><polyline points="8 21 3 21 3 16"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></>,
   },
   {
-    label: "Compatibility table",
-    ebayLabel: "Compatibility table",
+    label: t("landing.problem.rows.compatibilityTable"),
+    ebayLabel: t("landing.problem.rows.compatibilityTable"),
     value: "Jaguar XE 2015–2021\nJaguar XF 2015–2021",
     color: "#16a34a", bg: "#f0fdf4",
     iconPath: <><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 5v3h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></>,
   },
   {
-    label: "Item specifics",
-    ebayLabel: "Item specifics",
+    label: t("landing.problem.rows.itemSpecifics"),
+    ebayLabel: t("landing.problem.rows.itemSpecifics"),
     value: "Bore: 84mm, Holes: 3",
     color: "#7c3aed", bg: "#f5f3ff",
     iconPath: <><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></>,
   },
   {
-    label: "K-Type Numbers",
-    ebayLabel: "K-Type Numbers",
+    label: t("landing.problem.rows.kTypeNumbers"),
+    ebayLabel: t("landing.problem.rows.kTypeNumbers"),
     value: "107640, 115141, 117411, 124200, 126259, 141940, 142747",
     color: "#c2410c", bg: "#fff7ed",
     iconPath: <><path d="M4 4h16v2H4z"/><path d="M4 10h10"/><path d="M4 16h7"/><path d="M14 12l4 4-4 4"/></>,
   },
 ];
 
-function CopyPasteAnim() {
+function CopyPasteAnim({ t }: { t: (key: string) => string }) {
+  const rows = getRows(t);
   const [step, setStep] = useState(0);
   const [phase, setPhase] = useState<"idle"|"copying"|"pasting"|"done">("idle");
   const [filled, setFilled] = useState<boolean[]>([false, false, false, false, false]);
@@ -62,7 +64,7 @@ function CopyPasteAnim() {
           setFilled(prev => { const n = [...prev]; n[s] = true; return n; });
           setPhase("done");
           const next = s + 1;
-          if (next < ROWS.length) {
+          if (next < rows.length) {
             timerRef.current = setTimeout(() => { setStep(next); setPhase("idle"); tick(next, "idle"); }, 500);
           } else {
             timerRef.current = setTimeout(() => { setStep(0); setPhase("idle"); setFilled([false,false,false,false,false]); tick(0,"idle"); }, 1400);
@@ -75,8 +77,8 @@ function CopyPasteAnim() {
   }, []);
 
   // Shared cell content renderer
-  function CellContent({ row, filled: isFilledCell }: { row: typeof ROWS[0], filled: boolean }) {
-    const isCompat = row.label === "Compatibility table";
+  function CellContent({ row, filled: isFilledCell }: { row: ReturnType<typeof getRows>[number], filled: boolean }) {
+    const isCompat = row.label === t("landing.problem.rows.compatibilityTable");
     const labelColor = isFilledCell ? row.color : TEXT;
     const valueColor = isFilledCell ? row.color : DIM;
     return (
@@ -129,16 +131,16 @@ function CopyPasteAnim() {
       {/* Column headers — use same grid as rows */}
       <div style={{ display:"grid", gridTemplateColumns:"1fr 52px 1fr", marginBottom:6 }}>
         <div style={{ textAlign:"center" }}>
-          <span style={{ fontSize:9, fontWeight:800, color:DIM, letterSpacing:"0.08em", textTransform:"uppercase" }}>Source Data</span>
+          <span style={{ fontSize:9, fontWeight:800, color:DIM, letterSpacing:"0.08em", textTransform:"uppercase" }}>{t("landing.problem.sourceData")}</span>
         </div>
         <div />
         <div style={{ textAlign:"center" }}>
-          <span style={{ fontSize:9, fontWeight:800, color:DIM, letterSpacing:"0.08em", textTransform:"uppercase" }}>eBay Listing</span>
+          <span style={{ fontSize:9, fontWeight:800, color:DIM, letterSpacing:"0.08em", textTransform:"uppercase" }}>{t("landing.problem.ebayListing")}</span>
         </div>
       </div>
 
       {/* Rows — CSS grid so left/right columns are always identical width */}
-      {ROWS.map((row, i) => {
+      {rows.map((row, i) => {
         const isActive = step === i;
         const isFilled = filled[i];
         const isCopying = isActive && phase === "copying";
@@ -207,7 +209,7 @@ function CopyPasteAnim() {
       <div style={{ marginTop:8, textAlign:"center" }}>
         <span style={{ fontSize:10, color:"#dc2626", fontWeight:700, display:"inline-flex", alignItems:"center", gap:5 }}>
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2.5" strokeLinecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-          Copied field-by-field for every listing
+          {t("landing.problem.copiedFieldByField")}
         </span>
       </div>
     </div>
@@ -215,27 +217,27 @@ function CopyPasteAnim() {
 }
 
 
-const problems = [
+const getProblems = (t: (key: string) => string) => [
   {
     num: 1,
-    label: "Manual Workflow",
-    desc: "Copying OE numbers, compatibility data, item specifics and listing fields by hand slows down every listing.",
-    visual: <CopyPasteAnim />,
+    label: t("landing.problem.cards.manual.title"),
+    desc: t("landing.problem.cards.manual.body"),
+    visual: <CopyPasteAnim t={t} />,
   },
   {
     num: 2,
-    label: "Inconsistent Listings",
-    desc: "Missing item specifics, engine codes, OE numbers and fitment details can hurt search visibility and buyer trust.",
+    label: t("landing.problem.cards.inconsistent.title"),
+    desc: t("landing.problem.cards.inconsistent.body"),
     visual: (
       <div style={{ marginTop: 20, background: "#fff", border: `1px solid ${BORDER}`, borderRadius: 10, padding: "12px 14px" }}>
-        <div style={{ fontSize: 10.5, color: DIM, fontFamily: "Plus Jakarta Sans, sans-serif", fontWeight: 600, marginBottom: 10 }}>Item specifics</div>
+        <div style={{ fontSize: 10.5, color: DIM, fontFamily: "Plus Jakarta Sans, sans-serif", fontWeight: 600, marginBottom: 10 }}>{t("landing.problem.rows.itemSpecifics")}</div>
         {[
-          { field: "Reference OE/OEM Number",      ok: false },
-          { field: "Interchangeable Part Numbers", ok: false },
-          { field: "Engine Codes",                 ok: false },
-          { field: "Bore Diameter",                ok: false },
-          { field: "Pin Diameter",                 ok: false },
-          { field: "Length",                       ok: false },
+          { field: t("landing.problem.missingFields.referenceOem"), ok: false },
+          { field: t("landing.problem.missingFields.interchangeable"), ok: false },
+          { field: t("landing.problem.missingFields.engineCodes"), ok: false },
+          { field: t("landing.problem.missingFields.boreDiameter"), ok: false },
+          { field: t("landing.problem.missingFields.pinDiameter"), ok: false },
+          { field: t("landing.problem.missingFields.length"), ok: false },
         ].map((r, i) => (
           <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "4px 0", borderBottom: i < 5 ? `1px solid ${BORDER}` : "none" }}>
             <span style={{ fontSize: 10.5, color: MUTED, fontFamily: "Plus Jakarta Sans, sans-serif" }}>{r.field}</span>
@@ -246,7 +248,7 @@ const problems = [
                   : <svg width="8" height="8" viewBox="0 0 10 10"><path d="M3 3l4 4M7 3l-4 4" stroke="#dc2626" strokeWidth="1.5" strokeLinecap="round"/></svg>
                 }
               </div>
-              <span style={{ fontSize: 10, fontWeight: 700, color: r.ok ? "#16a34a" : "#dc2626", fontFamily: "Plus Jakarta Sans, sans-serif" }}>{r.ok ? "Present" : "Missing"}</span>
+              <span style={{ fontSize: 10, fontWeight: 700, color: r.ok ? "#16a34a" : "#dc2626", fontFamily: "Plus Jakarta Sans, sans-serif" }}>{r.ok ? t("landing.problem.present") : t("landing.problem.missing")}</span>
             </div>
           </div>
         ))}
@@ -255,11 +257,11 @@ const problems = [
   },
   {
     num: 3,
-    label: "Guessing Prices",
-    desc: "Price too low and you lose margin. Price too high and the part can sit unsold for weeks.",
+    label: t("landing.problem.cards.pricing.title"),
+    desc: t("landing.problem.cards.pricing.body"),
     visual: (
       <div style={{ marginTop: 20, background: "#fff", border: `1px solid ${BORDER}`, borderRadius: 10, padding: "12px 14px" }}>
-        <div style={{ fontSize: 10.5, color: DIM, fontFamily: "Plus Jakarta Sans, sans-serif", fontWeight: 600, marginBottom: 10 }}>Market range for this part</div>
+        <div style={{ fontSize: 10.5, color: DIM, fontFamily: "Plus Jakarta Sans, sans-serif", fontWeight: 600, marginBottom: 10 }}>{t("landing.problem.marketRange")}</div>
         <div style={{ display: "flex", alignItems: "flex-end", gap: 5, height: 44, marginBottom: 8 }}>
           {[50, 70, 90, 100, 85, 60, 75].map((h, i) => (
             <div key={i} style={{ flex: 1, height: `${h}%`, background: i === 4 ? "#fee2e2" : i === 2 ? ACCENT : BORDER, borderRadius: "3px 3px 0 0", opacity: i === 2 ? 0.7 : 1 }} />
@@ -267,7 +269,7 @@ const problems = [
         </div>
         <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: DIM, fontFamily: "Plus Jakarta Sans, sans-serif" }}>
           <span>£180</span>
-          <span style={{ color: "#dc2626", fontWeight: 700 }}>Your guess: £310?</span>
+          <span style={{ color: "#dc2626", fontWeight: 700 }}>{t("landing.problem.yourGuess")}</span>
           <span>£340</span>
         </div>
       </div>
@@ -276,6 +278,8 @@ const problems = [
 ];
 
 export default function ProblemSection() {
+  const { t } = useTranslation();
+  const problems = getProblems(t);
   return (
     <section className="lp-section" style={{ background: BG, padding: "100px 24px" }}>
       <div style={{ maxWidth: 1100, margin: "0 auto" }}>
@@ -286,16 +290,16 @@ export default function ProblemSection() {
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={ACCENT} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
             </svg>
-            <span style={{ fontSize: 11.5, fontWeight: 700, color: ACCENT, letterSpacing: "0.06em", textTransform: "uppercase" }}>The Problem</span>
+            <span style={{ fontSize: 11.5, fontWeight: 700, color: ACCENT, letterSpacing: "0.06em", textTransform: "uppercase" }}>{t("landing.problem.eyebrow")}</span>
           </div>
 
           <h2 style={{ fontSize: "clamp(28px, 4vw, 46px)", fontWeight: 800, color: TEXT, margin: "0 0 18px", lineHeight: 1.15, letterSpacing: "-1px" }}>
-            Building car parts listings<br />
-            is still <span style={{ color: ACCENT }}>too manual</span>
+            {t("landing.problem.titleBefore")}<br />
+            {t("landing.problem.titleMiddle")} <span style={{ color: ACCENT }}>{t("landing.problem.titleAccent")}</span>
           </h2>
 
           <p style={{ fontSize: 16, color: MUTED, maxWidth: 500, margin: "0 auto", lineHeight: 1.65 }}>
-            Most sellers spend too much time on data entry, formatting and guessing — for every single part.
+            {t("landing.problem.subtitle")}
           </p>
         </div>
 
@@ -346,7 +350,7 @@ export default function ProblemSection() {
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={ACCENT} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M12 5v14M5 12l7 7 7-7"/>
             </svg>
-            <span className="hiw-bridge-text" style={{ fontSize: 14, fontWeight: 600, color: TEXT, fontFamily: "Plus Jakarta Sans, sans-serif" }}>PartLister automates all of this — part number in, ready-to-list out.</span>
+            <span className="hiw-bridge-text" style={{ fontSize: 14, fontWeight: 600, color: TEXT, fontFamily: "Plus Jakarta Sans, sans-serif" }}>{t("landing.problem.bridge")}</span>
           </div>
         </div>
 
