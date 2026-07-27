@@ -15,6 +15,7 @@ import {
 } from "./html-builder.js";
 import { getTemplateById, THEME_LIST } from "./templates/index.js";
 import { checkCompatibility } from "./compatibility/checker.js";
+import { getCompatibleCarsByArticleNo } from "./compatibility/api.js";
 import {
   detectProductType, buildEbayQuery, detectUnitType, getConfidence,
   conditionOptions, EXCLUSION_REASONS,
@@ -655,11 +656,22 @@ async function buildListingFromArticle(articleNumber, themeId = "clean-default",
   if (cars[0]) console.log(`[Listing] sample car engine codes:`, cars[0].engCodes || cars[0].engineCodes || cars[0].engineCode || cars[0].motorCodes || "NONE");
   if (cars[0]) console.log(`[Listing] sample car kw/hp/cc:`, cars[0].powerKw, cars[0].powerPs, cars[0].capacityTech);
 
+  // ── Test: getCompatibleCarsByArticleNo ────────────────────────────────────
+  if (dataSupplierId) {
+    const compatCars = await getCompatibleCarsByArticleNo(resolvedNumber, dataSupplierId);
+    const sample = Array.isArray(compatCars) ? compatCars[0] : compatCars?.data?.[0] ?? compatCars;
+    console.log(`[CompatCars] count:`, Array.isArray(compatCars) ? compatCars.length : "non-array");
+    console.log(`[CompatCars] sample fields:`, sample ? JSON.stringify(Object.keys(sample)) : "none");
+    console.log(`[CompatCars] sample engine codes:`, sample?.engCodes || sample?.engineCodes || sample?.engineCode || sample?.motorCodes || "NONE");
+    console.log(`[CompatCars] sample kw/hp/cc:`, sample?.powerKw, sample?.powerPs, sample?.capacityTech);
+  }
+
+  // ── Fetch engine data grouped by model series ─────────────────────────────
+  const engineDataByModelId = await fetchEngineDataByModelIds(cars);
+  console.log(`[Listing] ${articleNumber}: fetched engine data for ${Object.keys(engineDataByModelId).length} model series`);
+
   // ── Normalize ─────────────────────────────────────────────────────────────
-  // engineDataByModelId is empty — kW/HP/CC/engine-codes are read directly
-  // from each compatibleCars entry (the article-number-details response already
-  // includes them, so the per-model-series fetch loop is unnecessary).
-  const normalized = normalizeTecdoc(articleResponse, {});
+  const normalized = normalizeTecdoc(articleResponse, engineDataByModelId);
   const kNumbers    = uniq(normalized.compatibility_rows.map((r) => r.k_number));
   const engineCodes = uniq(normalized.compatibility_rows.flatMap((r) => r.engine_codes || []));
 
@@ -669,6 +681,7 @@ async function buildListingFromArticle(articleNumber, themeId = "clean-default",
   //   2. select-article-cross-refs     → article-ID specific cross-refs (varies by brand)
   //   3. article-oem-search-no         → ALL aftermarket articles for this OEM number
   //                                      (the real interchangeable list — brand-agnostic)
+  const wantInterchangeable = listingOptions.showInterchangeableNumbers !== false;
   const firstOem = normalized.oem_numbers?.[0] || null;
   const [mediaResponse, crossRefsRaw, oemSearchRaw] = await Promise.all([
     fetchArticleMedia(articleId, langId),
