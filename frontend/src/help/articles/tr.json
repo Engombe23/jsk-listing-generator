@@ -1,0 +1,749 @@
+{
+  "how-to-generate-your-first-listing": {
+    "title": "İlk girişinizi nasıl oluşturabilirsiniz?",
+    "category": "Başlarken",
+    "time": "5 dk okuma",
+    "heroImage": {
+      "src": "/listing-mockup.png",
+      "alt": "PartLister listeleme oluşturucu arayüzü",
+      "caption": "Listeleme Oluşturucu — bir parça numarası girin ve saniyeler içinde eksiksiz bir eBay listesi elde edin"
+    },
+    "intro": "PartLister, tek bir parça numarasını saniyeler içinde eBay'ye hazır eksiksiz bir listeye dönüştürür. Bu kılavuz tüm süreç boyunca size yol gösterir.",
+    "sections": [
+      {
+        "heading": "Bir bakışta tüm süreç",
+        "content": [
+          {
+            "type": "visual",
+            "id": "stepFlow",
+            "steps": [
+              {
+                "label": "Parça numarasını girin",
+                "sub": "OE, OEM veya makale no."
+              },
+              {
+                "label": "Ara ve oluştur",
+                "sub": "PartLister parçayı bulur"
+              },
+              {
+                "label": "İlanı gözden geçirin",
+                "sub": "Başlık ve açıklamayı düzenleyin"
+              },
+              {
+                "label": "Kaydedin veya dışa aktarın",
+                "sub": "HTML veya CSV kopyalayın"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Adım 1 — Liste Oluşturucuyu açın",
+        "content": [
+          {
+            "type": "p",
+            "text": "Giriş yaptıktan sonra Liste Oluşturucu, kontrol panelinde göreceğiniz ilk araçtır. Ayrıca ana navigasyondan da istediğiniz zaman erişilebilir."
+          }
+        ]
+      },
+      {
+        "heading": "Adım 2 – Parça numaranızı girin",
+        "content": [
+          {
+            "type": "p",
+            "text": "Arama alanına bir referans numarası yapıştırın veya yazın. PartLister aşağıdakilerden herhangi birini kabul eder:"
+          },
+          {
+            "type": "list",
+            "items": [
+              "OE numarası (ör. 11247807345)",
+              "OEM numarası",
+              "TecDoc ürün numarası (örn. PU0127, LR002465)"
+            ]
+          },
+          {
+            "type": "visual",
+            "id": "productExample",
+            "src": "/oil-pump.png",
+            "alt": "Yağ pompası LR002465",
+            "partNumber": "PU0127",
+            "description": "Yağ Pompası — Land Rover / Range Rover 2.7 3.0 TDV6"
+          },
+          {
+            "type": "p",
+            "text": "Markayı veya parça türünü belirtmenize gerek yoktur; PartLister, parçayı referans numaranızdan otomatik olarak tanımlar."
+          }
+        ]
+      },
+      {
+        "heading": "Adım 3 — Ara ve Oluştur'a tıklayın",
+        "content": [
+          {
+            "type": "p",
+            "text": "PartLister, TecDoc'de eşleşen parçaları arar. Çoğu durumda tek bir eşleşme bulunur ve oluşturma hemen başlar. Birden fazla makale aynı referansı paylaşıyorsa bir seçim listesi görürsünüz; doğru varyantı seçin ve oluşturma işlemi başlar."
+          }
+        ]
+      },
+      {
+        "heading": "Adım 4 – Bir şablon seçin (isteğe bağlı)",
+        "content": [
+          {
+            "type": "p",
+            "text": "PartLister, düzeni ve dahil edilen bölümleri kontrol eden çeşitli listeleme şablonları sunar. Oluşturmadan önce evinizin tarzına uygun olanı seçin. Varsayılan şablon çoğu otomotiv parçası kategorisi için iyi çalışır."
+          }
+        ]
+      },
+      {
+        "heading": "Adım 5 – Girişinizi inceleyin",
+        "content": [
+          {
+            "type": "p",
+            "text": "Oluşturulduktan sonra listenizin tamamını göreceksiniz. Önizlemenin üzerindeki Açıklamayı Düzenle'yi tıklatarak açıklamayı doğrudan düzenleyebilirsiniz. Her liste şunları içerebilir:"
+          },
+          {
+            "type": "list",
+            "items": [
+              "İlan başlığı — eBay araması için SEO açısından optimize edilmiştir",
+              "Ürün açıklaması — biçimlendirilmiş ve yapıştırmaya hazır",
+              "Ürün özellikleri – marka, durum, parça numarası, donanım",
+              "Araç uyumluluk tablosu — TecDoc'den her uygulama",
+              "OE referansları ve değiştirilebilir numaralar"
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Adım 6 — Kaydet veya dışa aktar",
+        "content": [
+          {
+            "type": "p",
+            "text": "Listeden memnun olduğunuzda üç seçeneğiniz vardır:"
+          },
+          {
+            "type": "visual",
+            "id": "exportOptions"
+          },
+          {
+            "type": "tip",
+            "text": "PartLister şablonunuzu hatırlar ve oturumlar arasındaki tercihleri ​​değiştirir, böylece her liste oluşturduğunuzda yeniden yapılandırmanıza gerek kalmaz."
+          }
+        ]
+      }
+    ]
+  },
+  "understanding-compatibility-results": {
+    "title": "Uyumluluk sonuçlarını anlama",
+    "category": "İlan Oluşturucu",
+    "time": "4 dk okuma",
+    "intro": "PartLister, TecDoc verilerinden otomatik olarak araç uyumluluk tabloları oluşturur. Bu kılavuzda verilerin nereden geldiği, nasıl okunacağı ve beklenmeyen bir durum ortaya çıkarsa ne yapılacağı açıklanmaktadır.",
+    "sections": [
+      {
+        "heading": "Uyumluluk verileri nereden geliyor?",
+        "content": [
+          {
+            "type": "p",
+            "text": "PartLister, dünya çapındaki üreticiler, ithalatçılar ve satış sonrası tedarikçiler tarafından kullanılan endüstri standardı otomotiv parçaları kataloğu olan TecDoc'yi kullanır."
+          },
+          {
+            "type": "p",
+            "text": "Bir liste oluşturduğunuzda PartLister, sizin parçanız için tüm araç uygulamalarını TecDoc'den alır ve bunları yapılandırılmış bir uyumluluk tablosu halinde formatlar. Bu, profesyonel parça katalogları tarafından kullanılan verilerle aynıdır; yapay zeka tarafından alınmaz, tahmin edilmez veya oluşturulmaz."
+          }
+        ]
+      },
+      {
+        "heading": "Uyumluluk tablosunu okuma",
+        "content": [
+          {
+            "type": "p",
+            "text": "Tabloda araç uygulaması başına bir satır gösterilmektedir. Her sütunun etiketlendiği canlı bir örneği burada bulabilirsiniz:"
+          },
+          {
+            "type": "visual",
+            "id": "compatTable"
+          },
+          {
+            "type": "list",
+            "items": [
+              "Araç – Marka, model, gövde tipi ve varyantı",
+              "Yıllar — Uygulamanın kapsadığı tarih aralığı",
+              "kW / HP — Kilowatt ve beygir gücü cinsinden motor gücü",
+              "CC — Santimetre küp cinsinden motor hacmi",
+              "Motor kodu — Üreticinin motor tipi tanımlayıcısı"
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Motor kodları",
+        "content": [
+          {
+            "type": "p",
+            "text": "Motor kodları, motora özel parçalar (zamanlama bileşenleri, yağ pompaları, contalar, enjektörler) için özellikle önemlidir. Aynı model yılı ve gövde stili tamamen farklı motorlar ve dolayısıyla tamamen farklı parçalar kullanabilir."
+          },
+          {
+            "type": "visual",
+            "id": "engineCodeExample",
+            "label": "Örnek",
+            "beforeStrong": "Bir",
+            "strongA": "BMW 320d N47",
+            "middle": "için olan silindir kapak contası,",
+            "strongB": "BMW 320d M47",
+            "after": "için uygun değildir — aynı model, farklı motor, farklı parça. Motor kodları bu hatayı önler."
+          },
+          {
+            "type": "p",
+            "text": "Listelemenize her zaman motor kodlarını ekleyin. Profesyonel montajcılar ve bilgili alıcılar, satın almadan önce uyumluluğu doğrulamak için bunları kullanır, bu da iadeleri ve anlaşmazlıkları azaltır."
+          }
+        ]
+      },
+      {
+        "heading": "Uyumluluk hatalı görünüyorsa ne olur?",
+        "content": [
+          {
+            "type": "p",
+            "text": "TecDoc verileri üreticinin beyan ettiği uygulamaları yansıtmaktadır. Nadir durumlarda başvurular eksik olabilir, bölgesel değişkenleri yansıtabilir veya geçici üretim aracı gösterebilir."
+          },
+          {
+            "type": "p",
+            "text": "Açık bir hata fark ederseniz doğrudan TecDoc'yi kontrol edin veya tedarikçinizin kataloğuna bakın. PartLister, TecDoc verilerini değiştirmez; gördüğünüz şey tam olarak TecDoc'nin rapor ettiği şeydir."
+          },
+          {
+            "type": "tip",
+            "text": "Uyumluluk tablosu iadeleri azaltmanın en etkili yollarından biridir. Alıcılar, teslimattan sonra bir uyum sorunu keşfetmek yerine, satın almadan önce araçlarının listede olduğunu doğrulayabilirler."
+          }
+        ]
+      }
+    ]
+  },
+  "smart-pricing-explained": {
+    "title": "Akıllı Fiyatlandırma açıklandı",
+    "category": "Fiyatlandırma Araçları",
+    "time": "6 dk okuma",
+    "intro": "Akıllı Fiyatlandırma, canlı eBay listeleme verilerini alır ve size tam fiyat dağılımını gösterir; böylece listelemeden önce fiyatınızın piyasaya göre tam olarak nerede olduğunu her zaman bilirsiniz.",
+    "sections": [
+      {
+        "heading": "Akıllı Fiyatlandırma hangi verileri kullanır?",
+        "content": [
+          {
+            "type": "p",
+            "text": "Akıllı Fiyatlandırma, rakip listelemelerin tamamını yakalamak için OE numaranızı, OEM numaranızı ve bilinen değiştirilebilir referansları kullanarak aynı veya eşdeğer parça için aktif eBay listelerini arar."
+          },
+          {
+            "type": "p",
+            "text": "Bir parçanın değiştirilebilir numaraları ne kadar fazlaysa, fiyatlandırma tablosu da o kadar geniş olur; çünkü bu numaralardan herhangi birini arayan bir alıcı, bu listelerden herhangi birinden satın alma işlemi gerçekleştirebilir."
+          }
+        ]
+      },
+      {
+        "heading": "Fiyat dağılım grafiğinin okunması",
+        "content": [
+          {
+            "type": "p",
+            "text": "Histogram, fiyatların tüm aktif listelerdeki dağılımını gösterir. Her çubuk bir fiyat aralığını temsil eder; yüksekliği orada kaç tane listelemenin fiyatlandırıldığını gösterir. Fiyatınız dikey kesikli çizgidir."
+          },
+          {
+            "type": "visual",
+            "id": "priceHistogram"
+          },
+          {
+            "type": "list",
+            "items": [
+              "Çoğu alıcının baktığı yer en yüksek çubuk kümesidir; buradaki fiyatlandırma görünürlüğü en üst düzeye çıkarır",
+              "Sağdaki çubuklar daha yüksek fiyatlı aykırı değerleri gösterir (genellikle OEM markalı parçalar)",
+              "Fiyat ışınınız kümenin içinde mi, üstünde mi yoksa altında mı olduğunuzu anında gösterir",
+              "Belirli bir fiyat aralığını yakınlaştırmak için grafiği tıklayıp sürükleyin"
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Temel ölçümler",
+        "content": [
+          {
+            "type": "p",
+            "text": "Grafiğin altında, dört özet rakam piyasa hakkında hızlı bir bilgi edinmenizi sağlar:"
+          },
+          {
+            "type": "list",
+            "items": [
+              "Düşük — Şu anda listelenen en düşük fiyat",
+              "Ortalama — Tüm listelerdeki ortalama fiyat",
+              "Medyan — Orta nokta fiyatı; aykırı değerler tarafından çarpıtılmamış",
+              "Yüksek — Listelenen en yüksek fiyat"
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Medyan genellikle en güvenilir ölçüttür. Ortalamanın aksine, satış sonrası rakipler arasında tek bir yüksek fiyatlı OEM listesiyle yukarı çıkılmıyor."
+          }
+        ]
+      },
+      {
+        "heading": "Satıcı listeleri paneli",
+        "content": [
+          {
+            "type": "p",
+            "text": "Grafiğin yanı sıra, PartLister size verileri (başlık, fiyat ve satıcı puanı) oluşturan bireysel eBay listelerini gösterir. Bu, belirli bir fiyat noktasındaki bir listelemenin gerçek bir rakip mi yoksa güvenle göz ardı edebileceğiniz bir aykırı değer mi olduğunu değerlendirmenize olanak tanır."
+          }
+        ]
+      },
+      {
+        "heading": "Rekabetçi fiyatlandırma yapmak için Akıllı Fiyatlandırma nasıl kullanılır?",
+        "content": [
+          {
+            "type": "list",
+            "items": [
+              "Fiyatınız kümenin üzerindeyse listelemenizin bunu haklı gösterip göstermediğini sorun (marka, durum, hızlı teslimat, yüksek geri bildirim).",
+              "Fiyatınız kümenin altındaysa gereksiz yere marj veriyor olabilirsiniz",
+              "Ortalamanın üzerinde veya hemen altında fiyatlandırma çoğu parça için güvenilir bir başlangıç ​​noktasıdır",
+              "Hızlı hareket eden ticari parçalar için kümenin eşleştirilmesi yeterlidir; daha nadir parçalar için daha fazla esneklik vardır"
+            ]
+          },
+          {
+            "type": "tip",
+            "text": "Fiyat Hesaplayıcının yanında Akıllı Fiyatlandırmayı kullanın. Grafikte rekabetçi bir fiyat bulduğunuzda, taahhütte bulunmadan önce marjınızı onaylamak için bunu hesap makinesine yapıştırın."
+          }
+        ]
+      }
+    ]
+  },
+  "export-listings-to-ebay": {
+    "title": "Listeleri eBay'ye aktar",
+    "category": "İlan Oluşturucu",
+    "time": "3 dk okuma",
+    "intro": "PartLister'de bir liste oluşturduğunuzda, bunu eBay'ye aktarmanın üç yolu vardır: hemen kullanmak için HTML'yi kopyalayın, toplu içe aktarma için CSV'yi kopyalayın veya daha sonra kullanmak üzere kaydedin.",
+    "sections": [
+      {
+        "heading": "Üç dışa aktarma seçeneğiniz",
+        "content": [
+          {
+            "type": "visual",
+            "id": "exportOptions"
+          }
+        ]
+      },
+      {
+        "heading": "Seçenek 1 — HTML'yi kopyala",
+        "content": [
+          {
+            "type": "p",
+            "text": "Bu, eBay'de tek bir liste almanın en hızlı yoludur."
+          },
+          {
+            "type": "list",
+            "items": [
+              "İlan Oluşturucu'da ilanınızı oluşturun",
+              "Eylem çubuğunda HTML'yi Kopyala'ya tıklayın",
+              "eBay listeleme formunuzu açın",
+              "Öğe Açıklaması alanına tıklayın ve yapıştırın"
+            ]
+          },
+          {
+            "type": "p",
+            "text": "HTML formatı korunur; açıklamanız tam olarak PartLister'nin oluşturduğu gibi doğru başlıklar, tablo düzeni ve stil ile oluşturulur."
+          }
+        ]
+      },
+      {
+        "heading": "Seçenek 2 — CSV'ye Aktarma",
+        "content": [
+          {
+            "type": "p",
+            "text": "CSV dışa aktarma, eBay'nin toplu listeleme aracı için tasarlanmıştır ve aynı anda birden fazla liste oluşturuyorsanız en iyi seçenektir."
+          },
+          {
+            "type": "list",
+            "items": [
+              "Tek listeleme: Oluşturduktan sonra Liste Oluşturucudan CSV'yi Dışa Aktar'a tıklayın.",
+              "Birden fazla listeleme: Kayıtlı Listeler'e gidin, istediğiniz listeleri seçin ve CSV'yi Dışa Aktar'a tıklayın"
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Dışa aktarılan CSV şunları içerir: eBay'nin beklenen sütun yapısındaki başlık, açıklama, öğe özellikleri, OE referansları, uyumluluk notları ve fiyatlandırma alanları."
+          }
+        ]
+      },
+      {
+        "heading": "CSV'nizi eBay'ye aktarma",
+        "content": [
+          {
+            "type": "p",
+            "text": "CSV dosyanızı eBay Satıcı Merkezine aktarmak için:"
+          },
+          {
+            "type": "list",
+            "items": [
+              "eBay Satıcı Merkezine gidin → Listeler → Liste ekle",
+              "Dosya yükle'yi seçin",
+              "Dışa aktarılan CSV dosyanızı seçin",
+              "Sütun eşlemesini gözden geçirin (çoğu sütun otomatik olarak eşlenir)",
+              "Zaten eklenmemişse, kalan gerekli alanları (fiyat, posta ücreti) doldurun",
+              "İnceleyin ve yayınlayın"
+            ]
+          },
+          {
+            "type": "tip",
+            "text": "Toplu CSV dışa aktarımı Growth ve Scale planlarında mevcuttur. Lite'de bireysel listeleri dışa aktarabilir veya anında listelemek için HTML'yi Kopyala'yı kullanabilirsiniz."
+          }
+        ]
+      },
+      {
+        "heading": "Seçenek 3 — Daha sonrası için kaydedin",
+        "content": [
+          {
+            "type": "p",
+            "text": "Oluşturulan bir ilanı Kayıtlı İlanlarınızda saklamak için İlanı Kaydet'e tıklayın. Kopyalamak, dışa aktarmak veya düzenlemek için istediğiniz zaman geri gelin. Kaydedilen listeler, tasarruf noktasında aylık ödeneğinize dahil edilir."
+          }
+        ]
+      }
+    ]
+  },
+  "how-to-use-the-compatibility-checker": {
+    "title": "Uyumluluk Denetleyicisi nasıl kullanılır?",
+    "category": "Uyumluluk Denetleyicisi",
+    "time": "3 dk okuma",
+    "intro": "Uyumluluk Denetleyicisi, bir parça numarasını veya VIN kullanarak listelemeden veya satmadan önce bir parçanın belirli bir araca uygun olup olmadığını doğrulamanıza olanak tanır. İşte nasıl kullanılacağı.",
+    "sections": [
+      {
+        "heading": "Uyumluluk Denetleyicisi ne yapar?",
+        "content": [
+          {
+            "type": "p",
+            "text": "Uyumluluk Denetleyicisi, belirli bir parçanın belirli bir araca uyup uymadığını doğrulamak için TecDoc'nin araç uygulama veritabanını arar. Bir satış taahhüdünde bulunmadan önce emin olabilmeniz için bir güven puanı ve tüm araç özelliklerini döndürür."
+          },
+          {
+            "type": "p",
+            "text": "Bu, alıcı \"bu benim arabama sığacak mı?\" diye sorduğunda, kullanılmış bir parçayı belirli bir donanımla listelediğinizde veya uyumluluk tablosunda beklenmedik görünen bir uygulamayı doğrulamak istediğinizde kullanışlıdır."
+          }
+        ]
+      },
+      {
+        "heading": "Çek nasıl çalıştırılır",
+        "content": [
+          {
+            "type": "p",
+            "text": "Ana gezinme menüsünden Uyumluluk sekmesini açın. İki giriş alanı göreceksiniz:"
+          },
+          {
+            "type": "list",
+            "items": [
+              "Parça numarası — Bir OE numarası, OEM numarası veya TecDoc ürün numarası girin",
+              "Araç — Bir VIN (Araç Kimlik Numarası) girin veya marka/modele göre arama yapın"
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Uyumluluğu Kontrol Et'i tıklayın. PartLister, TecDoc'yi sorgular ve birkaç saniye içinde bir sonuç döndürür."
+          }
+        ]
+      },
+      {
+        "heading": "Sonucun okunması",
+        "content": [
+          {
+            "type": "visual",
+            "id": "compatResult",
+            "partLabel": "Parça",
+            "partName": "Yağ Pompası — PU0127",
+            "status": "Uyumlu · %92 güven",
+            "fields": [
+              {
+                "label": "Araç",
+                "value": "Land Rover Discovery IV"
+              },
+              {
+                "label": "Motor",
+                "value": "306DT (TDV6 3.0)"
+              },
+              {
+                "label": "Güç",
+                "value": "155 kW / 211 HP"
+              },
+              {
+                "label": "Yıllar",
+                "value": "2010–2016"
+              }
+            ]
+          },
+          {
+            "type": "list",
+            "items": [
+              "Uyumlu — TecDoc, parçanın bu araç uygulamasına uygun olduğunu doğruladı",
+              "Güven puanı — Parçanın araçla ne kadar hassas bir şekilde eşleştiği (100% = TecDoc'de listelenen tam uygulama)",
+              "Araç özellikleri - Eşleşen uygulama için marka, model, motor kodu, güç ve yıl aralığı"
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Ya eşleşme bulunamazsa?",
+        "content": [
+          {
+            "type": "p",
+            "text": "TecDoc'de girdiğiniz kombinasyon için uygulama verisi yoksa sonuç bulunamadı veya düşük güven olarak görünecektir. Bu şu anlama gelebilir:"
+          },
+          {
+            "type": "list",
+            "items": [
+              "Parça araca uymuyor",
+              "Parça uyuyor ancak uygulama TecDoc'de kataloglanmıyor (eski veya daha nadir araçlar için ortak)",
+              "Parça numarası yanlış girildi; alternatif bir referans deneyin"
+            ]
+          },
+          {
+            "type": "tip",
+            "text": "TecDoc bir eşleşme onaylasa bile, alıcılara sipariş vermeden önce her zaman kendi araçlarıyla uyumluluğu doğrulamalarını tavsiye edin. Bölgesel farklılıklar ve üretim tarihi değişiklikleri donanımı etkileyebilir."
+          }
+        ]
+      }
+    ]
+  },
+  "choosing-a-listing-template": {
+    "title": "Listeleme şablonu seçme",
+    "category": "İlan Oluşturucu",
+    "time": "3 dk okuma",
+    "intro": "PartLister, açıklamanızın nasıl düzenlendiğini ve hangi bölümleri içerdiğini kontrol eden çeşitli listeleme şablonları sunar. Bu kılavuzda her biri ve içerik geçişlerinin nasıl kullanılacağı açıklanmaktadır.",
+    "sections": [
+      {
+        "heading": "Yerleşik şablonlar",
+        "content": [
+          {
+            "type": "p",
+            "text": "Şablonlar, siz oluşturmadan önce Liste Oluşturucunun sol panelinde görünür. Birini seçtiğinizde o oturumda oluşturduğunuz her listeye uygulanacaktır."
+          },
+          {
+            "type": "visual",
+            "id": "templateCards",
+            "templates": [
+              {
+                "name": "Temiz varsayılan",
+                "desc": "Basit, okunaklı düzen. Tüm kategoriler için çalışır. Çoğu satıcı için iyi başlangıç noktasıdır.",
+                "accent": "#135DFF"
+              },
+              {
+                "name": "Koyu başlık",
+                "desc": "Beyaz metinli koyu bölüm başlıkları. Yoğun arama sonuçlarında öne çıkar.",
+                "accent": "#1f2937"
+              },
+              {
+                "name": "Tablo odaklı",
+                "desc": "Uyumluluk tablosuyla başlar. Çok sayıda araç uygulaması olan parçalar için en iyisidir.",
+                "accent": "#16a34a"
+              },
+              {
+                "name": "Minimal",
+                "desc": "Yalnızca başlık ve özellikler — açıklama gövdesi yok. Oluşturması en hızlı, görünümü en temiz olanıdır.",
+                "accent": "#6b7280"
+              },
+              {
+                "name": "Profesyonel mavi",
+                "desc": "Mavi markalı başlıklar. Yerleşik satıcılar için tutarlı kurumsal stil.",
+                "accent": "#2563eb"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "İçerik Seçenekleri geçiş yapar",
+        "content": [
+          {
+            "type": "p",
+            "text": "Şablon seçicinin altındaki üç geçiş, oluşturduğunuz her listeye hangi bölümlerin dahil edileceğini kontrol etmenize olanak tanır:"
+          },
+          {
+            "type": "list",
+            "items": [
+              "Uyumluluk Tablosu — tam araç uygulama tablosunu içerir. Tüm parça türleri için önerilir.",
+              "Değiştirilebilir Numaralar — çapraz referans parça numaralarını içerir. Alıcıların alternatif referanslara göre arama yapmasına yardımcı olur.",
+              "Motor Kodları — uyumluluk tablosunun yanında üreticinin motor kodlarını içerir. Motora özel parçalar için önerilir."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Bu geçişler oturumlar arasında kaydedilir, dolayısıyla bunları hesap başına yalnızca bir kez ayarlamanız gerekir."
+          }
+        ]
+      },
+      {
+        "heading": "Kayıtlı şablonlar",
+        "content": [
+          {
+            "type": "p",
+            "text": "Bir şablonu özelleştirdiyseniz ve yeniden kullanmak istiyorsanız sol paneldeki Kaydedilen Şablonlar bölümünü kullanarak şablonu özel bir adla kaydedebilirsiniz. Kaydedilen şablonlar yerleşik seçeneklerin yanında görünür ve tek tıklamayla uygulanabilir."
+          },
+          {
+            "type": "tip",
+            "text": "Birden fazla kategoride parça satıyorsanız (örneğin motor iç parçaları ve gövde panelleri), her biri için ayrı bir şablon kaydetmeyi düşünün; farklı alıcılar farklı düzenlere yanıt verir."
+          }
+        ]
+      }
+    ]
+  },
+  "understanding-part-references": {
+    "title": "Parça referanslarını anlama",
+    "category": "Başlarken",
+    "time": "3 dk okuma",
+    "intro": "PartLister çeşitli türlerde parça referans numaralarını kabul eder. Farkı anlamak, listeler oluştururken en iyi sonuçları almanıza yardımcı olur.",
+    "sections": [
+      {
+        "heading": "Üç tür referans",
+        "content": [
+          {
+            "type": "visual",
+            "id": "referenceTypes",
+            "refs": [
+              {
+                "label": "OE Numarası",
+                "sub": "Orijinal Ekipman",
+                "example": "11247807345",
+                "color": "#135DFF",
+                "bg": "#EEF5FF",
+                "desc": "Üreticinin kendi parça numarasıdır — örneğin bir BMW OE numarası. Parçayı üreticinin kataloğunda doğrudan tanımlar."
+              },
+              {
+                "label": "OEM Numarası",
+                "sub": "Orijinal Ekipman Üreticisi",
+                "example": "LR002465",
+                "color": "#16a34a",
+                "bg": "#f0fdf4",
+                "desc": "Satış sonrası veya OEM tedarikçisinin atadığı numara. Genellikle OE numarasıyla eşleşir veya doğrudan çapraz referanstır."
+              },
+              {
+                "label": "Makale Numarası",
+                "sub": "TecDoc katalog referansı",
+                "example": "PU0127 · AOP858",
+                "color": "#7c3aed",
+                "bg": "#faf5ff",
+                "desc": "TecDoc'un kataloğundaki belirli bir parçaya atadığı benzersiz referans. Tedarikçiler ve veri sağlayıcıları tarafından kullanılır."
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "PartLister'de hangisi kullanılmalı?",
+        "content": [
+          {
+            "type": "p",
+            "text": "PartLister her üç türü de kabul eder. Çoğu durumda bunlardan herhangi biri doğru parçayı döndürür; PartLister tüm referans türlerinde aynı anda arama yapar."
+          },
+          {
+            "type": "list",
+            "items": [
+              "Üreticinin kataloğunda OE numarası varsa onu kullanın; en kesin eşleşmeyi sağlar",
+              "Tedarikçi referansınız (OEM numarası) varsa bunu doğrudan yapıştırın",
+              "TecDoc katalog aktarımından çalışıyorsanız makale numarasını kullanın"
+            ]
+          },
+          {
+            "type": "p",
+            "text": "PartLister, referansınızla eşleşen birden fazla makale bulursa (örneğin, farklı markalar tarafından kullanılan aynı numara), doğru olanı seçebilmeniz için size bir seçim listesi gösterecektir."
+          }
+        ]
+      },
+      {
+        "heading": "En iyi sonuçları elde etmek için ipuçları",
+        "content": [
+          {
+            "type": "list",
+            "items": [
+              "Referansı yazmak yerine kopyalayıp yapıştırın; sonuç alamamanın en yaygın nedeni transkripsiyon hatalarıdır",
+              "İlk arama hiçbir sonuç getirmezse boşlukları veya kısa çizgileri kaldırın (örneğin, LR 002-465 yerine LR002465'yi deneyin)",
+              "Bir referans türü sonuç getirmezse başka birini deneyin; aynı parça genellikle birden fazla referans altında kataloglanır",
+              "Çok yeni veya çok eski parçalar için TecDoc kapsamı eksik olabilir; doğrudan üreticinin OE numarasını deneyin"
+            ]
+          },
+          {
+            "type": "tip",
+            "text": "PartLister ayrıca oluşturulan listede OE referanslarını ve değiştirilebilir numaraları da gösterir; bunlar, aynı parça için farklı referans numaraları altında daha fazla liste oluşturmak için kullanılabilir."
+          }
+        ]
+      }
+    ]
+  },
+  "using-the-price-calculator": {
+    "title": "Fiyat Hesaplayıcıyı Kullanma",
+    "category": "Fiyatlandırma Araçları",
+    "time": "4 dk okuma",
+    "intro": "Fiyat Hesaplayıcı, eBay ücretler, KDV ve maliyetlerinizden sonra her satıştan tam olarak ne aldığınızı gösterir. Bu kılavuz her alanı ve ideal satış fiyatınızı nasıl bulacağınızı açıklamaktadır.",
+    "sections": [
+      {
+        "heading": "Hesap makinesinin size gösterdiği şey",
+        "content": [
+          {
+            "type": "p",
+            "text": "Satış fiyatınızı ve maliyetlerinizi girin; hesap makinesi her poundun tam olarak nereye gittiğini gösterir:"
+          },
+          {
+            "type": "visual",
+            "id": "calcBreakdown"
+          }
+        ]
+      },
+      {
+        "heading": "Ne girilmeli",
+        "content": [
+          {
+            "type": "list",
+            "items": [
+              "Satış fiyatı — Listelemeyi planladığınız fiyat",
+              "Ürün maliyeti — Parçanın size maliyeti nedir (satın alma fiyatı veya toptan satış fiyatı)",
+              "Posta ve paketleme — Paketleme malzemeleri dahil satış başına toplam sipariş karşılama maliyetiniz",
+              "Reklam oranı — Yüzde olarak eBay Tanıtılan Listeleme oranınız. Tanıtılan Listelemeleri kullanmıyorsanız 0'da bırakın"
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Kesintileri anlamak",
+        "content": [
+          {
+            "type": "list",
+            "items": [
+              "eBay ücretleri — Nihai değer ücreti (şu anda sipariş başına 12.8% + £0.30) artı Tanıtılan Listeler reklam ücreti",
+              "Toplanan KDV → HMRC — Satış fiyatınızın KDV unsuru. Bu, KDV kayıtlı olup olmamanıza bakılmaksızın HMRC'ye gider; asla sizin saklamanız gerekmez."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Bu iki kesinti çoğu satıcıyı şaşırtıyor. eBay ücretleri artı KDV birlikte, ürün maliyetiniz dikkate alınmadan önce genellikle satış fiyatının 25-30%'sini oluşturur."
+          }
+        ]
+      },
+      {
+        "heading": "Başabaş fiyatı",
+        "content": [
+          {
+            "type": "p",
+            "text": "Başabaş fiyatı sıfır kar elde ettiğiniz minimum satış fiyatıdır; ürün maliyetinizi, posta ücretinizi, eBay ücretlerinizi ve KDV'yi tam olarak kapsar."
+          },
+          {
+            "type": "p",
+            "text": "Başabaş noktasının altında bir fiyat belirlerseniz, brüt gelir makul görünse bile zararla satış yaparsınız. Başabaş rakamı herhangi bir listeleme için mutlak tabandır."
+          }
+        ]
+      },
+      {
+        "heading": "Doğru satış fiyatını bulmak",
+        "content": [
+          {
+            "type": "list",
+            "items": [
+              "Sizin açınızdan rekabetçi aralığı bulmak için Akıllı Fiyatlandırmayı kullanın",
+              "Hedef fiyatınızı Fiyat Hesaplayıcıya girin",
+              "Marjınızın kabul edilebilir olup olmadığını kontrol edin",
+              "Marj çok düşükse ya fiyatınızı artırın ya da maliyetlerinizi azaltın",
+              "Marj güçlüyse, daha düşük bir fiyatın daha fazla hacim kazanıp kazanamayacağını değerlendirin"
+            ]
+          },
+          {
+            "type": "tip",
+            "text": "20% marjı (net kar ÷ satış fiyatı) otomotiv parçalarında ortak bir hedeftir ancak bu, kategoriye ve markaya göre değişir. Yüksek hacimli ticari parçalar genellikle uzman veya markalı bileşenlere göre daha ince marjlarla çalışır."
+          }
+        ]
+      }
+    ]
+  }
+}
