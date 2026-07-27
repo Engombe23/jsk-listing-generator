@@ -543,7 +543,14 @@ function normalizeTecdoc(articleResponse, engineDataByModelId) {
       engine_codes: uniq(splitEngineCodes(rawCodes)),
       k_number:     String(vid)
     };
-  }).filter(Boolean); // remove ghost rows
+  }).filter(Boolean).sort((a, b) => {
+    const ma = a.make.toLowerCase(), mb = b.make.toLowerCase();
+    if (ma !== mb) return ma < mb ? -1 : 1;
+    const moa = a.model.toLowerCase(), mob = b.model.toLowerCase();
+    if (moa !== mob) return moa < mob ? -1 : 1;
+    const ea = a.engine.toLowerCase(), eb = b.engine.toLowerCase();
+    return ea < eb ? -1 : ea > eb ? 1 : 0;
+  }); // remove ghost rows, sort by make → model → engine
 
   const specifications = uniq(
     (article.allSpecifications || [])
@@ -585,7 +592,11 @@ async function buildListingFromArticle(articleNumber, themeId = "clean-default",
   // ── Cache hit: skip all data fetching, just rebuild HTML ──────────────────
   if (articleNormCache.has(articleNumber)) {
     const cached = articleNormCache.get(articleNumber);
-    const html   = buildHtml(cached.normalized, template);
+    const wantInterchangeable = listingOptions.showInterchangeableNumbers !== false;
+    const normalizedForHtml = wantInterchangeable
+      ? cached.normalized
+      : { ...cached.normalized, interchangeable_parts: [] };
+    const html = buildHtml(normalizedForHtml, template);
     return {
       ...cached.baseResult,
       generated_html:   html,
@@ -706,7 +717,7 @@ async function buildListingFromArticle(articleNumber, themeId = "clean-default",
   console.log(`[Listing] ${articleNumber}: own=${ownRef.length} oemSearch=${fromOemSearch.length} crossRefs=${crossRefs.length} total=${interchangeableParts.length} brand="${articleBrand}"`);
 
   // ── Build HTML ────────────────────────────────────────────────────────────
-  const html = buildHtml({ ...normalized, engine_codes: engineCodes, k_numbers: kNumbers, interchangeable_parts: interchangeableParts }, template);
+  const html = buildHtml({ ...normalized, engine_codes: engineCodes, k_numbers: kNumbers, interchangeable_parts: wantInterchangeable ? interchangeableParts : [] }, template);
 
   // ── Derive summary fields for AI title generation ─────────────────────────
   const modelCounts = {};
