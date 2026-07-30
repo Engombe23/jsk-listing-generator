@@ -167,7 +167,7 @@ export const SECTION_TITLES = {
 // res.product_type, and only for fields whose labels don't already exist in
 // the base schema (to avoid displaying the same concept twice).
 
-export function mapApiSpecsToSchema(res) {
+export function mapApiSpecsToSchema(res, opts = {}) {
   let _uid = 0;
   const uid = () => `s${++_uid}${Math.random().toString(36).slice(2, 5)}`;
 
@@ -192,7 +192,7 @@ export function mapApiSpecsToSchema(res) {
 
   // ── Static fills ───────────────────────────────────────────────────────────
   const find = (lbl) => fields.find((f) => f.label === lbl);
-  find("Brand").value                       = "Aftermarket";
+  find("Brand").value                       = opts.brand || "Aftermarket";
   find("Manufacturer Part Number").value    = res.article_number || "";
   find("Reference OE/OEM Number").value     = (res.oem_numbers  || []).join(", ");
   find("Engine Codes").value                = (res.engine_codes || []).join(", ");

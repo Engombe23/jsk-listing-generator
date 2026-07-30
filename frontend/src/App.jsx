@@ -2813,7 +2813,7 @@ function ItemSpecificsTab({ result, copyText, savedListings = [] }) {
   const { hasFeature } = useSession();
   const { t } = useTranslation();
   const canBulkCsvExport = hasFeature("bulkCsvExport");
-  const buildInitialRows = (res) => mapApiSpecsToSchema(res);
+  const buildInitialRows = (res) => mapApiSpecsToSchema(res, { brand: loadPreferences().brand });
 
   const [rows,        setRows]        = useState(() => buildInitialRows(result));
   const [showReset,   setShowReset]   = useState(false);
@@ -2881,7 +2881,7 @@ function ItemSpecificsTab({ result, copyText, savedListings = [] }) {
     const predefinedLabels = SPEC_SCHEMA.map((f) => f.label);
     const extraLabels = new Set();
     prods.forEach((p) => {
-      mapApiSpecsToSchema(listingAsSpecSource(p))
+      mapApiSpecsToSchema(listingAsSpecSource(p), { brand: loadPreferences().brand })
         .filter((r) => r.section === "Additional" && r.label)
         .forEach((r) => extraLabels.add(r.label));
     });
@@ -2891,7 +2891,7 @@ function ItemSpecificsTab({ result, copyText, savedListings = [] }) {
       cols.map(escCsv).join(","),
       ...prods.map((p) => {
         const src = listingAsSpecSource(p);
-        const mapped = mapApiSpecsToSchema(src);
+        const mapped = mapApiSpecsToSchema(src, { brand: loadPreferences().brand });
         const valueMap = {};
         mapped.forEach((r) => { valueMap[r.label] = r.value; });
         return cols.map((c) => escCsv(c === "Product Name" ? (src.generated_title || "") : (valueMap[c] || ""))).join(",");

@@ -450,7 +450,7 @@
     "listingDetail": "Listing Detail",
     "noArticleNumber": "No article number on this listing.",
     "generationFailed": "Generation failed",
-    "binPrice": "BIN Price (AUD)",
+    "binPrice": "BIN Price",
     "binPricePlaceholder": "e.g. 49.95",
     "skuPlaceholder": "e.g. JSK-12345",
     "itemSpecifics": "Item Specifics",

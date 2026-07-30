@@ -249,7 +249,7 @@
     "deleteBatchConfirm": "Supprimer définitivement {{n}} annonce(s) ?", "deleteOneConfirm": "Supprimer définitivement cette annonce ?", "cannotUndo": "Cette action est irréversible.",
     "vehicleApplications": "{{n}} applications véhicule", "vehicleApplicationsShort": "· {{n}} applications véhicule", "generateDescription": "Générer la description", "generating": "Génération…", "generate": "Générer", "regenerate": "↺ Régénérer",
     "viewEdit": "Voir / modifier l’annonce", "deleteListing": "Supprimer l’annonce", "listingDetail": "Détail de l’annonce", "noArticleNumber": "Cette annonce n’a pas de numéro d’article.", "generationFailed": "Échec de la génération",
-    "binPrice": "Prix BIN (AUD)", "binPricePlaceholder": "ex. 49,95", "skuPlaceholder": "ex. JSK-12345", "itemSpecifics": "Caractéristiques", "description": "DESCRIPTION",
+    "binPrice": "Prix BIN", "binPricePlaceholder": "ex. 49,95", "skuPlaceholder": "ex. JSK-12345", "itemSpecifics": "Caractéristiques", "description": "DESCRIPTION",
     "noDescriptionYet": "Aucune description pour le moment", "selectThemeGenerate": "Sélectionnez un thème puis cliquez sur Générer ci-dessus.", "showHtml": "▸ Afficher le HTML", "hideHtml": "▾ Masquer le HTML",
     "addRow": "Ajouter une ligne", "label": "Libellé", "value": "Valeur", "adlisterDefaults": "Valeurs par défaut d’export AdLister", "sectionListing": "Annonce",
     "startingPrice": "Prix de départ", "webPrice": "Prix web", "qty": "QTY", "condition": "État", "dispatchDays": "Jours d’expédition", "ebayCategory": "Catégorie eBay", "ebayCategory2": "Catégorie eBay 2", "storeCategory": "Catégorie de boutique", "storeCategory2": "Catégorie boutique 2",
