@@ -158,7 +158,8 @@ export default function Hero() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.6, delay: 0.32 }}
-            className="mt-10 font-mono text-[0.78rem] text-slate"
+            className="font-mono text-[0.78rem] text-slate"
+            style={{ marginTop: "2.5rem" }}
           >
             {t("landing.hero.microcopy")}
           </motion.p>
