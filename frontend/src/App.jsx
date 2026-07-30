@@ -1039,15 +1039,16 @@ function ListingGenerator({
           </div>
         )}
 
-        <div style={{ display: "grid", gridTemplateColumns: "340px 1fr 280px", gap: 20, alignItems: "start" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "340px 1fr 280px", gap: 20, alignItems: "stretch" }}>
 
           {/* ── Left column: form + AI titles ── */}
-          <div style={{ display: "grid", gap: 16 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 
             {/* Single Listing */}
             <Card
               title={t("generator.title")}
               subtitle={t("generator.subtitle")}
+              style={{ flex: 1 }}
               icon={
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
@@ -1171,9 +1172,9 @@ function ListingGenerator({
           </div>
 
           {/* ── Middle column: listing output ── */}
-          <div style={phase === "done" && result ? {} : { gridColumn: "2 / 4" }}>
+          <div style={phase === "done" && result ? {} : { gridColumn: "2 / 4", display: "flex", flexDirection: "column" }}>
             {(phase === "idle" || phase === "searching" || phase === "generating") && (
-              <Card title={t("generator.output")} subtitle={t("generator.outputSubtitle")} centeredTitle>
+              <Card title={t("generator.output")} subtitle={t("generator.outputSubtitle")} centeredTitle style={{ flex: 1, display: "flex", flexDirection: "column" }}>
                 <EmptyOutputPanel
                   loading={phase === "searching" || phase === "generating"}
                   message={
@@ -1427,7 +1428,7 @@ function EmptyOutputPanel({ message, loading = false }) {
   if (!loading) {
     return (
       <div style={{
-        minHeight: 420, display: "grid", placeItems: "center",
+        flex: 1, minHeight: 320, display: "grid", placeItems: "center",
         background: "var(--bg-surface3)", border: "1px dashed var(--border-strong)",
         borderRadius: 20, color: "var(--text-muted)", fontSize: 15, textAlign: "center", padding: 24
       }}>
@@ -1438,7 +1439,7 @@ function EmptyOutputPanel({ message, loading = false }) {
 
   return (
     <div style={{
-      minHeight: 420, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+      flex: 1, minHeight: 320, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
       gap: 22, background: "var(--bg-surface3)", border: "1px dashed var(--border-strong)",
       borderRadius: 20, padding: 24, textAlign: "center"
     }}>

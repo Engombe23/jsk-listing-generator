@@ -69,14 +69,15 @@ export const StatPill = memo(function StatPill({ value }) {
   );
 });
 
-export const Card = memo(function Card({ title, subtitle, icon, children, centeredTitle = false, glow = false }) {
+export const Card = memo(function Card({ title, subtitle, icon, children, centeredTitle = false, glow = false, style }) {
   return (
     <div style={{
       background: "var(--bg-surface)",
       borderRadius: 16,
       padding: "20px 22px",
       border: "1px solid var(--border)",
-      boxShadow: glow ? "0 0 0 1px var(--border-blue), 0 0 20px var(--blue-glow), var(--shadow)" : "var(--shadow)"
+      boxShadow: glow ? "0 0 0 1px var(--border-blue), 0 0 20px var(--blue-glow), var(--shadow)" : "var(--shadow)",
+      ...style,
     }}>
       {(title || subtitle) && (
         <div style={{ marginBottom: 18 }}>
