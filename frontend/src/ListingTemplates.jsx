@@ -189,17 +189,24 @@ const DETECTION_RULES = [
           return { open: m[1], content: m[2], close: m[3], preview: text.slice(0, 70) };
         }
       }
-      // Simpler: any warning-type text near "please check"
-      const rx2 = /(<(?:p|div)[^>]*>[\s\S]*?(?:please (?:verify|check|review|ensure)[^<]{5,120})[\s\S]*?<\/(?:p|div)>)/i;
+      // Case 2: warning symbol + "please review/verify" — match just the sentence,
+      // NOT the whole parent element, so product names before ⚠ are left untouched.
+      const rx2 = /((?:⚠|&#9888;|&#x26A0;|&amp;#9888;|[⚠⚡❗]|&#\d{4,5};)[^<]*(?:please (?:verify|check|review|ensure)|review the compatibility)[^<.]{5,150})/i;
       const m2 = html.match(rx2);
       if (m2) {
-        const text = m2[1].replace(/<[^>]+>/g, " ").trim();
-        return { fullEl: m2[1], preview: text.slice(0, 70) };
+        return { inline: m2[1], preview: m2[1].replace(/&[^;]+;/g, "").trim().slice(0, 70) };
+      }
+      // Case 3: element whose text is only the warning (no leading product name)
+      const rx3 = /(<(?:p|div)[^>]*>)\s*(please (?:verify|check|review|ensure)[^<]{5,120})\s*(<\/(?:p|div)>)/i;
+      const m3 = html.match(rx3);
+      if (m3) {
+        return { fullEl: m3[0], preview: m3[2].slice(0, 70) };
       }
       return null;
     },
     replace(html, match) {
-      if (match.fullEl) return html.replace(match.fullEl, "{{FITMENT_WARNING}}");
+      if (match.inline)  return html.split(match.inline).join("{{FITMENT_WARNING}}");
+      if (match.fullEl)  return html.replace(match.fullEl, "{{FITMENT_WARNING}}");
       return html.replace(match.open + match.content + match.close, match.open + "{{FITMENT_WARNING}}" + match.close);
     },
   },
@@ -300,6 +307,97 @@ function revertPlaceholder(original, processed, key) {
 }
 function escapeRegex(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
 
+// ─── HTML processing helpers ──────────────────────────────────────────────────
+function sanitizeHtml(html) {
+  try {
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    doc.querySelectorAll("script,object,embed").forEach(el => el.remove());
+    doc.querySelectorAll("*").forEach(el => {
+      [...el.attributes].forEach(attr => {
+        if (attr.name.startsWith("on")) el.removeAttribute(attr.name);
+        if (["href","src","action"].includes(attr.name) && /^javascript:/i.test(attr.value.trim()))
+          el.removeAttribute(attr.name);
+      });
+    });
+    // Preserve <style> blocks from <head> so class-based styles (dark backgrounds, white text, etc.) survive
+    const headStyles = [...doc.head.querySelectorAll("style")].map(s => s.outerHTML).join("");
+    return headStyles + doc.body.innerHTML;
+  } catch { return html; }
+}
+
+function injectTids(html) {
+  try {
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    let n = 0;
+    doc.querySelectorAll("div,p,h1,h2,h3,h4,h5,h6,table,ul,ol,li,section,header,footer,span,b,strong,em,td,th,tr")
+      .forEach(el => { if (!el.hasAttribute("data-tid")) el.setAttribute("data-tid", String(++n)); });
+    return doc.body.innerHTML;
+  } catch { return html; }
+}
+
+function generateTemplateFromMarks(tidHtml, staticTids) {
+  try {
+    const doc = new DOMParser().parseFromString(tidHtml, "text/html");
+    const saved = {};
+    let n = 0;
+    staticTids.forEach(tid => {
+      const el = doc.querySelector(`[data-tid="${tid}"]`);
+      if (!el) return;
+      const marker = `__SL${n++}__`;
+      saved[marker] = el.outerHTML.replace(` data-tid="${tid}"`, "");
+      el.parentNode.replaceChild(doc.createTextNode(marker), el);
+    });
+    let modified = doc.body.innerHTML;
+    const { detections, processedHtml } = runDetection(modified);
+    let finalHtml = processedHtml;
+    Object.entries(saved).forEach(([m, h]) => { finalHtml = finalHtml.split(m).join(h); });
+    finalHtml = finalHtml.replace(/ data-tid="\d+"/g, "");
+    return { finalHtml, detections };
+  } catch {
+    const { detections, processedHtml } = runDetection(tidHtml);
+    return { finalHtml: processedHtml.replace(/ data-tid="\d+"/g, ""), detections };
+  }
+}
+
+function buildSelectionIframe(tidHtml) {
+  const js = `(function(){
+var s=new Set(),mode='view',hov=null;
+function paint(){
+  document.querySelectorAll('[data-tid]').forEach(function(e){
+    var t=e.getAttribute('data-tid'),isS=s.has(t),isH=e===hov&&mode==='select';
+    e.style.outline=isS?'2px solid #10b981':isH?'2px dashed #3b82f6':'';
+    e.style.outlineOffset='2px';
+    e.style.background=isS?'rgba(16,185,129,0.07)':'';
+    e.style.cursor=mode==='select'?'pointer':'';
+  });
+}
+document.addEventListener('mouseover',function(e){
+  if(mode!=='select')return;
+  var el=e.target;while(el&&el!==document.body&&!el.hasAttribute('data-tid'))el=el.parentElement;
+  if(el&&el.hasAttribute('data-tid')){hov=el;paint();}
+},true);
+document.addEventListener('mouseout',function(e){
+  if(mode!=='select')return;
+  var el=e.target;while(el&&el!==document.body&&!el.hasAttribute('data-tid'))el=el.parentElement;
+  if(el===hov){hov=null;paint();}
+},true);
+document.addEventListener('click',function(e){
+  if(mode!=='select')return;
+  e.preventDefault();e.stopPropagation();
+  var el=e.target;while(el&&el!==document.body&&!el.hasAttribute('data-tid'))el=el.parentElement;
+  if(el&&el.hasAttribute('data-tid'))window.parent.postMessage({type:'tid-click',tid:el.getAttribute('data-tid')},'*');
+},true);
+window.addEventListener('message',function(e){
+  if(!e.data)return;
+  if(e.data.type==='set-mode'){mode=e.data.mode;paint();}
+  if(e.data.type==='set-static'){s=new Set(e.data.tids);paint();}
+});
+})();`;
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+*{box-sizing:border-box}body{margin:0;padding:0}
+</style></head><body>${tidHtml}<scr` + `ipt>${js}</scr` + `ipt></body></html>`;
+}
+
 // ─── Shared primitives ────────────────────────────────────────────────────────
 function Btn({ children, onClick, variant = "ghost", size = "sm", disabled, full, style: extra }) {
   const [hov, setHov] = useState(false);
@@ -338,270 +436,345 @@ function ConfBadge({ level }) {
   );
 }
 
-// ─── Template Builder (3-panel inline) ───────────────────────────────────────
+// ─── Template Builder ─────────────────────────────────────────────────────────
 function TemplateBuilder({ initial, onSave, onCancel }) {
-  const [phase,         setPhase]         = useState(initial?.rawHtml ? "review" : "input"); // "input" | "review"
-  const [originalHtml,  setOriginalHtml]  = useState(initial?.rawHtml || "");
+  const [phase,         setPhase]         = useState(() => initial?.rawHtml ? "review" : "paste");
+  const [rawHtml,       setRawHtml]       = useState(initial?.rawHtml || "");
+  const [tidHtml,       setTidHtml]       = useState("");
+  const [iframeSrc,     setIframeSrc]     = useState("");
+  const [staticTids,    setStaticTids]    = useState(new Set());
+  const [selectMode,    setSelectMode]    = useState(false);
   const [processedHtml, setProcessedHtml] = useState(initial?.rawHtml || "");
   const [detections,    setDetections]    = useState([]);
   const [name,          setName]          = useState(initial?.name || "");
-  const [previewTab,    setPreviewTab]    = useState("rendered"); // "rendered" | "raw"
-  const [detecting,     setDetecting]     = useState(false);
+  const [previewTab,    setPreviewTab]    = useState("rendered");
+  const iframeRef = useRef(null);
 
-  const handleDetect = useCallback(() => {
-    if (!originalHtml.trim()) return;
-    setDetecting(true);
-    // Small delay so the UI updates first
-    setTimeout(() => {
-      const { detections: dets, processedHtml: proc } = runDetection(originalHtml);
-      setDetections(dets);
-      setProcessedHtml(proc);
-      setPhase("review");
-      setDetecting(false);
-    }, 60);
-  }, [originalHtml]);
+  // Listen for clicks from the selection iframe
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.data?.type !== "tid-click") return;
+      const { tid } = e.data;
+      setStaticTids(prev => {
+        const next = new Set(prev);
+        if (next.has(tid)) next.delete(tid); else next.add(tid);
+        setTimeout(() => {
+          iframeRef.current?.contentWindow?.postMessage({ type: "set-static", tids: [...next] }, "*");
+        }, 0);
+        return next;
+      });
+    };
+    window.addEventListener("message", handler);
+    return () => window.removeEventListener("message", handler);
+  }, []);
 
-  const handleReset = () => {
-    setProcessedHtml(originalHtml);
-    setDetections([]);
-    setPhase("input");
+  const sendToIframe = useCallback((msg) => {
+    iframeRef.current?.contentWindow?.postMessage(msg, "*");
+  }, []);
+
+  const handleIframeLoad = useCallback(() => {
+    sendToIframe({ type: "set-mode",   mode: selectMode ? "select" : "view" });
+    sendToIframe({ type: "set-static", tids: [...staticTids] });
+  }, [sendToIframe, selectMode, staticTids]);
+
+  const handleProceedToMark = () => {
+    const sanitized = sanitizeHtml(rawHtml);
+    const withTids  = injectTids(sanitized);
+    setTidHtml(withTids);
+    setIframeSrc(buildSelectionIframe(withTids));
+    setStaticTids(new Set());
+    setSelectMode(false);
+    setPhase("mark");
   };
 
-  // Toggle a detection on/off — when disabled, restore original content for that placeholder
+  const handleToggleSelect = () => {
+    const next = !selectMode;
+    setSelectMode(next);
+    sendToIframe({ type: "set-mode", mode: next ? "select" : "view" });
+  };
+
+  const handleProceedToReview = () => {
+    const { finalHtml, detections: dets } = generateTemplateFromMarks(tidHtml, staticTids);
+    setProcessedHtml(finalHtml);
+    setDetections(dets);
+    setPreviewTab("rendered");
+    setPhase("review");
+  };
+
+  const handleBack = () => {
+    if (phase === "review") { if (tidHtml) setPhase("mark"); else setPhase("paste"); }
+    else if (phase === "mark") setPhase("paste");
+  };
+
   const toggleDetection = (key) => {
-    setDetections(prev => prev.map(d => d.key === key ? { ...d, enabled: !d.enabled } : d));
-    // Rebuild processedHtml from original applying only enabled rules
-    setProcessedHtml(prev => {
-      // Simple toggle: find the placeholder in processedHtml and revert if disabling
-      const det = detections.find(d => d.key === key);
+    setDetections(prev => {
+      const det = prev.find(d => d.key === key);
       if (!det) return prev;
       if (det.enabled) {
-        // Disabling — revert placeholder to "(removed)" marker
-        return prev.replace(new RegExp(escapeRegex(key), "g"), `<span style="opacity:0.4;font-style:italic">[${det.label} removed]</span>`);
+        setProcessedHtml(ph => ph.replace(new RegExp(escapeRegex(key), "g"),
+          `<span style="opacity:0.4;font-style:italic">[${det.label}]</span>`));
       } else {
-        // Re-enabling — re-run full detection and apply
-        const { processedHtml: fresh } = runDetection(originalHtml);
-        return fresh;
+        const { finalHtml } = generateTemplateFromMarks(tidHtml, staticTids);
+        setProcessedHtml(finalHtml);
       }
+      return prev.map(d => d.key === key ? { ...d, enabled: !d.enabled } : d);
     });
   };
-
-  // Final HTML used for the template (enabled detections applied, disabled ones reverted)
-  const finalHtml = processedHtml;
 
   const handleSave = () => {
     if (!name.trim()) return;
     const t = initial ? { ...initial } : blankTemplate(name);
-    t.name       = name.trim();
-    t.rawHtml    = finalHtml;
-    t.useRawHtml = true;
+    t.name = name.trim(); t.rawHtml = processedHtml; t.useRawHtml = true;
     onSave(t);
   };
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "calc(100vh - 180px)", minHeight: 560 }}>
 
-      {/* ── Builder header ── */}
-      <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "0 0 16px", borderBottom: `1px solid ${C.border}`, marginBottom: 16, flexShrink: 0 }}>
+      {/* ── Header ── */}
+      <div style={{ display: "flex", alignItems: "center", gap: 12, paddingBottom: 16, borderBottom: `1px solid ${C.border}`, marginBottom: 16, flexShrink: 0 }}>
         <button onClick={onCancel} style={{ display: "flex", alignItems: "center", gap: 6, background: "transparent", border: "none", cursor: "pointer", color: C.muted, fontSize: 13, fontWeight: 600, padding: "4px 0" }}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5"/><polyline points="12 19 5 12 12 5"/></svg>
           Templates
         </button>
         <span style={{ color: C.border, fontSize: 16 }}>/</span>
-        <input
-          value={name}
-          onChange={e => setName(e.target.value)}
-          placeholder="Template name…"
-          style={{ flex: 1, fontSize: 15, fontWeight: 700, color: C.text, background: "transparent", border: "none", outline: "none" }}
-        />
+        <input value={name} onChange={e => setName(e.target.value)} placeholder="Template name…"
+          style={{ flex: 1, fontSize: 15, fontWeight: 700, color: C.text, background: "transparent", border: "none", outline: "none" }} />
         <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
-          {phase === "review" && <Btn variant="ghost" onClick={handleReset}>← Back to edit</Btn>}
-          <Btn variant="primary" onClick={handleSave} disabled={!name.trim() || !finalHtml.trim()}>
-            Save Template
-          </Btn>
+          {phase !== "paste" && <Btn variant="ghost" onClick={handleBack}>← Back</Btn>}
+          {phase === "paste" && <Btn variant="primary" size="md" onClick={handleProceedToMark} disabled={!rawHtml.trim()}>Preview →</Btn>}
+          {phase === "mark"  && <Btn variant="primary" size="md" onClick={handleProceedToReview}>Generate Template →</Btn>}
+          {phase === "review" && <Btn variant="primary" size="md" onClick={handleSave} disabled={!name.trim() || !processedHtml.trim()}>Save Template</Btn>}
         </div>
       </div>
 
-      {/* ── Step indicator ── */}
-      {phase === "input" && (
-        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 16, flexShrink: 0 }}>
-          <StepBadge n="1" active label="Paste HTML" />
-          <div style={{ flex: 1, height: 1, background: C.border }} />
-          <StepBadge n="2" label="Review placeholders" />
-          <div style={{ flex: 1, height: 1, background: C.border }} />
-          <StepBadge n="3" label="Save template" />
-        </div>
-      )}
+      {/* ── Steps ── */}
+      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 16, flexShrink: 0 }}>
+        <StepBadge n="1" label="Paste HTML"          active={phase === "paste"}   done={phase !== "paste"} />
+        <div style={{ flex: 1, height: 1, background: C.border }} />
+        <StepBadge n="2" label="Mark Static Content" active={phase === "mark"}    done={phase === "review"} />
+        <div style={{ flex: 1, height: 1, background: C.border }} />
+        <StepBadge n="3" label="Review & Save"       active={phase === "review"} />
+      </div>
 
-      {/* ── 3-panel layout ── */}
-      <div style={{ flex: 1, display: "grid", gridTemplateColumns: phase === "input" ? "1fr 320px" : "1fr 360px 1fr", gap: 16, overflow: "hidden", minHeight: 0 }}>
+      {/* ── Content ── */}
+      <div style={{ flex: 1, minHeight: 0, overflow: "hidden" }}>
 
-        {/* ══ LEFT: HTML input ══ */}
-        <div style={{ display: "flex", flexDirection: "column", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, overflow: "hidden", boxShadow: "var(--shadow)" }}>
-          <div style={{ padding: "12px 16px", borderBottom: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: C.text }}>Paste Listing HTML</div>
-              <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>Paste your existing eBay listing HTML below.</div>
-            </div>
-            {originalHtml.trim() && (
-              <button onClick={() => { setOriginalHtml(""); setProcessedHtml(""); setDetections([]); setPhase("input"); }}
-                style={{ background: "none", border: "none", color: C.muted, cursor: "pointer", fontSize: 12, fontWeight: 600 }}>
-                Clear
-              </button>
-            )}
-          </div>
-          <textarea
-            value={originalHtml}
-            onChange={e => setOriginalHtml(e.target.value)}
-            placeholder={`<div class="listing">\n  <h2>Oil Pump – Jaguar XF 5.0 V8</h2>\n  <!-- Paste your full eBay HTML here -->\n</div>`}
-            spellCheck={false}
-            style={{
-              flex: 1, padding: "14px 16px", background: "transparent", border: "none",
-              color: C.text, fontSize: 11.5, fontFamily: "ui-monospace, monospace",
-              resize: "none", outline: "none", lineHeight: 1.7, minHeight: 0,
-            }}
-          />
-          <div style={{ padding: "10px 16px", borderTop: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
-            <span style={{ fontSize: 11, color: C.muted }}>
-              {originalHtml.length > 0 ? `${originalHtml.length.toLocaleString()} characters` : "No HTML pasted yet"}
-            </span>
-            <Btn variant="primary" size="md" onClick={handleDetect} disabled={!originalHtml.trim() || detecting}>
-              {detecting ? "Detecting…" : "Auto-detect placeholders →"}
-            </Btn>
-          </div>
-        </div>
-
-        {/* ══ CENTER: Detected sections (review phase only) ══ */}
-        {phase === "review" && (
-          <div style={{ display: "flex", flexDirection: "column", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, overflow: "hidden", boxShadow: "var(--shadow)" }}>
-
-            {/* Header */}
-            <div style={{ padding: "14px 16px", borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: C.text }}>Detected Sections</div>
-                  <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>
-                    Toggle each section on or off to include it in the template.
-                  </div>
+        {/* PASTE */}
+        {phase === "paste" && (
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, height: "100%" }}>
+            <div style={{ display: "flex", flexDirection: "column", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, overflow: "hidden" }}>
+              <div style={{ padding: "12px 16px", borderBottom: `1px solid ${C.border}`, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: C.text }}>Paste Listing HTML</div>
+                  <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>Paste your existing eBay listing HTML.</div>
                 </div>
-                {detections.length > 0 && (
-                  <span style={{ fontSize: 12, fontWeight: 700, color: "var(--blue)", background: "var(--blue-bg)", border: "1px solid var(--border-blue)", borderRadius: 20, padding: "3px 10px" }}>
-                    {detections.filter(d => d.enabled).length} / {detections.length}
-                  </span>
-                )}
+                {rawHtml && <button onClick={() => setRawHtml("")} style={{ background: "none", border: "none", color: C.muted, cursor: "pointer", fontSize: 11, fontWeight: 600 }}>Clear</button>}
+              </div>
+              <textarea value={rawHtml} onChange={e => setRawHtml(e.target.value)}
+                placeholder={`<div class="listing">\n  <h2>Oil Pump – Jaguar XF</h2>\n  <!-- Paste your full eBay HTML here -->\n</div>`}
+                spellCheck={false}
+                style={{ flex: 1, padding: "14px 16px", background: "transparent", border: "none", color: C.text, fontSize: 11.5, fontFamily: "ui-monospace, monospace", resize: "none", outline: "none", lineHeight: 1.7 }} />
+              <div style={{ padding: "10px 16px", borderTop: `1px solid ${C.border}`, flexShrink: 0 }}>
+                <span style={{ fontSize: 11, color: C.muted }}>{rawHtml.length > 0 ? `${rawHtml.length.toLocaleString()} characters` : "No HTML yet"}</span>
               </div>
             </div>
-
-            {/* Detected list */}
-            <div style={{ flex: 1, overflowY: "auto", padding: "10px 12px", display: "flex", flexDirection: "column", gap: 4 }}>
-
-              {detections.length === 0 ? (
-                <div style={{ padding: "24px 16px", textAlign: "center" }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: C.muted, marginBottom: 8 }}>Nothing detected automatically</div>
-                  <div style={{ fontSize: 11, color: C.dim, lineHeight: 1.6 }}>
-                    Switch to <strong style={{ color: C.text }}>Template HTML</strong> on the right to manually insert placeholder tokens like <code style={{ fontFamily: "monospace", color: "var(--blue)" }}>{"{{OE_NUMBERS}}"}</code> where needed.
-                  </div>
-                </div>
-              ) : (
-                <>
-                  {/* Found */}
-                  {detections.map(det => {
-                    const ph = PLACEHOLDERS.find(p => p.key === det.key);
-                    return (
-                      <DetectionRow
-                        key={det.key}
-                        detection={det}
-                        color={ph?.color || "var(--blue)"}
-                        onToggle={() => toggleDetection(det.key)}
-                      />
-                    );
-                  })}
-
-                  {/* Not detected — dimmed rows so user knows what wasn't found */}
-                  {(() => {
-                    const found = new Set(detections.map(d => d.key));
-                    const missing = PLACEHOLDERS.filter(p => !found.has(p.key));
-                    if (!missing.length) return null;
-                    return (
-                      <div style={{ marginTop: 6 }}>
-                        <div style={{ fontSize: 9, fontWeight: 700, color: C.dim, textTransform: "uppercase", letterSpacing: 1, margin: "6px 4px 6px" }}>
-                          Not detected
-                        </div>
-                        {missing.map(p => (
-                          <div key={p.key} style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 10px", borderRadius: 8, opacity: 0.45 }}>
-                            <div style={{ width: 7, height: 7, borderRadius: "50%", background: C.border, flexShrink: 0 }} />
-                            <span style={{ flex: 1, fontSize: 12, color: C.muted }}>{p.label}</span>
-                            <code style={{ fontSize: 9, color: C.dim, fontFamily: "ui-monospace, monospace" }}>{p.key}</code>
-                          </div>
-                        ))}
-                      </div>
-                    );
-                  })()}
-                </>
-              )}
-            </div>
-
-            {/* Footer note */}
-            <div style={{ padding: "10px 14px", borderTop: `1px solid ${C.border}`, flexShrink: 0, fontSize: 11, color: C.muted, lineHeight: 1.5 }}>
-              Need to add something manually? Switch to <strong style={{ color: C.text, fontWeight: 600 }}>Template HTML</strong> on the right and paste a placeholder token directly.
+            <div style={{ display: "flex", flexDirection: "column", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, overflow: "hidden" }}>
+              <div style={{ padding: "12px 16px", borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: C.text }}>Live Preview</div>
+                <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>Updates as you type.</div>
+              </div>
+              <iframe
+                srcDoc={rawHtml || "<p style='padding:24px;font-family:sans-serif;color:#64748b'>Paste HTML on the left to preview.</p>"}
+                sandbox="allow-same-origin"
+                style={{ flex: 1, border: "none", background: "#fff" }}
+                title="HTML Preview"
+              />
             </div>
           </div>
         )}
 
-        {/* ══ RIGHT: Preview (review) / placeholder reference (input) ══ */}
-        {phase === "review" ? (
-          <div style={{ display: "flex", flexDirection: "column", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, overflow: "hidden", boxShadow: "var(--shadow)" }}>
-            {/* Preview tabs */}
-            <div style={{ display: "flex", borderBottom: `1px solid ${C.border}`, padding: "0 4px", flexShrink: 0 }}>
-              {[["rendered", "Live Preview"], ["raw", "Template HTML"]].map(([k, l]) => (
-                <button key={k} onClick={() => setPreviewTab(k)} style={{
-                  padding: "11px 16px", border: "none", background: "transparent", cursor: "pointer",
-                  fontSize: 12, fontWeight: previewTab === k ? 700 : 500,
-                  color: previewTab === k ? "var(--blue)" : C.muted,
-                  borderBottom: previewTab === k ? "2px solid var(--blue)" : "2px solid transparent",
-                  marginBottom: -1, transition: "all 0.15s",
-                }}>{l}</button>
-              ))}
+        {/* MARK */}
+        {phase === "mark" && (
+          <div style={{ display: "grid", gridTemplateColumns: "260px 1fr", gap: 16, height: "100%" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, overflow: "hidden" }}>
+              <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, padding: "14px 16px" }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: C.text, marginBottom: 6 }}>Select Static Content</div>
+                <div style={{ fontSize: 11, color: C.muted, lineHeight: 1.6, marginBottom: 12 }}>
+                  Click elements that should <strong style={{ color: C.text }}>always stay the same</strong> — brand, boilerplate, layout chrome. Everything else becomes a dynamic placeholder.
+                </div>
+                <button onClick={handleToggleSelect} style={{
+                  width: "100%", padding: "9px 14px", borderRadius: 9,
+                  background: selectMode ? "var(--blue)" : "var(--bg-surface2)",
+                  border: `1px solid ${selectMode ? "var(--blue)" : C.border}`,
+                  color: selectMode ? "#fff" : C.text,
+                  fontSize: 12, fontWeight: 700, cursor: "pointer", transition: "all 0.15s",
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                }}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/>
+                  </svg>
+                  {selectMode ? "Selecting — click to lock" : "Start Selecting"}
+                </button>
+              </div>
+
+              <div style={{ flex: 1, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, overflow: "hidden", display: "flex", flexDirection: "column" }}>
+                <div style={{ padding: "10px 14px", borderBottom: `1px solid ${C.border}`, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: C.text }}>Locked as Static</span>
+                  {staticTids.size > 0 && (
+                    <span style={{ fontSize: 10, fontWeight: 700, color: "#10b981", background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.25)", borderRadius: 10, padding: "1px 8px" }}>
+                      {staticTids.size}
+                    </span>
+                  )}
+                </div>
+                <div style={{ flex: 1, overflowY: "auto", padding: 8 }}>
+                  {staticTids.size === 0 ? (
+                    <div style={{ padding: "20px 12px", textAlign: "center", color: C.muted, fontSize: 11 }}>
+                      Click elements in the preview to lock them.
+                    </div>
+                  ) : (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                      {[...staticTids].map(tid => (
+                        <div key={tid} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 8px", background: "rgba(16,185,129,0.05)", border: "1px solid rgba(16,185,129,0.2)", borderRadius: 7 }}>
+                          <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#10b981", flexShrink: 0 }} />
+                          <span style={{ flex: 1, fontSize: 11, color: C.text }}>Element #{tid}</span>
+                          <button onClick={() => setStaticTids(prev => {
+                            const next = new Set(prev); next.delete(tid);
+                            setTimeout(() => iframeRef.current?.contentWindow?.postMessage({ type: "set-static", tids: [...next] }, "*"), 0);
+                            return next;
+                          })} style={{ background: "none", border: "none", color: C.muted, cursor: "pointer", fontSize: 15, lineHeight: 1, padding: "0 2px" }}>×</button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "10px 12px" }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 10, color: C.muted }}>
+                    <div style={{ width: 20, height: 2, background: "#10b981", borderRadius: 2, flexShrink: 0 }} />
+                    Locked — kept exactly as-is
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 10, color: C.muted }}>
+                    <div style={{ width: 20, height: 0, borderTop: "2px dashed #3b82f6", flexShrink: 0 }} />
+                    Hovered — click to lock
+                  </div>
+                </div>
+              </div>
             </div>
 
-            {previewTab === "rendered" ? (
-              <iframe
-                srcDoc={finalHtml || "<p style='padding:24px;font-family:sans-serif;color:#64748b'>No HTML yet.</p>"}
-                style={{ flex: 1, border: "none", background: "#fff" }}
-                sandbox="allow-same-origin"
-                title="Template Preview"
-              />
-            ) : (
-              <textarea
-                value={finalHtml}
-                onChange={e => setProcessedHtml(e.target.value)}
-                spellCheck={false}
-                style={{
-                  flex: 1, padding: "14px 16px", background: "transparent", border: "none",
-                  color: C.text, fontSize: 11, fontFamily: "ui-monospace, monospace",
-                  resize: "none", outline: "none", lineHeight: 1.7,
-                }}
-              />
-            )}
+            <div style={{ display: "flex", flexDirection: "column", background: C.surface, border: `1px solid ${selectMode ? "var(--border-blue)" : C.border}`, borderRadius: 14, overflow: "hidden", transition: "border-color 0.15s" }}>
+              <div style={{ padding: "10px 16px", borderBottom: `1px solid ${C.border}`, flexShrink: 0, display: "flex", alignItems: "center", gap: 10 }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: C.text }}>Interactive Preview</span>
+                {selectMode && (
+                  <span style={{ fontSize: 10, fontWeight: 700, color: "var(--blue)", background: "var(--blue-bg)", border: "1px solid var(--border-blue)", borderRadius: 10, padding: "2px 8px" }}>
+                    Selection Mode Active
+                  </span>
+                )}
+                <span style={{ flex: 1 }} />
+                <span style={{ fontSize: 10, color: C.muted }}>
+                  {selectMode ? "Click elements to toggle static lock" : "Enable selection mode to click elements"}
+                </span>
+              </div>
+              <iframe ref={iframeRef} srcDoc={iframeSrc} sandbox="allow-scripts allow-same-origin"
+                onLoad={handleIframeLoad} style={{ flex: 1, border: "none" }} title="Interactive Template Preview" />
+            </div>
           </div>
-        ) : (
-          <PlaceholderReference />
+        )}
+
+        {/* REVIEW */}
+        {phase === "review" && (
+          <div style={{ display: "grid", gridTemplateColumns: "320px 1fr", gap: 16, height: "100%" }}>
+            <div style={{ display: "flex", flexDirection: "column", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, overflow: "hidden" }}>
+              <div style={{ padding: "14px 16px", borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: C.text }}>Detected Sections</div>
+                    <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>Toggle placeholders on or off.</div>
+                  </div>
+                  {detections.length > 0 && (
+                    <span style={{ fontSize: 12, fontWeight: 700, color: "var(--blue)", background: "var(--blue-bg)", border: "1px solid var(--border-blue)", borderRadius: 20, padding: "3px 10px" }}>
+                      {detections.filter(d => d.enabled).length}/{detections.length}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div style={{ flex: 1, overflowY: "auto", padding: "10px 12px", display: "flex", flexDirection: "column", gap: 4 }}>
+                {detections.length === 0 ? (
+                  <div style={{ padding: "24px 16px", textAlign: "center" }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: C.muted, marginBottom: 8 }}>No sections auto-detected</div>
+                    <div style={{ fontSize: 11, color: C.dim, lineHeight: 1.6 }}>
+                      Switch to <strong style={{ color: C.text }}>Template HTML</strong> to insert placeholder tokens manually.
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    {detections.map(det => {
+                      const ph = PLACEHOLDERS.find(p => p.key === det.key);
+                      return <DetectionRow key={det.key} detection={det} color={ph?.color || "var(--blue)"} onToggle={() => toggleDetection(det.key)} />;
+                    })}
+                    {(() => {
+                      const found = new Set(detections.map(d => d.key));
+                      const missing = PLACEHOLDERS.filter(p => !found.has(p.key));
+                      if (!missing.length) return null;
+                      return (
+                        <div style={{ marginTop: 6 }}>
+                          <div style={{ fontSize: 9, fontWeight: 700, color: C.dim, textTransform: "uppercase", letterSpacing: 1, margin: "6px 4px" }}>Not detected</div>
+                          {missing.map(p => (
+                            <div key={p.key} style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 10px", borderRadius: 8, opacity: 0.45 }}>
+                              <div style={{ width: 7, height: 7, borderRadius: "50%", background: C.border, flexShrink: 0 }} />
+                              <span style={{ flex: 1, fontSize: 12, color: C.muted }}>{p.label}</span>
+                              <code style={{ fontSize: 9, color: C.dim, fontFamily: "ui-monospace, monospace" }}>{p.key}</code>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })()}
+                  </>
+                )}
+              </div>
+              <div style={{ padding: "10px 14px", borderTop: `1px solid ${C.border}`, flexShrink: 0, fontSize: 11, color: C.muted, lineHeight: 1.5 }}>
+                Switch to <strong style={{ color: C.text }}>Template HTML</strong> to insert tokens manually.
+              </div>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, overflow: "hidden" }}>
+              <div style={{ display: "flex", borderBottom: `1px solid ${C.border}`, padding: "0 4px", flexShrink: 0 }}>
+                {[["rendered", "Live Preview"], ["raw", "Template HTML"]].map(([k, l]) => (
+                  <button key={k} onClick={() => setPreviewTab(k)} style={{
+                    padding: "11px 16px", border: "none", background: "transparent", cursor: "pointer",
+                    fontSize: 12, fontWeight: previewTab === k ? 700 : 500,
+                    color: previewTab === k ? "var(--blue)" : C.muted,
+                    borderBottom: previewTab === k ? "2px solid var(--blue)" : "2px solid transparent",
+                    marginBottom: -1, transition: "all 0.15s",
+                  }}>{l}</button>
+                ))}
+              </div>
+              {previewTab === "rendered" ? (
+                <iframe srcDoc={processedHtml || "<p style='padding:24px;font-family:sans-serif;color:#64748b'>No HTML yet.</p>"}
+                  sandbox="allow-same-origin" style={{ flex: 1, border: "none", background: "#fff" }} title="Template Preview" />
+              ) : (
+                <textarea value={processedHtml} onChange={e => setProcessedHtml(e.target.value)} spellCheck={false}
+                  style={{ flex: 1, padding: "14px 16px", background: "transparent", border: "none", color: C.text, fontSize: 11, fontFamily: "ui-monospace, monospace", resize: "none", outline: "none", lineHeight: 1.7 }} />
+              )}
+            </div>
+          </div>
         )}
       </div>
     </div>
   );
 }
 
-function StepBadge({ n, label, active }) {
+function StepBadge({ n, label, active, done }) {
+  const bg  = active ? "var(--blue)" : done ? "rgba(16,185,129,0.15)" : "var(--bg-surface2)";
+  const bd  = active ? "var(--blue)" : done ? "rgba(16,185,129,0.4)"  : "var(--border)";
+  const col = active ? "#fff"        : done ? "#10b981"                : C.muted;
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-      <div style={{
-        width: 22, height: 22, borderRadius: "50%", flexShrink: 0,
-        background: active ? "var(--blue)" : "var(--bg-surface2)",
-        border: `2px solid ${active ? "var(--blue)" : "var(--border)"}`,
-        display: "flex", alignItems: "center", justifyContent: "center",
-        fontSize: 10, fontWeight: 900, color: active ? "#fff" : C.muted,
-      }}>{n}</div>
+      <div style={{ width: 22, height: 22, borderRadius: "50%", flexShrink: 0, background: bg, border: `2px solid ${bd}`,
+        display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 900, color: col,
+      }}>{done ? "✓" : n}</div>
       <span style={{ fontSize: 11, fontWeight: active ? 700 : 500, color: active ? C.text : C.muted, whiteSpace: "nowrap" }}>{label}</span>
     </div>
   );

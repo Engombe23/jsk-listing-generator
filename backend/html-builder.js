@@ -35,7 +35,6 @@ function getManufacturerName(vehicle) {
 // ─── Row builder (shared across themes) ──────────────────────────────────────
 
 function buildBodyRow(v, i, rowBg1 = "#ffffff", rowBg2 = "#f5f5f5", borderColor = "#000000") {
-  const engineCodes = uniq(v.engine_codes || []).join(", ");
   const bg = i % 2 === 0 ? rowBg1 : rowBg2;
   return `<tr style="background:${bg};">
   <td style="border:1px solid ${borderColor};padding:7px 10px;text-align:left;font-size:13px;">${escapeHtml(v.vehicle)}</td>
@@ -43,7 +42,6 @@ function buildBodyRow(v, i, rowBg1 = "#ffffff", rowBg2 = "#f5f5f5", borderColor 
   <td style="border:1px solid ${borderColor};padding:7px 8px;text-align:center;font-size:13px;">${escapeHtml(v.kw || "")}</td>
   <td style="border:1px solid ${borderColor};padding:7px 8px;text-align:center;font-size:13px;">${escapeHtml(v.hp || "")}</td>
   <td style="border:1px solid ${borderColor};padding:7px 8px;text-align:center;font-size:13px;">${escapeHtml(v.cc || "")}</td>
-  <td style="border:1px solid ${borderColor};padding:7px 8px;text-align:center;font-size:13px;">${escapeHtml(engineCodes)}</td>
 </tr>`;
 }
 
@@ -58,28 +56,51 @@ function groupByManufacturer(rows) {
   return grouped;
 }
 
+// Reformats "Label [unit]: value" → "Label: value unit"
+function formatSpec(s) {
+  const colonIdx = s.indexOf(":");
+  if (colonIdx === -1) return s;
+  const rawLabel  = s.slice(0, colonIdx).trim();
+  const value     = s.slice(colonIdx + 1).trim();
+  const unitMatch = rawLabel.match(/^(.+?)\s*\[([^\]]+)\]$/);
+  if (unitMatch) return `${unitMatch[1].trim()}: ${value} ${unitMatch[2]}`;
+  return s;
+}
+
+// Same but returns { label, value } for table-cell rendering
+function parseSpec(s) {
+  const colonIdx  = s.indexOf(":");
+  const rawLabel  = colonIdx > -1 ? s.slice(0, colonIdx).trim() : s;
+  const value     = colonIdx > -1 ? s.slice(colonIdx + 1).trim() : "";
+  const unitMatch = rawLabel.match(/^(.+?)\s*\[([^\]]+)\]$/);
+  if (unitMatch) return { label: unitMatch[1].trim(), value: value ? `${value} ${unitMatch[2]}` : value };
+  return { label: rawLabel, value };
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // THEME: default (Clean Default)
 // ═══════════════════════════════════════════════════════════════════════════════
 
 function buildHtmlDefault(data, t) {
-  const oems  = uniq(data.oem_numbers || []);
-  const specs = uniq(data.specifications || []);
-  const rows  = data.compatibility_rows || [];
+  const oems        = uniq(data.oem_numbers || []);
+  const specs       = uniq(data.specifications || []);
+  const rows        = data.compatibility_rows || [];
+  const engineCodes = uniq(data.engine_codes || []);
   const grouped = groupByManufacturer(rows);
 
-  const manufacturerTables = Object.keys(grouped).sort().map((mfr) => {
+  const manufacturerTables = Object.keys(grouped)
+    .sort((a, b) => grouped[b].length - grouped[a].length)
+    .map((mfr) => {
     const bodyRows = grouped[mfr].map((v, i) => buildBodyRow(v, i, "#ffffff", "#f5f5f5", "#000000")).join("\n");
     return `<div style="margin-bottom:14px;"><table style="width:100%;border-collapse:collapse;font-family:Arial,sans-serif;">
   <thead>
-    <tr><th colspan="6" style="border:1px solid #000000;background:#000000;color:${t.primaryColor};font-weight:bold;text-align:center;padding:9px 10px;font-size:16px;">${escapeHtml(mfr)} Models:</th></tr>
+    <tr><th colspan="5" style="border:1px solid #000000;background:#000000;color:${t.primaryColor};font-weight:bold;text-align:center;padding:9px 10px;font-size:16px;">${escapeHtml(mfr)} Models:</th></tr>
     <tr style="background:${t.tableHeaderBackground};">
       <th style="border:1px solid #000000;padding:7px 10px;text-align:center;font-size:13px;color:${t.tableHeaderTextColor};font-weight:bold;">Vehicle</th>
       <th style="border:1px solid #000000;padding:7px 8px;text-align:center;font-size:13px;color:${t.tableHeaderTextColor};font-weight:bold;">Production Years</th>
       <th style="border:1px solid #000000;padding:7px 8px;text-align:center;font-size:13px;color:${t.tableHeaderTextColor};font-weight:bold;">kW</th>
       <th style="border:1px solid #000000;padding:7px 8px;text-align:center;font-size:13px;color:${t.tableHeaderTextColor};font-weight:bold;">HP</th>
       <th style="border:1px solid #000000;padding:7px 8px;text-align:center;font-size:13px;color:${t.tableHeaderTextColor};font-weight:bold;">CC</th>
-      <th style="border:1px solid #000000;padding:7px 8px;text-align:center;font-size:13px;color:${t.tableHeaderTextColor};font-weight:bold;">Engine Codes</th>
     </tr>
   </thead>
   <tbody>${bodyRows}</tbody>
@@ -87,7 +108,7 @@ function buildHtmlDefault(data, t) {
   }).join("\n");
 
   const oemHtml  = oems.length  ? oems.map(escapeHtml).join(", ") : "Not specified";
-  const specsHtml = specs.length ? specs.map((s) => `<div style="padding:2px 0;">${escapeHtml(s)}</div>`).join("") : `<div style="padding:2px 0;">Not specified</div>`;
+  const specsHtml = specs.length ? specs.map((s) => `<div style="padding:2px 0;">${escapeHtml(formatSpec(s))}</div>`).join("") : `<div style="padding:2px 0;">Not specified</div>`;
 
   return `<div style="max-width:1100px;margin:0 auto;padding:12px;border:1px solid #cccccc;background:#efefef;font-family:Arial,sans-serif;color:#000000;">
   <div style="font-size:20px;font-weight:bold;color:#000000;text-align:center;margin:6px 0 16px;line-height:1.4;">${escapeHtml(data.product_name || "")}</div>
@@ -100,6 +121,7 @@ function buildHtmlDefault(data, t) {
     <div style="background:${t.primaryColor};color:#ffffff;font-weight:bold;text-align:center;padding:8px 12px;font-size:17px;">Item Specifics:</div>
     <div style="background:#ffffff;padding:12px 16px;text-align:center;font-size:15px;line-height:1.7;border:1px solid ${t.primaryColor};border-top:none;">${specsHtml}</div>
   </div>
+  ${engineCodes.length ? `<div style="margin:0 0 12px;background:#ffffff;border:2px solid ${t.primaryColor};padding:10px 16px;font-size:14px;line-height:1.6;"><strong style="color:${t.primaryColor};">Engine Codes:</strong> ${escapeHtml(engineCodes.join(", "))}</div>` : ""}
   <div style="background:${t.primaryColor};color:#ffffff;font-weight:bold;text-align:center;padding:8px 12px;font-size:17px;margin:0 0 14px;">Compatible Vehicles:</div>
   ${manufacturerTables}
 </div>`.trim();
@@ -110,23 +132,25 @@ function buildHtmlDefault(data, t) {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 function buildHtmlDarkHeader(data, t) {
-  const oems  = uniq(data.oem_numbers || []);
-  const specs = uniq(data.specifications || []);
-  const rows  = data.compatibility_rows || [];
+  const oems        = uniq(data.oem_numbers || []);
+  const specs       = uniq(data.specifications || []);
+  const rows        = data.compatibility_rows || [];
+  const engineCodes = uniq(data.engine_codes || []);
   const grouped = groupByManufacturer(rows);
 
-  const manufacturerTables = Object.keys(grouped).sort().map((mfr) => {
+  const manufacturerTables = Object.keys(grouped)
+    .sort((a, b) => grouped[b].length - grouped[a].length)
+    .map((mfr) => {
     const bodyRows = grouped[mfr].map((v, i) => buildBodyRow(v, i, "#ffffff", "#f5f5f5", "#cccccc")).join("\n");
     return `<div style="margin:0 12px 14px;border:1px solid #dddddd;"><table style="width:100%;border-collapse:collapse;font-family:Arial,sans-serif;">
   <thead>
-    <tr><th colspan="6" style="border:1px solid #333333;background:#111111;color:${t.primaryColor};font-weight:bold;text-align:center;padding:10px 10px;font-size:15px;letter-spacing:0.5px;">${escapeHtml(mfr)} Models:</th></tr>
+    <tr><th colspan="5" style="border:1px solid #333333;background:#111111;color:${t.primaryColor};font-weight:bold;text-align:center;padding:10px 10px;font-size:15px;letter-spacing:0.5px;">${escapeHtml(mfr)} Models:</th></tr>
     <tr style="background:${t.tableHeaderBackground};">
       <th style="border:1px solid #444444;padding:7px 10px;text-align:center;font-size:13px;color:${t.tableHeaderTextColor};font-weight:bold;">Vehicle</th>
       <th style="border:1px solid #444444;padding:7px 8px;text-align:center;font-size:13px;color:${t.tableHeaderTextColor};font-weight:bold;">Years</th>
       <th style="border:1px solid #444444;padding:7px 8px;text-align:center;font-size:13px;color:${t.tableHeaderTextColor};font-weight:bold;">kW</th>
       <th style="border:1px solid #444444;padding:7px 8px;text-align:center;font-size:13px;color:${t.tableHeaderTextColor};font-weight:bold;">HP</th>
       <th style="border:1px solid #444444;padding:7px 8px;text-align:center;font-size:13px;color:${t.tableHeaderTextColor};font-weight:bold;">CC</th>
-      <th style="border:1px solid #444444;padding:7px 8px;text-align:center;font-size:13px;color:${t.tableHeaderTextColor};font-weight:bold;">Engine Codes</th>
     </tr>
   </thead>
   <tbody>${bodyRows}</tbody>
@@ -134,7 +158,7 @@ function buildHtmlDarkHeader(data, t) {
   }).join("\n");
 
   const oemHtml  = oems.length  ? oems.map(escapeHtml).join("&nbsp;&nbsp;|&nbsp;&nbsp;") : "Not specified";
-  const specsHtml = specs.length ? specs.map((s) => `<div style="padding:3px 0;border-bottom:1px solid #eeeeee;">${escapeHtml(s)}</div>`).join("") : `<div style="padding:3px 0;">Not specified</div>`;
+  const specsHtml = specs.length ? specs.map((s) => `<div style="padding:3px 0;border-bottom:1px solid #eeeeee;">${escapeHtml(formatSpec(s))}</div>`).join("") : `<div style="padding:3px 0;">Not specified</div>`;
 
   return `<div style="max-width:1100px;margin:0 auto;padding:0;border:2px solid #111111;background:#ffffff;font-family:Arial,sans-serif;color:#111111;">
   <div style="background:#111111;color:${t.primaryColor};font-size:22px;font-weight:bold;text-align:center;padding:16px 12px;line-height:1.3;">${escapeHtml(data.product_name || "")}</div>
@@ -147,6 +171,7 @@ function buildHtmlDarkHeader(data, t) {
     <div style="background:#111111;color:${t.primaryColor};font-weight:bold;padding:6px 10px;font-size:14px;text-transform:uppercase;letter-spacing:0.8px;">Item Specifics</div>
     <div style="padding:10px 12px;font-size:14px;line-height:1.8;border:1px solid #dddddd;border-top:none;">${specsHtml}</div>
   </div>
+  ${engineCodes.length ? `<div style="margin:0 12px 10px;padding:8px 12px;border:1px solid #dddddd;background:#ffffff;font-size:13px;line-height:1.6;"><strong style="color:${t.primaryColor};">Engine Codes:</strong> ${escapeHtml(engineCodes.join(", "))}</div>` : ""}
   <div style="margin:0 12px 14px;">
     <div style="background:#111111;color:${t.primaryColor};font-weight:bold;padding:6px 10px;font-size:14px;text-transform:uppercase;letter-spacing:0.8px;">Compatible Vehicles</div>
   </div>
@@ -159,9 +184,10 @@ function buildHtmlDarkHeader(data, t) {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 function buildHtmlTableFocused(data, t) {
-  const oems  = uniq(data.oem_numbers || []);
-  const specs = uniq(data.specifications || []);
-  const rows  = data.compatibility_rows || [];
+  const oems        = uniq(data.oem_numbers || []);
+  const specs       = uniq(data.specifications || []);
+  const rows        = data.compatibility_rows || [];
+  const engineCodes = uniq(data.engine_codes || []);
   const grouped = groupByManufacturer(rows);
 
   // Compact meta table (OEM + specs side by side)
@@ -170,24 +196,26 @@ function buildHtmlTableFocused(data, t) {
     metaRows.push(`<tr><td style="border:1px solid #999;padding:6px 10px;font-weight:bold;background:#e8e8e8;font-size:13px;width:160px;">OEM Numbers</td><td style="border:1px solid #999;padding:6px 10px;font-size:13px;">${oems.map(escapeHtml).join(", ")}</td></tr>`);
   }
   for (const s of specs) {
-    const colonIdx = s.indexOf(":");
-    const label = colonIdx > -1 ? s.slice(0, colonIdx).trim() : s;
-    const value = colonIdx > -1 ? s.slice(colonIdx + 1).trim() : "";
+    const { label, value } = parseSpec(s);
     metaRows.push(`<tr><td style="border:1px solid #999;padding:6px 10px;font-weight:bold;background:#e8e8e8;font-size:13px;">${escapeHtml(label)}</td><td style="border:1px solid #999;padding:6px 10px;font-size:13px;">${escapeHtml(value)}</td></tr>`);
   }
+  if (engineCodes.length) {
+    metaRows.push(`<tr><td style="border:1px solid #999;padding:6px 10px;font-weight:bold;background:#e8e8e8;font-size:13px;">Engine Codes</td><td style="border:1px solid #999;padding:6px 10px;font-size:13px;">${escapeHtml(engineCodes.join(", "))}</td></tr>`);
+  }
 
-  const manufacturerTables = Object.keys(grouped).sort().map((mfr) => {
+  const manufacturerTables = Object.keys(grouped)
+    .sort((a, b) => grouped[b].length - grouped[a].length)
+    .map((mfr) => {
     const bodyRows = grouped[mfr].map((v, i) => buildBodyRow(v, i, "#ffffff", "#f0f0f0", "#999999")).join("\n");
     return `<div style="margin-bottom:14px;"><table style="width:100%;border-collapse:collapse;font-family:Arial,sans-serif;">
   <thead>
-    <tr><th colspan="6" style="border:1px solid #555555;background:${t.primaryColor};color:#ffffff;font-weight:bold;text-align:left;padding:7px 10px;font-size:14px;">${escapeHtml(mfr)}</th></tr>
+    <tr><th colspan="5" style="border:1px solid #555555;background:${t.primaryColor};color:#ffffff;font-weight:bold;text-align:left;padding:7px 10px;font-size:14px;">${escapeHtml(mfr)}</th></tr>
     <tr style="background:${t.tableHeaderBackground};">
       <th style="border:1px solid #999;padding:6px 8px;font-size:12px;color:${t.tableHeaderTextColor};text-align:left;">Vehicle</th>
       <th style="border:1px solid #999;padding:6px 8px;font-size:12px;color:${t.tableHeaderTextColor};text-align:center;">Years</th>
       <th style="border:1px solid #999;padding:6px 6px;font-size:12px;color:${t.tableHeaderTextColor};text-align:center;">kW</th>
       <th style="border:1px solid #999;padding:6px 6px;font-size:12px;color:${t.tableHeaderTextColor};text-align:center;">HP</th>
       <th style="border:1px solid #999;padding:6px 6px;font-size:12px;color:${t.tableHeaderTextColor};text-align:center;">CC</th>
-      <th style="border:1px solid #999;padding:6px 8px;font-size:12px;color:${t.tableHeaderTextColor};text-align:center;">Engine Codes</th>
     </tr>
   </thead>
   <tbody>${bodyRows}</tbody>
@@ -210,14 +238,16 @@ function buildHtmlTableFocused(data, t) {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 function buildHtmlMinimal(data, t) {
-  const oems  = uniq(data.oem_numbers || []);
-  const specs = uniq(data.specifications || []);
-  const rows  = data.compatibility_rows || [];
+  const oems        = uniq(data.oem_numbers || []);
+  const specs       = uniq(data.specifications || []);
+  const rows        = data.compatibility_rows || [];
+  const engineCodes = uniq(data.engine_codes || []);
   const grouped = groupByManufacturer(rows);
 
-  const manufacturerTables = Object.keys(grouped).sort().map((mfr) => {
+  const manufacturerTables = Object.keys(grouped)
+    .sort((a, b) => grouped[b].length - grouped[a].length)
+    .map((mfr) => {
     const bodyRows = grouped[mfr].map((v, i) => {
-      const engineCodes = uniq(v.engine_codes || []).join(", ");
       const bg = i % 2 === 0 ? "#ffffff" : "#fafafa";
       return `<tr style="background:${bg};">
   <td style="border-bottom:1px solid #e5e5e5;padding:6px 8px;font-size:13px;">${escapeHtml(v.vehicle)}</td>
@@ -225,7 +255,6 @@ function buildHtmlMinimal(data, t) {
   <td style="border-bottom:1px solid #e5e5e5;padding:6px 6px;font-size:13px;text-align:center;">${escapeHtml(v.kw || "")}</td>
   <td style="border-bottom:1px solid #e5e5e5;padding:6px 6px;font-size:13px;text-align:center;">${escapeHtml(v.hp || "")}</td>
   <td style="border-bottom:1px solid #e5e5e5;padding:6px 6px;font-size:13px;text-align:center;">${escapeHtml(v.cc || "")}</td>
-  <td style="border-bottom:1px solid #e5e5e5;padding:6px 8px;font-size:13px;text-align:center;">${escapeHtml(engineCodes)}</td>
 </tr>`;
     }).join("\n");
     return `<div style="margin-bottom:14px;"><p style="font-weight:bold;font-size:14px;margin:0 0 6px;">${escapeHtml(mfr)}</p>
@@ -237,7 +266,6 @@ function buildHtmlMinimal(data, t) {
       <th style="padding:6px 6px;text-align:center;font-size:12px;color:${t.tableHeaderTextColor};">kW</th>
       <th style="padding:6px 6px;text-align:center;font-size:12px;color:${t.tableHeaderTextColor};">HP</th>
       <th style="padding:6px 6px;text-align:center;font-size:12px;color:${t.tableHeaderTextColor};">CC</th>
-      <th style="padding:6px 8px;text-align:center;font-size:12px;color:${t.tableHeaderTextColor};">Engine Codes</th>
     </tr>
   </thead>
   <tbody>${bodyRows}</tbody>
@@ -245,7 +273,7 @@ function buildHtmlMinimal(data, t) {
   }).join("\n");
 
   const oemText  = oems.length  ? oems.join(", ") : "Not specified";
-  const specsHtml = specs.length ? specs.map((s) => `<div>${escapeHtml(s)}</div>`).join("") : "Not specified";
+  const specsHtml = specs.length ? specs.map((s) => `<div>${escapeHtml(formatSpec(s))}</div>`).join("") : "Not specified";
 
   return `<div style="max-width:1100px;margin:0 auto;padding:14px 16px;background:#ffffff;font-family:Arial,sans-serif;color:#222222;border:1px solid #e0e0e0;">
   <h2 style="font-size:18px;font-weight:bold;margin:0 0 10px;color:#111111;">${escapeHtml(data.product_name || "")}</h2>
@@ -254,7 +282,8 @@ function buildHtmlMinimal(data, t) {
   <p style="font-size:13px;margin:0 0 12px;color:#444444;">${escapeHtml(oemText)}</p>
   <p style="font-weight:bold;font-size:13px;margin:0 0 3px;color:${t.primaryColor};">Item Specifics</p>
   <div style="font-size:13px;color:#444444;line-height:1.8;margin-bottom:12px;">${specsHtml}</div>
-  <p style="font-weight:bold;font-size:13px;margin:0 0 14px;color:${t.primaryColor};">Compatible Vehicles</p>
+  ${engineCodes.length ? `<p style="font-size:13px;margin:0 0 12px;color:#444444;"><strong style="color:${t.primaryColor};">Engine Codes:</strong> ${escapeHtml(engineCodes.join(", "))}</p>` : ""}
+  <p style="font-weight:bold;font-size:13px;margin:0 0 10px;color:${t.primaryColor};">Compatible Vehicles</p>
   ${manufacturerTables}
 </div>`.trim();
 }
@@ -264,14 +293,16 @@ function buildHtmlMinimal(data, t) {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 function buildHtmlProfessionalBlue(data, t) {
-  const oems  = uniq(data.oem_numbers || []);
-  const specs = uniq(data.specifications || []);
-  const rows  = data.compatibility_rows || [];
+  const oems        = uniq(data.oem_numbers || []);
+  const specs       = uniq(data.specifications || []);
+  const rows        = data.compatibility_rows || [];
+  const engineCodes = uniq(data.engine_codes || []);
   const grouped = groupByManufacturer(rows);
 
-  const manufacturerTables = Object.keys(grouped).sort().map((mfr) => {
+  const manufacturerTables = Object.keys(grouped)
+    .sort((a, b) => grouped[b].length - grouped[a].length)
+    .map((mfr) => {
     const bodyRows = grouped[mfr].map((v, i) => {
-      const engineCodes = uniq(v.engine_codes || []).join(", ");
       const bg = i % 2 === 0 ? "#ffffff" : "#eef4fb";
       return `<tr style="background:${bg};">
   <td style="border:1px solid #b8d0e8;padding:6px 10px;font-size:13px;">${escapeHtml(v.vehicle)}</td>
@@ -279,19 +310,17 @@ function buildHtmlProfessionalBlue(data, t) {
   <td style="border:1px solid #b8d0e8;padding:6px 8px;text-align:center;font-size:13px;">${escapeHtml(v.kw || "")}</td>
   <td style="border:1px solid #b8d0e8;padding:6px 8px;text-align:center;font-size:13px;">${escapeHtml(v.hp || "")}</td>
   <td style="border:1px solid #b8d0e8;padding:6px 8px;text-align:center;font-size:13px;">${escapeHtml(v.cc || "")}</td>
-  <td style="border:1px solid #b8d0e8;padding:6px 8px;text-align:center;font-size:13px;">${escapeHtml(engineCodes)}</td>
 </tr>`;
     }).join("\n");
     return `<div style="padding:0 14px 8px;margin-bottom:14px;"><table style="width:100%;border-collapse:collapse;font-family:Arial,sans-serif;">
   <thead>
-    <tr><th colspan="6" style="border:1px solid #1a3a6b;background:${t.primaryColor};color:#ffffff;font-weight:bold;text-align:center;padding:8px 10px;font-size:14px;">${escapeHtml(mfr)}</th></tr>
+    <tr><th colspan="5" style="border:1px solid #1a3a6b;background:${t.primaryColor};color:#ffffff;font-weight:bold;text-align:center;padding:8px 10px;font-size:14px;">${escapeHtml(mfr)}</th></tr>
     <tr style="background:${t.tableHeaderBackground};">
       <th style="border:1px solid #b8d0e8;padding:6px 10px;text-align:center;font-size:13px;color:${t.tableHeaderTextColor};font-weight:bold;">Vehicle</th>
       <th style="border:1px solid #b8d0e8;padding:6px 8px;text-align:center;font-size:13px;color:${t.tableHeaderTextColor};font-weight:bold;">Production Years</th>
       <th style="border:1px solid #b8d0e8;padding:6px 8px;text-align:center;font-size:13px;color:${t.tableHeaderTextColor};font-weight:bold;">kW</th>
       <th style="border:1px solid #b8d0e8;padding:6px 8px;text-align:center;font-size:13px;color:${t.tableHeaderTextColor};font-weight:bold;">HP</th>
       <th style="border:1px solid #b8d0e8;padding:6px 8px;text-align:center;font-size:13px;color:${t.tableHeaderTextColor};font-weight:bold;">CC</th>
-      <th style="border:1px solid #b8d0e8;padding:6px 8px;text-align:center;font-size:13px;color:${t.tableHeaderTextColor};font-weight:bold;">Engine Codes</th>
     </tr>
   </thead>
   <tbody>${bodyRows}</tbody>
@@ -300,9 +329,7 @@ function buildHtmlProfessionalBlue(data, t) {
 
   const oemHtml  = oems.length  ? oems.map(escapeHtml).join("&nbsp; &nbsp;") : "Not specified";
   const specsHtml = specs.length ? `<table style="width:100%;border-collapse:collapse;">${specs.map((s, i) => {
-    const colonIdx = s.indexOf(":");
-    const label = colonIdx > -1 ? s.slice(0, colonIdx).trim() : s;
-    const value = colonIdx > -1 ? s.slice(colonIdx + 1).trim() : "";
+    const { label, value } = parseSpec(s);
     const bg = i % 2 === 0 ? "#ffffff" : "#eef4fb";
     return `<tr style="background:${bg};"><td style="border:1px solid #b8d0e8;padding:5px 10px;font-size:13px;font-weight:bold;width:200px;color:#1a3a6b;">${escapeHtml(label)}</td><td style="border:1px solid #b8d0e8;padding:5px 10px;font-size:13px;">${escapeHtml(value)}</td></tr>`;
   }).join("")}</table>` : `<div style="font-size:13px;color:#666;">Not specified</div>`;
@@ -319,8 +346,9 @@ function buildHtmlProfessionalBlue(data, t) {
       <div style="background:${t.primaryColor};color:#ffffff;font-weight:bold;padding:6px 12px;font-size:13px;display:inline-block;margin-bottom:4px;">Item Specifics</div>
       ${specsHtml}
     </div>
+    ${engineCodes.length ? `<div style="margin-bottom:12px;"><div style="background:${t.primaryColor};color:#ffffff;font-weight:bold;padding:6px 12px;font-size:13px;display:inline-block;margin-bottom:4px;">Engine Codes</div><div style="padding:8px 12px;background:#ffffff;border:1px solid #b8d0e8;font-size:14px;line-height:1.8;">${escapeHtml(engineCodes.join(", "))}</div></div>` : ""}
   </div>
-  <div style="padding:4px 14px 14px;">
+  <div style="padding:4px 14px 10px;">
     <div style="background:${t.primaryColor};color:#ffffff;font-weight:bold;padding:6px 12px;font-size:13px;display:inline-block;">Compatible Vehicles</div>
   </div>
   ${manufacturerTables}

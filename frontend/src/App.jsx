@@ -660,7 +660,9 @@ function ListingGenerator({
   const [batchLoading, setBatchLoading] = useState(false);
 
   // ── Live HTML ref (lifted from ListingOutput for Copy HTML in right panel) ──
-  const liveHtmlRef = useRef("");
+  const liveHtmlRef  = useRef("");
+  // ── Live rows ref (lifted from ItemSpecificsTab so Save captures edits) ──
+  const liveRowsRef  = useRef(null);
 
   // ── Resolved HTML for TabbedListingPreview (no editing, so computed here) ──
   // New-style templates (from Listing Templates builder) use {{TOKEN}} placeholders —
@@ -872,7 +874,12 @@ function ListingGenerator({
   // ── Save current listing to Saved Listings (explicit, button-triggered) ───
   const handleSaveListing = () => {
     if (!result) return;
-    onAutoSave?.({ ...result, sku: inputSku.trim() });
+    onAutoSave?.({
+      ...result,
+      sku:              inputSku.trim(),
+      generated_html:   liveHtmlRef.current  || result.generated_html,
+      custom_specifics: liveRowsRef.current  ?? null,
+    });
     setIsSaved(true);
     trackEvent("listing_saved", { part_number: result.article_number, source: "listing_generator" });
   };
@@ -1160,7 +1167,11 @@ function ListingGenerator({
                   html={displayHtml}
                   copyText={copyText}
                   renderSpecifics={() => (
-                    <ItemSpecificsTab result={result} copyText={copyText} />
+                    <ItemSpecificsTab
+                      result={result}
+                      copyText={copyText}
+                      onRowsChange={(rows) => { liveRowsRef.current = rows; }}
+                    />
                   )}
                 />
               ) : (
@@ -1171,6 +1182,7 @@ function ListingGenerator({
                   onSaveTemplate={handleSaveTemplate}
                   noRightPanel
                   onHtmlChange={(html) => { liveHtmlRef.current = html; }}
+                  onRowsChange={(rows) => { liveRowsRef.current = rows; }}
                 />
               )
             )}
@@ -1867,7 +1879,7 @@ function resolveHtml(customTemplateHtml, generatedHtml, result) {
     : mergeTemplateWithContent(customTemplateHtml, generatedHtml ?? "");
 }
 
-function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate, noRightPanel = false, onHtmlChange }) {
+function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate, noRightPanel = false, onHtmlChange, onRowsChange }) {
   const [innerTab,     setInnerTab]     = useState("overview"); // "overview" | "specifics"
   const [editMode,     setEditMode]     = useState(false);
   const [editedHtml,   setEditedHtml]   = useState(
@@ -2283,7 +2295,7 @@ function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate, n
 
         {/* Item Specifics tab */}
         {innerTab === "specifics" && (
-          <ItemSpecificsTab result={result} copyText={copyText} />
+          <ItemSpecificsTab result={result} copyText={copyText} onRowsChange={onRowsChange} />
         )}
 
         </div>{/* end padding wrapper */}
@@ -2756,10 +2768,10 @@ function loadSavedFromStorage() {
 
 // SPEC_SCHEMA, SECTION_TITLES, and mapApiSpecsToSchema are imported from ./itemSpecificsSchema.js
 
-function ItemSpecificsTab({ result, copyText }) {
+function ItemSpecificsTab({ result, copyText, onRowsChange }) {
   const { hasFeature } = useSession();
   const canBulkCsvExport = hasFeature("bulkCsvExport");
-  const buildInitialRows = (res) => mapApiSpecsToSchema(res);
+  const buildInitialRows = (res) => mapApiSpecsToSchema(res, { brand: loadPreferences().brand });
 
   const [rows,        setRows]        = useState(() => buildInitialRows(result));
   const [showReset,   setShowReset]   = useState(false);
@@ -2770,6 +2782,9 @@ function ItemSpecificsTab({ result, copyText }) {
   const [batchOpen,   setBatchOpen]   = useState(false);
   const [selectedIds, setSelectedIds] = useState([]);
   const [dateFilter,  setDateFilter]  = useState("today");
+
+  // Notify parent whenever rows change so handleSaveListing can capture edits
+  useEffect(() => { onRowsChange?.(rows); }, [rows]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const updateRow = (id, val) =>
     setRows((prev) => prev.map((r) => (r.id === id ? { ...r, value: val } : r)));
