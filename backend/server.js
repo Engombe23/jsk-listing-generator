@@ -498,6 +498,12 @@ async function fetchEngineDataByModelIds(cars, langId = LANG_ID) {
 
 // ─── Image helper ─────────────────────────────────────────────────────────────
 
+const IMAGE_EXT_RE = /\.(jpe?g|png|webp|gif|avif)(\?.*)?$/i;
+
+function isImageUrl(url) {
+  return IMAGE_EXT_RE.test(url);
+}
+
 function extractFirstImageUrl(mediaResponse) {
   if (!mediaResponse) return "";
 
@@ -506,20 +512,16 @@ function extractFirstImageUrl(mediaResponse) {
   if (Array.isArray(imgArr) && imgArr.length > 0) {
     for (const img of imgArr) {
       const url = img.imageURL4 || img.imageURL3 || img.imageURL2 || img.imageURL1 || "";
-      if (url && url.startsWith("http")) return url;
+      if (url && url.startsWith("http") && isImageUrl(url)) return url;
     }
   }
 
-  // Fallback: walk the entire response tree for any tecalliance/tecdoc URL or image extension
+  // Fallback: walk the entire response tree — only pick URLs with image extensions
   const urls = [];
   const walk = (obj, depth = 0) => {
     if (!obj || depth > 8) return;
     if (typeof obj === "string") {
-      if (obj.startsWith("http") && (
-        obj.includes("tecalliance") ||
-        obj.includes("tecdoc") ||
-        /\.(jpg|jpeg|png|webp)/i.test(obj)
-      )) { urls.push(obj); }
+      if (obj.startsWith("http") && isImageUrl(obj)) urls.push(obj);
       return;
     }
     if (Array.isArray(obj)) { obj.forEach((v) => walk(v, depth + 1)); return; }
@@ -999,6 +1001,11 @@ app.get("/api/image-proxy", async (req, res) => {
 
     console.log(`[image-proxy] Response: ${upstream.status} ${upstream.headers.get("content-type")}`);
     if (!upstream.ok) return res.status(upstream.status).end();
+    const upstreamType = upstream.headers.get("content-type") || "";
+    if (upstreamType.startsWith("application/pdf") || upstreamType.startsWith("text/")) {
+      console.warn(`[image-proxy] Skipping non-image content-type: ${upstreamType}`);
+      return res.status(415).end();
+    }
 
     const buf = Buffer.from(await upstream.arrayBuffer());
 
