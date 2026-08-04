@@ -1247,7 +1247,7 @@ function ListingGenerator({
               }}>
                 {result.article_image ? (
                   <img
-                    src={result.article_image}
+                    src={`${API_URL}/api/image-proxy?url=${encodeURIComponent(result.article_image)}`}
                     alt={result.product_type || result.generated_title || "Product image"}
                     style={{ width: "100%", maxHeight: 200, objectFit: "contain", display: "block", padding: "12px 16px", boxSizing: "border-box" }}
                     onError={(e) => {

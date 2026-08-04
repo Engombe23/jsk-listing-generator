@@ -971,6 +971,38 @@ app.get("/themes", (_req, res) => {
   res.json(THEME_LIST);
 });
 
+// Proxy TecDoc product images — cdn.tecalliance.net blocks direct browser loads
+// (hotlink protection). The backend fetches without a browser Referer and pipes
+// the response back so the frontend can display them without CORS issues.
+const ALLOWED_IMAGE_HOSTS = ["cdn.tecalliance.net", "img.tecalliance.net", "images.tecalliance.net"];
+app.get("/api/image-proxy", async (req, res) => {
+  const raw = String(req.query.url || "").trim();
+  if (!raw) return res.status(400).json({ error: "Missing url" });
+
+  let parsed;
+  try { parsed = new URL(raw); } catch { return res.status(400).json({ error: "Invalid url" }); }
+
+  if (!ALLOWED_IMAGE_HOSTS.includes(parsed.hostname)) {
+    return res.status(403).json({ error: "Host not allowed" });
+  }
+
+  try {
+    const upstream = await fetch(raw, {
+      headers: { "User-Agent": "Mozilla/5.0 (compatible; PartLister/1.0)" },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!upstream.ok) return res.status(upstream.status).end();
+
+    const ct = upstream.headers.get("content-type") || "image/jpeg";
+    res.setHeader("Content-Type", ct);
+    res.setHeader("Cache-Control", "public, max-age=86400");
+    const buf = await upstream.arrayBuffer();
+    res.send(Buffer.from(buf));
+  } catch (e) {
+    res.status(502).json({ error: "Image fetch failed" });
+  }
+});
+
 // Search: OEM number or article number → list of candidate articles for selection
 app.post("/search", requireAuth, lookupLimiter, async (req, res) => {
   try {
