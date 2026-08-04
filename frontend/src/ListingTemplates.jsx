@@ -198,17 +198,24 @@ const DETECTION_RULES = [
           return { open: m[1], content: m[2], close: m[3], preview: text.slice(0, 70) };
         }
       }
-      // Simpler: any warning-type text near "please check"
-      const rx2 = /(<(?:p|div)[^>]*>[\s\S]*?(?:please (?:verify|check|review|ensure)[^<]{5,120})[\s\S]*?<\/(?:p|div)>)/i;
+      // Case 2: warning symbol + "please review/verify" — match just the sentence,
+      // NOT the whole parent element, so product names before ⚠ are left untouched.
+      const rx2 = /((?:⚠|&#9888;|&#x26A0;|&amp;#9888;|[⚠⚡❗]|&#\d{4,5};)[^<]*(?:please (?:verify|check|review|ensure)|review the compatibility)[^<.]{5,150})/i;
       const m2 = html.match(rx2);
       if (m2) {
-        const text = m2[1].replace(/<[^>]+>/g, " ").trim();
-        return { fullEl: m2[1], preview: text.slice(0, 70) };
+        return { inline: m2[1], preview: m2[1].replace(/&[^;]+;/g, "").trim().slice(0, 70) };
+      }
+      // Case 3: element whose text is only the warning (no leading product name)
+      const rx3 = /(<(?:p|div)[^>]*>)\s*(please (?:verify|check|review|ensure)[^<]{5,120})\s*(<\/(?:p|div)>)/i;
+      const m3 = html.match(rx3);
+      if (m3) {
+        return { fullEl: m3[0], preview: m3[2].slice(0, 70) };
       }
       return null;
     },
     replace(html, match) {
-      if (match.fullEl) return html.replace(match.fullEl, "{{FITMENT_WARNING}}");
+      if (match.inline)  return html.split(match.inline).join("{{FITMENT_WARNING}}");
+      if (match.fullEl)  return html.replace(match.fullEl, "{{FITMENT_WARNING}}");
       return html.replace(match.open + match.content + match.close, match.open + "{{FITMENT_WARNING}}" + match.close);
     },
   },
@@ -309,6 +316,97 @@ function revertPlaceholder(original, processed, key) {
 }
 function escapeRegex(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
 
+// ─── HTML processing helpers ──────────────────────────────────────────────────
+function sanitizeHtml(html) {
+  try {
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    doc.querySelectorAll("script,object,embed").forEach(el => el.remove());
+    doc.querySelectorAll("*").forEach(el => {
+      [...el.attributes].forEach(attr => {
+        if (attr.name.startsWith("on")) el.removeAttribute(attr.name);
+        if (["href","src","action"].includes(attr.name) && /^javascript:/i.test(attr.value.trim()))
+          el.removeAttribute(attr.name);
+      });
+    });
+    // Preserve <style> blocks from <head> so class-based styles (dark backgrounds, white text, etc.) survive
+    const headStyles = [...doc.head.querySelectorAll("style")].map(s => s.outerHTML).join("");
+    return headStyles + doc.body.innerHTML;
+  } catch { return html; }
+}
+
+function injectTids(html) {
+  try {
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    let n = 0;
+    doc.querySelectorAll("div,p,h1,h2,h3,h4,h5,h6,table,ul,ol,li,section,header,footer,span,b,strong,em,td,th,tr")
+      .forEach(el => { if (!el.hasAttribute("data-tid")) el.setAttribute("data-tid", String(++n)); });
+    return doc.body.innerHTML;
+  } catch { return html; }
+}
+
+function generateTemplateFromMarks(tidHtml, staticTids) {
+  try {
+    const doc = new DOMParser().parseFromString(tidHtml, "text/html");
+    const saved = {};
+    let n = 0;
+    staticTids.forEach(tid => {
+      const el = doc.querySelector(`[data-tid="${tid}"]`);
+      if (!el) return;
+      const marker = `__SL${n++}__`;
+      saved[marker] = el.outerHTML.replace(` data-tid="${tid}"`, "");
+      el.parentNode.replaceChild(doc.createTextNode(marker), el);
+    });
+    let modified = doc.body.innerHTML;
+    const { detections, processedHtml } = runDetection(modified);
+    let finalHtml = processedHtml;
+    Object.entries(saved).forEach(([m, h]) => { finalHtml = finalHtml.split(m).join(h); });
+    finalHtml = finalHtml.replace(/ data-tid="\d+"/g, "");
+    return { finalHtml, detections };
+  } catch {
+    const { detections, processedHtml } = runDetection(tidHtml);
+    return { finalHtml: processedHtml.replace(/ data-tid="\d+"/g, ""), detections };
+  }
+}
+
+function buildSelectionIframe(tidHtml) {
+  const js = `(function(){
+var s=new Set(),mode='view',hov=null;
+function paint(){
+  document.querySelectorAll('[data-tid]').forEach(function(e){
+    var t=e.getAttribute('data-tid'),isS=s.has(t),isH=e===hov&&mode==='select';
+    e.style.outline=isS?'2px solid #10b981':isH?'2px dashed #3b82f6':'';
+    e.style.outlineOffset='2px';
+    e.style.background=isS?'rgba(16,185,129,0.07)':'';
+    e.style.cursor=mode==='select'?'pointer':'';
+  });
+}
+document.addEventListener('mouseover',function(e){
+  if(mode!=='select')return;
+  var el=e.target;while(el&&el!==document.body&&!el.hasAttribute('data-tid'))el=el.parentElement;
+  if(el&&el.hasAttribute('data-tid')){hov=el;paint();}
+},true);
+document.addEventListener('mouseout',function(e){
+  if(mode!=='select')return;
+  var el=e.target;while(el&&el!==document.body&&!el.hasAttribute('data-tid'))el=el.parentElement;
+  if(el===hov){hov=null;paint();}
+},true);
+document.addEventListener('click',function(e){
+  if(mode!=='select')return;
+  e.preventDefault();e.stopPropagation();
+  var el=e.target;while(el&&el!==document.body&&!el.hasAttribute('data-tid'))el=el.parentElement;
+  if(el&&el.hasAttribute('data-tid'))window.parent.postMessage({type:'tid-click',tid:el.getAttribute('data-tid')},'*');
+},true);
+window.addEventListener('message',function(e){
+  if(!e.data)return;
+  if(e.data.type==='set-mode'){mode=e.data.mode;paint();}
+  if(e.data.type==='set-static'){s=new Set(e.data.tids);paint();}
+});
+})();`;
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+*{box-sizing:border-box}body{margin:0;padding:0}
+</style></head><body>${tidHtml}<scr` + `ipt>${js}</scr` + `ipt></body></html>`;
+}
+
 // ─── Shared primitives ────────────────────────────────────────────────────────
 function Btn({ children, onClick, variant = "ghost", size = "sm", disabled, full, style: extra }) {
   const [hov, setHov] = useState(false);
@@ -348,7 +446,7 @@ function ConfBadge({ level }) {
   );
 }
 
-// ─── Template Builder (3-panel inline) ───────────────────────────────────────
+// ─── Template Builder ─────────────────────────────────────────────────────────
 function TemplateBuilder({ initial, onSave, onCancel }) {
   const { t } = useTranslation();
   const [phase,         setPhase]         = useState(initial?.rawHtml ? "review" : "input"); // "input" | "review"
@@ -356,64 +454,56 @@ function TemplateBuilder({ initial, onSave, onCancel }) {
   const [processedHtml, setProcessedHtml] = useState(initial?.rawHtml || "");
   const [detections,    setDetections]    = useState([]);
   const [name,          setName]          = useState(initial?.name || "");
-  const [previewTab,    setPreviewTab]    = useState("rendered"); // "rendered" | "raw"
-  const [detecting,     setDetecting]     = useState(false);
+  const [previewTab,    setPreviewTab]    = useState("rendered");
+  const iframeRef = useRef(null);
 
-  const handleDetect = useCallback(() => {
+  const [detecting, setDetecting] = useState(false);
+  const finalHtml = processedHtml;
+
+  const handleDetect = async () => {
     if (!originalHtml.trim()) return;
     setDetecting(true);
-    // Small delay so the UI updates first
-    setTimeout(() => {
-      const { detections: dets, processedHtml: proc } = runDetection(originalHtml);
+    try {
+      const sanitized = sanitizeHtml(originalHtml);
+      const { detections: dets, processedHtml: pHtml } = runDetection(sanitized);
+      setProcessedHtml(pHtml);
       setDetections(dets);
-      setProcessedHtml(proc);
+      setPreviewTab("rendered");
       setPhase("review");
+    } finally {
       setDetecting(false);
-    }, 60);
-  }, [originalHtml]);
-
-  const handleReset = () => {
-    setProcessedHtml(originalHtml);
-    setDetections([]);
-    setPhase("input");
+    }
   };
 
-  // Toggle a detection on/off — when disabled, restore original content for that placeholder
+  const handleReset = () => setPhase("input");
+
   const toggleDetection = (key) => {
-    setDetections(prev => prev.map(d => d.key === key ? { ...d, enabled: !d.enabled } : d));
-    // Rebuild processedHtml from original applying only enabled rules
-    setProcessedHtml(prev => {
-      // Simple toggle: find the placeholder in processedHtml and revert if disabling
-      const det = detections.find(d => d.key === key);
+    setDetections(prev => {
+      const det = prev.find(d => d.key === key);
       if (!det) return prev;
       if (det.enabled) {
-        // Disabling — revert placeholder to "(removed)" marker
-        return prev.replace(new RegExp(escapeRegex(key), "g"), `<span style="opacity:0.4;font-style:italic">${t("templates.removedMarker", { label: phLabelByToken(key, t) })}</span>`);
+        setProcessedHtml(ph => ph.replace(new RegExp(escapeRegex(key), "g"),
+          `<span style="opacity:0.4;font-style:italic">${t("templates.removedMarker", { label: phLabelByToken(key, t) })}</span>`));
       } else {
-        // Re-enabling — re-run full detection and apply
-        const { processedHtml: fresh } = runDetection(originalHtml);
-        return fresh;
+        const { processedHtml: restored } = runDetection(sanitizeHtml(originalHtml));
+        setProcessedHtml(restored);
       }
+      return prev.map(d => d.key === key ? { ...d, enabled: !d.enabled } : d);
     });
   };
 
-  // Final HTML used for the template (enabled detections applied, disabled ones reverted)
-  const finalHtml = processedHtml;
-
   const handleSave = () => {
     if (!name.trim()) return;
-    const t = initial ? { ...initial } : blankTemplate(name);
-    t.name       = name.trim();
-    t.rawHtml    = finalHtml;
-    t.useRawHtml = true;
-    onSave(t);
+    const tmpl = initial ? { ...initial } : blankTemplate(name);
+    tmpl.name = name.trim(); tmpl.rawHtml = processedHtml; tmpl.useRawHtml = true;
+    onSave(tmpl);
   };
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "calc(100vh - 180px)", minHeight: 560 }}>
 
-      {/* ── Builder header ── */}
-      <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "0 0 16px", borderBottom: `1px solid ${C.border}`, marginBottom: 16, flexShrink: 0 }}>
+      {/* ── Header ── */}
+      <div style={{ display: "flex", alignItems: "center", gap: 12, paddingBottom: 16, borderBottom: `1px solid ${C.border}`, marginBottom: 16, flexShrink: 0 }}>
         <button onClick={onCancel} style={{ display: "flex", alignItems: "center", gap: 6, background: "transparent", border: "none", cursor: "pointer", color: C.muted, fontSize: 13, fontWeight: 600, padding: "4px 0" }}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5"/><polyline points="12 19 5 12 12 5"/></svg>
           {t("templates.breadcrumbs")}
@@ -444,8 +534,8 @@ function TemplateBuilder({ initial, onSave, onCancel }) {
         </div>
       )}
 
-      {/* ── 3-panel layout ── */}
-      <div style={{ flex: 1, display: "grid", gridTemplateColumns: phase === "input" ? "1fr 320px" : "1fr 360px 1fr", gap: 16, overflow: "hidden", minHeight: 0 }}>
+      {/* ── Content ── */}
+      <div style={{ flex: 1, minHeight: 0, overflow: "hidden", display: "grid", gridTemplateColumns: phase === "review" ? "1fr 280px 1fr" : "1fr", gap: 16 }}>
 
         {/* ══ LEFT: HTML input ══ */}
         <div style={{ display: "flex", flexDirection: "column", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, overflow: "hidden", boxShadow: "var(--shadow)" }}>
@@ -495,11 +585,6 @@ function TemplateBuilder({ initial, onSave, onCancel }) {
                     {t("templates.detectedSubtitle")}
                   </div>
                 </div>
-                {detections.length > 0 && (
-                  <span style={{ fontSize: 12, fontWeight: 700, color: "var(--blue)", background: "var(--blue-bg)", border: "1px solid var(--border-blue)", borderRadius: 20, padding: "3px 10px" }}>
-                    {detections.filter(d => d.enabled).length} / {detections.length}
-                  </span>
-                )}
               </div>
             </div>
 
@@ -557,8 +642,8 @@ function TemplateBuilder({ initial, onSave, onCancel }) {
           </div>
         )}
 
-        {/* ══ RIGHT: Preview (review) / placeholder reference (input) ══ */}
-        {phase === "review" ? (
+        {/* ══ RIGHT: Preview (review phase only) ══ */}
+        {phase === "review" && (
           <div style={{ display: "flex", flexDirection: "column", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, overflow: "hidden", boxShadow: "var(--shadow)" }}>
             {/* Preview tabs */}
             <div style={{ display: "flex", borderBottom: `1px solid ${C.border}`, padding: "0 4px", flexShrink: 0 }}>
@@ -593,24 +678,21 @@ function TemplateBuilder({ initial, onSave, onCancel }) {
               />
             )}
           </div>
-        ) : (
-          <PlaceholderReference />
         )}
       </div>
     </div>
   );
 }
 
-function StepBadge({ n, label, active }) {
+function StepBadge({ n, label, active, done }) {
+  const bg  = active ? "var(--blue)" : done ? "rgba(16,185,129,0.15)" : "var(--bg-surface2)";
+  const bd  = active ? "var(--blue)" : done ? "rgba(16,185,129,0.4)"  : "var(--border)";
+  const col = active ? "#fff"        : done ? "#10b981"                : C.muted;
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-      <div style={{
-        width: 22, height: 22, borderRadius: "50%", flexShrink: 0,
-        background: active ? "var(--blue)" : "var(--bg-surface2)",
-        border: `2px solid ${active ? "var(--blue)" : "var(--border)"}`,
-        display: "flex", alignItems: "center", justifyContent: "center",
-        fontSize: 10, fontWeight: 900, color: active ? "#fff" : C.muted,
-      }}>{n}</div>
+      <div style={{ width: 22, height: 22, borderRadius: "50%", flexShrink: 0, background: bg, border: `2px solid ${bd}`,
+        display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 900, color: col,
+      }}>{done ? "✓" : n}</div>
       <span style={{ fontSize: 11, fontWeight: active ? 700 : 500, color: active ? C.text : C.muted, whiteSpace: "nowrap" }}>{label}</span>
     </div>
   );
