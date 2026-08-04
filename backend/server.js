@@ -48,7 +48,7 @@ const app = express();
 
 // Needed for req.ip to reflect the real client IP (X-Forwarded-For) rather
 // than Render's proxy — used by the signup-fingerprint abuse-detection check.
-app.set("trust proxy", true);
+app.set("trust proxy", 1); // Trust exactly one proxy hop (Render's load balancer)
 
 registerStripeWebhook(app);
 
@@ -981,7 +981,8 @@ app.get("/api/image-proxy", async (req, res) => {
   let parsed;
   try { parsed = new URL(raw); } catch { return res.status(400).json({ error: "Invalid url" }); }
 
-  if (!parsed.hostname.endsWith("tecalliance.net")) {
+  const ALLOWED_SUFFIXES = ["tecalliance.net", "your-objectstorage.com"];
+  if (!ALLOWED_SUFFIXES.some(s => parsed.hostname.endsWith(s))) {
     console.warn(`[image-proxy] Blocked host: ${parsed.hostname}`);
     return res.status(403).json({ error: "Host not allowed" });
   }
