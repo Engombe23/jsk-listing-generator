@@ -1245,12 +1245,13 @@ function ListingGenerator({
                 <div style={{
                   background: "var(--bg-surface)", border: "1px solid var(--border)",
                   borderRadius: 12, overflow: "hidden", boxShadow: "var(--shadow)",
-                  minHeight: 110,
+                  aspectRatio: "1 / 1",
+                  display: "flex", alignItems: "center", justifyContent: "center",
                 }}>
                   <img
                     src={result.article_image}
                     alt={result.product_type || result.generated_title || "Product image"}
-                    style={{ width: "100%", maxHeight: 200, objectFit: "contain", display: "block", padding: "12px 16px", boxSizing: "border-box" }}
+                    style={{ width: "100%", height: "100%", objectFit: "contain", display: "block", padding: 12, boxSizing: "border-box" }}
                     onError={(e) => {
                       e.currentTarget.style.display = "none";
                       const ph = e.currentTarget.parentElement.querySelector("[data-img-ph]");
