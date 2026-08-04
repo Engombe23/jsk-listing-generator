@@ -1000,14 +1000,20 @@ app.get("/api/image-proxy", async (req, res) => {
     console.log(`[image-proxy] Response: ${upstream.status} ${upstream.headers.get("content-type")}`);
     if (!upstream.ok) return res.status(upstream.status).end();
 
-    const upstreamCt = upstream.headers.get("content-type") || "";
-    const extMap = { ".webp": "image/webp", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".gif": "image/gif" };
-    const ext = Object.keys(extMap).find(e => parsed.pathname.toLowerCase().endsWith(e));
-    const ct = (upstreamCt.startsWith("image/") ? upstreamCt : null) ?? extMap[ext] ?? "image/jpeg";
+    const buf = Buffer.from(await upstream.arrayBuffer());
+
+    // Detect real image format from magic bytes — CDN always returns binary/octet-stream
+    let ct = "image/jpeg";
+    if (buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4E && buf[3] === 0x47) ct = "image/png";
+    else if (buf[0] === 0xFF && buf[1] === 0xD8 && buf[2] === 0xFF) ct = "image/jpeg";
+    else if (buf[0] === 0x47 && buf[1] === 0x49 && buf[2] === 0x46) ct = "image/gif";
+    else if (buf[0] === 0x52 && buf[1] === 0x49 && buf[2] === 0x46 && buf[3] === 0x46 &&
+             buf[8] === 0x57 && buf[9] === 0x45 && buf[10] === 0x42 && buf[11] === 0x50) ct = "image/webp";
+
+    console.log(`[image-proxy] Detected format: ${ct} (first bytes: ${buf.slice(0,4).toString("hex")})`);
     res.setHeader("Content-Type", ct);
-    res.setHeader("Cache-Control", "public, max-age=86400");
-    const buf = await upstream.arrayBuffer();
-    res.send(Buffer.from(buf));
+    res.setHeader("Cache-Control", "no-cache");
+    res.send(buf);
   } catch (e) {
     console.error(`[image-proxy] Error for ${raw}:`, e.message);
     res.status(502).json({ error: "Image fetch failed" });
