@@ -106,7 +106,7 @@ export function normalizeEngCodes(raw) {
   if (!raw) return [];
   const str = Array.isArray(raw) ? raw.join(",") : String(raw);
   return [...new Set(
-    str.split(/[,;\|\/\s]+/).map(c => c.trim().toUpperCase()).filter(Boolean)
+    str.split(/[,;\|\/]+/).map(c => c.replace(/\s+/g, "").toUpperCase()).filter(Boolean)
   )];
 }
 

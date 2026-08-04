@@ -143,7 +143,7 @@ function cleanNumber(value) {
 
 function splitEngineCodes(value) {
   if (!value) return [];
-  return String(value).split(/[,\n;/|]+/).map((s) => s.trim()).filter(Boolean);
+  return String(value).split(/[,\n;/|]+/).map((s) => s.replace(/\s+/g, "")).filter(Boolean);
 }
 
 // TecDoc returns BMW engine codes as sequential tokens ("N47","D20","C") instead of
