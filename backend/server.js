@@ -537,37 +537,19 @@ async function fetchEngineDataByModelIds(cars, langId = LANG_ID) {
 
 // ─── Image helper ─────────────────────────────────────────────────────────────
 
-const IMAGE_EXT_RE = /\.(jpe?g|png|webp|gif|avif)(\?.*)?$/i;
-
-function isImageUrl(url) {
-  return IMAGE_EXT_RE.test(url);
-}
-
+// Return the first image URL from the TecDoc article-all-media-info response.
+// Takes the best available size from articleImages[0] without filtering by
+// file extension — the image-proxy endpoint handles format detection.
 function extractFirstImageUrl(mediaResponse) {
   if (!mediaResponse) return "";
-
-  // Try the documented TecDoc articleImages array first (largest available size)
   const imgArr = mediaResponse.articleImages ?? mediaResponse.data?.articleImages ?? null;
   if (Array.isArray(imgArr) && imgArr.length > 0) {
     for (const img of imgArr) {
       const url = img.imageURL4 || img.imageURL3 || img.imageURL2 || img.imageURL1 || "";
-      if (url && url.startsWith("http") && isImageUrl(url)) return url;
+      if (url && url.startsWith("http")) return url;
     }
   }
-
-  // Fallback: walk the entire response tree — only pick URLs with image extensions
-  const urls = [];
-  const walk = (obj, depth = 0) => {
-    if (!obj || depth > 8) return;
-    if (typeof obj === "string") {
-      if (obj.startsWith("http") && isImageUrl(obj)) urls.push(obj);
-      return;
-    }
-    if (Array.isArray(obj)) { obj.forEach((v) => walk(v, depth + 1)); return; }
-    if (typeof obj === "object") Object.values(obj).forEach((v) => walk(v, depth + 1));
-  };
-  walk(mediaResponse);
-  return urls[0] || "";
+  return "";
 }
 
 // ─── Normalize ────────────────────────────────────────────────────────────────

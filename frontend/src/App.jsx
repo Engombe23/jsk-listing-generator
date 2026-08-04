@@ -1249,7 +1249,7 @@ function ListingGenerator({
                   display: "flex", alignItems: "center", justifyContent: "center",
                 }}>
                   <img
-                    src={result.article_image}
+                    src={`${API_URL}/api/image-proxy?url=${encodeURIComponent(result.article_image)}`}
                     alt={result.product_type || result.generated_title || "Product image"}
                     style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain", padding: 12, boxSizing: "border-box" }}
                     onError={(e) => {
@@ -2485,7 +2485,7 @@ function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate, n
               borderRadius: 14, padding: 12,
               display: "flex", justifyContent: "center", alignItems: "center"
             }}>
-              <img src={result.article_image} alt={result.generated_title || "Product"}
+              <img src={`${API_URL}/api/image-proxy?url=${encodeURIComponent(result.article_image)}`} alt={result.generated_title || "Product"}
                 style={{ maxWidth: "100%", maxHeight: 160, objectFit: "contain", borderRadius: 8 }} />
             </div>
           )}
