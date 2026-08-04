@@ -1240,12 +1240,13 @@ function ListingGenerator({
           {phase === "done" && result && (
             <div style={{ display: "flex", flexDirection: "column", gap: 12, position: "sticky", top: 16, maxHeight: "calc(100vh - 80px)", overflowY: "auto" }}>
 
-              {/* Product image — always shown; placeholder when TecDoc has no image */}
-              <div style={{
-                background: "var(--bg-surface)", border: "1px solid var(--border)",
-                borderRadius: 12, overflow: "hidden", boxShadow: "var(--shadow)",
-              }}>
-                {result.article_image ? (
+              {/* Product image — only shown when TecDoc has an image URL */}
+              {result.article_image && (
+                <div style={{
+                  background: "var(--bg-surface)", border: "1px solid var(--border)",
+                  borderRadius: 12, overflow: "hidden", boxShadow: "var(--shadow)",
+                  minHeight: 110,
+                }}>
                   <img
                     src={`${API_URL}/api/image-proxy?url=${encodeURIComponent(result.article_image)}`}
                     alt={result.product_type || result.generated_title || "Product image"}
@@ -1256,19 +1257,19 @@ function ListingGenerator({
                       if (ph) ph.style.display = "flex";
                     }}
                   />
-                ) : null}
-                {/* Shown when image is absent or the img tag errors */}
-                <div
-                  data-img-ph="1"
-                  style={{
-                    display: result.article_image ? "none" : "flex",
-                    alignItems: "center", justifyContent: "center",
-                    height: 110, background: "var(--bg-surface2)",
-                  }}
-                >
-                  <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase", color: "var(--text-dim)" }}>{t("generator.noImage")}</span>
+                  {/* Shown only when the proxied image fails to load */}
+                  <div
+                    data-img-ph="1"
+                    style={{
+                      display: "none",
+                      alignItems: "center", justifyContent: "center",
+                      height: 110, background: "var(--bg-surface2)",
+                    }}
+                  >
+                    <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase", color: "var(--text-dim)" }}>{t("generator.noImage")}</span>
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Article */}
               <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 12, padding: "14px 16px", boxShadow: "var(--shadow)" }}>
@@ -1933,6 +1934,7 @@ function resolveHtml(customTemplateHtml, generatedHtml, result) {
 
 function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate, noRightPanel = false, onHtmlChange, onRowsChange, savedListings = [] }) {
   const { t } = useTranslation();
+  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
   const [innerTab,     setInnerTab]     = useState("overview"); // "overview" | "specifics"
   const [editMode,     setEditMode]     = useState(false);
   const [editedHtml,   setEditedHtml]   = useState(
@@ -2482,7 +2484,7 @@ function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate, n
               borderRadius: 14, padding: 12,
               display: "flex", justifyContent: "center", alignItems: "center"
             }}>
-              <img src={result.article_image} alt={result.generated_title || "Product"}
+              <img src={`${API_URL}/api/image-proxy?url=${encodeURIComponent(result.article_image)}`} alt={result.generated_title || "Product"}
                 style={{ maxWidth: "100%", maxHeight: 160, objectFit: "contain", borderRadius: 8 }} />
             </div>
           )}
