@@ -36,6 +36,8 @@ import { canGenerateListing, incrementListingUsage, checkFeatureAccess } from ".
 import authRouter from "./routes/auth.js";
 import partIdentifierRouter from "./routes/partIdentifier.js";
 import contactRouter from "./routes/contact.js";
+import adminImportRouter from "./routes/admin-import.js";
+import { lookupVehiclesByIds } from "./lib/tecdoc-cache.js";
 
 const openaiClient = process.env.OPENAI_API_KEY
   ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
@@ -58,6 +60,7 @@ app.use("/api", stripeRouter);
 app.use("/api", authRouter);
 app.use("/api", partIdentifierRouter);
 app.use("/api", contactRouter);
+app.use("/api", adminImportRouter);
 
 // Rate limiters for cost-incurring endpoints (per IP, per minute).
 // `trust proxy` is set above so req.ip reflects the real client IP.
@@ -398,7 +401,7 @@ async function resolveArticleResponse(input, langId = LANG_ID) {
 async function fetchEngineTypesByModel(modelId, langId = LANG_ID) {
   const url = `https://${RAPIDAPI_HOST}/api/types/type-id/${TYPE_ID}/list-vehicles-types/${modelId}/lang-id/${langId}/country-filter-id/${COUNTRY_FILTER_ID}`;
   try {
-    const res = await fetchWithTimeout(url, { method: "GET", headers: apiHeaders() });
+    const res = await fetchWithTimeout(url, { method: "GET", headers: apiHeaders() }, 6000);
     if (!res.ok) return [];
     const data = await res.json();
     const rows = data?.modelTypes || data?.vehicleTypes || data?.vehicles || data?.data || [];
@@ -487,7 +490,7 @@ async function fetchEngineDataByModelIds(cars, langId = LANG_ID) {
       cappedSet(modelEngineCache, cacheKey(modelId), rows, 500);
       result[modelId] = rows;
     }));
-    if (i + BATCH < uncached.length) await sleep(200); // brief pause between batches
+    if (i + BATCH < uncached.length) await sleep(50); // brief pause between batches
   }
 
   return result;
@@ -528,7 +531,7 @@ function extractFirstImageUrl(mediaResponse) {
 
 // ─── Normalize ────────────────────────────────────────────────────────────────
 
-function normalizeTecdoc(articleResponse, engineDataByModelId) {
+function normalizeTecdoc(articleResponse, engineDataByModelId, vehicleCache = null) {
   const article = articleResponse?.articles?.[0];
   if (!article) throw new Error("No article found");
 
@@ -542,22 +545,34 @@ function normalizeTecdoc(articleResponse, engineDataByModelId) {
     const yearFrom = car.constructionIntervalStart || car.yearFrom || car.from || "";
     const yearTo   = car.constructionIntervalEnd   || car.yearTo   || car.to   || "";
     const vid      = car.vehicleId || car.typeId || car.kType || car.kTypeId || car.id || "";
+    const vidStr   = String(vid);
     const modelId  = String(car.modelId || car.carModelId || "");
 
-    // Look up model-series engine list, then find the best match for this variant
-    const engineRows = (modelId ? engineDataByModelId[modelId] : null) || [];
-    const match      = findEngineMatch({ ...car, typeEngineName: engine, constructionIntervalStart: yearFrom, constructionIntervalEnd: yearTo }, engineRows);
+    let engine_codes, kw, hp, cc;
 
-    // Engine codes — try match first, then every known field name on the car entry
-    const rawCodes =
-      match?.engCodes    || match?.engineCodes || match?.engineCode || match?.motorCodes ||
-      car?.engCodes      || car?.engineCodes   || car?.engineCode   || car?.motorCodes   ||
-      "";
+    // Prefer Supabase cache when the vehicle is known — avoids a TecDoc API call
+    if (vehicleCache?.has(vidStr)) {
+      const cached = vehicleCache.get(vidStr);
+      engine_codes = Array.isArray(cached.engine_codes) ? cached.engine_codes : splitEngineCodes(cached.engine_codes || "");
+      kw = cached.power_kw  ?? null;
+      hp = cached.power_hp  ?? null;
+      cc = cached.capacity_cc ?? null;
+    } else {
+      // Look up model-series engine list, then find the best match for this variant
+      const engineRows = (modelId ? engineDataByModelId[modelId] : null) || [];
+      const match      = findEngineMatch({ ...car, typeEngineName: engine, constructionIntervalStart: yearFrom, constructionIntervalEnd: yearTo }, engineRows);
 
-    // Power + capacity — match overrides car entry if available
-    const kw = match?.powerKw   ?? car?.powerKw   ?? car?.kw  ?? null;
-    const hp = match?.powerPs   ?? car?.powerPs   ?? car?.ps  ?? car?.hp ?? null;
-    const cc = match?.capacityTech ?? car?.capacityTech ?? car?.displacement ?? car?.cc ?? null;
+      // Engine codes — try match first, then every known field name on the car entry
+      const rawCodes =
+        match?.engCodes    || match?.engineCodes || match?.engineCode || match?.motorCodes ||
+        car?.engCodes      || car?.engineCodes   || car?.engineCode   || car?.motorCodes   ||
+        "";
+
+      engine_codes = uniq(splitEngineCodes(rawCodes));
+      kw = match?.powerKw   ?? car?.powerKw   ?? car?.kw  ?? null;
+      hp = match?.powerPs   ?? car?.powerPs   ?? car?.ps  ?? car?.hp ?? null;
+      cc = match?.capacityTech ?? car?.capacityTech ?? car?.displacement ?? car?.cc ?? null;
+    }
 
     const vehicle = `${make} ${model} ${engine}`.trim();
 
@@ -571,8 +586,8 @@ function normalizeTecdoc(articleResponse, engineDataByModelId) {
       kw:           cleanNumber(kw),
       hp:           cleanNumber(hp),
       cc:           cleanNumber(cc),
-      engine_codes: uniq(splitEngineCodes(rawCodes)),
-      k_number:     String(vid)
+      engine_codes: uniq(Array.isArray(engine_codes) ? engine_codes : splitEngineCodes(engine_codes)),
+      k_number:     vidStr
     };
   }).filter(Boolean).sort((a, b) => {
     const ma = a.make.toLowerCase(), mb = b.make.toLowerCase();
@@ -605,12 +620,13 @@ function normalizeTecdoc(articleResponse, engineDataByModelId) {
     .filter((s) => s.label && s.value?.trim());
 
   return {
-    product_name:     article.articleProductName || "",
-    oem_numbers:      uniq((article.oemNo || []).map((o) => o.oemDisplayNo)),
+    product_name:       article.articleProductName || "",
+    oem_numbers:        uniq((article.oemNo || []).map((o) => o.oemDisplayNo)),
     specifications,
-    item_specifics:   itemSpecifics,
+    item_specifics:     itemSpecifics,
     compatibility_rows: rows,
-    data_supplier_id: article.dataSupplierId || null
+    engine_codes:       uniq(rows.flatMap(r => r.engine_codes || [])),
+    data_supplier_id:   article.dataSupplierId || null
   };
 }
 
@@ -673,12 +689,27 @@ async function buildListingFromArticle(articleNumber, themeId = "clean-default",
     console.log(`[CompatCars] sample kw/hp/cc:`, sample?.powerKw, sample?.powerPs, sample?.capacityTech);
   }
 
-  // ── Fetch engine data grouped by model series ─────────────────────────────
-  const engineDataByModelId = await fetchEngineDataByModelIds(cars);
+  // ── Supabase vehicle cache lookup ─────────────────────────────────────────
+  // Batch-fetch all known vehicle IDs from the local cache to avoid repeated
+  // TecDoc API calls. Vehicles missing from the cache fall back to the
+  // model-level engine fetch below.
+  const allVids = cars
+    .map(c => String(c.vehicleId || c.typeId || c.kType || c.kTypeId || c.id || ""))
+    .filter(Boolean);
+  const vehicleCache = await lookupVehiclesByIds(allVids);
+  console.log(`[Listing] ${articleNumber}: ${vehicleCache.size}/${allVids.length} vehicles from Supabase cache`);
+
+  // Only call the TecDoc API for vehicles that were not in the cache
+  const uncachedCars = allVids.length > 0
+    ? cars.filter(c => !vehicleCache.has(String(c.vehicleId || c.typeId || c.kType || c.kTypeId || c.id || "")))
+    : cars;
+  const engineDataByModelId = uncachedCars.length > 0
+    ? await fetchEngineDataByModelIds(uncachedCars)
+    : {};
   console.log(`[Listing] ${articleNumber}: fetched engine data for ${Object.keys(engineDataByModelId).length} model series`);
 
   // ── Normalize ─────────────────────────────────────────────────────────────
-  const normalized = normalizeTecdoc(articleResponse, engineDataByModelId);
+  const normalized = normalizeTecdoc(articleResponse, engineDataByModelId, vehicleCache);
   const kNumbers    = uniq(normalized.compatibility_rows.map((r) => r.k_number));
   const engineCodes = uniq(normalized.compatibility_rows.flatMap((r) => r.engine_codes || []));
 

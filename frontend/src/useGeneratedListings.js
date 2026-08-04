@@ -8,21 +8,22 @@ const migratedKey = (userId) => `jsk_migrated_listings_${userId}`;
 
 function buildEntry(result) {
   return {
-    status: "Draft",
-    title: result.generated_title || "",
-    article_number: result.article_number || "",
-    description_html: result.generated_html || "",
-    item_specifics: result.item_specifics || [],
-    specifications: result.specifications || [],
-    oem_numbers: result.oem_numbers || [],
-    k_number_list: result.k_number_list || [],
-    engine_codes: result.engine_codes || [],
+    status:              "Draft",
+    title:               result.generated_title     || "",
+    article_number:      result.article_number      || "",
+    description_html:    result.generated_html      || "",
+    item_specifics:      result.item_specifics      || [],
+    custom_specifics:    result.custom_specifics    ?? null,
+    specifications:      result.specifications      || [],
+    oem_numbers:         result.oem_numbers         || [],
+    k_number_list:       result.k_number_list       || [],
+    engine_codes:        result.engine_codes        || [],
     compatibility_count: result.compatibility_count || 0,
-    product_type: result.product_type || "",
-    sku: result.sku || "",
-    bin_price: "",
-    article_image: result.article_image || "",
-    savedAt: new Date().toISOString(),
+    product_type:        result.product_type        || "",
+    sku:                 result.sku                 || "",
+    bin_price:           "",
+    article_image:       result.article_image       || "",
+    savedAt:             new Date().toISOString(),
   };
 }
 

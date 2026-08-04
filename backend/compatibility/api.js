@@ -295,6 +295,28 @@ export async function listModelsByManufacturer(manufacturerId) {
   return Array.isArray(data) ? data : (data?.data || data?.models || []);
 }
 
+// ─── Engine types for a model series ─────────────────────────────────────────
+// GET /api/types/type-id/1/list-vehicles-types/{modelId}/lang-id/{langId}/country-filter-id/63
+// Returns all engine/variant rows for a given TecDoc model ID.
+// Also used by the TecDoc vehicle cache importer.
+
+export async function fetchEngineTypesByModel(modelId, langId = LANG_ID) {
+  const url = `https://${RAPIDAPI_HOST}/api/types/type-id/${TYPE_ID}/list-vehicles-types/${modelId}/lang-id/${langId}/country-filter-id/${COUNTRY_FILTER_ID}`;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 20_000);
+  try {
+    const res = await fetch(url, { method: "GET", headers: apiHeaders(), signal: controller.signal });
+    if (!res.ok) return [];
+    const data = await res.json();
+    const rows = data?.modelTypes || data?.vehicleTypes || data?.vehicles || data?.data || [];
+    return Array.isArray(rows) ? rows : [];
+  } catch {
+    return [];
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 // ─── List all product/part names ──────────────────────────────────────────────
 // GET /api/category/list-products-names/lang-id/4
 // Returns every known part category name — useful for normalising product types.
