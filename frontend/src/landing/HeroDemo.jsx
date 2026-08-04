@@ -1,29 +1,12 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 import { Search, Check, Loader2, FileDown, ShieldCheck, Sparkles, Car } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 const ease = [0.22, 1, 0.36, 1];
 const OEM = "11247807345";
 
-const STATUS = [
-  "Searching TecDoc database",
-  "Part identified — Connecting Rod",
-  "Matching vehicle applications",
-  "Fetching OEM references",
-  "Building compatibility table",
-  "Generating SEO title",
-  "Finding interchangeable numbers",
-  "Preparing export",
-];
-
 const SECTIONS = ["tabs", "title", "specifics", "compat", "rows", "oe", "export"];
-
-const SPECIFICS = [
-  ["Brand", "BMW"],
-  ["OE Number", "11247807345"],
-  ["Condition", "New"],
-  ["Placement", "Engine"],
-];
 
 const COMPAT_ROWS = [
   { vehicle: "3 Series (E90) 320d", years: "2007 – 2011", kw: "130", hp: "177", cc: "1995", codes: "N47D20A" },
@@ -35,15 +18,6 @@ const COMPAT_ROWS = [
 
 const OE_REFS = ["11247807345", "11248514023", "11247797527", "11247823929"];
 const INTERCHANGE = ["INA 530038110", "Febi 45821", "ELRING 388.120", "Mahle 001PS11000S"];
-
-const BADGES = [
-  { icon: Car,        label: "58 compatible vehicles",  pos: "-left-4 top-24 sm:-left-8" },
-  { icon: ShieldCheck,label: "74 OE references",         pos: "-right-4 top-16 sm:-right-9" },
-  { icon: Sparkles,   label: "SEO title generated",      pos: "-left-4 bottom-28 sm:-left-10" },
-  { icon: FileDown,   label: "Ready for CSV export",     pos: "-right-4 bottom-24 sm:-right-9" },
-];
-
-const TABS = ["Description", "Compatibility", "Item Specifics", "HTML"];
 
 function Block({ visible, children, className = "" }) {
   return (
@@ -59,6 +33,7 @@ function Block({ visible, children, className = "" }) {
 }
 
 export default function HeroDemo() {
+  const { t } = useTranslation();
   const reduced = useReducedMotion();
   const [cycle, setCycle] = useState(0);
   const [phase, setPhase] = useState("idle");
@@ -70,7 +45,7 @@ export default function HeroDemo() {
   useEffect(() => {
     if (reduced) {
       setTyped(OEM); setPhase("done");
-      setStatusStep(STATUS.length); setBuildStep(SECTIONS.length); setRowStep(COMPAT_ROWS.length);
+      setStatusStep(8); setBuildStep(SECTIONS.length); setRowStep(COMPAT_ROWS.length);
       return;
     }
 
@@ -87,10 +62,10 @@ export default function HeroDemo() {
 
     at(afterType, () => setPhase("searching"));
     const statusStart = afterType + 380;
-    for (let i = 0; i < STATUS.length; i++) {
+    for (let i = 0; i < 8; i++) {
       at(statusStart + i * 260, () => setStatusStep(i + 1));
     }
-    const statusEnd = statusStart + STATUS.length * 260 + 240;
+    const statusEnd = statusStart + 8 * 260 + 240;
 
     at(statusEnd, () => setPhase("building"));
     const buildStart = statusEnd + 120;
@@ -119,6 +94,20 @@ export default function HeroDemo() {
     ? "skeleton" : phase === "searching" ? "status" : "build";
 
   const isShown = (name) => SECTIONS.indexOf(name) < buildStep;
+  const status = t("landing.heroDemo.status", { returnObjects: true });
+  const badges = [
+    { icon: Car, label: t("landing.heroDemo.badges.vehicles"), pos: "-left-4 top-24 sm:-left-8" },
+    { icon: ShieldCheck, label: t("landing.heroDemo.badges.references"), pos: "-right-4 top-16 sm:-right-9" },
+    { icon: Sparkles, label: t("landing.heroDemo.badges.seo"), pos: "-left-4 bottom-28 sm:-left-10" },
+    { icon: FileDown, label: t("landing.heroDemo.badges.export"), pos: "-right-4 bottom-24 sm:-right-9" },
+  ];
+  const specifics = [
+    [t("landing.heroDemo.specifics.brand"), "BMW"],
+    [t("landing.heroDemo.specifics.oeNumber"), OEM],
+    [t("landing.heroDemo.specifics.condition"), t("landing.heroDemo.values.new")],
+    [t("landing.heroDemo.specifics.placement"), t("landing.heroDemo.values.engine")],
+  ];
+  const tabs = t("landing.heroDemo.tabs", { returnObjects: true });
 
   return (
     <motion.div
@@ -129,7 +118,7 @@ export default function HeroDemo() {
       <div className="pointer-events-none absolute -inset-10 -z-10 rounded-[3rem] bg-[radial-gradient(ellipse_at_center,rgba(19,93,255,0.18),transparent_65%)] blur-2xl" />
 
       {/* floating badges */}
-      {BADGES.map((b, i) => (
+      {badges.map((b, i) => (
         <motion.div
           key={b.label}
           initial={false}
@@ -152,7 +141,7 @@ export default function HeroDemo() {
       {/* search bar */}
       <div className="relative z-20 rounded-2xl border border-hair bg-white/90 p-5 shadow-float ring-1 ring-black/[0.02] backdrop-blur sm:p-6">
         <label className="mb-2.5 block text-left font-mono text-[0.72rem] font-medium uppercase tracking-[0.14em] text-faint">
-          Enter OE / OEM / Article Number
+          {t("landing.heroDemo.inputLabel")}
         </label>
         <div className={`flex items-center gap-3 rounded-xl border-2 bg-white px-4 py-3.5 transition-colors sm:py-4 ${generating || complete ? "border-primary/40" : "border-hair"}`}>
           <Search className="h-5 w-5 shrink-0 text-primary" />
@@ -172,10 +161,10 @@ export default function HeroDemo() {
           className={`mt-4 flex w-full items-center justify-center gap-2 rounded-xl px-6 py-3.5 text-[0.95rem] font-semibold text-white transition-colors ${generating ? "bg-primary/70" : complete ? "bg-successg" : "bg-primary"}`}
         >
           {generating ? (
-            <><Loader2 className="h-4 w-4 animate-spin" />Generating…</>
+            <><Loader2 className="h-4 w-4 animate-spin" />{t("landing.heroDemo.generating")}</>
           ) : complete ? (
-            <><Check className="h-4 w-4" strokeWidth={3} />Listing ready</>
-          ) : "Generate Listing"}
+            <><Check className="h-4 w-4" strokeWidth={3} />{t("landing.heroDemo.ready")}</>
+          ) : t("landing.heroDemo.generate")}
         </button>
       </div>
 
@@ -207,7 +196,7 @@ export default function HeroDemo() {
           </div>
           <div className="hidden items-center gap-1.5 rounded-full bg-successg/10 px-2.5 py-1 sm:flex">
             <span className="animate-livepulse h-2 w-2 rounded-full bg-successg" />
-            <span className="font-mono text-[0.62rem] font-semibold uppercase tracking-wider text-successg">Live</span>
+            <span className="font-mono text-[0.62rem] font-semibold uppercase tracking-wider text-successg">{t("landing.heroDemo.live")}</span>
           </div>
         </div>
 
@@ -231,7 +220,7 @@ export default function HeroDemo() {
             {/* status checklist */}
             {bodyMode === "status" && (
               <motion.div key="status" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.35 }} className="mx-auto flex max-w-md flex-col gap-3 py-6">
-                {STATUS.map((line, i) => {
+                {status.map((line, i) => {
                   if (i >= statusStep) return null;
                   const done = i < statusStep - 1;
                   return (
@@ -253,13 +242,13 @@ export default function HeroDemo() {
                 {/* tab bar */}
                 <Block visible={isShown("tabs")}>
                   <div className="flex gap-1 rounded-xl border border-hair bg-[#f7f9fc] p-1">
-                    {TABS.map((t, i) => (
-                      <div key={t} className="flex-1 truncate rounded-lg px-2 py-2 text-center text-[0.65rem] font-bold" style={{
+                    {tabs.map((tab, i) => (
+                      <div key={tab} className="flex-1 truncate rounded-lg px-2 py-2 text-center text-[0.65rem] font-bold" style={{
                         background: i === 1 ? "#135dff" : "transparent",
                         color: i === 1 ? "#fff" : "#9ca3af",
                         boxShadow: i === 1 ? "0 0 14px rgba(19,93,255,0.25)" : "none"
                       }}>
-                        {t}{i === 1 ? " (58)" : ""}
+                        {tab}{i === 1 ? " (58)" : ""}
                       </div>
                     ))}
                   </div>
@@ -268,9 +257,9 @@ export default function HeroDemo() {
                 {/* listing title */}
                 <Block visible={isShown("title")}>
                   <div className="rounded-xl border border-hair bg-white p-3">
-                    <div className="font-mono text-[0.6rem] font-semibold uppercase tracking-widest text-primary">Listing Title</div>
+                    <div className="font-mono text-[0.6rem] font-semibold uppercase tracking-widest text-primary">{t("landing.heroDemo.listingTitle")}</div>
                     <div className="mt-1 font-bold leading-snug text-[#111827]" style={{ fontSize: "0.82rem" }}>
-                      Genuine BMW Connecting Rod 11247807345 — 3 Series E90 E91 320d 325d N47
+                      {t("landing.heroDemo.generatedTitle")}
                     </div>
                   </div>
                 </Block>
@@ -278,9 +267,9 @@ export default function HeroDemo() {
                 {/* item specifics */}
                 <Block visible={isShown("specifics")}>
                   <div className="rounded-xl border border-hair bg-white p-3">
-                    <div className="mb-2 font-mono text-[0.6rem] font-semibold uppercase tracking-widest text-[#9ca3af]">Item Specifics</div>
+                    <div className="mb-2 font-mono text-[0.6rem] font-semibold uppercase tracking-widest text-[#9ca3af]">{t("landing.heroDemo.itemSpecifics")}</div>
                     <div className="grid grid-cols-4 gap-1.5">
-                      {SPECIFICS.map(([k, v]) => (
+                      {specifics.map(([k, v]) => (
                         <div key={k} className="rounded-lg border border-hair bg-[#f7f9fc] p-2">
                           <div className="text-[0.55rem] uppercase tracking-wide text-[#9ca3af]">{k}</div>
                           <div className="mt-0.5 text-[0.72rem] font-bold text-[#111827]">{v}</div>
@@ -294,19 +283,19 @@ export default function HeroDemo() {
                 <Block visible={isShown("compat")}>
                   <div className="overflow-hidden rounded-xl border border-hair">
                     <div className="flex items-center justify-between border-b border-hair bg-[#f7f9fc] px-3 py-2">
-                      <div className="font-mono text-[0.6rem] font-semibold uppercase tracking-widest text-[#9ca3af]">Compatibility</div>
+                      <div className="font-mono text-[0.6rem] font-semibold uppercase tracking-widest text-[#9ca3af]">{t("landing.heroDemo.compatibility")}</div>
                       <div className="flex items-center gap-1.5 rounded-full px-2 py-0.5" style={{ background: "rgba(22,163,74,0.08)", border: "1px solid rgba(22,163,74,0.2)" }}>
                         <span className="h-1.5 w-1.5 rounded-full bg-successg" />
-                        <span className="font-mono text-[0.6rem] font-semibold text-successg">58 vehicles</span>
+                        <span className="font-mono text-[0.6rem] font-semibold text-successg">{t("landing.heroDemo.vehicles", { count: 58 })}</span>
                       </div>
                     </div>
                     {/* manufacturer header — dark, matching real app */}
                     <div className="border-b border-hair px-3 py-1.5 text-center text-[0.72rem] font-bold text-white" style={{ background: "#1f2937" }}>
-                      BMW Models
+                      {t("landing.heroDemo.models", { brand: "BMW" })}
                     </div>
                     {/* column headers */}
                     <div className="grid border-b border-hair bg-[#f1f5f9] text-[0.6rem] font-bold uppercase tracking-wide text-[#6b7280]" style={{ gridTemplateColumns: "2fr 1.5fr 0.55fr 0.55fr 0.7fr 1.5fr", padding: "5px 10px" }}>
-                      <span>Vehicle</span><span>Years</span><span className="text-center">kW</span><span className="text-center">HP</span><span className="text-center">CC</span><span>Engine Code</span>
+                      <span>{t("landing.heroDemo.columns.vehicle")}</span><span>{t("landing.heroDemo.columns.years")}</span><span className="text-center">kW</span><span className="text-center">HP</span><span className="text-center">CC</span><span>{t("landing.heroDemo.columns.engineCode")}</span>
                     </div>
                     {/* data rows */}
                     {COMPAT_ROWS.slice(0, rowStep).map((r, i) => (
@@ -333,7 +322,7 @@ export default function HeroDemo() {
                 <Block visible={isShown("oe")}>
                   <div className="grid gap-2 sm:grid-cols-2">
                     <div className="rounded-xl border border-hair bg-white p-3">
-                      <div className="mb-2 font-mono text-[0.6rem] font-semibold uppercase tracking-widest text-[#9ca3af]">OE References</div>
+                      <div className="mb-2 font-mono text-[0.6rem] font-semibold uppercase tracking-widest text-[#9ca3af]">{t("landing.heroDemo.oeReferences")}</div>
                       <div className="flex flex-wrap gap-1">
                         {OE_REFS.map((n) => (
                           <span key={n} className="rounded border border-hair bg-[#f7f9fc] px-1.5 py-0.5 font-mono text-[0.58rem] text-[#374151]">{n}</span>
@@ -341,7 +330,7 @@ export default function HeroDemo() {
                       </div>
                     </div>
                     <div className="rounded-xl border border-hair bg-white p-3">
-                      <div className="mb-2 font-mono text-[0.6rem] font-semibold uppercase tracking-widest text-[#9ca3af]">Interchangeable</div>
+                      <div className="mb-2 font-mono text-[0.6rem] font-semibold uppercase tracking-widest text-[#9ca3af]">{t("landing.heroDemo.interchangeable")}</div>
                       <div className="flex flex-wrap gap-1">
                         {INTERCHANGE.map((n) => (
                           <span key={n} className="rounded border border-hair bg-[#f7f9fc] px-1.5 py-0.5 font-mono text-[0.58rem] text-[#374151]">{n}</span>
@@ -355,10 +344,10 @@ export default function HeroDemo() {
                 <Block visible={isShown("export")}>
                   <div className="flex flex-wrap items-center gap-2 rounded-xl border border-hair bg-[#f7f9fc] px-3 py-3">
                     <span className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-[0.75rem] font-bold text-white" style={{ background: "#135DFF" }}>
-                      <FileDown className="h-3.5 w-3.5" />Save Listing
+                      <FileDown className="h-3.5 w-3.5" />{t("landing.heroDemo.save")}
                     </span>
                     <span className="flex items-center gap-1.5 rounded-lg border border-hair bg-white px-3 py-2 text-[0.75rem] font-bold text-[#374151]">
-                      Copy HTML
+                      {t("landing.heroDemo.copyHtml")}
                     </span>
                     {complete && (
                       <motion.span
@@ -369,7 +358,7 @@ export default function HeroDemo() {
                         style={{ background: "rgba(22,163,74,0.08)", border: "1px solid rgba(22,163,74,0.2)", color: "#16a34a" }}
                       >
                         <Check className="h-3 w-3" strokeWidth={3} />
-                        SEO title generated
+                        {t("landing.heroDemo.badges.seo")}
                       </motion.span>
                     )}
                   </div>

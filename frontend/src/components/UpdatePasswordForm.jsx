@@ -1,9 +1,11 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
+import { useTranslation } from "react-i18next";
 
 export default function UpdatePasswordForm() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [password, setPassword] = useState("");
   const [error, setError] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -21,7 +23,7 @@ export default function UpdatePasswordForm() {
 
       navigate("/", { replace: true });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred");
+      setError(err instanceof Error ? err.message : t("common.error"));
     } finally {
       setIsLoading(false);
     }
@@ -31,11 +33,11 @@ export default function UpdatePasswordForm() {
     <form onSubmit={handleUpdatePassword}>
       <div className="flex flex-col gap-6">
         <div className="grid gap-2">
-          <label htmlFor="password">New password</label>
+          <label htmlFor="password">{t("auth.newPassword")}</label>
           <input
             id="password"
             type="password"
-            placeholder="New password"
+            placeholder={t("auth.newPasswordPlaceholder")}
             required
             value={password}
             onChange={(e) => setPassword(e.target.value)}
@@ -43,7 +45,7 @@ export default function UpdatePasswordForm() {
         </div>
         {error && <p className="text-sm text-red-500">{error}</p>}
         <button type="submit" className="w-full" disabled={isLoading}>
-          {isLoading ? "Saving..." : "Save new password"}
+          {isLoading ? t("auth.saving") : t("auth.savePassword")}
         </button>
       </div>
     </form>

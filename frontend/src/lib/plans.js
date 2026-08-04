@@ -8,6 +8,7 @@ import {
 
 export { PLAN_RANK, PLAN_LISTING_LIMITS };
 
+
 export const PAID_PLAN_KEYS = ["lite", "growth", "scale"];
 export const BILLING_INTERVALS = ["monthly", "annual"];
 

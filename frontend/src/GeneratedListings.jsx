@@ -1,7 +1,9 @@
 ﻿import React, { useState, useMemo } from "react";
-import DOMPurify from "dompurify";
+import { useTranslation } from "react-i18next";
 import { SMALL_BUTTON_STYLE, INPUT_STYLE, CopyButton } from "./shared.jsx";
 import { mapApiSpecsToSchema, SPEC_SCHEMA, SECTION_TITLES } from "./itemSpecificsSchema.js";
+import { loadPreferences } from "./useListingPreferences.js";
+import { useSession } from "./context/SessionContext";
 
 // ─── API URL (mirrors ListingGenerator) ──────────────────────────────────────
 
@@ -10,13 +12,30 @@ const API_URL = import.meta.env.VITE_API_URL;
 // ─── Theme list (mirrors App.jsx) ─────────────────────────────────────────────
 
 const LS_THEME_KEY = "jsk_theme_v2";
-const THEMES = [
-  { id: "clean-default",     name: "Clean Default" },
-  { id: "dark-header",       name: "Dark Header" },
-  { id: "table-focused",     name: "Table Focused" },
-  { id: "minimal",           name: "Minimal" },
-  { id: "professional-blue", name: "Professional Blue" },
-];
+const LS_OPTIONS_KEY = "jsk_listing_options_v1";
+const THEME_IDS = ["clean-default", "table-focused", "minimal", "professional-blue"];
+const DEFAULT_LISTING_OPTIONS = {
+  showCompatibilityTable: true,
+  showInterchangeableNumbers: true,
+  showEngineCodes: true,
+};
+
+function getListingOptions() {
+  try {
+    return { ...DEFAULT_LISTING_OPTIONS, ...JSON.parse(localStorage.getItem(LS_OPTIONS_KEY) || "{}") };
+  } catch {
+    return { ...DEFAULT_LISTING_OPTIONS };
+  }
+}
+
+function buildLookupBody({ articleNumber, themeId }) {
+  return {
+    articleNumber,
+    themeId,
+    listingOptions: getListingOptions(),
+    targetMarketplace: loadPreferences().targetMarketplace || "ebay-uk",
+  };
+}
 
 // ─── AdLister export settings ─────────────────────────────────────────────────
 
@@ -70,9 +89,9 @@ function loadAdlisterSettings() {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const fmtDate = (iso) => {
+const fmtDate = (iso, language) => {
   try {
-    return new Date(iso).toLocaleDateString("en-GB", {
+    return new Date(iso).toLocaleDateString(language, {
       day: "2-digit", month: "short", year: "numeric"
     });
   } catch { return "—"; }
@@ -129,6 +148,7 @@ function makeSpecId() {
 // ─── Badges ───────────────────────────────────────────────────────────────────
 
 function DescriptionBadge({ hasDescription }) {
+  const { t } = useTranslation();
   return (
     <span style={{
       display: "inline-block",
@@ -138,12 +158,13 @@ function DescriptionBadge({ hasDescription }) {
       border:     hasDescription ? "1px solid rgba(74,222,128,0.22)" : "1px solid var(--border)",
       whiteSpace: "nowrap"
     }}>
-      {hasDescription ? "✓ Generated" : "Not Generated"}
+      {hasDescription ? t("saved.generated") : t("saved.notGenerated")}
     </span>
   );
 }
 
 function StatusBadge({ status }) {
+  const { t } = useTranslation();
   const isDraft    = status === "Draft";
   const isExported = status === "Exported";
   return (
@@ -157,7 +178,7 @@ function StatusBadge({ status }) {
       border:     isDraft    ? "1px solid rgba(251,191,36,0.25)"  :
                   isExported ? "1px solid rgba(74,222,128,0.25)"  : "1px solid rgba(99,102,241,0.25)"
     }}>
-      {status || "Draft"}
+      {isDraft ? t("saved.statusDraft") : isExported ? t("saved.statusExported") : status || t("saved.statusDraft")}
     </span>
   );
 }
@@ -165,11 +186,12 @@ function StatusBadge({ status }) {
 // ─── Date filter bar ──────────────────────────────────────────────────────────
 
 function DateFilterBar({ filter, onFilter, customFrom, customTo, onCustomFrom, onCustomTo }) {
+  const { t } = useTranslation();
   const FILTERS = [
-    { key: "all",       label: "All" },
-    { key: "today",     label: "Today" },
-    { key: "yesterday", label: "Yesterday" },
-    { key: "custom",    label: "Custom Range" },
+    { key: "all",       label: t("saved.filterAll") },
+    { key: "today",     label: t("saved.filterToday") },
+    { key: "yesterday", label: t("saved.filterYesterday") },
+    { key: "custom",    label: t("saved.filterCustom") },
   ];
   return (
     <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
@@ -191,7 +213,7 @@ function DateFilterBar({ filter, onFilter, customFrom, customTo, onCustomFrom, o
         <>
           <input type="date" value={customFrom} onChange={(e) => onCustomFrom(e.target.value)}
             style={{ ...INPUT_STYLE, padding: "5px 8px", fontSize: 12, width: 140 }} />
-          <span style={{ color: "var(--text-muted)", fontSize: 12 }}>to</span>
+          <span style={{ color: "var(--text-muted)", fontSize: 12 }}>{t("saved.filterTo")}</span>
           <input type="date" value={customTo} onChange={(e) => onCustomTo(e.target.value)}
             style={{ ...INPUT_STYLE, padding: "5px 8px", fontSize: 12, width: 140 }} />
         </>
@@ -204,6 +226,7 @@ function DateFilterBar({ filter, onFilter, customFrom, customTo, onCustomFrom, o
 // Collapsible, persists to localStorage on every change.
 
 function AdListerSettings() {
+  const { t } = useTranslation();
   const [s, setS] = useState(loadAdlisterSettings);
 
   const set = (key, val) => {
@@ -245,21 +268,21 @@ function AdListerSettings() {
       border: "1px solid rgba(99,102,241,0.20)", display: "grid", gap: 14
     }}>
       <div style={{ fontSize: 11, fontWeight: 800, color: "#a5b4fc", letterSpacing: 0.6, textTransform: "uppercase" }}>
-        AdLister Export Defaults
+        {t("saved.adlisterDefaults")}
       </div>
 
       {/* General */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: 10 }}>
-        {sectionLabel("Listing")}
-        {inp("Starting Price", "startingPrice", "0.00")}
-        {inp("Web Price",      "webPrice",      ""    )}
-        {inp("QTY",            "qty",           "1"   )}
-        {inp("Condition",      "condition",     "New" )}
-        {inp("Dispatch Days",  "dispatch",      "1"   )}
-        {inp("eBay Category",  "ebayCatId",     ""    )}
-        {inp("eBay Category 2","ebayCat2Id",    ""    )}
-        {inp("Store Category", "storeCat",      ""    )}
-        {inp("Store Cat. 2",   "storeCat2",     ""    )}
+        {sectionLabel(t("saved.sectionListing"))}
+        {inp(t("saved.startingPrice"), "startingPrice", "0.00")}
+        {inp(t("saved.webPrice"),      "webPrice",      ""    )}
+        {inp(t("saved.qty"),           "qty",           "1"   )}
+        {inp(t("saved.condition"),     "condition",     "New" )}
+        {inp(t("saved.dispatchDays"),  "dispatch",      "1"   )}
+        {inp(t("saved.ebayCategory"),  "ebayCatId",     ""    )}
+        {inp(t("saved.ebayCategory2"), "ebayCat2Id",    ""    )}
+        {inp(t("saved.storeCategory"), "storeCat",      ""    )}
+        {inp(t("saved.storeCategory2"),"storeCat2",     ""    )}
       </div>
 
       {/* Domestic Shipping */}
@@ -267,12 +290,12 @@ function AdListerSettings() {
         <div style={{
           fontSize: 10, fontWeight: 800, color: "var(--text-muted)", textTransform: "uppercase",
           letterSpacing: 0.6, paddingBottom: 4, borderBottom: "1px solid var(--border-light)"
-        }}>Domestic Shipping</div>
+        }}>{t("saved.domesticShipping")}</div>
         {[1, 2, 3].map((n) => (
           <div key={n} style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 8 }}>
-            {inp(`Service ${n}`, `dom${n}Service`, n === 1 ? "AU_POST_STANDARD" : "")}
-            {inp(`Cost ${n}`,    `dom${n}Cost`,    "0.00")}
-            {inp(`Add. ${n}`,    `dom${n}Add`,     "0.00")}
+            {inp(t("saved.serviceN", { n }), `dom${n}Service`, n === 1 ? "AU_POST_STANDARD" : "")}
+            {inp(t("saved.costN", { n }),    `dom${n}Cost`,    "0.00")}
+            {inp(t("saved.addN", { n }),     `dom${n}Add`,     "0.00")}
           </div>
         ))}
       </div>
@@ -282,12 +305,12 @@ function AdListerSettings() {
         <div style={{
           fontSize: 10, fontWeight: 800, color: "var(--text-muted)", textTransform: "uppercase",
           letterSpacing: 0.6, paddingBottom: 4, borderBottom: "1px solid var(--border-light)"
-        }}>International Shipping</div>
+        }}>{t("saved.internationalShipping")}</div>
         {[1, 2, 3].map((n) => (
           <div key={n} style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 8 }}>
-            {inp(`Service ${n}`, `intl${n}Service`, n === 1 ? "INT_STANDARD" : "")}
-            {inp(`Cost ${n}`,    `intl${n}Cost`,    n === 1 ? "20.00" : "")}
-            {inp(`Add. ${n}`,    `intl${n}Add`,     n === 1 ? "5.00"  : "")}
+            {inp(t("saved.serviceN", { n }), `intl${n}Service`, n === 1 ? "INT_STANDARD" : "")}
+            {inp(t("saved.costN", { n }),    `intl${n}Cost`,    n === 1 ? "20.00" : "")}
+            {inp(t("saved.addN", { n }),     `intl${n}Add`,     n === 1 ? "5.00"  : "")}
           </div>
         ))}
       </div>
@@ -298,10 +321,10 @@ function AdListerSettings() {
           gridColumn: "1 / -1", fontSize: 10, fontWeight: 800, color: "var(--text-muted)",
           textTransform: "uppercase", letterSpacing: 0.6,
           paddingBottom: 4, borderBottom: "1px solid var(--border-light)"
-        }}>Best Offer</div>
-        {inp("Enabled (0/1)", "bestOfferEnabled", "0")}
-        {inp("Accept Price",  "bestOfferAccept",  ""  )}
-        {inp("Decline Price", "bestOfferDecline", ""  )}
+        }}>{t("saved.bestOffer")}</div>
+        {inp(t("saved.enabled01"), "bestOfferEnabled", "0")}
+        {inp(t("saved.acceptPrice"),  "bestOfferAccept",  ""  )}
+        {inp(t("saved.declinePrice"), "bestOfferDecline", ""  )}
       </div>
 
       {/* Ref */}
@@ -310,9 +333,9 @@ function AdListerSettings() {
           gridColumn: "1 / -1", fontSize: 10, fontWeight: 800, color: "var(--text-muted)",
           textTransform: "uppercase", letterSpacing: 0.6,
           paddingBottom: 4, borderBottom: "1px solid var(--border-light)"
-        }}>Reference</div>
-        {inp("Ref Type", "refType", "")}
-        {inp("Ref Id",   "refId",   "")}
+        }}>{t("saved.reference")}</div>
+        {inp(t("saved.refType"), "refType", "")}
+        {inp(t("saved.refId"),   "refId",   "")}
       </div>
     </div>
   );
@@ -330,11 +353,12 @@ const HDR = {
 // ─── Listings table ───────────────────────────────────────────────────────────
 
 function CopyHtmlButton({ html }) {
+  const { t } = useTranslation();
   return (
     <CopyButton
       value={html}
       copiedLabel="✓"
-      title="Copy description HTML"
+      title={t("saved.copyHtmlTitle")}
       style={{
         padding: "3px 7px", borderRadius: 6, fontSize: 12,
         border: "1px solid var(--border-strong)",
@@ -344,7 +368,7 @@ function CopyHtmlButton({ html }) {
         boxShadow: "none",
       }}
     >
-      Copy
+      {t("saved.copy")}
     </CopyButton>
   );
 }
@@ -353,6 +377,7 @@ function ListingsTable({
   listings, selectedIds, onToggleOne, onToggleAll,
   onDeleteOne, onStatusChange, onGenerateOne, onOpenDetail, generatingIds
 }) {
+  const { t, i18n } = useTranslation();
   const allSelected = listings.length > 0 && listings.every((l) => selectedIds.includes(l.id));
 
   if (listings.length === 0) {
@@ -362,7 +387,7 @@ function ListingsTable({
         background: "var(--bg-surface3)", border: "1px dashed var(--border)",
         borderRadius: 16, color: "var(--text-muted)", fontSize: 14
       }}>
-        No listings match the current filter.
+        {t("saved.emptyFilter")}
       </div>
     );
   }
@@ -377,15 +402,15 @@ function ListingsTable({
                 <input type="checkbox" checked={allSelected} onChange={onToggleAll}
                   style={{ cursor: "pointer", accentColor: "var(--blue)" }} />
               </th>
-              <th style={{ ...HDR, width: 108 }}>Article No.</th>
-              <th style={HDR}>Title</th>
-              <th style={{ ...HDR, width: 118 }}>Description</th>
-              <th style={{ ...HDR, width: 120 }}>Type</th>
-              <th style={{ ...HDR, width: 140 }}>K Numbers</th>
-              <th style={{ ...HDR, width: 170 }}>OEM Numbers</th>
-              <th style={{ ...HDR, width: 96 }}>Date</th>
-              <th style={{ ...HDR, width: 88 }}>Status</th>
-              <th style={{ ...HDR, width: 100, textAlign: "center" }}>Actions</th>
+              <th style={{ ...HDR, width: 108 }}>{t("saved.columns.article")}</th>
+              <th style={HDR}>{t("saved.columns.title")}</th>
+              <th style={{ ...HDR, width: 118 }}>{t("saved.columns.description")}</th>
+              <th style={{ ...HDR, width: 120 }}>{t("saved.columns.type")}</th>
+              <th style={{ ...HDR, width: 140 }}>{t("saved.columns.kNumbers")}</th>
+              <th style={{ ...HDR, width: 170 }}>{t("saved.columns.oemNumbers")}</th>
+              <th style={{ ...HDR, width: 96 }}>{t("saved.columns.date")}</th>
+              <th style={{ ...HDR, width: 88 }}>{t("saved.columns.status")}</th>
+              <th style={{ ...HDR, width: 100, textAlign: "center" }}>{t("saved.columns.actions")}</th>
             </tr>
           </thead>
           <tbody>
@@ -415,7 +440,7 @@ function ListingsTable({
                     </div>
                     {l.compatibility_count > 0 && (
                       <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>
-                        {l.compatibility_count} vehicle applications
+                        {t("saved.vehicleApplications", { n: l.compatibility_count })}
                       </div>
                     )}
                   </td>
@@ -436,13 +461,13 @@ function ListingsTable({
                     </div>
                   </td>
                   <td style={{ ...COL, color: "var(--text-muted)", fontSize: 12, whiteSpace: "nowrap" }}>
-                    {fmtDate(l.savedAt)}
+                    {fmtDate(l.savedAt, i18n.language)}
                   </td>
                   <td style={COL}>
                     <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
                       <StatusBadge status={l.status} />
                       {l.status === "Exported" && (
-                        <button onClick={() => onStatusChange(l.id, "Draft")} title="Reset to Draft"
+                        <button onClick={() => onStatusChange(l.id, "Draft")} title={t("saved.resetToDraft")}
                           style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: 11, padding: "1px 4px" }}>
                           ↺
                         </button>
@@ -457,7 +482,7 @@ function ListingsTable({
                         <button
                           onClick={() => onGenerateOne(l.id)}
                           disabled={isGen}
-                          title={isGen ? "Generating…" : "Generate description"}
+                          title={isGen ? t("saved.generating") : t("saved.generateDescription")}
                           style={{
                             padding: "3px 7px", borderRadius: 6, fontSize: 12,
                             cursor: isGen ? "default" : "pointer",
@@ -477,7 +502,7 @@ function ListingsTable({
                       {/* ↗ View / Edit */}
                       <button
                         onClick={() => onOpenDetail(l.id)}
-                        title="View / Edit listing"
+                        title={t("saved.viewEdit")}
                         style={{
                           padding: "3px 8px", borderRadius: 6, fontSize: 12,
                           cursor: "pointer",
@@ -494,7 +519,7 @@ function ListingsTable({
                       {/* × Delete */}
                       <button
                         onClick={() => onDeleteOne(l.id)}
-                        title="Delete listing"
+                        title={t("saved.deleteListing")}
                         style={{
                           width: 24, height: 24, borderRadius: 6,
                           border: "1px solid rgba(220,38,38,0.15)",
@@ -522,6 +547,7 @@ function ListingsTable({
 // Renders section header rows as non-editable dividers.
 
 function DetailSpecificsEditor({ rows, onChange }) {
+  const { t } = useTranslation();
   const updateRow  = (id, field, val) => onChange(rows.map((r) => r.id === id ? { ...r, [field]: val } : r));
   const deleteRow  = (id) => onChange(rows.filter((r) => r.id !== id));
   const addRow     = () => onChange([...rows, { id: makeSpecId(), label: "", value: "", section: "Additional", keys: [] }]);
@@ -587,8 +613,8 @@ function DetailSpecificsEditor({ rows, onChange }) {
       <table style={{ width: "100%", borderCollapse: "collapse" }}>
         <thead>
           <tr>
-            <th style={{ ...HDR, padding: "6px 10px", fontSize: 10 }}>LABEL</th>
-            <th style={{ ...HDR, padding: "6px 10px", fontSize: 10 }}>VALUE</th>
+            <th style={{ ...HDR, padding: "6px 10px", fontSize: 10 }}>{t("saved.label")}</th>
+            <th style={{ ...HDR, padding: "6px 10px", fontSize: 10 }}>{t("saved.value")}</th>
             <th style={{ ...HDR, width: 32 }}></th>
           </tr>
         </thead>
@@ -599,7 +625,7 @@ function DetailSpecificsEditor({ rows, onChange }) {
           ...SMALL_BUTTON_STYLE, fontSize: 11, padding: "4px 10px",
           background: "var(--border-light)", boxShadow: "none", color: "var(--text-muted)"
         }}>
-          + Add Field
+          + {t("saved.addRow")}
         </button>
       </div>
     </div>
@@ -612,6 +638,8 @@ function DetailSpecificsEditor({ rows, onChange }) {
 // description preview, generate/regenerate description (with theme selector), save button.
 
 function ListingDetail({ listing, onClose, onSave }) {
+  const { t, i18n } = useTranslation();
+  const { session } = useSession();
   const [editedTitle,    setEditedTitle]    = useState(listing.title    || "");
   const [editedSku,      setEditedSku]      = useState(listing.sku      || "");
   const [editedBinPrice, setEditedBinPrice] = useState(listing.bin_price || "");
@@ -624,21 +652,24 @@ function ListingDetail({ listing, onClose, onSave }) {
   const hasDesc = !!previewHtml?.trim();
 
   const generateDesc = async () => {
-    if (!listing.article_number) { setGenError("No article number on this listing."); return; }
+    if (!listing.article_number) { setGenError(t("saved.noArticleNumber")); return; }
     setGenerating(true); setGenError("");
     try {
       const res  = await fetch(`${API_URL}/lookup`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ articleNumber: listing.article_number, themeId })
+        headers: {
+          "Content-Type": "application/json",
+          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+        },
+        body: JSON.stringify(buildLookupBody({ articleNumber: listing.article_number, themeId })),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Generation failed");
+      if (!res.ok) throw new Error(data.error || t("saved.generationFailed"));
       const html = data.generated_html || "";
       setPreviewHtml(html);
       onSave({ description_html: html }); // persist immediately
     } catch (err) {
-      setGenError(err.message || "Generation failed");
+      setGenError(err.message || t("saved.generationFailed"));
     } finally {
       setGenerating(false);
     }
@@ -673,15 +704,15 @@ function ListingDetail({ listing, onClose, onSave }) {
         <button onClick={onClose} style={{
           ...SMALL_BUTTON_STYLE, padding: "6px 12px", fontSize: 12,
           background: "var(--border-light)", boxShadow: "none", color: "var(--text-muted)"
-        }}>← Back</button>
+        }}>← {t("generator.back")}</button>
 
         <div style={{ flex: 1, minWidth: 180 }}>
           <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text)" }}>
-            {listing.article_number || "Listing Detail"}
+            {listing.article_number || t("saved.listingDetail")}
           </div>
           <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 1 }}>
-            {fmtDate(listing.savedAt)}
-            {(listing.compatibility_count > 0) && ` · ${listing.compatibility_count} vehicle applications`}
+            {fmtDate(listing.savedAt, i18n.language)}
+            {(listing.compatibility_count > 0) && ` ${t("saved.vehicleApplicationsShort", { n: listing.compatibility_count })}`}
           </div>
         </div>
 
@@ -691,7 +722,7 @@ function ListingDetail({ listing, onClose, onSave }) {
           ...SMALL_BUTTON_STYLE, fontSize: 12, padding: "7px 18px",
           background: "var(--blue)", boxShadow: "0 0 16px rgba(19,93,255,0.32)"
         }}>
-          💾 Save Changes
+          💾 {t("common.save")}
         </button>
       </div>
 
@@ -706,7 +737,7 @@ function ListingDetail({ listing, onClose, onSave }) {
 
           {/* Title */}
           <div>
-            <div style={labelStyle}>Title</div>
+            <div style={labelStyle}>{t("saved.columns.title")}</div>
             <input
               value={editedTitle}
               onChange={(e) => setEditedTitle(e.target.value)}
@@ -726,7 +757,7 @@ function ListingDetail({ listing, onClose, onSave }) {
               <input
                 value={editedSku}
                 onChange={(e) => setEditedSku(e.target.value)}
-                placeholder={listing.article_number || "e.g. JSK-12345"}
+                placeholder={listing.article_number || t("saved.skuPlaceholder")}
                 style={{
                   width: "100%", boxSizing: "border-box",
                   background: "var(--border-light)", border: "1px solid var(--border)",
@@ -736,11 +767,11 @@ function ListingDetail({ listing, onClose, onSave }) {
               />
             </div>
             <div>
-              <div style={labelStyle}>BIN Price (AUD)</div>
+              <div style={labelStyle}>{t("saved.binPrice")}</div>
               <input
                 value={editedBinPrice}
                 onChange={(e) => setEditedBinPrice(e.target.value)}
-                placeholder="e.g. 49.95"
+                placeholder={t("saved.binPricePlaceholder")}
                 style={{
                   width: "100%", boxSizing: "border-box",
                   background: "var(--border-light)", border: "1px solid var(--border)",
@@ -754,7 +785,7 @@ function ListingDetail({ listing, onClose, onSave }) {
           {/* K Numbers */}
           {(listing.k_number_list || []).length > 0 && (
             <div>
-              <div style={labelStyle}>K Numbers</div>
+              <div style={labelStyle}>{t("saved.columns.kNumbers")}</div>
               <div style={{
                 fontSize: 12, color: "var(--text-muted)", lineHeight: 1.7, wordBreak: "break-word",
                 background: "var(--border-light)", border: "1px solid var(--border)",
@@ -767,7 +798,7 @@ function ListingDetail({ listing, onClose, onSave }) {
 
           {/* Item Specifics */}
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            <div style={labelStyle}>Item Specifics</div>
+            <div style={labelStyle}>{t("saved.itemSpecifics")}</div>
             <div style={{ overflowY: "auto", maxHeight: 500 }}>
               <DetailSpecificsEditor rows={editedSpecs} onChange={setEditedSpecs} />
             </div>
@@ -784,7 +815,7 @@ function ListingDetail({ listing, onClose, onSave }) {
             border: "1px solid var(--border-light)"
           }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", letterSpacing: 0.4 }}>
-              DESCRIPTION
+              {t("saved.description")}
             </div>
             <DescriptionBadge hasDescription={hasDesc} />
             <div style={{ flex: 1 }} />
@@ -794,7 +825,7 @@ function ListingDetail({ listing, onClose, onSave }) {
               background: "var(--bg-surface2)", color: "var(--text-muted)",
               border: "1px solid var(--border-strong)", cursor: "pointer"
             }}>
-              {THEMES.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+              {THEME_IDS.map((id) => <option key={id} value={id}>{t(`saved.themes.${id}`)}</option>)}
             </select>
             {/* Generate / Regenerate */}
             <button onClick={generateDesc} disabled={generating} style={{
@@ -804,14 +835,14 @@ function ListingDetail({ listing, onClose, onSave }) {
               opacity:     generating ? 0.7 : 1,
               cursor:      generating ? "default" : "pointer"
             }}>
-              {generating ? "Generating…" : hasDesc ? "↺ Regenerate" : "Generate"}
+              {generating ? t("saved.generating") : hasDesc ? t("saved.regenerate") : t("saved.generate")}
             </button>
 
             {/* Copy HTML */}
             {hasDesc && (
               <CopyButton
                 value={previewHtml}
-                title="Copy description HTML"
+                title={t("saved.copyHtmlTitle")}
                 style={{
                   fontSize: 12, padding: "6px 12px",
                   background: "var(--border-light)",
@@ -820,7 +851,7 @@ function ListingDetail({ listing, onClose, onSave }) {
                   boxShadow: "none",
                 }}
               >
-                Copy HTML
+                {t("saved.copyHtml")}
               </CopyButton>
             )}
           </div>
@@ -842,7 +873,7 @@ function ListingDetail({ listing, onClose, onSave }) {
               background: "var(--text-on-dark)", borderRadius: 14, padding: 16,
               flex: 1, overflowY: "auto", maxHeight: 480, overflowX: "hidden"
             }}>
-              <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(previewHtml) }} />
+              <div dangerouslySetInnerHTML={{ __html: previewHtml }} />
             </div>
           ) : (
             <div style={{
@@ -858,9 +889,9 @@ function ListingDetail({ listing, onClose, onSave }) {
                     <line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
                   </svg>
                 </div>
-                <div style={{ color: "var(--text-muted)", fontWeight: 500 }}>No description yet</div>
+                <div style={{ color: "var(--text-muted)", fontWeight: 500 }}>{t("saved.noDescriptionYet")}</div>
                 <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>
-                  Select a theme and click Generate above.
+                  {t("saved.selectThemeGenerate")}
                 </div>
               </div>
             </div>
@@ -877,7 +908,7 @@ function ListingDetail({ listing, onClose, onSave }) {
                   padding: "4px 0", letterSpacing: 0.3
                 }}
               >
-                {showRawHtml ? "▾ Hide HTML" : "▸ Show HTML"}
+                {showRawHtml ? t("saved.hideHtml") : t("saved.showHtml")}
               </button>
               {showRawHtml && (
                 <textarea
@@ -905,6 +936,7 @@ function ListingDetail({ listing, onClose, onSave }) {
 // ─── Item Specifics export tab ────────────────────────────────────────────────
 
 function ItemSpecificsExport({ listings }) {
+  const { t } = useTranslation();
   const filledCols = useMemo(() => {
     const colSet = new Set();
     listings.forEach((l) => {
@@ -922,7 +954,7 @@ function ItemSpecificsExport({ listings }) {
         background: "var(--bg-surface3)", border: "1px dashed var(--border)",
         borderRadius: 16, color: "var(--text-muted)", fontSize: 14
       }}>
-        No listings to display.
+        {t("saved.emptyFilter")}
       </div>
     );
   }
@@ -939,7 +971,7 @@ function ItemSpecificsExport({ listings }) {
         <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 600 }}>
           <thead>
             <tr>
-              <th style={{ ...HDR, minWidth: 200, position: "sticky", left: 0, zIndex: 2 }}>Title</th>
+              <th style={{ ...HDR, minWidth: 200, position: "sticky", left: 0, zIndex: 2 }}>{t("saved.columns.title")}</th>
               {filledCols.map((col) => (
                 <th key={col} style={{ ...HDR, minWidth: 120, whiteSpace: "nowrap" }}>{col}</th>
               ))}
@@ -981,6 +1013,8 @@ export default function GeneratedListings({
   onRemoveBatch,
   canBulkGenerate = false,
 }) {
+  const { t } = useTranslation();
+  const { session } = useSession();
   const [innerTab,           setInnerTab]           = useState("listings");
   const [dateFilter,         setDateFilter]         = useState("all");
   const [customFrom,         setCustomFrom]         = useState("");
@@ -1050,8 +1084,14 @@ export default function GeneratedListings({
     try {
       const res  = await fetch(`${API_URL}/lookup`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ articleNumber: listing.article_number, themeId: getSavedTheme() })
+        headers: {
+          "Content-Type": "application/json",
+          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+        },
+        body: JSON.stringify(buildLookupBody({
+          articleNumber: listing.article_number,
+          themeId: getSavedTheme(),
+        })),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed");
@@ -1230,7 +1270,9 @@ export default function GeneratedListings({
     }).length;
   }, [selectedIds, filteredIds, listings, selInFilter]);
 
-  const exportLabel = selInFilter > 0 ? `${selInFilter} selected` : `${filtered.length} shown`;
+  const exportLabel = selInFilter > 0
+    ? t("saved.selectedCount", { n: selInFilter })
+    : t("saved.shownCount", { n: filtered.length });
 
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
@@ -1243,16 +1285,16 @@ export default function GeneratedListings({
         border: "1px solid var(--border)"
       }}>
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 20, fontWeight: 800, color: "var(--text)" }}>Saved Listings</div>
+          <div style={{ fontSize: 20, fontWeight: 800, color: "var(--text)" }}>{t("saved.title")}</div>
           <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 3 }}>
-            Saved from the generator · manage, complete, and export from here
+            {t("saved.subtitle")}
           </div>
         </div>
         {[
-          { label: "Total",     value: listings.length, color: "var(--text-accent)" },
-          { label: "With Desc", value: withDescCount,   color: "#a78bfa" },
-          { label: "Draft",     value: draftCount,      color: "var(--yellow)" },
-          { label: "Exported",  value: exportedCount,   color: "var(--green)" },
+          { label: t("saved.statTotal"),     value: listings.length, color: "var(--text-accent)" },
+          { label: t("saved.statWithDesc"),  value: withDescCount,   color: "#a78bfa" },
+          { label: t("saved.statDraft"),     value: draftCount,      color: "var(--yellow)" },
+          { label: t("saved.statExported"),  value: exportedCount,   color: "var(--green)" },
         ].map(({ label, value, color }) => (
           <div key={label} style={{
             textAlign: "center", padding: "8px 20px",
@@ -1281,8 +1323,8 @@ export default function GeneratedListings({
             borderRadius: 14, padding: 4, border: "1px solid var(--border-light)"
           }}>
             {[
-              { key: "listings",  label: "Listings Table" },
-              { key: "specifics", label: "Item Specifics" },
+              { key: "listings",  label: t("saved.tabListings") },
+              { key: "specifics", label: t("saved.tabSpecifics") },
             ].map(({ key, label }) => (
               <button key={key} onClick={() => setInnerTab(key)} style={{
                 flex: 1, padding: "9px 14px", borderRadius: 10,
@@ -1316,7 +1358,7 @@ export default function GeneratedListings({
                 ...SMALL_BUTTON_STYLE, fontSize: 12,
                 background: "var(--border)", boxShadow: "none", color: "var(--text)"
               }}>
-                {allSelected ? "Deselect All" : `Select All (${filtered.length})`}
+                {allSelected ? t("saved.deselectAll") : t("saved.selectAll", { n: filtered.length })}
               </button>
 
               {selInFilter > 0 && (
@@ -1324,7 +1366,7 @@ export default function GeneratedListings({
                   onClick={() => setSelectedIds((prev) => prev.filter((id) => !filteredIds.includes(id)))}
                   style={{ ...SMALL_BUTTON_STYLE, fontSize: 12, background: "transparent", boxShadow: "none", color: "var(--text-muted)" }}
                 >
-                  Clear ({selInFilter})
+                  {t("saved.clearSelected", { n: selInFilter })}
                 </button>
               )}
 
@@ -1335,7 +1377,7 @@ export default function GeneratedListings({
                   background: "rgba(99,102,241,0.16)", color: "#a5b4fc",
                   boxShadow: "none", border: "1px solid rgba(99,102,241,0.25)"
                 }}>
-                  Generate Descriptions ({missingDescCount})
+                  {t("saved.generateDescriptions", { n: missingDescCount })}
                 </button>
               )}
 
@@ -1345,7 +1387,7 @@ export default function GeneratedListings({
                   background: "rgba(99,102,241,0.12)", borderRadius: 8,
                   padding: "5px 12px", border: "1px solid rgba(99,102,241,0.20)"
                 }}>
-                  Generating… {bulkGenProgress.done} / {bulkGenProgress.total}
+                  {t("saved.generatingProgress", bulkGenProgress)}
                 </div>
               )}
 
@@ -1357,7 +1399,7 @@ export default function GeneratedListings({
                   onClick={() => onUpdateStatusBatch(selectedIds.filter((id) => filteredIds.includes(id)), "Exported")}
                   style={{ ...SMALL_BUTTON_STYLE, fontSize: 12, background: "rgba(74,222,128,0.12)", color: "var(--green)", boxShadow: "none" }}
                 >
-                  ✓ Mark Exported ({selInFilter})
+                  {t("saved.markExported", { n: selInFilter })}
                 </button>
               )}
 
@@ -1366,14 +1408,16 @@ export default function GeneratedListings({
                 <button onClick={() => confirmDelete("batch")} style={{
                   ...SMALL_BUTTON_STYLE, fontSize: 12, background: "rgba(220,38,38,0.10)", color: "var(--red)", boxShadow: "none"
                 }}>
-                  × Delete {selInFilter > 0 ? `${selInFilter} selected` : `${filtered.length} shown`}
+                  {selInFilter > 0
+                    ? t("saved.deleteSelected", { n: selInFilter })
+                    : t("saved.deleteShown", { n: filtered.length })}
                 </button>
               )}
 
               {/* AdLister settings toggle */}
               <button
                 onClick={() => setShowAdlisterSettings((v) => !v)}
-                title="AdLister export settings"
+                title={t("saved.adlisterSettingsTitle")}
                 style={{
                   ...SMALL_BUTTON_STYLE, fontSize: 12, padding: "6px 12px",
                   background: showAdlisterSettings ? "rgba(99,102,241,0.20)" : "var(--border-light)",
@@ -1382,7 +1426,7 @@ export default function GeneratedListings({
                   boxShadow: "none"
                 }}
               >
-                ⚙ AdLister
+                {t("saved.adlister")}
               </button>
 
               {/* Export AdLister CSV */}
@@ -1390,7 +1434,7 @@ export default function GeneratedListings({
                 onClick={innerTab === "specifics" ? exportSpecificsCsv : exportAdlisterCsv}
                 style={{ ...SMALL_BUTTON_STYLE, fontSize: 12, background: "#16a34a", boxShadow: "0 0 14px rgba(22,163,74,0.25)" }}
               >
-                ↓ {innerTab === "specifics" ? "Export Specifics" : "Export AdLister"} ({exportLabel})
+                ↓ {innerTab === "specifics" ? t("saved.exportSpecifics") : t("saved.exportAdlister")} ({exportLabel})
               </button>
             </div>
           </div>
@@ -1407,17 +1451,17 @@ export default function GeneratedListings({
             }}>
               <span style={{ fontSize: 13, color: "var(--red)", flex: 1 }}>
                 {deletePending === "batch"
-                  ? `Permanently delete ${selInFilter > 0 ? selInFilter : filtered.length} listing(s)?`
-                  : "Permanently delete this listing?"}
-                {" "}This cannot be undone.
+                  ? t("saved.deleteBatchConfirm", { n: selInFilter > 0 ? selInFilter : filtered.length })
+                  : t("saved.deleteOneConfirm")}
+                {" "}{t("saved.cannotUndo")}
               </span>
               <button onClick={doDelete}
                 style={{ ...SMALL_BUTTON_STYLE, background: "#dc2626", fontSize: 12, padding: "6px 14px" }}>
-                Delete
+                {t("common.delete")}
               </button>
               <button onClick={() => setDeletePending(null)}
                 style={{ ...SMALL_BUTTON_STYLE, background: "var(--text-dim)", boxShadow: "none", fontSize: 12, padding: "6px 12px" }}>
-                Cancel
+                {t("common.cancel")}
               </button>
             </div>
           )}

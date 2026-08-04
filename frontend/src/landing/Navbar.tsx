@@ -2,14 +2,8 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Menu, X, ArrowRight } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
+import { useTranslation } from "react-i18next";
 import { Logo, PrimaryButton } from "./Primitives";
-
-const links = [
-  { label: "Features", href: "/#features" },
-  { label: "How It Works", href: "/#how-it-works" },
-  { label: "Pricing", href: "/#pricing" },
-  { label: "FAQ", href: "/#faq" },
-];
 
 function NavLink({ href, label }: { href: string; label: string }) {
   return (
@@ -24,8 +18,16 @@ function NavLink({ href, label }: { href: string; label: string }) {
 }
 
 export function Nav() {
+  const { t } = useTranslation();
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
+
+  const links = [
+    { label: t("marketing.features"), href: "/#features" },
+    { label: t("marketing.howItWorks"), href: "/#how-it-works" },
+    { label: t("marketing.pricing"), href: "/#pricing" },
+    { label: t("marketing.faq"), href: "/#faq" },
+  ];
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 12);
@@ -61,11 +63,11 @@ export function Nav() {
             to="/auth/login"
             className="group relative px-3.5 py-2 text-[0.9rem] font-semibold text-navy transition-colors duration-150 hover:text-[#135DFF]"
           >
-            Login
+            {t("marketing.login")}
             <span className="absolute bottom-1 left-1/2 h-[2px] w-0 -translate-x-1/2 rounded-full bg-[#135DFF] transition-all duration-200 group-hover:w-[calc(100%-1.75rem)]" />
           </Link>
           <PrimaryButton href="/auth/sign-up">
-            Generate 10 Listings Free
+            {t("marketing.ctaFree")}
             <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
           </PrimaryButton>
         </div>
@@ -73,7 +75,7 @@ export function Nav() {
         <button
           onClick={() => setOpen((v) => !v)}
           className="flex h-10 w-10 items-center justify-center rounded-lg border border-hair bg-white text-navy md:hidden"
-          aria-label="Menu"
+          aria-label={t("marketing.menu")}
         >
           {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
         </button>
@@ -104,10 +106,10 @@ export function Nav() {
                 onClick={() => setOpen(false)}
                 className="rounded-lg px-4 py-3 text-[0.95rem] font-semibold text-navy transition-colors hover:bg-wash hover:text-[#135DFF]"
               >
-                Login
+                {t("marketing.login")}
               </Link>
               <PrimaryButton href="/auth/sign-up" className="mt-2 w-full">
-                Generate 10 Listings Free
+                {t("marketing.ctaFree")}
                 <ArrowRight className="h-4 w-4" />
               </PrimaryButton>
             </div>

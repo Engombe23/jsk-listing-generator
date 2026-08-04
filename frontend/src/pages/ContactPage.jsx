@@ -1,9 +1,11 @@
 import { useState, useRef } from "react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import "../landing/landing-v2.css";
 import Navbar from "../landing/Navbar";
 import Footer from "../landing/Footer";
 import { useSession } from "../context/SessionContext";
+import { useDocumentTitle } from "../i18n/useDocumentTitle";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
 
@@ -14,14 +16,15 @@ const DIM    = "#7a96b0";
 const BORDER = "#dde7f5";
 const RED    = "#dc2626";
 
-const SUBJECTS = [
-  "General Question",
-  "Technical Support",
-  "Bug Report",
-  "Feature Request",
-  "Billing & Subscription",
-  "Partnership Enquiry",
-  "Other",
+/** English values sent to the API; labels come from i18n. */
+const SUBJECT_KEYS = [
+  ["General Question", "general"],
+  ["Technical Support", "technical"],
+  ["Bug Report", "bug"],
+  ["Feature Request", "feature"],
+  ["Billing & Subscription", "billing"],
+  ["Partnership Enquiry", "partnership"],
+  ["Other", "other"],
 ];
 
 const MAX_CHARS = 5000;
@@ -51,6 +54,8 @@ function Label({ children, required }) {
 }
 
 export default function ContactPage() {
+  const { t } = useTranslation();
+  useDocumentTitle(`${t("contact.title")} | PartLister`);
   const { session } = useSession();
 
   const [name,       setName]       = useState("");
@@ -80,7 +85,7 @@ export default function ContactPage() {
     e.target.value = "";
     if (!f) return;
     if (f.size > 10 * 1024 * 1024) {
-      setError("Attachment must be under 10 MB.");
+      setError(t("contact.errors.attachmentTooLarge"));
       return;
     }
     setAttachment(f);
@@ -92,12 +97,12 @@ export default function ContactPage() {
     if (loading) return;
     setError("");
 
-    if (!name.trim())           return setError("Please enter your full name.");
+    if (!name.trim())           return setError(t("contact.errors.nameRequired"));
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()))
-                                return setError("Please enter a valid email address.");
-    if (!subject)               return setError("Please select a subject.");
+                                return setError(t("contact.errors.emailInvalid"));
+    if (!subject)               return setError(t("contact.errors.subjectRequired"));
     if (message.trim().length < 10)
-                                return setError("Please enter a message (at least 10 characters).");
+                                return setError(t("contact.errors.messageShort"));
 
     setLoading(true);
     try {
@@ -113,11 +118,11 @@ export default function ContactPage() {
 
       const res  = await fetch(`${API_URL}/api/contact`, { method: "POST", headers, body: fd });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Submission failed.");
+      if (!res.ok) throw new Error(data.error || t("contact.errors.submitFailed"));
       setReference(data.reference);
       setSuccess(true);
     } catch (err) {
-      setError(err.message || "We couldn't send your message. Please try again in a moment.");
+      setError(err.message || t("contact.errors.submitFailed"));
     } finally {
       setLoading(false);
     }
@@ -135,7 +140,6 @@ export default function ContactPage() {
       <Navbar />
       <main style={{ background: "#f8faff", minHeight: "calc(100vh - 62px)" }}>
 
-        {/* ── Hero ── */}
         <div style={{ textAlign: "center", padding: "104px 24px 48px" }}>
           <div style={{
             display: "inline-flex", alignItems: "center", gap: 7,
@@ -147,30 +151,17 @@ export default function ContactPage() {
               <polyline points="22,6 12,13 2,6"/>
             </svg>
             <span style={{ fontSize: 11, fontWeight: 700, color: ACCENT, letterSpacing: "0.07em", textTransform: "uppercase" }}>
-              We're here to help
+              {t("contact.badge")}
             </span>
           </div>
           <h1 style={{ fontSize: 42, fontWeight: 900, color: TEXT, margin: "0 0 16px", letterSpacing: -0.8, lineHeight: 1.1 }}>
-            Contact Us
+            {t("contact.title")}
           </h1>
           <p style={{ fontSize: 16, color: MUTED, margin: 0, maxWidth: 460, marginLeft: "auto", marginRight: "auto", lineHeight: 1.7 }}>
-            Have a question, feedback or need support? We'd love to hear from you.
+            {t("contact.subtitle")}
           </p>
-          <div style={{ marginTop: 20 }}>
-            <a
-              href="mailto:enquiries@partlister.app"
-              style={{ fontSize: 14, fontWeight: 600, color: ACCENT, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 6 }}
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={ACCENT} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-                <polyline points="22,6 12,13 2,6"/>
-              </svg>
-              enquiries@partlister.app
-            </a>
-          </div>
         </div>
 
-        {/* ── Card ── */}
         <div style={{ maxWidth: 720, margin: "0 auto", padding: "0 20px 96px" }}>
           <div style={{
             background: "#fff", border: `1px solid ${BORDER}`, borderRadius: 20,
@@ -179,7 +170,6 @@ export default function ContactPage() {
           }}>
 
             {success ? (
-              /* ── Success ── */
               <div style={{ textAlign: "center", padding: "12px 0 8px", animation: "pl-fadein 0.4s ease" }}>
                 <div style={{
                   width: 68, height: 68, borderRadius: "50%",
@@ -193,10 +183,10 @@ export default function ContactPage() {
                   </svg>
                 </div>
                 <h2 style={{ fontSize: 24, fontWeight: 800, color: TEXT, margin: "0 0 10px" }}>
-                  Message Sent Successfully
+                  {t("contact.successTitle")}
                 </h2>
                 <p style={{ fontSize: 15, color: MUTED, lineHeight: 1.7, margin: "0 0 28px", maxWidth: 380, marginLeft: "auto", marginRight: "auto" }}>
-                  Thanks for contacting PartLister. We've received your message and will usually reply within one business day.
+                  {t("contact.successBody")}
                 </p>
                 <div style={{
                   background: "#f0f5ff", border: "1px solid #c7d9ff",
@@ -204,7 +194,7 @@ export default function ContactPage() {
                   display: "inline-block", minWidth: 220,
                 }}>
                   <div style={{ fontSize: 10, fontWeight: 700, color: ACCENT, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 6 }}>
-                    Reference ID
+                    {t("contact.referenceId")}
                   </div>
                   <div style={{ fontSize: 24, fontWeight: 800, color: TEXT, fontFamily: "monospace", letterSpacing: 1 }}>
                     #{reference}
@@ -219,7 +209,7 @@ export default function ContactPage() {
                       color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer",
                     }}
                   >
-                    Send Another Message
+                    {t("contact.sendAnother")}
                   </button>
                   <Link
                     to="/help"
@@ -230,49 +220,45 @@ export default function ContactPage() {
                       textDecoration: "none", display: "inline-flex", alignItems: "center",
                     }}
                   >
-                    Visit Help Centre
+                    {t("contact.visitHelp")}
                   </Link>
                 </div>
               </div>
             ) : (
-              /* ── Form ── */
               <form onSubmit={handleSubmit} noValidate>
                 <div style={{ marginBottom: 28 }}>
                   <h2 style={{ fontSize: 19, fontWeight: 800, color: TEXT, margin: "0 0 5px" }}>
-                    Send us a message
+                    {t("contact.formTitle")}
                   </h2>
                   <p style={{ fontSize: 13, color: MUTED, margin: 0, lineHeight: 1.6 }}>
-                    Fill out the form below and we'll get back to you as soon as possible.
+                    {t("contact.formSubtitle")}
                   </p>
                 </div>
 
                 <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-
-                  {/* Name + Email */}
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
                     <div>
-                      <Label required>Your Name</Label>
+                      <Label required>{t("contact.name")}</Label>
                       <input
                         type="text" value={name} onChange={e => setName(e.target.value)}
-                        placeholder="e.g. John Smith"
+                        placeholder={t("contact.namePlaceholder")}
                         style={inputStyle("name")}
                         onFocus={() => setFocused("name")} onBlur={() => setFocused(null)}
                       />
                     </div>
                     <div>
-                      <Label required>Your Email</Label>
+                      <Label required>{t("contact.email")}</Label>
                       <input
                         type="email" value={email} onChange={e => setEmail(e.target.value)}
-                        placeholder="e.g. john@example.com"
+                        placeholder={t("contact.emailPlaceholder")}
                         style={inputStyle("email")}
                         onFocus={() => setFocused("email")} onBlur={() => setFocused(null)}
                       />
                     </div>
                   </div>
 
-                  {/* Subject */}
                   <div>
-                    <Label required>Subject</Label>
+                    <Label required>{t("contact.subject")}</Label>
                     <div style={{ position: "relative" }}>
                       <select
                         value={subject} onChange={e => setSubject(e.target.value)}
@@ -285,8 +271,10 @@ export default function ContactPage() {
                         }}
                         onFocus={() => setFocused("subject")} onBlur={() => setFocused(null)}
                       >
-                        <option value="" disabled>Select a subject</option>
-                        {SUBJECTS.map(s => <option key={s} value={s}>{s}</option>)}
+                        <option value="" disabled>{t("contact.selectSubject")}</option>
+                        {SUBJECT_KEYS.map(([value, key]) => (
+                          <option key={value} value={value}>{t(`contact.subjects.${key}`)}</option>
+                        ))}
                       </select>
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={DIM} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
                         style={{ position: "absolute", right: 13, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }}>
@@ -295,13 +283,12 @@ export default function ContactPage() {
                     </div>
                   </div>
 
-                  {/* Message */}
                   <div>
-                    <Label required>Message</Label>
+                    <Label required>{t("contact.message")}</Label>
                     <textarea
                       ref={textareaRef}
                       value={message} onChange={handleMessageChange}
-                      placeholder="How can we help you?"
+                      placeholder={t("contact.messagePlaceholder")}
                       style={{
                         ...inputStyle("message"),
                         resize: "vertical", minHeight: 140,
@@ -312,7 +299,6 @@ export default function ContactPage() {
                     />
                   </div>
 
-                  {/* Attachment */}
                   <div>
                     {attachment ? (
                       <div style={{
@@ -351,16 +337,15 @@ export default function ContactPage() {
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
                           </svg>
-                          Attach a file (optional)
+                          {t("contact.attachFile")}
                         </button>
-                        <span style={{ fontSize: 12, color: DIM }}>Max file size: 10MB</span>
+                        <span style={{ fontSize: 12, color: DIM }}>{t("contact.maxFileSize")}</span>
                       </div>
                     )}
                     <input ref={fileRef} type="file" accept="image/*,.pdf,.zip"
                       onChange={handleFileChange} style={{ display: "none" }} />
                   </div>
 
-                  {/* Error */}
                   {error && (
                     <div style={{
                       display: "flex", alignItems: "flex-start", gap: 10,
@@ -376,7 +361,6 @@ export default function ContactPage() {
                     </div>
                   )}
 
-                  {/* Submit */}
                   <button type="submit" disabled={loading}
                     style={{
                       width: "100%", padding: "14px 24px", borderRadius: 12, border: "none",
@@ -397,7 +381,7 @@ export default function ContactPage() {
                           style={{ animation: "pl-spin 0.8s linear infinite" }}>
                           <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
                         </svg>
-                        Sending…
+                        {t("contact.sending")}
                       </>
                     ) : (
                       <>
@@ -405,25 +389,23 @@ export default function ContactPage() {
                           <line x1="22" y1="2" x2="11" y2="13"/>
                           <polygon points="22 2 15 22 11 13 2 9 22 2"/>
                         </svg>
-                        Send Message
+                        {t("contact.sendMessage")}
                       </>
                     )}
                   </button>
 
-                  {/* Security note */}
                   <p style={{ fontSize: 12, color: DIM, textAlign: "center", margin: 0, display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}>
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={DIM} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
                       <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
                     </svg>
-                    Your information is secure and never shared.
+                    {t("contact.secureNote")}
                   </p>
                 </div>
               </form>
             )}
           </div>
 
-          {/* Help Centre link */}
           {!success && (
             <div style={{ textAlign: "center", marginTop: 32 }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 6 }}>
@@ -438,14 +420,14 @@ export default function ContactPage() {
                     <line x1="12" y1="17" x2="12.01" y2="17"/>
                   </svg>
                 </div>
-                <span style={{ fontSize: 14, fontWeight: 600, color: TEXT }}>Looking for help with something specific?</span>
+                <span style={{ fontSize: 14, fontWeight: 600, color: TEXT }}>{t("contact.lookingForHelp")}</span>
               </div>
               <p style={{ fontSize: 13, color: MUTED, margin: 0 }}>
-                Visit our{" "}
                 <Link to="/help" style={{ color: ACCENT, textDecoration: "none", fontWeight: 600 }}>
-                  Help Centre
-                </Link>{" "}
-                for guides and answers to common questions. →
+                  {t("contact.helpCentreLink")}
+                </Link>
+                {" — "}
+                {t("contact.visitHelp")}
               </p>
             </div>
           )}

@@ -83,6 +83,8 @@ export default function AuthCallback() {
           await redirectToStripeCheckout({
             plan: pending.plan,
             interval: pending.interval,
+            userId: user.id,
+            email: user.email,
           });
           return;
         } catch (err) {

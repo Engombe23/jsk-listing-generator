@@ -45,8 +45,8 @@ export async function decodeVin(vin) {
 // ─── 2. Vehicle Type Details ──────────────────────────────────────────────────
 // GET /api/types/type-id/1/vehicle-type-details/{vehicleId}/lang-id/4/country-filter-id/63
 
-export async function getVehicleTypeDetails(vehicleId) {
-  const url = `https://${RAPIDAPI_HOST}/api/types/type-id/${TYPE_ID}/vehicle-type-details/${vehicleId}/lang-id/${LANG_ID}/country-filter-id/${COUNTRY_FILTER_ID}`;
+export async function getVehicleTypeDetails(vehicleId, langId = LANG_ID) {
+  const url = `https://${RAPIDAPI_HOST}/api/types/type-id/${TYPE_ID}/vehicle-type-details/${vehicleId}/lang-id/${langId}/country-filter-id/${COUNTRY_FILTER_ID}`;
   const res = await fetch(url, { method: "GET", headers: apiHeaders() });
   if (!res.ok) return null;
   return res.json();
@@ -55,11 +55,11 @@ export async function getVehicleTypeDetails(vehicleId) {
 // ─── 3. Search Articles by OEM — primary ─────────────────────────────────────
 // POST /api/articles-oem/article-oem-search-no  body: langId=4&articleOemNo={oem}
 
-export async function searchArticleByOem(oemNumber) {
+export async function searchArticleByOem(oemNumber, langId = LANG_ID) {
   const url = `https://${RAPIDAPI_HOST}/api/articles-oem/article-oem-search-no`;
 
   const params = new URLSearchParams();
-  params.append("langId", LANG_ID);
+  params.append("langId", langId);
   params.append("articleOemNo", oemNumber);
 
   const res = await fetch(url, {
@@ -75,9 +75,9 @@ export async function searchArticleByOem(oemNumber) {
 // ─── 4. Search Articles by Article No — fallback ──────────────────────────────
 // GET /api/artlookup/search-articles-by-article-no?langId=4&articleNo={oem}&articleType=OENumber
 
-export async function artlookupByArticleNo(articleNo) {
+export async function artlookupByArticleNo(articleNo, langId = LANG_ID) {
   const params = new URLSearchParams();
-  params.append("langId", LANG_ID);
+  params.append("langId", langId);
   params.append("articleNo", articleNo);
   params.append("articleType", "OENumber");
 
@@ -95,12 +95,12 @@ export async function artlookupByArticleNo(articleNo) {
 // ─── 5. Article details by article number ─────────────────────────────────────
 // POST /api/articles/article-number-details
 
-export async function getArticleDetails(articleNumber) {
+export async function getArticleDetails(articleNumber, langId = LANG_ID) {
   const url = `https://${RAPIDAPI_HOST}/api/articles/article-number-details`;
 
   const params = new URLSearchParams();
   params.append("typeId", TYPE_ID);
-  params.append("langId", LANG_ID);
+  params.append("langId", langId);
   params.append("countryFilterId", COUNTRY_FILTER_ID);
   params.append("articleNo", articleNumber);
 
@@ -143,11 +143,11 @@ export async function getOemsByArticleIds(articleIds) {
 //   body: langId=4&articleOemNo={oem}
 // Returns array of vehicles with vehicleId fields.
 
-export async function getVehiclesByOem(oemNumber) {
+export async function getVehiclesByOem(oemNumber, langId = LANG_ID) {
   const url = `https://${RAPIDAPI_HOST}/api/articles-oem/selecting-a-list-of-cars-for-oem-part-number`;
 
   const params = new URLSearchParams();
-  params.append("langId", LANG_ID);
+  params.append("langId", langId);
   params.append("articleOemNo", oemNumber);
 
   try {
@@ -167,8 +167,8 @@ export async function getVehiclesByOem(oemNumber) {
 // GET /api/articles-oem/selecting-oem-parts-vehicle-modification-description-product-group/
 //   type-id/1/vehicle-id/{vehicleId}/lang-id/4/search-param/filter
 
-export async function searchPartsByVehicle(vehicleId, searchParam = "filter") {
-  const url = `https://${RAPIDAPI_HOST}/api/articles-oem/selecting-oem-parts-vehicle-modification-description-product-group/type-id/${TYPE_ID}/vehicle-id/${vehicleId}/lang-id/${LANG_ID}/search-param/${encodeURIComponent(searchParam)}`;
+export async function searchPartsByVehicle(vehicleId, searchParam = "filter", langId = LANG_ID) {
+  const url = `https://${RAPIDAPI_HOST}/api/articles-oem/selecting-oem-parts-vehicle-modification-description-product-group/type-id/${TYPE_ID}/vehicle-id/${vehicleId}/lang-id/${langId}/search-param/${encodeURIComponent(searchParam)}`;
 
   try {
     const res = await fetch(url, { method: "GET", headers: apiHeaders() });
@@ -182,11 +182,11 @@ export async function searchPartsByVehicle(vehicleId, searchParam = "filter") {
 // ─── 9. Equivalent OEM numbers ────────────────────────────────────────────────
 // POST /api/articles-oem/all-equal-oem-no  body: langId=4&articleOemNo={oem}
 
-export async function getEquivalentOems(oemNumber) {
+export async function getEquivalentOems(oemNumber, langId = LANG_ID) {
   const url = `https://${RAPIDAPI_HOST}/api/articles-oem/all-equal-oem-no`;
 
   const params = new URLSearchParams();
-  params.append("langId", LANG_ID);
+  params.append("langId", langId);
   params.append("articleOemNo", oemNumber);
 
   const res = await fetch(url, {
@@ -203,12 +203,12 @@ export async function getEquivalentOems(oemNumber) {
 // POST /api/articles/article-id-complete-details
 // More complete than article-number-details — includes OEM numbers, attributes, etc.
 
-export async function getArticleDetailsById(articleId) {
+export async function getArticleDetailsById(articleId, langId = LANG_ID) {
   const url = `https://${RAPIDAPI_HOST}/api/articles/article-id-complete-details`;
 
   const params = new URLSearchParams();
   params.append("typeId", TYPE_ID);
-  params.append("langId", LANG_ID);
+  params.append("langId", langId);
   params.append("articleId", String(articleId));
   params.append("countryFilterId", COUNTRY_FILTER_ID);
 
@@ -226,9 +226,9 @@ export async function getArticleDetailsById(articleId) {
 // GET /api/articles/get-compatible-cars-by-article-number/type-id/{typeId}
 //   ?langId=4&supplierId={supplierId}&articleNo={articleNo}&countryFilterId=63
 
-export async function getCompatibleCarsByArticleNo(articleNo, supplierId) {
+export async function getCompatibleCarsByArticleNo(articleNo, supplierId, langId = LANG_ID) {
   const params = new URLSearchParams();
-  params.append("langId", LANG_ID);
+  params.append("langId", langId);
   params.append("supplierId", String(supplierId));
   params.append("articleNo", articleNo);
   params.append("countryFilterId", COUNTRY_FILTER_ID);
@@ -253,11 +253,11 @@ export async function getCompatibleCarsByArticleNo(articleNo, supplierId) {
 // ─── Article media ────────────────────────────────────────────────────────────
 // POST /api/articles/article-all-media-info
 
-export async function getArticleMedia(articleId) {
+export async function getArticleMedia(articleId, langId = LANG_ID) {
   const url = `https://${RAPIDAPI_HOST}/api/articles/article-all-media-info`;
 
   const params = new URLSearchParams();
-  params.append("langId", LANG_ID);
+  params.append("langId", langId);
   params.append("articleId", String(articleId));
 
   try {

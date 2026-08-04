@@ -1,6 +1,7 @@
 import { motion, useInView } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { Check, Search, Sparkles } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 const ease = [0.22, 1, 0.36, 1];
 
@@ -49,12 +50,13 @@ function PanelShell({ url, children, h = 240 }) {
 }
 
 export function StepInputAnim({ active }) {
+  const { t } = useTranslation();
   const { out, done } = useTyping("11247807345", active, 80, 400);
   return (
     <PanelShell url="partlister.app/generator">
       <div className="flex h-full flex-col justify-center">
         <span className="mb-2 font-mono text-[0.62rem] uppercase tracking-wider text-slate-400">
-          OE / OEM / Article number
+          {t("landing.howAnim.inputLabel")}
         </span>
         <div className="flex items-center gap-2 rounded-xl border-2 border-primary/40 bg-white px-3.5 py-3 shadow-[0_0_0_4px_rgba(19,93,255,0.08)]">
           <Search className="h-4 w-4 shrink-0 text-primary" />
@@ -73,18 +75,13 @@ export function StepInputAnim({ active }) {
           }`}
         >
           <Sparkles className="h-4 w-4" />
-          Generate listing
+          {t("landing.howAnim.generate")}
         </motion.button>
       </div>
     </PanelShell>
   );
 }
 
-const oemRows = [
-  { label: "OEM Numbers", value: "C2Z28368, DW936600BA, LR052436" },
-  { label: "Autopumps UK", value: "AOP858" },
-  { label: "OSSCA", value: "67164" },
-];
 const vehicleRows = [
   { name: "JAGUAR F-TYPE Convertible (X152) 3.0 SCV6", yrs: "2012-10", kw: "250", hp: "340", cc: "2995", ec: "306PS(AJ126)" },
   { name: "JAGUAR F-TYPE Convertible (X152) 3.0 SCV6 S", yrs: "2012-10", kw: "280", hp: "380", cc: "2995", ec: "306PS(AJ126)" },
@@ -100,6 +97,12 @@ const vehicleRows = [
 const kNumbers = ["57131", "57133", "109349", "139188", "109352", "109353", "129271", "100686", "109350", "118546", "24474", "55990", "58152", "31362", "10931"];
 
 export function StepDataAnim({ active }) {
+  const { t } = useTranslation();
+  const oemRowsLocalized = [
+    { label: t("landing.howAnim.oemNumbers"), value: "C2Z28368, DW936600BA, LR052436" },
+    { label: "Autopumps UK", value: "AOP858" },
+    { label: "OSSCA", value: "67164" },
+  ];
   return (
     <PanelShell url="partlister.app/generator" h={380}>
       <div className="grid h-full grid-cols-[1.55fr_1fr] gap-2 overflow-hidden text-navy">
@@ -110,7 +113,7 @@ export function StepDataAnim({ active }) {
             transition={{ duration: 0.4, ease }}
             className="text-center font-display text-[0.82rem] font-extrabold"
           >
-            Oil Pump
+            {t("landing.howAnim.oilPump")}
           </motion.div>
           <motion.div
             initial={{ opacity: 0 }}
@@ -118,10 +121,10 @@ export function StepDataAnim({ active }) {
             transition={{ duration: 0.4, delay: 0.15 }}
             className="rounded border border-amber-300 bg-amber-50 px-2 py-1 text-center text-[0.56rem] font-semibold text-amber-700"
           >
-            ⚠ Please verify compatibility before ordering
+            ⚠ {t("landing.howAnim.verifyCompatibility")}
           </motion.div>
           <div className="flex flex-col overflow-hidden rounded border border-slate-200">
-            {oemRows.map((r, i) => (
+            {oemRowsLocalized.map((r, i) => (
               <motion.div
                 key={r.label}
                 initial={{ opacity: 0, x: -10 }}
@@ -140,7 +143,7 @@ export function StepDataAnim({ active }) {
             transition={{ duration: 0.4, delay: 0.7 }}
             className="rounded bg-navy px-2 py-1 text-[0.58rem] font-bold text-white"
           >
-            Compatible Vehicles (58 applications)
+            {t("landing.howAnim.compatibleVehicles", { count: 58 })}
           </motion.div>
           <div className="flex flex-col overflow-hidden rounded border border-slate-300">
             <motion.div
@@ -152,12 +155,12 @@ export function StepDataAnim({ active }) {
               Jaguar
             </motion.div>
             <div className="flex bg-[#7c828a] text-[0.5rem] font-bold text-white">
-              <span className="flex-1 px-1.5 py-0.5">Vehicle</span>
-              <span className="w-10 py-0.5 text-center">Years</span>
+              <span className="flex-1 px-1.5 py-0.5">{t("landing.howAnim.vehicle")}</span>
+              <span className="w-10 py-0.5 text-center">{t("landing.howAnim.years")}</span>
               <span className="w-5 py-0.5 text-center">kW</span>
               <span className="w-5 py-0.5 text-center">HP</span>
               <span className="w-7 py-0.5 text-center">CC</span>
-              <span className="w-12 py-0.5 text-center">Engine</span>
+              <span className="w-12 py-0.5 text-center">{t("landing.howAnim.engine")}</span>
             </div>
             {vehicleRows.map((v, i) => (
               <motion.div
@@ -187,7 +190,7 @@ export function StepDataAnim({ active }) {
           >
             <p className="font-mono text-[0.5rem] text-slate-400">AOP858</p>
             <p className="flex items-center gap-1 text-[0.56rem] font-semibold text-[#17924a]">
-              <Check className="h-2.5 w-2.5" /> 58 compatible vehicles
+              <Check className="h-2.5 w-2.5" /> {t("landing.howAnim.compatibleVehiclesShort", { count: 58 })}
             </p>
           </motion.div>
           <motion.button
@@ -197,10 +200,10 @@ export function StepDataAnim({ active }) {
             transition={{ duration: 0.4, delay: 0.55, ease }}
             className="rounded bg-primary py-1.5 text-[0.56rem] font-bold text-white"
           >
-            Check Market Prices →
+            {t("landing.howAnim.checkPrices")} →
           </motion.button>
           <div className="flex flex-1 flex-col overflow-hidden rounded border border-slate-200 bg-slate-50/60 p-1.5">
-            <p className="mb-1 text-[0.5rem] font-bold tracking-wide text-slate-400">K NUMBERS</p>
+            <p className="mb-1 text-[0.5rem] font-bold tracking-wide text-slate-400">{t("landing.howAnim.kNumbers")}</p>
             <div className="flex flex-wrap gap-x-1 gap-y-0.5 overflow-hidden leading-tight">
               {kNumbers.map((k, i) => (
                 <motion.span
@@ -230,6 +233,7 @@ const listingRows = [
 ];
 
 export function StepExportAnim({ active }) {
+  const { t } = useTranslation();
   const [checked, setChecked] = useState([]);
   const [exported, setExported] = useState(false);
 
@@ -252,26 +256,26 @@ export function StepExportAnim({ active }) {
       <div className="flex h-full flex-col text-navy">
         <div className="flex flex-wrap items-center justify-end gap-1.5 border-b border-slate-100 pb-2">
           <span className="rounded-full border border-[#17924a]/40 bg-[#17924a]/5 px-2 py-1 text-[0.56rem] font-semibold text-[#17924a]">
-            ✓ Mark Exported ({count})
+            ✓ {t("landing.howAnim.markExported", { count })}
           </span>
           <span className="rounded-full border border-red-300 bg-red-50 px-2 py-1 text-[0.56rem] font-semibold text-red-500">
-            × Delete {count} selected
+            × {t("landing.howAnim.deleteSelected", { count })}
           </span>
           <motion.span
             animate={exported ? { scale: [1, 0.94, 1], boxShadow: "0 0 0 4px rgba(23,146,74,0.18)" } : { scale: 1 }}
             transition={{ duration: 0.4, ease }}
             className={`rounded-full px-2.5 py-1 text-[0.56rem] font-bold text-white transition-colors ${count > 0 ? "bg-[#17924a]" : "bg-[#17924a]/40"}`}
           >
-            ↓ Export CSV ({count} selected)
+            ↓ {t("landing.howAnim.exportCsv", { count })}
           </motion.span>
         </div>
 
         <div className="mt-2 flex items-center bg-slate-50 text-[0.5rem] font-bold uppercase tracking-wide text-slate-400">
           <span className="w-6 py-1 text-center">✓</span>
-          <span className="w-14 px-1 py-1">Type</span>
-          <span className="flex-1 px-1 py-1">K Numbers</span>
-          <span className="flex-1 px-1 py-1">OEM Numbers</span>
-          <span className="w-16 px-1 py-1">Status</span>
+          <span className="w-14 px-1 py-1">{t("landing.howAnim.type")}</span>
+          <span className="flex-1 px-1 py-1">{t("landing.howAnim.kNumbers")}</span>
+          <span className="flex-1 px-1 py-1">{t("landing.howAnim.oemNumbers")}</span>
+          <span className="w-16 px-1 py-1">{t("landing.howAnim.status")}</span>
         </div>
 
         <div className="flex flex-col overflow-hidden">
@@ -295,7 +299,7 @@ export function StepExportAnim({ active }) {
                 <span className="flex-1 truncate px-1 py-1.5 font-mono text-slate-500">{r.k}</span>
                 <span className="flex-1 truncate px-1 py-1.5 font-mono text-slate-500">{r.oem}</span>
                 <span className="w-16 px-1 py-1.5">
-                  <span className="rounded bg-[#17924a]/10 px-1 py-0.5 text-[0.48rem] font-bold text-[#17924a]">Exported</span>
+                <span className="rounded bg-[#17924a]/10 px-1 py-0.5 text-[0.48rem] font-bold text-[#17924a]">{t("landing.howAnim.exported")}</span>
                 </span>
               </div>
             );
@@ -308,7 +312,7 @@ export function StepExportAnim({ active }) {
           transition={{ duration: 0.4, ease }}
           className="mt-auto flex items-center justify-center gap-1 pt-2 text-[0.62rem] font-semibold text-[#17924a]"
         >
-          <Check className="h-3 w-3" /> 4 listings exported to CSV
+          <Check className="h-3 w-3" /> {t("landing.howAnim.listingsExported", { count: 4 })}
         </motion.div>
       </div>
     </PanelShell>

@@ -1,8 +1,10 @@
 import { ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Reveal, Section } from "./Primitives";
 
 export default function FinalCTA() {
+  const { t } = useTranslation();
   return (
     <Section className="pb-24 sm:pb-28">
       <Reveal>
@@ -27,10 +29,10 @@ export default function FinalCTA() {
 
           <div className="relative mx-auto max-w-2xl">
             <h2 className="text-balance font-display text-[clamp(2rem,4.6vw,3.4rem)] font-extrabold leading-[1.05] tracking-tightest text-white">
-              Ready to create listings in seconds?
+              {t("landing.finalCta.title")}
             </h2>
             <p className="mt-5 text-balance text-center text-[1.08rem] leading-relaxed text-white/70">
-              Stop copy-pasting part data by hand. Turn your next OEM number into a complete eBay listing right now.
+              {t("landing.finalCta.body")}
             </p>
 
             <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
@@ -38,12 +40,12 @@ export default function FinalCTA() {
                 to="/auth/sign-up"
                 className="group inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-8 py-4 text-[1.05rem] font-semibold text-white shadow-[0_16px_40px_-10px_rgba(19,93,255,0.8)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-white hover:text-navy sm:w-auto"
               >
-                Generate 10 Listings Free
+                {t("marketing.ctaFree")}
                 <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-0.5" />
               </Link>
             </div>
             <p className="mt-4 font-mono text-[0.78rem] text-white/40">
-              No card required · Cancel anytime
+              {t("landing.finalCta.microcopy")}
             </p>
           </div>
         </div>

@@ -1,6 +1,7 @@
 import { forwardRef, useEffect, useRef, useState } from "react";
 import { motion, useInView } from "motion/react";
 import { Check, Loader2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 const ease = [0.22, 1, 0.36, 1];
 
@@ -20,18 +21,20 @@ const Shell = forwardRef(function Shell({ children, className = "" }, ref) {
 // 1 · Listing Generator
 // ──────────────────────────────────────────────────────────────────────────────
 
-const COMPAT_ROWS = [
-  { vehicle: "JAGUAR F-TYPE Conv. (X152) 3.0 SCV6",       years: "2012-10→", kw: 250, hp: 340, cc: 2995, code: "306PS(AJ126)" },
-  { vehicle: "JAGUAR F-TYPE Conv. (X152) 3.0 SCV6 S",     years: "2012-10→", kw: 280, hp: 380, cc: 2995, code: "306PS(AJ126)" },
-  { vehicle: "JAGUAR F-TYPE Conv. (X152) 3.0 SCV6 S AWD", years: "2012-10→", kw: 280, hp: 380, cc: 2995, code: "306PS(AJ126)" },
-  { vehicle: "JAGUAR F-TYPE Conv. (X152) 5.0 SCV8 P450",  years: "2019-12→", kw: 331, hp: 450, cc: 5000, code: "508PS(AJ133)" },
-  { vehicle: "JAGUAR F-TYPE Conv. (X152) 5.0 SCV8 R",     years: "2013-10→", kw: 405, hp: 551, cc: 5000, code: "508PS(AJ133)" },
+const getCompatRows = (t) => [
+  { vehicle: t("landing.featureDemos.listing.compatRows.0"), years: "2012-10→", kw: 250, hp: 340, cc: 2995, code: "306PS(AJ126)" },
+  { vehicle: t("landing.featureDemos.listing.compatRows.1"), years: "2012-10→", kw: 280, hp: 380, cc: 2995, code: "306PS(AJ126)" },
+  { vehicle: t("landing.featureDemos.listing.compatRows.2"), years: "2012-10→", kw: 280, hp: 380, cc: 2995, code: "306PS(AJ126)" },
+  { vehicle: t("landing.featureDemos.listing.compatRows.3"), years: "2019-12→", kw: 331, hp: 450, cc: 5000, code: "508PS(AJ133)" },
+  { vehicle: t("landing.featureDemos.listing.compatRows.4"), years: "2013-10→", kw: 405, hp: 551, cc: 5000, code: "508PS(AJ133)" },
 ];
 
 export function ListingDemo() {
+  const { t } = useTranslation();
   const ref    = useRef(null);
   const inView = useInView(ref, { once: true, margin: "-60px" });
   const [step, setStep] = useState(0);
+  const compatRows = getCompatRows(t);
 
   useEffect(() => {
     if (!inView) return;
@@ -64,52 +67,52 @@ export function ListingDemo() {
           style={{ width: 162, background: "#f7f9fc" }}
         >
           <div>
-            <div className="mb-0.5 font-bold text-[#111827]" style={{ fontSize: "0.68rem" }}>Listing Generator</div>
-            <div className="text-[#9ca3af]" style={{ fontSize: "0.55rem" }}>Enter a TecDoc article number or OEM / reference number.</div>
+            <div className="mb-0.5 font-bold text-[#111827]" style={{ fontSize: "0.68rem" }}>{t("landing.featureDemos.listing.title")}</div>
+            <div className="text-[#9ca3af]" style={{ fontSize: "0.55rem" }}>{t("landing.featureDemos.listing.subtitle")}</div>
           </div>
 
           <div>
-            <div className="mb-1 font-semibold uppercase tracking-wide text-[#9ca3af]" style={{ fontSize: "0.52rem" }}>Article No. or OEM Number</div>
+            <div className="mb-1 font-semibold uppercase tracking-wide text-[#9ca3af]" style={{ fontSize: "0.52rem" }}>{t("landing.featureDemos.listing.articleNumber")}</div>
             <div className="flex items-center rounded-md border border-hair bg-white px-2 py-1.5">
               <span className="font-mono font-semibold text-[#111827]" style={{ fontSize: "0.72rem" }}>AOP858</span>
             </div>
           </div>
 
           <div>
-            <div className="mb-1 font-semibold uppercase tracking-wide text-[#9ca3af]" style={{ fontSize: "0.52rem" }}>Templates</div>
+            <div className="mb-1 font-semibold uppercase tracking-wide text-[#9ca3af]" style={{ fontSize: "0.52rem" }}>{t("landing.featureDemos.listing.templates")}</div>
             <div className="flex flex-wrap gap-1">
-              {["Clean Default", "Dark Header"].map(t => (
-                <span key={t} className="rounded border border-hair bg-white px-1.5 py-0.5 text-[#6b7280]" style={{ fontSize: "0.52rem" }}>{t}</span>
+              {["cleanDefault", "darkHeader"].map(key => (
+                <span key={key} className="rounded border border-hair bg-white px-1.5 py-0.5 text-[#6b7280]" style={{ fontSize: "0.52rem" }}>{t(`landing.featureDemos.listing.templateNames.${key}`)}</span>
               ))}
-              <span className="rounded border px-1.5 py-0.5 font-bold" style={{ fontSize: "0.52rem", borderColor: "#135DFF", color: "#135DFF", background: "rgba(19,93,255,0.06)" }}>Table Focused</span>
-              {["Minimal", "Professional Blue"].map(t => (
-                <span key={t} className="rounded border border-hair bg-white px-1.5 py-0.5 text-[#6b7280]" style={{ fontSize: "0.52rem" }}>{t}</span>
+              <span className="rounded border px-1.5 py-0.5 font-bold" style={{ fontSize: "0.52rem", borderColor: "#135DFF", color: "#135DFF", background: "rgba(19,93,255,0.06)" }}>{t("landing.featureDemos.listing.templateNames.tableFocused")}</span>
+              {["minimal", "professionalBlue"].map(key => (
+                <span key={key} className="rounded border border-hair bg-white px-1.5 py-0.5 text-[#6b7280]" style={{ fontSize: "0.52rem" }}>{t(`landing.featureDemos.listing.templateNames.${key}`)}</span>
               ))}
             </div>
           </div>
 
           <div>
-            <div className="mb-1 font-semibold uppercase tracking-wide text-[#9ca3af]" style={{ fontSize: "0.52rem" }}>Content Options</div>
-            {["Compatibility Table", "Interchangeable Numbers", "Engine Codes"].map(label => (
-              <div key={label} className="mb-1 flex items-center justify-between">
-                <span className="text-[#374151]" style={{ fontSize: "0.55rem" }}>{label}</span>
-                <span className="rounded-full px-1.5 py-0.5 text-white" style={{ fontSize: "0.45rem", background: "#135DFF" }}>ON</span>
+            <div className="mb-1 font-semibold uppercase tracking-wide text-[#9ca3af]" style={{ fontSize: "0.52rem" }}>{t("landing.featureDemos.listing.contentOptions")}</div>
+            {["compatibilityTable", "interchangeableNumbers", "engineCodes"].map(key => (
+              <div key={key} className="mb-1 flex items-center justify-between">
+                <span className="text-[#374151]" style={{ fontSize: "0.55rem" }}>{t(`landing.featureDemos.listing.contentOptionNames.${key}`)}</span>
+                <span className="rounded-full px-1.5 py-0.5 text-white" style={{ fontSize: "0.45rem", background: "#135DFF" }}>{t("landing.featureDemos.common.on")}</span>
               </div>
             ))}
           </div>
 
           <button className="mt-auto w-full rounded-lg py-2 font-bold text-white" style={{ background: "#135DFF", fontSize: "0.65rem" }}>
-            Search & Generate
+            {t("landing.featureDemos.listing.searchGenerate")}
           </button>
-          <div className="text-center text-[#9ca3af]" style={{ fontSize: "0.5rem" }}>Unlimited Listings</div>
+          <div className="text-center text-[#9ca3af]" style={{ fontSize: "0.5rem" }}>{t("landing.featureDemos.listing.unlimitedListings")}</div>
         </motion.div>
 
         {/* CENTER: listing preview */}
         <div className="flex min-w-0 flex-1 flex-col">
           {/* Tab bar */}
           <div className="flex shrink-0 border-b border-hair bg-[#f7f9fc]">
-            {["Preview", "Item Specifics"].map((t, i) => (
-              <div key={t} className="px-3 py-2" style={{ fontSize: "0.65rem", fontWeight: 600, color: i === 0 ? "#135DFF" : "#9ca3af", borderBottom: i === 0 ? "2px solid #135DFF" : "2px solid transparent" }}>{t}</div>
+            {["preview", "itemSpecifics"].map((key, i) => (
+              <div key={key} className="px-3 py-2" style={{ fontSize: "0.65rem", fontWeight: 600, color: i === 0 ? "#135DFF" : "#9ca3af", borderBottom: i === 0 ? "2px solid #135DFF" : "2px solid transparent" }}>{t(`landing.featureDemos.listing.tabs.${key}`)}</div>
             ))}
             {step >= 2 && (
               <motion.button
@@ -118,7 +121,7 @@ export function ListingDemo() {
                 className="ml-auto mr-2 self-center rounded px-2 py-1 font-semibold text-white"
                 style={{ fontSize: "0.55rem", background: "#135DFF" }}
               >
-                ✏ Edit Description
+                ✏ {t("landing.featureDemos.listing.editDescription")}
               </motion.button>
             )}
           </div>
@@ -128,9 +131,9 @@ export function ListingDemo() {
             <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-16" style={{ background: "linear-gradient(to bottom, transparent, white)" }} />
             {step >= 2 && (
               <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease }}>
-                <div className="py-2 text-center font-bold text-[#111827]" style={{ fontSize: "0.85rem" }}>Oil Pump</div>
+                <div className="py-2 text-center font-bold text-[#111827]" style={{ fontSize: "0.85rem" }}>{t("landing.featureDemos.common.oilPump")}</div>
                 <div className="mx-3 mb-2 rounded px-2 py-1 text-center" style={{ fontSize: "0.58rem", background: "#fefce8", border: "1px solid #fde68a", color: "#92400e" }}>
-                  ⚠ Please verify compatibility before ordering
+                  ⚠ {t("landing.featureDemos.listing.verifyCompatibility")}
                 </div>
               </motion.div>
             )}
@@ -146,7 +149,7 @@ export function ListingDemo() {
               >
                 <tbody>
                   {[
-                    ["OEM Numbers", "C2Z28368, DW936600BA, LR052436"],
+                    [t("landing.featureDemos.listing.oemNumbers"), "C2Z28368, DW936600BA, LR052436"],
                     ["Autopumps UK", "AOP858"],
                     ["OSSCA", "67164"],
                   ].map(([k, v]) => (
@@ -168,7 +171,7 @@ export function ListingDemo() {
                 className="mt-1 px-3 py-1.5 font-bold text-white"
                 style={{ background: "#1f2937", fontSize: "0.65rem" }}
               >
-                Compatible Vehicles (58 applications)
+                {t("landing.featureDemos.listing.compatibleVehicles", { count: 58 })}
               </motion.div>
             )}
 
@@ -179,13 +182,13 @@ export function ListingDemo() {
                 <table className="w-full" style={{ borderCollapse: "collapse", fontSize: "0.56rem" }}>
                   <thead>
                     <tr style={{ background: "#f1f5f9" }}>
-                      {["Vehicle", "Years", "kW", "HP", "CC", "Engine Codes"].map(h => (
-                        <th key={h} className="px-1.5 py-1 text-left font-bold text-[#374151]">{h}</th>
+                      {["vehicle", "years", "kw", "hp", "cc", "engineCodes"].map(key => (
+                        <th key={key} className="px-1.5 py-1 text-left font-bold text-[#374151]">{t(`landing.featureDemos.listing.columns.${key}`)}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
-                    {COMPAT_ROWS.map((r, i) =>
+                    {compatRows.map((r, i) =>
                       step >= i + 6 ? (
                         <motion.tr
                           key={r.vehicle}
@@ -219,25 +222,25 @@ export function ListingDemo() {
           style={{ width: 140, background: "#f7f9fc" }}
         >
           <div>
-            <div className="mb-1 font-bold uppercase tracking-wide text-[#9ca3af]" style={{ fontSize: "0.5rem" }}>Article</div>
-            <div className="font-bold text-[#111827]" style={{ fontSize: "0.72rem" }}>Oil Pump</div>
+            <div className="mb-1 font-bold uppercase tracking-wide text-[#9ca3af]" style={{ fontSize: "0.5rem" }}>{t("landing.featureDemos.listing.article")}</div>
+            <div className="font-bold text-[#111827]" style={{ fontSize: "0.72rem" }}>{t("landing.featureDemos.common.oilPump")}</div>
             <div className="text-[#6b7280]" style={{ fontSize: "0.58rem" }}>AOP858</div>
-            <div className="mt-1 font-semibold" style={{ fontSize: "0.58rem", color: "#135DFF" }}>✓ 58 compatible vehicles</div>
+            <div className="mt-1 font-semibold" style={{ fontSize: "0.58rem", color: "#135DFF" }}>✓ {t("landing.featureDemos.listing.compatibleVehiclesShort", { count: 58 })}</div>
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <button className="w-full rounded-lg py-1.5 text-center font-bold text-white" style={{ background: "#135DFF", fontSize: "0.6rem" }}>Check Market Prices →</button>
-            <button className="w-full rounded-lg py-1.5 text-center font-bold text-white" style={{ background: "#135DFF", fontSize: "0.6rem" }}>💾 Save Listing</button>
-            <button className="w-full rounded-lg border border-hair bg-white py-1.5 text-center font-semibold text-[#374151]" style={{ fontSize: "0.6rem" }}>📋 Copy HTML</button>
+            <button className="w-full rounded-lg py-1.5 text-center font-bold text-white" style={{ background: "#135DFF", fontSize: "0.6rem" }}>{t("landing.featureDemos.listing.checkMarketPrices")} →</button>
+            <button className="w-full rounded-lg py-1.5 text-center font-bold text-white" style={{ background: "#135DFF", fontSize: "0.6rem" }}>💾 {t("landing.featureDemos.common.saveListing")}</button>
+            <button className="w-full rounded-lg border border-hair bg-white py-1.5 text-center font-semibold text-[#374151]" style={{ fontSize: "0.6rem" }}>📋 {t("landing.featureDemos.common.copyHtml")}</button>
           </div>
 
           <div>
-            <div className="mb-0.5 font-bold uppercase tracking-wide text-[#9ca3af]" style={{ fontSize: "0.5rem" }}>Title <span className="font-normal normal-case">8 / 80</span></div>
-            <div className="text-[#111827]" style={{ fontSize: "0.62rem" }}>Oil Pump</div>
+            <div className="mb-0.5 font-bold uppercase tracking-wide text-[#9ca3af]" style={{ fontSize: "0.5rem" }}>{t("landing.featureDemos.common.title")} <span className="font-normal normal-case">8 / 80</span></div>
+            <div className="text-[#111827]" style={{ fontSize: "0.62rem" }}>{t("landing.featureDemos.common.oilPump")}</div>
           </div>
 
           <div>
-            <div className="mb-0.5 font-bold uppercase tracking-wide text-[#9ca3af]" style={{ fontSize: "0.5rem" }}>OEM Numbers</div>
+            <div className="mb-0.5 font-bold uppercase tracking-wide text-[#9ca3af]" style={{ fontSize: "0.5rem" }}>{t("landing.featureDemos.listing.oemNumbers")}</div>
             <div className="font-mono text-[#6b7280]" style={{ fontSize: "0.52rem" }}>C2Z28368, DW936600BA, LR052436</div>
           </div>
         </motion.div>
@@ -263,20 +266,22 @@ const CHART_BINS = [
 ];
 const YOUR_PRICE_BIN = 3;
 
-const EBAY_LISTINGS = [
-  { title: "OIL PUMP LR002465 Range Rover Sport TDV6 SDV6 NEW 276DT 306DT 2.7 3.0", price: "£38.99",  seller: "1,204 · 97.3%" },
-  { title: "Oil Pump For JAGUAR XF XJ 2.7 3.0 SDV6 306DT 276DT Engine NEW",          price: "£64.50",  seller: "15,829 · 99.8%" },
-  { title: "OIL PUMP Range Rover Mk4 Diesel TDV6 SDV6 NEW 276DT 306DT LR002465",     price: "£81.05",  seller: "79,185 · 99.9%" },
-  { title: "OIL PUMP LR002465 Land Rover DISCOVERY TDV6 SDV6 NEW 3.0 306DT",         price: "£85.99",  seller: "79,185 · 99.9%" },
-  { title: "Oil Pump LAND ROVER DISCOVERY III IV V Range Rover Sport 2.7 3.0 306DT",  price: "£94.00",  seller: "15,829 · 99.8%" },
-  { title: "OIL PUMP & SEALS Range Rover Sport L320 2005-2013 LR002465 NEW 2.7 3.0",  price: "£114.99", seller: "115,275 · 99.9%" },
-  { title: "Genuine Land Rover Oil Pump Assembly LR002465 Discovery 3 4 Range Rover",  price: "£249.00", seller: "3,871 · 99.6%" },
+const getEbayListings = (t) => [
+  { title: t("landing.featureDemos.price.listings.0"), price: "£38.99", seller: "1,204 · 97.3%" },
+  { title: t("landing.featureDemos.price.listings.1"), price: "£64.50", seller: "15,829 · 99.8%" },
+  { title: t("landing.featureDemos.price.listings.2"), price: "£81.05", seller: "79,185 · 99.9%" },
+  { title: t("landing.featureDemos.price.listings.3"), price: "£85.99", seller: "79,185 · 99.9%" },
+  { title: t("landing.featureDemos.price.listings.4"), price: "£94.00", seller: "15,829 · 99.8%" },
+  { title: t("landing.featureDemos.price.listings.5"), price: "£114.99", seller: "115,275 · 99.9%" },
+  { title: t("landing.featureDemos.price.listings.6"), price: "£249.00", seller: "3,871 · 99.6%" },
 ];
 
 export function PriceChartDemo() {
+  const { t } = useTranslation();
   const ref    = useRef(null);
   const inView = useInView(ref, { once: true, margin: "-60px" });
   const [step, setStep] = useState(0);
+  const ebayListings = getEbayListings(t);
 
   useEffect(() => {
     if (!inView) return;
@@ -319,9 +324,9 @@ export function PriceChartDemo() {
             className="flex shrink-0 items-center gap-2 border-b border-hair px-3 py-2.5"
             style={{ background: "#f7f9fc" }}
           >
-            <span className="text-[0.75rem] font-bold text-[#111827]">Smart eBay Pricing</span>
+            <span className="text-[0.75rem] font-bold text-[#111827]">{t("landing.featureDemos.price.title")}</span>
             <span className="rounded px-1.5 py-0.5 text-[0.5rem] font-bold text-white" style={{ background: "#135DFF" }}>PRO</span>
-            <span className="ml-auto text-[0.55rem] font-medium" style={{ color: "#135DFF" }}>LR002465 · 60 listings</span>
+            <span className="ml-auto text-[0.55rem] font-medium" style={{ color: "#135DFF" }}>LR002465 · {t("landing.featureDemos.price.listingsCount", { count: 60 })}</span>
           </motion.div>
 
           <div className="flex-1 overflow-hidden p-3">
@@ -333,10 +338,10 @@ export function PriceChartDemo() {
               className="mb-3 grid grid-cols-4 gap-1.5"
             >
               {[
-                ["Selling Price", "£85.59", "#111827"],
-                ["Net Profit",    "£17.50", "#16a34a"],
-                ["Margin",        "20.4%",  "#135DFF"],
-                ["Markup",        "50.0%",  "#ea580c"],
+                [t("landing.featureDemos.common.sellingPrice"), "£85.59", "#111827"],
+                [t("landing.featureDemos.common.netProfit"), "£17.50", "#16a34a"],
+                [t("landing.featureDemos.common.margin"), "20.4%", "#135DFF"],
+                [t("landing.featureDemos.common.markup"), "50.0%", "#ea580c"],
               ].map(([label, value, color]) => (
                 <div key={label} className="rounded-lg border border-hair bg-white p-1.5 text-center">
                   <div className="text-[0.45rem] uppercase tracking-wide text-[#9ca3af]">{label}</div>
@@ -352,7 +357,7 @@ export function PriceChartDemo() {
               transition={{ duration: 0.3 }}
               className="overflow-hidden rounded-xl border border-hair bg-white p-2.5"
             >
-              <div className="mb-1.5 text-[0.65rem] font-bold text-[#111827]">Price Distribution</div>
+              <div className="mb-1.5 text-[0.65rem] font-bold text-[#111827]">{t("landing.featureDemos.price.distribution")}</div>
 
               <motion.div
                 initial={{ opacity: 0 }}
@@ -360,11 +365,11 @@ export function PriceChartDemo() {
                 className="mb-1 flex justify-between"
                 style={{ fontSize: "0.48rem", fontWeight: 600 }}
               >
-                <span style={{ color: "#7c3aed" }}>LOW £38.32</span>
-                <span style={{ color: "#2563eb" }}>MED £84.90</span>
-                <span style={{ color: "#0891b2" }}>YOUR £85.59</span>
-                <span style={{ color: "#ea580c" }}>AVG £108.89</span>
-                <span style={{ color: "#dc2626" }}>HIGH £379.99</span>
+                <span style={{ color: "#7c3aed" }}>{t("landing.featureDemos.price.low")} £38.32</span>
+                <span style={{ color: "#2563eb" }}>{t("landing.featureDemos.price.median")} £84.90</span>
+                <span style={{ color: "#0891b2" }}>{t("landing.featureDemos.price.your")} £85.59</span>
+                <span style={{ color: "#ea580c" }}>{t("landing.featureDemos.price.average")} £108.89</span>
+                <span style={{ color: "#dc2626" }}>{t("landing.featureDemos.price.high")} £379.99</span>
               </motion.div>
 
               <svg width="100%" viewBox={`0 0 ${W} ${H + LH}`} preserveAspectRatio="none" style={{ display: "block", height: 90 }}>
@@ -402,7 +407,7 @@ export function PriceChartDemo() {
               </svg>
 
               <div className="mt-1 text-[#9ca3af]" style={{ fontSize: "0.52rem" }}>
-                £38–£380 · £20 price bands · 60 listings
+                {t("landing.featureDemos.price.chartCaption", { count: 60 })}
               </div>
             </motion.div>
           </div>
@@ -419,15 +424,15 @@ export function PriceChartDemo() {
           {/* Panel header */}
           <div className="flex shrink-0 items-center gap-2 border-b border-hair px-3 py-2" style={{ background: "#f7f9fc" }}>
             <div>
-              <div className="font-bold text-[#111827]" style={{ fontSize: "0.68rem" }}>All Results</div>
-              <div className="text-[#6b7280]" style={{ fontSize: "0.52rem" }}>60 listings found</div>
+              <div className="font-bold text-[#111827]" style={{ fontSize: "0.68rem" }}>{t("landing.featureDemos.price.allResults")}</div>
+              <div className="text-[#6b7280]" style={{ fontSize: "0.52rem" }}>{t("landing.featureDemos.price.listingsFound", { count: 60 })}</div>
             </div>
-            <span className="ml-auto text-[0.5rem] text-[#9ca3af]">Price: Low to High</span>
+            <span className="ml-auto text-[0.5rem] text-[#9ca3af]">{t("landing.featureDemos.price.lowToHigh")}</span>
           </div>
 
           {/* Listing rows */}
           <div className="flex-1 overflow-hidden">
-            {EBAY_LISTINGS.map((l, i) =>
+            {ebayListings.map((l, i) =>
               step >= i + 6 ? (
                 <motion.div
                   key={l.title}
@@ -444,7 +449,7 @@ export function PriceChartDemo() {
                       {l.title}
                     </div>
                     <div className="mt-0.5 font-bold text-[#111827]" style={{ fontSize: "0.68rem" }}>{l.price}</div>
-                    <div className="text-[#9ca3af]" style={{ fontSize: "0.48rem" }}>New · {l.seller} · Free delivery</div>
+                    <div className="text-[#9ca3af]" style={{ fontSize: "0.48rem" }}>{t("landing.featureDemos.price.new")} · {l.seller} · {t("landing.featureDemos.price.freeDelivery")}</div>
                   </div>
                 </motion.div>
               ) : null
@@ -461,17 +466,19 @@ export function PriceChartDemo() {
 // 3 · Price Calculator — cost inputs & breakdown
 // ──────────────────────────────────────────────────────────────────────────────
 
-const BREAKDOWN_ROWS = [
-  { label: "Product cost",              value: "−£35.00", color: "#dc2626" },
-  { label: "Postage & packaging",       value: "−£5.00",  color: "#dc2626" },
-  { label: "eBay fees (12.8% + £0.30)", value: "−£10.79", color: "#dc2626" },
-  { label: "VAT collected → HMRC",      value: "−£13.66", color: "#dc2626", note: "You keep none of this" },
+const getBreakdownRows = (t) => [
+  { label: t("landing.featureDemos.calculator.productCost"), value: "−£35.00", color: "#dc2626" },
+  { label: t("landing.featureDemos.calculator.postagePackaging"), value: "−£5.00", color: "#dc2626" },
+  { label: t("landing.featureDemos.calculator.ebayFees"), value: "−£10.79", color: "#dc2626" },
+  { label: t("landing.featureDemos.calculator.vatCollected"), value: "−£13.66", color: "#dc2626", note: t("landing.featureDemos.calculator.vatNote") },
 ];
 
 export function PriceCalcDemo() {
+  const { t } = useTranslation();
   const ref    = useRef(null);
   const inView = useInView(ref, { once: true, margin: "-60px" });
   const [step, setStep] = useState(0);
+  const breakdownRows = getBreakdownRows(t);
 
   useEffect(() => {
     if (!inView) return;
@@ -493,44 +500,44 @@ export function PriceCalcDemo() {
           style={{ background: "#f7f9fc" }}
         >
           <div className="mb-3 text-[0.55rem] font-bold uppercase tracking-widest text-[#9ca3af]">
-            Cost & Pricing Inputs
+            {t("landing.featureDemos.calculator.costPricingInputs")}
           </div>
 
           <div className="mb-3 space-y-1.5">
-            <div className="text-[0.55rem] font-bold uppercase tracking-wide text-[#9ca3af]">Product</div>
+            <div className="text-[0.55rem] font-bold uppercase tracking-wide text-[#9ca3af]">{t("landing.featureDemos.calculator.product")}</div>
             <div className="flex items-center justify-between rounded-lg border border-hair bg-white px-2.5 py-1.5">
-              <span className="text-[0.6rem] text-[#6b7280]">Product / SKU</span>
-              <span className="text-[0.65rem] font-semibold text-[#111827]">306DT OIL PUMP</span>
+              <span className="text-[0.6rem] text-[#6b7280]">{t("landing.featureDemos.calculator.productSku")}</span>
+              <span className="text-[0.65rem] font-semibold text-[#111827]">306DT {t("landing.featureDemos.common.oilPump")}</span>
             </div>
           </div>
 
           <div className="mb-3 space-y-1">
-            <div className="text-[0.55rem] font-bold uppercase tracking-wide text-[#9ca3af]">Your Costs</div>
-            {[["Item cost", "£35.00"], ["Postage", "£4.50"], ["Packaging", "£0.50"]].map(([k, v]) => (
-              <div key={k} className="flex items-center justify-between rounded border border-hair bg-white px-2 py-1">
-                <span className="text-[0.6rem] text-[#6b7280]">{k}</span>
+            <div className="text-[0.55rem] font-bold uppercase tracking-wide text-[#9ca3af]">{t("landing.featureDemos.calculator.yourCosts")}</div>
+            {[["itemCost", "£35.00"], ["postage", "£4.50"], ["packaging", "£0.50"]].map(([key, v]) => (
+              <div key={key} className="flex items-center justify-between rounded border border-hair bg-white px-2 py-1">
+                <span className="text-[0.6rem] text-[#6b7280]">{t(`landing.featureDemos.calculator.${key}`)}</span>
                 <span className="font-mono text-[0.65rem] font-semibold text-[#111827]">{v}</span>
               </div>
             ))}
           </div>
 
           <div className="mb-3 space-y-1">
-            <div className="text-[0.55rem] font-bold uppercase tracking-wide text-[#9ca3af]">eBay Fees</div>
-            {[["Final value (%)", "12.8"], ["Fixed fee", "£0.30"], ["Ad rate (%)", "0"]].map(([k, v]) => (
-              <div key={k} className="flex items-center justify-between rounded border border-hair bg-white px-2 py-1">
-                <span className="text-[0.6rem] text-[#6b7280]">{k}</span>
+            <div className="text-[0.55rem] font-bold uppercase tracking-wide text-[#9ca3af]">{t("landing.featureDemos.calculator.ebayFeesTitle")}</div>
+            {[["finalValue", "12.8"], ["fixedFee", "£0.30"], ["adRate", "0"]].map(([key, v]) => (
+              <div key={key} className="flex items-center justify-between rounded border border-hair bg-white px-2 py-1">
+                <span className="text-[0.6rem] text-[#6b7280]">{t(`landing.featureDemos.calculator.${key}`)}</span>
                 <span className="font-mono text-[0.65rem] font-semibold text-[#111827]">{v}</span>
               </div>
             ))}
           </div>
 
           <div className="flex items-center justify-between rounded-lg border border-hair bg-white px-2.5 py-1.5">
-            <span className="text-[0.6rem] text-[#6b7280]">VAT registered (20%)</span>
-            <span className="rounded-full px-2 py-0.5 text-[0.55rem] font-bold text-white" style={{ background: "#135DFF" }}>ON</span>
+            <span className="text-[0.6rem] text-[#6b7280]">{t("landing.featureDemos.calculator.vatRegistered")}</span>
+            <span className="rounded-full px-2 py-0.5 text-[0.55rem] font-bold text-white" style={{ background: "#135DFF" }}>{t("landing.featureDemos.common.on")}</span>
           </div>
 
           <div className="mt-2 space-y-1">
-            <div className="text-[0.55rem] font-bold uppercase tracking-wide text-[#9ca3af]">Selling Price <span className="normal-case font-normal text-[#9ca3af]">(inc. VAT)</span></div>
+            <div className="text-[0.55rem] font-bold uppercase tracking-wide text-[#9ca3af]">{t("landing.featureDemos.common.sellingPrice")} <span className="normal-case font-normal text-[#9ca3af]">({t("landing.featureDemos.calculator.includingVat")})</span></div>
             <div className="flex items-center rounded-lg border-2 bg-white px-2.5 py-1.5" style={{ borderColor: "#135DFF" }}>
               <span className="font-mono text-[0.9rem] font-bold text-[#111827]">81.95</span>
             </div>
@@ -547,10 +554,10 @@ export function PriceCalcDemo() {
           {/* 4 headline stats matching the actual app */}
           <div className="mb-3 grid grid-cols-2 gap-1.5">
             {[
-              ["SELLING PRICE", "£81.95", "#111827"],
-              ["NET PROFIT",    "£17.50", "#16a34a"],
-              ["MARGIN",        "21.4%",  "#135DFF"],
-              ["MARKUP",        "50.0%",  "#ea580c"],
+              [t("landing.featureDemos.common.sellingPrice"), "£81.95", "#111827"],
+              [t("landing.featureDemos.common.netProfit"), "£17.50", "#16a34a"],
+              [t("landing.featureDemos.common.margin"), "21.4%", "#135DFF"],
+              [t("landing.featureDemos.common.markup"), "50.0%", "#ea580c"],
             ].map(([label, value, color]) => (
               <div key={label} className="rounded-lg border border-hair bg-[#f7f9fc] p-2 text-center">
                 <div className="text-[0.48rem] font-bold uppercase tracking-wide text-[#9ca3af]">{label}</div>
@@ -560,16 +567,16 @@ export function PriceCalcDemo() {
           </div>
 
           <div className="mb-2 text-[0.55rem] font-bold uppercase tracking-widest text-[#9ca3af]">
-            Cost Breakdown
+            {t("landing.featureDemos.calculator.costBreakdown")}
           </div>
 
           <div className="mb-1 flex items-baseline justify-between border-b border-hair pb-1.5">
-            <span className="text-[0.62rem] font-semibold text-[#111827]">Selling price</span>
+            <span className="text-[0.62rem] font-semibold text-[#111827]">{t("landing.featureDemos.common.sellingPrice")}</span>
             <span className="font-mono text-[0.7rem] font-bold text-[#111827]">£81.95</span>
           </div>
 
           <div className="space-y-1.5">
-            {BREAKDOWN_ROWS.map(({ label, value, color, note }, i) =>
+            {breakdownRows.map(({ label, value, color, note }, i) =>
               step >= i + 2 ? (
                 <motion.div
                   key={label}
@@ -595,11 +602,11 @@ export function PriceCalcDemo() {
               className="mt-auto rounded-xl border-t border-hair pt-3"
             >
               <div className="flex items-baseline justify-between">
-                <span className="text-[0.72rem] font-bold text-[#111827]">Net Profit</span>
+                <span className="text-[0.72rem] font-bold text-[#111827]">{t("landing.featureDemos.common.netProfit")}</span>
                 <span className="font-mono text-[1rem] font-extrabold" style={{ color: "#16a34a" }}>£17.50</span>
               </div>
               <div className="mt-1 rounded-lg px-3 py-1.5 text-center" style={{ background: "rgba(22,163,74,0.08)", border: "1px solid rgba(22,163,74,0.2)" }}>
-                <span className="text-[0.65rem] font-bold" style={{ color: "#16a34a" }}>Break-even selling price: </span>
+                <span className="text-[0.65rem] font-bold" style={{ color: "#16a34a" }}>{t("landing.featureDemos.calculator.breakEven")}: </span>
                 <span className="font-mono text-[0.65rem] font-bold" style={{ color: "#d97706" }}>£57.14</span>
               </div>
             </motion.div>
@@ -614,16 +621,18 @@ export function PriceCalcDemo() {
 // 4 · Compatibility Checker
 // ──────────────────────────────────────────────────────────────────────────────
 
-const CC_STEPS_TEXT = [
-  "Looking up vehicle from registration...",
-  "Searching OEM number in TecDoc...",
-  "Checking part compatibility...",
+const getCcStepsText = (t) => [
+  t("landing.featureDemos.compat.progress.vehicleLookup"),
+  t("landing.featureDemos.compat.progress.oemSearch"),
+  t("landing.featureDemos.compat.progress.compatibilityCheck"),
 ];
 
 export function CompatDemo() {
+  const { t } = useTranslation();
   const ref    = useRef(null);
   const inView = useInView(ref, { once: true, margin: "-60px" });
   const [step, setStep] = useState(0);
+  const ccStepsText = getCcStepsText(t);
 
   useEffect(() => {
     if (!inView) return;
@@ -637,9 +646,9 @@ export function CompatDemo() {
     <Shell ref={ref}>
       {/* Inputs */}
       <div className="border-b border-hair bg-white px-4 py-3">
-        <div className="mb-2.5 text-center text-[0.72rem] font-bold text-[#111827]">Compatibility Checker</div>
+        <div className="mb-2.5 text-center text-[0.72rem] font-bold text-[#111827]">{t("landing.featureDemos.compat.title")}</div>
         <div className="grid grid-cols-2 gap-3">
-          {[["VIN Number", "SALLSAAG5DA803495"], ["OEM / Part Number", "LR002465"]].map(([label, val]) => (
+          {[[t("landing.featureDemos.compat.vinNumber"), "SALLSAAG5DA803495"], [t("landing.featureDemos.compat.oemPartNumber"), "LR002465"]].map(([label, val]) => (
             <div key={label}>
               <div className="mb-1 text-[0.58rem] font-semibold text-[#6b7280]">{label}</div>
               <div className="rounded-lg border border-hair bg-white px-3 py-2 font-mono text-[0.75rem] font-semibold text-[#111827]">{val}</div>
@@ -650,7 +659,7 @@ export function CompatDemo() {
           className="mt-3 w-full rounded-xl py-2.5 text-[0.78rem] font-bold text-white"
           style={{ background: "#135DFF" }}
         >
-          Check Compatibility
+          {t("landing.featureDemos.compat.checkCompatibility")}
         </button>
       </div>
 
@@ -658,7 +667,7 @@ export function CompatDemo() {
         {/* Progress */}
         {step >= 1 && step < 4 && (
           <div className="rounded-xl border border-hair p-3 space-y-2">
-            {CC_STEPS_TEXT.map((s, i) => {
+            {ccStepsText.map((s, i) => {
               const done   = step > i + 1;
               const active = step === i + 1;
               return (
@@ -699,17 +708,17 @@ export function CompatDemo() {
             {/* Compatible banner */}
             <div className="mb-3 flex items-center gap-2">
               <Check className="h-5 w-5 shrink-0" style={{ color: "#16a34a" }} strokeWidth={3} />
-              <span className="text-[0.9rem] font-extrabold" style={{ color: "#16a34a" }}>Compatible</span>
+              <span className="text-[0.9rem] font-extrabold" style={{ color: "#16a34a" }}>{t("landing.featureDemos.compat.compatible")}</span>
             </div>
-            <p className="mb-3 text-[0.68rem] text-[#6b7280]">This part appears to be compatible with the entered vehicle.</p>
+            <p className="mb-3 text-[0.68rem] text-[#6b7280]">{t("landing.featureDemos.compat.compatibleDescription")}</p>
 
             {/* Confidence bar */}
             <div className="mb-4">
               <div className="mb-1 flex items-center justify-between">
-                <span className="text-[0.6rem] font-medium text-[#6b7280]">Confidence</span>
+                <span className="text-[0.6rem] font-medium text-[#6b7280]">{t("landing.featureDemos.compat.confidence")}</span>
                 <span className="flex items-center gap-2">
                   <span className="font-bold text-[0.7rem] text-[#111827]">92</span>
-                  <span className="text-[0.58rem] text-[#16a34a]">High Confidence — Compatible</span>
+                  <span className="text-[0.58rem] text-[#16a34a]">{t("landing.featureDemos.compat.highConfidence")}</span>
                 </span>
               </div>
               <div className="h-2 overflow-hidden rounded-full bg-[#f3f4f6]">
@@ -726,21 +735,21 @@ export function CompatDemo() {
             {/* Vehicle + Part cards */}
             <div className="grid grid-cols-2 gap-2">
               <div className="rounded-xl border border-hair bg-[#f7f9fc] p-2.5">
-                <div className="mb-2 text-[0.5rem] font-bold uppercase tracking-wide text-[#9ca3af]">Vehicle</div>
+                <div className="mb-2 text-[0.5rem] font-bold uppercase tracking-wide text-[#9ca3af]">{t("landing.featureDemos.compat.vehicle")}</div>
                 <div className="mb-1.5 rounded bg-white px-2 py-0.5 font-mono text-[0.55rem] font-bold text-[#6b7280] inline-block">SALLSAAG5DA803495</div>
-                {[["Make","LAND ROVER"],["Variant","3.0 D 4×4"],["Year","2010–2013"],["Fuel","diesel"],["Engine Size","2993cc"],["Engine Code","306DT(TDV6)"],["Power","155 kW / 211 HP"]].map(([k,v]) => (
-                  <div key={k} className="flex justify-between py-0.5 text-[0.58rem]" style={{ borderBottom: "1px solid #f1f5f9" }}>
-                    <span style={{ color: "#135DFF" }}>{k}</span>
+                {[["make","LAND ROVER"],["variant","3.0 D 4×4"],["year","2010–2013"],["fuel",t("landing.featureDemos.compat.diesel")],["engineSize","2993cc"],["engineCode","306DT(TDV6)"],["power","155 kW / 211 HP"]].map(([key,v]) => (
+                  <div key={key} className="flex justify-between py-0.5 text-[0.58rem]" style={{ borderBottom: "1px solid #f1f5f9" }}>
+                    <span style={{ color: "#135DFF" }}>{t(`landing.featureDemos.compat.vehicleFields.${key}`)}</span>
                     <span className="font-medium text-[#111827]">{v}</span>
                   </div>
                 ))}
               </div>
               <div className="rounded-xl border border-hair bg-[#f7f9fc] p-2.5">
-                <div className="mb-2 text-[0.5rem] font-bold uppercase tracking-wide text-[#9ca3af]">Part</div>
+                <div className="mb-2 text-[0.5rem] font-bold uppercase tracking-wide text-[#9ca3af]">{t("landing.featureDemos.compat.part")}</div>
                 <div className="mb-2 overflow-hidden rounded-lg bg-white p-1" style={{ border: "1px solid #e5e7eb", minHeight: 68 }}>
                   <img
                     src="/oil-pump.png"
-                    alt="Oil Pump PU0127"
+                    alt={`${t("landing.featureDemos.common.oilPump")} PU0127`}
                     className="h-full w-full object-contain"
                     style={{ maxHeight: 68 }}
                     onError={(e) => {
@@ -749,9 +758,9 @@ export function CompatDemo() {
                     }}
                   />
                 </div>
-                {[["Article No","PU0127"],["Product Type","Oil Pump"]].map(([k,v]) => (
-                  <div key={k} className="flex justify-between py-0.5 text-[0.58rem]" style={{ borderBottom: "1px solid #f1f5f9" }}>
-                    <span className="text-[#6b7280]">{k}</span>
+                {[["articleNumber","PU0127"],["productType",t("landing.featureDemos.common.oilPump")]].map(([key,v]) => (
+                  <div key={key} className="flex justify-between py-0.5 text-[0.58rem]" style={{ borderBottom: "1px solid #f1f5f9" }}>
+                    <span className="text-[#6b7280]">{t(`landing.featureDemos.compat.partFields.${key}`)}</span>
                     <span className="font-medium text-[#111827]">{v}</span>
                   </div>
                 ))}

@@ -6,15 +6,27 @@ import helmet from "helmet";
 import { rateLimit } from "express-rate-limit";
 import pLimit from "p-limit";
 import { Parser } from "json2csv";
-import { buildHtml } from "./html-builder.js";
+import {
+  buildHtml,
+  getLanguageCodeForMarketplace,
+  getTecdocLangId,
+  MARKETPLACE_LANG_LABELS,
+  MARKETPLACE_TO_LANG,
+} from "./html-builder.js";
 import { getTemplateById, THEME_LIST } from "./templates/index.js";
 import { checkCompatibility } from "./compatibility/checker.js";
+import { getCompatibleCarsByArticleNo } from "./compatibility/api.js";
 import {
   detectProductType, buildEbayQuery, detectUnitType, getConfidence,
   conditionOptions, EXCLUSION_REASONS,
 } from "./ebay-filter-rules.js";
+import { getEbayMarketplaceId, getMarketplaceCurrency } from "./lib/ebay-categories.js";
 import OpenAI from "openai";
-import posthog from "./posthog.js";
+import { PostHog } from "posthog-node";
+const posthog = new PostHog(
+  process.env.POSTHOG_API_KEY || "",
+  { host: process.env.POSTHOG_HOST || "https://us.i.posthog.com" }
+);
 import analyticsRouter from "./routes/analytics.js";
 import stripeRouter, { registerStripeWebhook } from "./routes/stripe.js";
 import { stripeReady, CLIENT_URL } from "./lib/stripeConfig.js";
@@ -22,6 +34,7 @@ import { supabaseAdminReady } from "./lib/supabaseAdmin.js";
 import { requireAuth } from "./middleware/requireAuth.js";
 import { canGenerateListing, incrementListingUsage, checkFeatureAccess } from "./lib/profiles.js";
 import authRouter from "./routes/auth.js";
+import partIdentifierRouter from "./routes/partIdentifier.js";
 import contactRouter from "./routes/contact.js";
 import adminImportRouter from "./routes/admin-import.js";
 import { lookupVehiclesByIds } from "./lib/tecdoc-cache.js";
@@ -45,6 +58,7 @@ app.use(express.json({ limit: "2mb" }));
 app.use("/api", analyticsRouter);
 app.use("/api", stripeRouter);
 app.use("/api", authRouter);
+app.use("/api", partIdentifierRouter);
 app.use("/api", contactRouter);
 app.use("/api", adminImportRouter);
 
@@ -60,6 +74,29 @@ const RAPIDAPI_HOST = "autodoc-parts-catalog.p.rapidapi.com";
 const TYPE_ID           = "1";
 const LANG_ID           = "4";
 const COUNTRY_FILTER_ID = "63";
+
+const VALID_MARKETPLACES = new Set(Object.keys(MARKETPLACE_TO_LANG));
+
+/** Normalise listing language / section toggles from a request body. */
+function normalizeListingOpts(body = {}) {
+  const mp = VALID_MARKETPLACES.has(body.targetMarketplace)
+    ? body.targetMarketplace
+    : "ebay-uk";
+  const lo = body.listingOptions && typeof body.listingOptions === "object"
+    ? body.listingOptions
+    : {};
+  return {
+    targetMarketplace: mp,
+    tecdocLangId: getTecdocLangId(mp),
+    showCompatibilityTable:     lo.showCompatibilityTable !== false,
+    showInterchangeableNumbers: lo.showInterchangeableNumbers !== false,
+    showEngineCodes:            lo.showEngineCodes !== false,
+  };
+}
+
+function articleCacheKey(articleNumber, langId) {
+  return `${String(articleNumber)}::${langId || LANG_ID}`;
+}
 
 // ─── In-memory caches ─────────────────────────────────────────────────────────
 
@@ -125,11 +162,11 @@ function apiHeaders(contentType = false) {
 
 // ─── API helpers ──────────────────────────────────────────────────────────────
 
-async function fetchArticleDetails(articleNumber) {
+async function fetchArticleDetails(articleNumber, langId = LANG_ID) {
   const url = `https://${RAPIDAPI_HOST}/api/articles/article-number-details`;
   const params = new URLSearchParams();
   params.append("typeId", TYPE_ID);
-  params.append("langId", LANG_ID);
+  params.append("langId", langId);
   params.append("countryFilterId", COUNTRY_FILTER_ID);
   params.append("articleNo", articleNumber);
   const res = await fetchWithTimeout(url, {
@@ -141,11 +178,11 @@ async function fetchArticleDetails(articleNumber) {
   return res.json();
 }
 
-async function fetchArticleMedia(articleId) {
+async function fetchArticleMedia(articleId, langId = LANG_ID) {
   if (!articleId) return null;
   const url = `https://${RAPIDAPI_HOST}/api/articles/article-all-media-info`;
   const params = new URLSearchParams();
-  params.append("langId", LANG_ID);
+  params.append("langId", langId);
   params.append("articleId", String(articleId));
   try {
     const res = await fetchWithTimeout(url, { method: "POST", headers: apiHeaders(true), body: params.toString() });
@@ -156,10 +193,10 @@ async function fetchArticleMedia(articleId) {
 
 // Fetch cross-reference (interchangeable) part numbers for an article.
 // These are aftermarket manufacturer numbers — Febi, FAI, Autopumps, SKF, etc.
-// Endpoint: GET /api/artlookup/select-article-cross-references/article-id/{id}/lang-id/4
-async function fetchArticleCrossReferences(articleId) {
+// Endpoint: GET /api/artlookup/select-article-cross-references/article-id/{id}/lang-id/{langId}
+async function fetchArticleCrossReferences(articleId, langId = LANG_ID) {
   if (!articleId) return [];
-  const url = `https://${RAPIDAPI_HOST}/api/artlookup/select-article-cross-references/article-id/${encodeURIComponent(String(articleId))}/lang-id/${LANG_ID}`;
+  const url = `https://${RAPIDAPI_HOST}/api/artlookup/select-article-cross-references/article-id/${encodeURIComponent(String(articleId))}/lang-id/${langId}`;
   try {
     const res = await fetchWithTimeout(url, { method: "GET", headers: apiHeaders() });
     if (!res.ok) return [];
@@ -248,10 +285,10 @@ function parseCrossReferences(raw, oemNumbers = [], articleBrand = "") {
 // ─── OEM search helpers ───────────────────────────────────────────────────────
 // Used when the user enters an OEM/reference number instead of a TecDoc article number.
 
-async function searchArticleByOem(oemNumber) {
+async function searchArticleByOem(oemNumber, langId = LANG_ID) {
   const url = `https://${RAPIDAPI_HOST}/api/articles-oem/article-oem-search-no`;
   const params = new URLSearchParams();
-  params.append("langId", LANG_ID);
+  params.append("langId", langId);
   params.append("articleOemNo", oemNumber);
   try {
     const res = await fetchWithTimeout(url, { method: "POST", headers: apiHeaders(true), body: params.toString() });
@@ -260,9 +297,9 @@ async function searchArticleByOem(oemNumber) {
   } catch { return null; }
 }
 
-async function artlookupByOem(oemNumber) {
+async function artlookupByOem(oemNumber, langId = LANG_ID) {
   const params = new URLSearchParams();
-  params.append("langId", LANG_ID);
+  params.append("langId", langId);
   params.append("articleNo", oemNumber);
   params.append("articleType", "OENumber");
   const url = `https://${RAPIDAPI_HOST}/api/artlookup/search-articles-by-article-no?${params.toString()}`;
@@ -276,9 +313,9 @@ async function artlookupByOem(oemNumber) {
 // Search by aftermarket supplier article number (e.g. "AOP858", "FAI OFW1009A").
 // Uses articleType=ArticleNumber which finds parts by their brand's own part number,
 // not by OEM reference number.
-async function artlookupByArticleNo(articleNo) {
+async function artlookupByArticleNo(articleNo, langId = LANG_ID) {
   const params = new URLSearchParams();
-  params.append("langId", LANG_ID);
+  params.append("langId", langId);
   params.append("articleNo", articleNo);
   params.append("articleType", "ArticleNumber");
   const url = `https://${RAPIDAPI_HOST}/api/artlookup/search-articles-by-article-no?${params.toString()}`;
@@ -292,16 +329,16 @@ async function artlookupByArticleNo(articleNo) {
 // Resolve an input string to a full article-number-details response.
 // Tries: direct article number → OEM search → artlookup OEM fallback.
 // Returns { articleResponse, resolvedNumber } or throws.
-async function resolveArticleResponse(input) {
+async function resolveArticleResponse(input, langId = LANG_ID) {
   // 1. Direct article number
   let direct = null;
-  try { direct = await fetchArticleDetails(input); } catch {}
+  try { direct = await fetchArticleDetails(input, langId); } catch {}
   if (direct?.articles?.[0]) {
     return { articleResponse: direct, resolvedNumber: input };
   }
 
   // 2. OEM search (article-oem-search-no)
-  const oemData = await searchArticleByOem(input);
+  const oemData = await searchArticleByOem(input, langId);
   const oemArticles = Array.isArray(oemData)
     ? oemData
     : (oemData?.articles || oemData?.data || []);
@@ -311,7 +348,7 @@ async function resolveArticleResponse(input) {
     const resolvedNo = best.articleNo || best.articleNumber || best.artNr || null;
     if (resolvedNo) {
       let detail = null;
-      try { detail = await fetchArticleDetails(resolvedNo); } catch {}
+      try { detail = await fetchArticleDetails(resolvedNo, langId); } catch {}
       if (detail?.articles?.[0]) return { articleResponse: detail, resolvedNumber: resolvedNo };
     }
     // Use the OEM search result directly if detail fetch failed
@@ -319,7 +356,7 @@ async function resolveArticleResponse(input) {
   }
 
   // 3. Artlookup OEM fallback
-  const lookupData = await artlookupByOem(input);
+  const lookupData = await artlookupByOem(input, langId);
   const lookupArticles = Array.isArray(lookupData)
     ? lookupData
     : (lookupData?.articles || lookupData?.data || []);
@@ -329,14 +366,14 @@ async function resolveArticleResponse(input) {
     const resolvedNo = best.articleNo || best.articleNumber || best.artNr || null;
     if (resolvedNo) {
       let detail = null;
-      try { detail = await fetchArticleDetails(resolvedNo); } catch {}
+      try { detail = await fetchArticleDetails(resolvedNo, langId); } catch {}
       if (detail?.articles?.[0]) return { articleResponse: detail, resolvedNumber: resolvedNo };
     }
     return { articleResponse: { articles: [best] }, resolvedNumber: resolvedNo || input };
   }
 
   // 4. Aftermarket article-number fallback (e.g. AOP858, FAI OFW1009A)
-  const artData = await artlookupByArticleNo(input);
+  const artData = await artlookupByArticleNo(input, langId);
   const artArticles = Array.isArray(artData)
     ? artData
     : (artData?.articles || artData?.data || []);
@@ -346,7 +383,7 @@ async function resolveArticleResponse(input) {
     const resolvedNo = best.articleNo || best.articleNumber || best.artNr || null;
     if (resolvedNo) {
       let detail = null;
-      try { detail = await fetchArticleDetails(resolvedNo); } catch {}
+      try { detail = await fetchArticleDetails(resolvedNo, langId); } catch {}
       if (detail?.articles?.[0]) return { articleResponse: detail, resolvedNumber: resolvedNo };
     }
     return { articleResponse: { articles: [best] }, resolvedNumber: resolvedNo || input };
@@ -361,8 +398,8 @@ async function resolveArticleResponse(input) {
 // A part compatible with 100 vehicles typically spans only 8-15 unique model series,
 // so this covers everything with far fewer calls than per-vehicle fetches.
 
-async function fetchEngineTypesByModel(modelId) {
-  const url = `https://${RAPIDAPI_HOST}/api/types/type-id/${TYPE_ID}/list-vehicles-types/${modelId}/lang-id/${LANG_ID}/country-filter-id/${COUNTRY_FILTER_ID}`;
+async function fetchEngineTypesByModel(modelId, langId = LANG_ID) {
+  const url = `https://${RAPIDAPI_HOST}/api/types/type-id/${TYPE_ID}/list-vehicles-types/${modelId}/lang-id/${langId}/country-filter-id/${COUNTRY_FILTER_ID}`;
   try {
     const res = await fetchWithTimeout(url, { method: "GET", headers: apiHeaders() }, 6000);
     if (!res.ok) return [];
@@ -432,24 +469,25 @@ function findEngineMatch(car, engineRows) {
 // built from the article response; only engine-code enrichment is limited.
 const MAX_MODEL_LOOKUPS = 60; // raised from 20 — parts like gaskets can have 40+ unique model series
 
-async function fetchEngineDataByModelIds(cars) {
+async function fetchEngineDataByModelIds(cars, langId = LANG_ID) {
   const uniqueModelIds = uniq(cars.map(c => String(c.modelId)).filter(Boolean));
   const result = {};
+  const cacheKey = (id) => `${id}::${langId}`;
 
   // Split into cached vs uncached
-  const cached   = uniqueModelIds.filter(id => modelEngineCache.has(id));
-  const uncached = uniqueModelIds.filter(id => !modelEngineCache.has(id)).slice(0, MAX_MODEL_LOOKUPS);
+  const cached   = uniqueModelIds.filter(id => modelEngineCache.has(cacheKey(id)));
+  const uncached = uniqueModelIds.filter(id => !modelEngineCache.has(cacheKey(id))).slice(0, MAX_MODEL_LOOKUPS);
 
   // Fill cached results immediately
-  for (const id of cached) result[id] = modelEngineCache.get(id);
+  for (const id of cached) result[id] = modelEngineCache.get(cacheKey(id));
 
   // Fetch uncached in parallel batches of 4
   const BATCH = 4;
   for (let i = 0; i < uncached.length; i += BATCH) {
     const batch = uncached.slice(i, i + BATCH);
     await Promise.all(batch.map(async (modelId) => {
-      const rows = await fetchEngineTypesByModel(modelId);
-      cappedSet(modelEngineCache, modelId, rows, 500);
+      const rows = await fetchEngineTypesByModel(modelId, langId);
+      cappedSet(modelEngineCache, cacheKey(modelId), rows, 500);
       result[modelId] = rows;
     }));
     if (i + BATCH < uncached.length) await sleep(50); // brief pause between batches
@@ -462,17 +500,30 @@ async function fetchEngineDataByModelIds(cars) {
 
 function extractFirstImageUrl(mediaResponse) {
   if (!mediaResponse) return "";
+
+  // Try the documented TecDoc articleImages array first (largest available size)
+  const imgArr = mediaResponse.articleImages ?? mediaResponse.data?.articleImages ?? null;
+  if (Array.isArray(imgArr) && imgArr.length > 0) {
+    for (const img of imgArr) {
+      const url = img.imageURL4 || img.imageURL3 || img.imageURL2 || img.imageURL1 || "";
+      if (url && url.startsWith("http")) return url;
+    }
+  }
+
+  // Fallback: walk the entire response tree for any tecalliance/tecdoc URL or image extension
   const urls = [];
-  const walk = (obj) => {
-    if (!obj) return;
+  const walk = (obj, depth = 0) => {
+    if (!obj || depth > 8) return;
     if (typeof obj === "string") {
-      if (obj.startsWith("http") && (obj.includes("img.tecalliance") || /\.(jpg|jpeg|png|webp)/i.test(obj))) {
-        urls.push(obj);
-      }
+      if (obj.startsWith("http") && (
+        obj.includes("tecalliance") ||
+        obj.includes("tecdoc") ||
+        /\.(jpg|jpeg|png|webp)/i.test(obj)
+      )) { urls.push(obj); }
       return;
     }
-    if (Array.isArray(obj)) { obj.forEach(walk); return; }
-    if (typeof obj === "object") Object.values(obj).forEach(walk);
+    if (Array.isArray(obj)) { obj.forEach((v) => walk(v, depth + 1)); return; }
+    if (typeof obj === "object") Object.values(obj).forEach((v) => walk(v, depth + 1));
   };
   walk(mediaResponse);
   return urls[0] || "";
@@ -538,7 +589,14 @@ function normalizeTecdoc(articleResponse, engineDataByModelId, vehicleCache = nu
       engine_codes: uniq(Array.isArray(engine_codes) ? engine_codes : splitEngineCodes(engine_codes)),
       k_number:     vidStr
     };
-  }).filter(Boolean); // remove ghost rows
+  }).filter(Boolean).sort((a, b) => {
+    const ma = a.make.toLowerCase(), mb = b.make.toLowerCase();
+    if (ma !== mb) return ma < mb ? -1 : 1;
+    const moa = a.model.toLowerCase(), mob = b.model.toLowerCase();
+    if (moa !== mob) return moa < mob ? -1 : 1;
+    const ea = a.engine.toLowerCase(), eb = b.engine.toLowerCase();
+    return ea < eb ? -1 : ea > eb ? 1 : 0;
+  }); // remove ghost rows, sort by make → model → engine
 
   const specifications = uniq(
     (article.allSpecifications || [])
@@ -574,24 +632,36 @@ function normalizeTecdoc(articleResponse, engineDataByModelId, vehicleCache = nu
 
 // ─── Main listing builder (optimised) ────────────────────────────────────────
 
-async function buildListingFromArticle(articleNumber, themeId = "clean-default") {
+async function buildListingFromArticle(articleNumber, themeId = "clean-default", listingOpts = {}) {
   _tecdocCallCount = 0;
   const template = getTemplateById(themeId);
+  const opts = {
+    targetMarketplace: "ebay-uk",
+    tecdocLangId: LANG_ID,
+    showCompatibilityTable: true,
+    showInterchangeableNumbers: true,
+    showEngineCodes: true,
+    ...listingOpts,
+  };
+  const langId = opts.tecdocLangId || getTecdocLangId(opts.targetMarketplace);
+  const inputCacheKey = articleCacheKey(articleNumber, langId);
 
   // ── Cache hit: skip all data fetching, just rebuild HTML ──────────────────
-  if (articleNormCache.has(articleNumber)) {
-    const cached = articleNormCache.get(articleNumber);
-    const html   = buildHtml(cached.normalized, template);
+  // Cache is keyed by article + TecDoc langId so product/vehicle text stays correct.
+  if (articleNormCache.has(inputCacheKey)) {
+    const cached = articleNormCache.get(inputCacheKey);
+    const html   = buildHtml(cached.normalized, template, opts);
     return {
       ...cached.baseResult,
-      generated_html: html,
-      template_id:    template.id,
-      template_name:  template.name
+      generated_html:     html,
+      template_id:        template.id,
+      template_name:      template.name,
+      target_marketplace: opts.targetMarketplace,
     };
   }
 
   // ── Resolve input → article (supports OEM numbers) ───────────────────────
-  const { articleResponse, resolvedNumber } = await resolveArticleResponse(articleNumber);
+  const { articleResponse, resolvedNumber } = await resolveArticleResponse(articleNumber, langId);
   const article = articleResponse?.articles?.[0];
   if (!article) throw new Error(`No article found for "${articleNumber}"`);
 
@@ -604,7 +674,20 @@ async function buildListingFromArticle(articleNumber, themeId = "clean-default")
   const cars           = article.compatibleCars || [];
   const oemNumbers     = uniq((article.oemNo || []).map((o) => o.oemDisplayNo).filter(Boolean));
 
-  console.log(`[Listing] ${resolvedNumber}: ${cars.length} compatible vehicles in article response`);
+  console.log(`[Listing] ${resolvedNumber}: ${cars.length} compatible vehicles in article response (langId=${langId})`);
+  if (cars[0]) console.log(`[Listing] sample car fields:`, JSON.stringify(Object.keys(cars[0])));
+  if (cars[0]) console.log(`[Listing] sample car engine codes:`, cars[0].engCodes || cars[0].engineCodes || cars[0].engineCode || cars[0].motorCodes || "NONE");
+  if (cars[0]) console.log(`[Listing] sample car kw/hp/cc:`, cars[0].powerKw, cars[0].powerPs, cars[0].capacityTech);
+
+  // ── Test: getCompatibleCarsByArticleNo ────────────────────────────────────
+  if (dataSupplierId) {
+    const compatCars = await getCompatibleCarsByArticleNo(resolvedNumber, dataSupplierId);
+    const sample = Array.isArray(compatCars) ? compatCars[0] : compatCars?.data?.[0] ?? compatCars;
+    console.log(`[CompatCars] count:`, Array.isArray(compatCars) ? compatCars.length : "non-array");
+    console.log(`[CompatCars] sample fields:`, sample ? JSON.stringify(Object.keys(sample)) : "none");
+    console.log(`[CompatCars] sample engine codes:`, sample?.engCodes || sample?.engineCodes || sample?.engineCode || sample?.motorCodes || "NONE");
+    console.log(`[CompatCars] sample kw/hp/cc:`, sample?.powerKw, sample?.powerPs, sample?.capacityTech);
+  }
 
   // ── Supabase vehicle cache lookup ─────────────────────────────────────────
   // Batch-fetch all known vehicle IDs from the local cache to avoid repeated
@@ -636,11 +719,12 @@ async function buildListingFromArticle(articleNumber, themeId = "clean-default")
   //   2. select-article-cross-refs     → article-ID specific cross-refs (varies by brand)
   //   3. article-oem-search-no         → ALL aftermarket articles for this OEM number
   //                                      (the real interchangeable list — brand-agnostic)
+  const wantInterchangeable = opts.showInterchangeableNumbers !== false;
   const firstOem = normalized.oem_numbers?.[0] || null;
   const [mediaResponse, crossRefsRaw, oemSearchRaw] = await Promise.all([
-    fetchArticleMedia(articleId),
-    fetchArticleCrossReferences(articleId),
-    firstOem ? searchArticleByOem(firstOem) : Promise.resolve(null)
+    fetchArticleMedia(articleId, langId),
+    wantInterchangeable ? fetchArticleCrossReferences(articleId, langId) : Promise.resolve([]),
+    wantInterchangeable && firstOem ? searchArticleByOem(firstOem, langId) : Promise.resolve(null)
   ]);
 
   const articleBrand = (
@@ -702,7 +786,11 @@ async function buildListingFromArticle(articleNumber, themeId = "clean-default")
   console.log(`[Listing] ${articleNumber}: own=${ownRef.length} oemSearch=${fromOemSearch.length} crossRefs=${crossRefs.length} total=${interchangeableParts.length} brand="${articleBrand}"`);
 
   // ── Build HTML ────────────────────────────────────────────────────────────
-  const html = buildHtml({ ...normalized, engine_codes: engineCodes, k_numbers: kNumbers, interchangeable_parts: interchangeableParts }, template);
+  const html = buildHtml(
+    { ...normalized, engine_codes: engineCodes, k_numbers: kNumbers, interchangeable_parts: interchangeableParts },
+    template,
+    opts
+  );
 
   // ── Derive summary fields for AI title generation ─────────────────────────
   const modelCounts = {};
@@ -761,25 +849,29 @@ async function buildListingFromArticle(articleNumber, themeId = "clean-default")
     fuel_type:            fuelType
   };
 
-  // Cache by both the input key and the resolved article number (OEM searches benefit from this)
+  // Cache by both the input key and the resolved article number (OEM searches benefit from this).
+  // Include TecDoc langId so DE/FR/… catalogue text is not served from an EN cache entry.
   const cachePayload = { normalized: { ...normalized, engine_codes: engineCodes, k_numbers: kNumbers, interchangeable_parts: interchangeableParts }, baseResult, articleImage };
-  cappedSet(articleNormCache, articleNumber, cachePayload, 200);
-  if (resolvedNumber !== articleNumber) cappedSet(articleNormCache, resolvedNumber, cachePayload, 200);
+  cappedSet(articleNormCache, inputCacheKey, cachePayload, 200);
+  if (resolvedNumber !== articleNumber) {
+    cappedSet(articleNormCache, articleCacheKey(resolvedNumber, langId), cachePayload, 200);
+  }
 
   console.log(`[Listing] ${articleNumber}: ${_tecdocCallCount} TecDoc API calls total`);
 
   return {
     ...baseResult,
-    generated_html:   html,
-    template_id:      template.id,
-    template_name:    template.name,
-    _debug_api_calls: _tecdocCallCount,
+    generated_html:     html,
+    template_id:        template.id,
+    template_name:      template.name,
+    target_marketplace: opts.targetMarketplace,
+    _debug_api_calls:   _tecdocCallCount,
   };
 }
 
 // ─── Article search (OEM or article number → list of matching articles) ──────
 
-async function searchArticles(input) {
+async function searchArticles(input, langId = LANG_ID) {
   const found = [];
   const seenIds = new Set();
 
@@ -822,26 +914,26 @@ async function searchArticles(input) {
 
   // 1. Direct article-number-details (catches TecDoc article numbers)
   try {
-    const direct = await fetchArticleDetails(input);
+    const direct = await fetchArticleDetails(input, langId);
     const arts = direct?.articles || [];
     if (arts.length > 0) { absorb(arts); return found; }
   } catch {}
 
   // 2. OEM search — article-oem-search-no
-  const oemData = await searchArticleByOem(input);
+  const oemData = await searchArticleByOem(input, langId);
   const oemList = Array.isArray(oemData) ? oemData : (oemData?.articles || oemData?.data || []);
   absorb(oemList);
 
   // 3. Artlookup OEM fallback
   if (found.length === 0) {
-    const lookupData = await artlookupByOem(input);
+    const lookupData = await artlookupByOem(input, langId);
     const lookupList = Array.isArray(lookupData) ? lookupData : (lookupData?.articles || lookupData?.data || []);
     absorb(lookupList);
   }
 
   // 4. Aftermarket article-number search — catches supplier part numbers like AOP858, FAI OFW1009A
   if (found.length === 0) {
-    const artData = await artlookupByArticleNo(input);
+    const artData = await artlookupByArticleNo(input, langId);
     const artList = Array.isArray(artData) ? artData : (artData?.articles || artData?.data || []);
     absorb(artList);
   }
@@ -854,7 +946,7 @@ async function searchArticles(input) {
   if (missingBrand.length > 0) {
     await Promise.all(missingBrand.map(async (a) => {
       try {
-        const detail = await fetchArticleDetails(a.articleNo);
+        const detail = await fetchArticleDetails(a.articleNo, langId);
         const art = detail?.articles?.[0];
         if (art) {
           a.brand = extractBrand(art);
@@ -884,8 +976,9 @@ app.post("/search", requireAuth, lookupLimiter, async (req, res) => {
   try {
     const query = String(req.body.query || "").trim().replace(/\s+/g, "");
     if (!query) return res.status(400).json({ error: "Missing query" });
-    const articles = await searchArticles(query);
-    res.json({ query, articles });
+    const listingOpts = normalizeListingOpts(req.body);
+    const articles = await searchArticles(query, listingOpts.tecdocLangId);
+    res.json({ query, articles, target_marketplace: listingOpts.targetMarketplace });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });
@@ -896,6 +989,7 @@ app.post("/lookup", requireAuth, lookupLimiter, async (req, res) => {
   try {
     const articleNumber = String(req.body.articleNumber || "").trim().replace(/\s+/g, "");
     const themeId       = req.body.themeId || req.body.templateId || "clean-default";
+    const listingOpts   = normalizeListingOpts(req.body);
 
     if (!articleNumber) return res.status(400).json({ error: "Missing articleNumber" });
 
@@ -909,7 +1003,7 @@ app.post("/lookup", requireAuth, lookupLimiter, async (req, res) => {
       });
     }
 
-    const result = await buildListingFromArticle(articleNumber, themeId);
+    const result = await buildListingFromArticle(articleNumber, themeId, listingOpts);
 
     // Only increment usage once a real result has been returned — failures,
     // not-found, and server errors above never reach this line.
@@ -935,6 +1029,7 @@ app.post("/batch-export", requireAuth, async (req, res) => {
   try {
     const { rows, themeId = "clean-default", templateId } = req.body;
     const resolvedTheme = themeId || templateId || "clean-default";
+    const listingOpts   = normalizeListingOpts(req.body);
 
     if (!Array.isArray(rows) || rows.length === 0) {
       return res.status(400).json({ error: "rows must be a non-empty array" });
@@ -987,7 +1082,7 @@ app.post("/batch-export", requireAuth, async (req, res) => {
       }
       try {
         console.log(`Batch processing ${row.articleNumber}...`);
-        const result = await buildListingFromArticle(row.articleNumber, resolvedTheme);
+        const result = await buildListingFromArticle(row.articleNumber, resolvedTheme, listingOpts);
         await incrementListingUsage(req.user.id, req.user.email);
         return {
           "Title":                       result.generated_title || "",
@@ -1077,10 +1172,14 @@ app.post("/compatibility/check", requireAuth, async (req, res) => {
     const {
       vin, oemNumber, partType, engineCode,
       make, model, year, fuelType, engineSize,
-      selectedVehicleId
+      selectedVehicleId, targetMarketplace
     } = req.body;
+    const marketplace = VALID_MARKETPLACES.has(targetMarketplace)
+      ? targetMarketplace
+      : "ebay-uk";
+    const langId = getTecdocLangId(marketplace);
 
-    console.log(`[/compatibility/check] vin=${vin || "-"} oem=${oemNumber || "-"} selectedVehicleId=${selectedVehicleId || "-"}`);
+    console.log(`[/compatibility/check] vin=${vin || "-"} oem=${oemNumber || "-"} selectedVehicleId=${selectedVehicleId || "-"} marketplace=${marketplace} langId=${langId}`);
 
     if (!oemNumber) return res.status(400).json({ error: "oemNumber is required" });
 
@@ -1094,7 +1193,8 @@ app.post("/compatibility/check", requireAuth, async (req, res) => {
     const result = await checkCompatibility({
       vin, oemNumber, partType, engineCode,
       make, model, year, fuelType, engineSize,
-      selectedVehicleId
+      selectedVehicleId,
+      langId
     });
     res.json(result);
   } catch (err) {
@@ -1121,19 +1221,29 @@ app.post("/api/ai/generate-titles", requireAuth, aiLimiter, async (req, res) => 
     engineSizes  = [],
     fuelType     = "",
     yearRange    = "",
-    maxTitleLength = 80
+    maxTitleLength = 80,
+    targetMarketplace = "ebay-uk",
   } = req.body;
 
   if (!productType) {
     return res.status(400).json({ error: "productType is required" });
   }
 
+  const marketplace = VALID_MARKETPLACES.has(targetMarketplace) ? targetMarketplace : "ebay-uk";
+  const langCode    = getLanguageCodeForMarketplace(marketplace);
+  const langLabel   = MARKETPLACE_LANG_LABELS[langCode] || "English";
+
   // Strip "L" suffix from engine sizes — display as "2.5", "3.0" not "2.5L"
   const cleanEngSizes = engineSizes.map((s) => s.replace(/L$/i, "")).slice(0, 4);
 
-  const prompt = `You are an expert eBay automotive parts listing writer specialising in UK automotive parts.
+  const prompt = `You are an expert eBay automotive parts listing writer for the ${marketplace} marketplace.
 
 Generate exactly 3 listing titles using the templates and rules below.
+
+═══ LANGUAGE ═══
+- Write every title in ${langLabel}.
+- Keep OEM numbers, engine codes, make/model names, and years unchanged (do not translate those identifiers).
+- Translate only natural-language words such as the part name and the word equivalent of "For" when it is natural in ${langLabel}.
 
 ═══ GLOBAL RULES ═══
 - MINIMUM 70 characters, MAXIMUM 80 characters. Titles under 70 characters are not acceptable.
@@ -1146,7 +1256,7 @@ Generate exactly 3 listing titles using the templates and rules below.
 - Multiple engine sizes listed together: "2.5 3.0"
 - Do NOT include fuel type
 - Prioritise the most popular and commonly searched models; favour the most common engine codes when many exist
-- Product name abbreviations are allowed only when widely recognised: "Conrod" for "Connecting Rod" is fine; do NOT shorten "Crankshaft" to "Crank"
+- Product name abbreviations are allowed only when widely recognised in ${langLabel}
 - Prioritise high-value keywords first; trim lowest-value words only if exceeding 80
 
 ═══ TEMPLATES ═══
@@ -1286,29 +1396,12 @@ async function getEbayAccessToken() {
 
 // ─── eBay Smart Pricing ───────────────────────────────────────────────────────
 // POST /api/ebay/search-prices
-// Fetches first page of active eBay UK listings and returns price statistics.
-//
-// Future extension points (not implemented yet):
-//   - sold listings mode    (completedItems=true filter)
-//   - condition filtering   (conditionIds param)
-//   - category filtering    (category_ids param)
-//   - exclude auctions      (buyingOptions=FIXED_PRICE filter)
-//   - exclude sponsored     (not directly available via Browse API)
-//   - AI pricing suggestion (pass stats + costs to OpenAI)
-
-// ─── eBay Smart Pricing ───────────────────────────────────────────────────────
-// POST /api/ebay/search-prices
 //
 // Full pipeline:
 //   1. Resolve condition → eBay filter string
 //   2. Detect product type from query; build eBay query with neg-keyword hints
-//   3. Fetch top 25 listings for the selected condition
-//   4. Title filter  (requiredAny + exclude per product rule)
-//   5. Unit filter   (sets/kits/bundles removed for unit-sensitive types)
-//   6. Initial median from surviving price-valid items
-//   7. Multiplier outlier filter  (per-rule high/low thresholds)
-//   8. Recalculate final stats from clean set
-//   9. Return enriched response with per-reason exclusion counts
+//   3. Fetch top 60 listings for the selected Target Marketplace
+//   4. Return price stats + enriched listings
 app.post("/api/ebay/search-prices", requireAuth, ebayLimiter, async (req, res) => {
   try {
     const feature = await checkFeatureAccess(req.user.id, req.user.email, "smartPricing");
@@ -1319,10 +1412,16 @@ app.post("/api/ebay/search-prices", requireAuth, ebayLimiter, async (req, res) =
       });
     }
 
-    const { query, condition = "new" } = req.body;
+    const { query, condition = "new", targetMarketplace } = req.body;
     if (!query?.trim()) {
       return res.status(400).json({ error: "query is required" });
     }
+
+    const marketplace = VALID_MARKETPLACES.has(targetMarketplace)
+      ? targetMarketplace
+      : "ebay-uk";
+    const ebayMarketplaceId = getEbayMarketplaceId(marketplace);
+    const defaultCurrency   = getMarketplaceCurrency(marketplace);
 
     // ── Step 1: Resolve condition ─────────────────────────────────────────────
     const condOpt    = conditionOptions.find(c => c.key === condition);
@@ -1344,7 +1443,7 @@ app.post("/api/ebay/search-prices", requireAuth, ebayLimiter, async (req, res) =
     const ebayRes = await fetchWithTimeout(url, {
       headers: {
         Authorization:             `Bearer ${token}`,
-        "X-EBAY-C-MARKETPLACE-ID": "EBAY_GB",
+        "X-EBAY-C-MARKETPLACE-ID": ebayMarketplaceId,
         "Content-Type":            "application/json",
       },
     }, 20000);
@@ -1357,7 +1456,7 @@ app.post("/api/ebay/search-prices", requireAuth, ebayLimiter, async (req, res) =
     const data         = await ebayRes.json();
     const rawItems     = data.itemSummaries || [];
     const totalFetched = rawItems.length;
-    const currency     = rawItems.find(i => i.price?.currency)?.price?.currency || "GBP";
+    const currency     = rawItems.find(i => i.price?.currency)?.price?.currency || defaultCurrency;
 
     // Debug: log the first item's raw shape so we can verify field availability
     if (rawItems[0]) {
@@ -1414,6 +1513,8 @@ app.post("/api/ebay/search-prices", requireAuth, ebayLimiter, async (req, res) =
         currency,
         condition,
         conditionLabel: condLabel,
+        target_marketplace: marketplace,
+        ebay_marketplace_id: ebayMarketplaceId,
         priceCount:          0,
         totalFetched,
         relevantCount:       0,
@@ -1441,7 +1542,7 @@ app.post("/api/ebay/search-prices", requireAuth, ebayLimiter, async (req, res) =
     const median  = calcMedian(finalPrices);
 
     console.log(
-      `[eBay] "${query}" | ${condLabel} | fetched=${totalFetched} used=${n}`
+      `[eBay] "${query}" | ${marketplace}/${ebayMarketplaceId} | ${condLabel} | fetched=${totalFetched} used=${n}`
     );
 
     posthog.capture({
@@ -1449,6 +1550,8 @@ app.post("/api/ebay/search-prices", requireAuth, ebayLimiter, async (req, res) =
       event: "ebay_price_search",
       properties: {
         condition,
+        target_marketplace: marketplace,
+        ebay_marketplace_id: ebayMarketplaceId,
         detected_type:   rule?.productType || null,
         total_fetched:   totalFetched,
         price_count:     n,
@@ -1466,6 +1569,8 @@ app.post("/api/ebay/search-prices", requireAuth, ebayLimiter, async (req, res) =
       currency,
       condition,
       conditionLabel: condLabel,
+      target_marketplace: marketplace,
+      ebay_marketplace_id: ebayMarketplaceId,
       priceCount:          n,
       totalFetched,
       relevantCount:       n,
@@ -1509,9 +1614,14 @@ app.post("/api/ebay/search-prices", requireAuth, ebayLimiter, async (req, res) =
 // Fetches item details in parallel (max 10 concurrent) with a 5-second timeout.
 app.post("/api/ebay/sold-counts", requireAuth, ebayLimiter, async (req, res) => {
   try {
-    const { itemIds } = req.body;
+    const { itemIds, targetMarketplace } = req.body;
     if (!Array.isArray(itemIds) || itemIds.length === 0) return res.json({});
     if (itemIds.length > 50) return res.status(400).json({ error: "Maximum 50 itemIds per request." });
+
+    const marketplace = VALID_MARKETPLACES.has(targetMarketplace)
+      ? targetMarketplace
+      : "ebay-uk";
+    const ebayMarketplaceId = getEbayMarketplaceId(marketplace);
 
     const token   = await getEbayAccessToken();
     const results = {};
@@ -1528,7 +1638,7 @@ app.post("/api/ebay/sold-counts", requireAuth, ebayLimiter, async (req, res) => 
               method: "GET",
               headers: {
                 "Authorization":            `Bearer ${token}`,
-                "X-EBAY-C-MARKETPLACE-ID":  "EBAY_GB",
+                "X-EBAY-C-MARKETPLACE-ID":  ebayMarketplaceId,
                 "Content-Type":             "application/json",
               },
             },

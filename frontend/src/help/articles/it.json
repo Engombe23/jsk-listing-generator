@@ -1,0 +1,749 @@
+{
+  "how-to-generate-your-first-listing": {
+    "title": "Come generare la tua prima inserzione",
+    "category": "Per iniziare",
+    "time": "5 min di lettura",
+    "heroImage": {
+      "src": "/listing-mockup.png",
+      "alt": "Interfaccia del generatore di inserzioni PartLister",
+      "caption": "Il Generatore di inserzioni — inserisci un codice ricambio e ottieni un'inserzione eBay completa in pochi secondi"
+    },
+    "intro": "PartLister trasforma un singolo codice articolo in un elenco completo pronto per eBay in pochi secondi. Questa guida ti guida attraverso l'intero processo.",
+    "sections": [
+      {
+        "heading": "L'intero processo in breve",
+        "content": [
+          {
+            "type": "visual",
+            "id": "stepFlow",
+            "steps": [
+              {
+                "label": "Inserisci il numero del pezzo",
+                "sub": "OE, OEM o n. articolo"
+              },
+              {
+                "label": "Cerca e genera",
+                "sub": "PartLister trova il pezzo"
+              },
+              {
+                "label": "Rivedi l'annuncio",
+                "sub": "Modifica titolo e descrizione"
+              },
+              {
+                "label": "Salva o esporta",
+                "sub": "Copia HTML o CSV"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Passaggio 1: apri il generatore di elenchi",
+        "content": [
+          {
+            "type": "p",
+            "text": "Dopo aver effettuato l'accesso, il Generatore di inserzioni è il primo strumento che vedrai nella dashboard. È accessibile in qualsiasi momento anche dalla navigazione principale."
+          }
+        ]
+      },
+      {
+        "heading": "Passaggio 2: inserisci il numero di parte",
+        "content": [
+          {
+            "type": "p",
+            "text": "Incolla o digita un numero di riferimento nel campo di ricerca. PartLister accetta uno qualsiasi dei seguenti:"
+          },
+          {
+            "type": "list",
+            "items": [
+              "Numero OE (ad es. 11247807345)",
+              "Numero OEM",
+              "Numero articolo TecDoc (ad es. PU0127, LR002465)"
+            ]
+          },
+          {
+            "type": "visual",
+            "id": "productExample",
+            "src": "/oil-pump.png",
+            "alt": "Pompa olio LR002465",
+            "partNumber": "PU0127",
+            "description": "Pompa olio — Land Rover / Range Rover 2.7 3.0 TDV6"
+          },
+          {
+            "type": "p",
+            "text": "Non devi specificare la marca o il tipo di ricambio: PartLister identifica automaticamente il ricambio dal tuo numero di riferimento."
+          }
+        ]
+      },
+      {
+        "heading": "Passaggio 3: fare clic su Cerca e genera",
+        "content": [
+          {
+            "type": "p",
+            "text": "PartLister cerca in TecDoc i ricambi corrispondenti. Nella maggior parte dei casi trova una sola corrispondenza e la generazione inizia subito. Se più articoli condividono lo stesso riferimento, vedrai un elenco di selezione: scegli la variante corretta e la generazione inizierà."
+          }
+        ]
+      },
+      {
+        "heading": "Passaggio 4: scegli un modello (facoltativo)",
+        "content": [
+          {
+            "type": "p",
+            "text": "PartLister offre diversi modelli di inserzione che controllano il layout e le sezioni incluse. Seleziona quello più adatto al tuo stile prima di generare. Il modello predefinito funziona bene per la maggior parte delle categorie di ricambi auto."
+          }
+        ]
+      },
+      {
+        "heading": "Passaggio 5: rivedi la tua inserzione",
+        "content": [
+          {
+            "type": "p",
+            "text": "Una volta generata, vedrai l'inserzione completa. Puoi modificare direttamente la descrizione facendo clic su Modifica descrizione sopra l'anteprima. Ogni inserzione può includere:"
+          },
+          {
+            "type": "list",
+            "items": [
+              "Titolo dell'inserzione — ottimizzato SEO per la ricerca eBay",
+              "Descrizione del prodotto — formattata e pronta da incollare",
+              "Specifiche dell'oggetto — marca, condizione, codice ricambio, compatibilità",
+              "Tabella di compatibilità veicoli — tutte le applicazioni da TecDoc",
+              "Riferimenti OE e numeri intercambiabili"
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Passaggio 6: salva o esporta",
+        "content": [
+          {
+            "type": "p",
+            "text": "Quando sei soddisfatto dell'inserzione, hai tre opzioni:"
+          },
+          {
+            "type": "visual",
+            "id": "exportOptions"
+          },
+          {
+            "type": "tip",
+            "text": "PartLister ricorda le tue preferenze per modello e interruttori tra una sessione e l'altra, quindi non devi riconfigurarle ogni volta che generi un'inserzione."
+          }
+        ]
+      }
+    ]
+  },
+  "understanding-compatibility-results": {
+    "title": "Comprendere i risultati di compatibilità",
+    "category": "Generatore di annunci",
+    "time": "4 min di lettura",
+    "intro": "PartLister genera automaticamente tabelle di compatibilità dei veicoli dai dati TecDoc. Questa guida spiega da dove provengono i dati, come leggerli e cosa fare se qualcosa sembra inaspettato.",
+    "sections": [
+      {
+        "heading": "Da dove provengono i dati di compatibilità",
+        "content": [
+          {
+            "type": "p",
+            "text": "PartLister utilizza TecDoc, il catalogo di ricambi automobilistici standard del settore usato da produttori, importatori e fornitori aftermarket di tutto il mondo."
+          },
+          {
+            "type": "p",
+            "text": "Quando generi un'inserzione, PartLister recupera da TecDoc tutte le applicazioni veicolo per il tuo ricambio e le formatta in una tabella di compatibilità strutturata. Sono gli stessi dati usati dai cataloghi professionali di ricambi, non estratti dal web, stimati o generati dall'IA."
+          }
+        ]
+      },
+      {
+        "heading": "Lettura della tabella di compatibilità",
+        "content": [
+          {
+            "type": "p",
+            "text": "La tabella mostra una riga per ogni applicazione veicolo. Ecco un esempio con ogni colonna etichettata:"
+          },
+          {
+            "type": "visual",
+            "id": "compatTable"
+          },
+          {
+            "type": "list",
+            "items": [
+              "Veicolo — Marca, modello, tipo di carrozzeria e variante",
+              "Anni — L'intervallo di date coperto dall'applicazione",
+              "kW / HP — Potenza del motore in kilowatt e cavalli",
+              "CC — Cilindrata del motore in centimetri cubi",
+              "Codice motore — L'identificativo del tipo di motore del produttore"
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Codici motore",
+        "content": [
+          {
+            "type": "p",
+            "text": "I codici motore sono particolarmente importanti per i ricambi specifici del motore, come componenti della distribuzione, pompe dell'olio, guarnizioni e iniettori. Lo stesso anno modello e la stessa carrozzeria possono avere motori completamente diversi e quindi ricambi completamente diversi."
+          },
+          {
+            "type": "visual",
+            "id": "engineCodeExample",
+            "label": "Esempio",
+            "beforeStrong": "Una guarnizione della testata per una",
+            "strongA": "BMW 320d N47",
+            "middle": "non è adatta a una",
+            "strongB": "BMW 320d M47",
+            "after": "— stesso modello, motore diverso, pezzo diverso. I codici motore evitano questo errore."
+          },
+          {
+            "type": "p",
+            "text": "Includi sempre i codici motore nell'inserzione. Installatori professionisti e acquirenti esperti li usano per verificare la compatibilità prima dell'acquisto, riducendo resi e controversie."
+          }
+        ]
+      },
+      {
+        "heading": "Cosa succede se la compatibilità sembra errata?",
+        "content": [
+          {
+            "type": "p",
+            "text": "I dati TecDoc riflettono le applicazioni dichiarate dal produttore. In rari casi, le applicazioni possono essere incomplete, riferirsi a varianti regionali o mostrare un veicolo di produzione transitoria."
+          },
+          {
+            "type": "p",
+            "text": "Se noti un errore evidente, controlla direttamente TecDoc o consulta il catalogo del tuo fornitore. PartLister non modifica i dati TecDoc: ciò che vedi è esattamente ciò che riporta TecDoc."
+          },
+          {
+            "type": "tip",
+            "text": "La tabella di compatibilità è uno dei modi più efficaci per ridurre i resi. Gli acquirenti possono verificare che il loro veicolo sia elencato prima dell'acquisto, anziché scoprire un problema di compatibilità dopo la consegna."
+          }
+        ]
+      }
+    ]
+  },
+  "smart-pricing-explained": {
+    "title": "Spiegazione dei prezzi intelligenti",
+    "category": "Strumenti di prezzo",
+    "time": "6 min di lettura",
+    "intro": "Smart Pricing estrae i dati di quotazione eBay in tempo reale e ti mostra una distribuzione completa dei prezzi, così sai sempre esattamente dove si trova il tuo prezzo rispetto al mercato prima di quotare.",
+    "sections": [
+      {
+        "heading": "Quali dati utilizza Smart Pricing?",
+        "content": [
+          {
+            "type": "p",
+            "text": "Smart Pricing cerca le inserzioni eBay attive per lo stesso ricambio o un equivalente, usando il tuo numero OE, il numero OEM e i riferimenti intercambiabili noti per rilevare l'intera gamma delle inserzioni concorrenti."
+          },
+          {
+            "type": "p",
+            "text": "Più numeri intercambiabili ha un ricambio, più ampio sarà il quadro dei prezzi, perché un acquirente che cerca uno di quei numeri potrebbe finire per comprare da una qualsiasi di quelle inserzioni."
+          }
+        ]
+      },
+      {
+        "heading": "Leggere il grafico della distribuzione dei prezzi",
+        "content": [
+          {
+            "type": "p",
+            "text": "L'istogramma mostra la distribuzione dei prezzi tra tutte le inserzioni attive. Ogni barra rappresenta una fascia di prezzo; la sua altezza indica quante inserzioni hanno quel prezzo. Il tuo prezzo è la linea verticale tratteggiata."
+          },
+          {
+            "type": "visual",
+            "id": "priceHistogram"
+          },
+          {
+            "type": "list",
+            "items": [
+              "Il gruppo di barre più alto è quello in cui cerca la maggior parte degli acquirenti: fissare il prezzo qui massimizza la visibilità",
+              "Le barre a destra sono valori anomali con prezzi più alti, spesso ricambi OEM di marca",
+              "L'indicatore del tuo prezzo mostra subito se sei dentro, sopra o sotto il gruppo",
+              "Fai clic e trascina sul grafico per ingrandire una fascia di prezzo specifica"
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Metriche chiave",
+        "content": [
+          {
+            "type": "p",
+            "text": "Sotto il grafico, quattro valori riepilogativi ti offrono una rapida panoramica del mercato:"
+          },
+          {
+            "type": "list",
+            "items": [
+              "Minimo — Il prezzo più basso attualmente inserito",
+              "Media — Il prezzo medio di tutte le inserzioni",
+              "Mediana — Il prezzo centrale; non distorto dai valori anomali",
+              "Massimo — Il prezzo più alto inserito"
+            ]
+          },
+          {
+            "type": "p",
+            "text": "La mediana è di solito il parametro di riferimento più affidabile. A differenza della media, non viene innalzata da una singola inserzione OEM costosa tra i concorrenti aftermarket."
+          }
+        ]
+      },
+      {
+        "heading": "Il pannello delle inserzioni del venditore",
+        "content": [
+          {
+            "type": "p",
+            "text": "Accanto al grafico, PartLister mostra le singole inserzioni eBay che compongono i dati: titolo, prezzo e valutazione del venditore. Così puoi valutare se un'inserzione a un dato prezzo sia un vero concorrente o un valore anomalo che puoi tranquillamente ignorare."
+          }
+        ]
+      },
+      {
+        "heading": "Come utilizzare lo Smart Pricing per stabilire prezzi competitivi",
+        "content": [
+          {
+            "type": "list",
+            "items": [
+              "Se il tuo prezzo è sopra il gruppo, chiediti se la tua inserzione lo giustifica: marca, condizione, spedizione rapida, feedback elevato",
+              "Se il tuo prezzo è sotto il gruppo, potresti rinunciare inutilmente al margine",
+              "Fissare il prezzo alla mediana o appena sotto è un punto di partenza affidabile per la maggior parte dei ricambi",
+              "Per i ricambi comuni a rapida rotazione è sufficiente allinearsi al gruppo; per i ricambi più rari c'è maggiore flessibilità"
+            ]
+          },
+          {
+            "type": "tip",
+            "text": "Usa Smart Pricing insieme al Calcolatore dei prezzi. Una volta trovato un prezzo competitivo nel grafico, incollalo nel calcolatore per confermare il margine prima di procedere."
+          }
+        ]
+      }
+    ]
+  },
+  "export-listings-to-ebay": {
+    "title": "Esporta elenchi in eBay",
+    "category": "Generatore di annunci",
+    "time": "3 min di lettura",
+    "intro": "Dopo aver generato un'inserzione in PartLister, ci sono tre modi per inserirla in eBay: copiare HTML per un utilizzo immediato, CSV per l'importazione in blocco o salvare per dopo.",
+    "sections": [
+      {
+        "heading": "Le tue tre opzioni di esportazione",
+        "content": [
+          {
+            "type": "visual",
+            "id": "exportOptions"
+          }
+        ]
+      },
+      {
+        "heading": "Opzione 1: copia HTML",
+        "content": [
+          {
+            "type": "p",
+            "text": "Questo è il modo più rapido per pubblicare una singola inserzione su eBay."
+          },
+          {
+            "type": "list",
+            "items": [
+              "Genera la tua inserzione nel Generatore di inserzioni",
+              "Fai clic su Copia HTML nella barra delle azioni",
+              "Apri il modulo di inserzione eBay",
+              "Fai clic nel campo Descrizione dell'oggetto e incolla"
+            ]
+          },
+          {
+            "type": "p",
+            "text": "La formattazione HTML viene mantenuta: la descrizione viene visualizzata con le intestazioni, il layout della tabella e lo stile corretti, esattamente come generata da PartLister."
+          }
+        ]
+      },
+      {
+        "heading": "Opzione 2: esporta in CSV",
+        "content": [
+          {
+            "type": "p",
+            "text": "L'esportazione CSV è pensata per lo strumento eBay di inserzioni in blocco ed è l'opzione migliore se stai creando più inserzioni contemporaneamente."
+          },
+          {
+            "type": "list",
+            "items": [
+              "Inserzione singola: dopo la generazione, fai clic su Esporta CSV nel Generatore di inserzioni",
+              "Più inserzioni: vai a Inserzioni salvate, seleziona le inserzioni desiderate e fai clic su Esporta CSV"
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Il CSV esportato include: titolo, descrizione, specifiche dell'oggetto, riferimenti OE, note di compatibilità e campi di prezzo nella struttura di colonne prevista da eBay."
+          }
+        ]
+      },
+      {
+        "heading": "Importazione del tuo CSV in eBay",
+        "content": [
+          {
+            "type": "p",
+            "text": "Per importare il file CSV in eBay Seller Hub:"
+          },
+          {
+            "type": "list",
+            "items": [
+              "Vai a eBay Seller Hub → Inserzioni → Aggiungi inserzioni",
+              "Seleziona Carica un file",
+              "Scegli il file CSV esportato",
+              "Controlla la mappatura delle colonne (la maggior parte viene mappata automaticamente)",
+              "Completa gli eventuali campi obbligatori rimanenti (prezzo, spedizione) se non sono già inclusi",
+              "Controlla e pubblica"
+            ]
+          },
+          {
+            "type": "tip",
+            "text": "L'esportazione CSV in blocco è disponibile nei piani Growth e Scale. Con Lite puoi esportare singole inserzioni o usare Copia HTML per pubblicare subito."
+          }
+        ]
+      },
+      {
+        "heading": "Opzione 3: salva per dopo",
+        "content": [
+          {
+            "type": "p",
+            "text": "Fai clic su Salva inserzione per archiviare un'inserzione generata nelle tue Inserzioni salvate. Torna in qualsiasi momento per copiarla, esportarla o modificarla. Le inserzioni salvate vengono conteggiate nel limite mensile al momento del salvataggio."
+          }
+        ]
+      }
+    ]
+  },
+  "how-to-use-the-compatibility-checker": {
+    "title": "Come utilizzare Verifica compatibilità",
+    "category": "Verifica compatibilità",
+    "time": "3 min di lettura",
+    "intro": "Lo strumento di verifica compatibilità ti consente di verificare se una parte è adatta a un veicolo specifico prima di metterla in vendita o venderla, utilizzando un numero di parte o VIN. Ecco come usarlo.",
+    "sections": [
+      {
+        "heading": "Cosa fa il Controllo compatibilità",
+        "content": [
+          {
+            "type": "p",
+            "text": "Il Controllo compatibilità cerca nel database delle applicazioni veicolo di TecDoc per confermare se un ricambio specifico è adatto a un veicolo specifico. Restituisce un punteggio di affidabilità e le specifiche complete del veicolo, così puoi essere sicuro prima di concludere una vendita."
+          },
+          {
+            "type": "p",
+            "text": "È utile quando un acquirente chiede «questo va bene per la mia auto?», quando inserisci un ricambio usato con una compatibilità specifica o quando vuoi verificare un'applicazione che sembra inaspettata nella tabella di compatibilità."
+          }
+        ]
+      },
+      {
+        "heading": "Come eseguire un controllo",
+        "content": [
+          {
+            "type": "p",
+            "text": "Apri la scheda Compatibilità dalla navigazione principale. Vedrai due campi di inserimento:"
+          },
+          {
+            "type": "list",
+            "items": [
+              "Codice ricambio — Inserisci un numero OE, un numero OEM o un numero articolo TecDoc",
+              "Veicolo — Inserisci un VIN (numero di identificazione del veicolo) oppure cerca per marca/modello"
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Fai clic su Verifica compatibilità. PartLister interroga TecDoc e restituisce un risultato in pochi secondi."
+          }
+        ]
+      },
+      {
+        "heading": "Leggendo il risultato",
+        "content": [
+          {
+            "type": "visual",
+            "id": "compatResult",
+            "partLabel": "Pezzo",
+            "partName": "Pompa olio — PU0127",
+            "status": "Compatibile · affidabilità 92%",
+            "fields": [
+              {
+                "label": "Veicolo",
+                "value": "Land Rover Discovery IV"
+              },
+              {
+                "label": "Motore",
+                "value": "306DT (TDV6 3.0)"
+              },
+              {
+                "label": "Potenza",
+                "value": "155 kW / 211 HP"
+              },
+              {
+                "label": "Anni",
+                "value": "2010–2016"
+              }
+            ]
+          },
+          {
+            "type": "list",
+            "items": [
+              "Compatibile — TecDoc conferma che il ricambio è adatto a questa applicazione veicolo",
+              "Punteggio di affidabilità — Quanto precisamente il ricambio corrisponde al veicolo (100% = applicazione esatta elencata in TecDoc)",
+              "Specifiche veicolo — Marca, modello, codice motore, potenza e intervallo di anni dell'applicazione corrispondente"
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Cosa succede se non viene trovata alcuna corrispondenza?",
+        "content": [
+          {
+            "type": "p",
+            "text": "Se TecDoc non dispone di dati di applicazione per la combinazione inserita, il risultato verrà mostrato come non trovato o con bassa affidabilità. Può significare:"
+          },
+          {
+            "type": "list",
+            "items": [
+              "Il ricambio non è adatto a quel veicolo",
+              "Il ricambio è adatto, ma l'applicazione non è catalogata in TecDoc (comune per veicoli più vecchi o rari)",
+              "Il codice ricambio è stato inserito in modo errato: prova un riferimento alternativo"
+            ]
+          },
+          {
+            "type": "tip",
+            "text": "Raccomanda sempre agli acquirenti di verificare la compatibilità con il proprio veicolo prima di ordinare, anche quando TecDoc conferma una corrispondenza. Varianti regionali e modifiche alle date di produzione possono influire sulla compatibilità."
+          }
+        ]
+      }
+    ]
+  },
+  "choosing-a-listing-template": {
+    "title": "Scegliere un modello di inserzione",
+    "category": "Generatore di annunci",
+    "time": "3 min di lettura",
+    "intro": "PartLister offre diversi modelli di inserzioni che controllano come è strutturata la descrizione e quali sezioni include. Questa guida spiega ciascuno di essi e come utilizzare i pulsanti di attivazione/disattivazione dei contenuti.",
+    "sections": [
+      {
+        "heading": "I modelli integrati",
+        "content": [
+          {
+            "type": "p",
+            "text": "I modelli compaiono nel pannello sinistro del Generatore di inserzioni prima della generazione. Selezionane uno e verrà applicato a ogni inserzione che generi in quella sessione."
+          },
+          {
+            "type": "visual",
+            "id": "templateCards",
+            "templates": [
+              {
+                "name": "Predefinito pulito",
+                "desc": "Layout semplice e leggibile. Adatto a tutte le categorie. Buon punto di partenza per la maggior parte dei venditori.",
+                "accent": "#135DFF"
+              },
+              {
+                "name": "Intestazione scura",
+                "desc": "Intestazioni di sezione scure con testo bianco. Si distingue nei risultati di ricerca affollati.",
+                "accent": "#1f2937"
+              },
+              {
+                "name": "Incentrato sulla tabella",
+                "desc": "Mette in primo piano la tabella di compatibilità. Ideale per pezzi con molte applicazioni veicolo.",
+                "accent": "#16a34a"
+              },
+              {
+                "name": "Minimale",
+                "desc": "Solo titolo e specifiche — senza testo descrittivo. Il più rapido da generare, l'aspetto più pulito.",
+                "accent": "#6b7280"
+              },
+              {
+                "name": "Blu professionale",
+                "desc": "Intestazioni blu con marchio. Stile coerente per venditori affermati.",
+                "accent": "#2563eb"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Le opzioni del contenuto si attivano/disattivano",
+        "content": [
+          {
+            "type": "p",
+            "text": "Sotto il selettore del modello, tre interruttori ti permettono di controllare quali sezioni includere in ogni inserzione che generi:"
+          },
+          {
+            "type": "list",
+            "items": [
+              "Tabella di compatibilità — include la tabella completa delle applicazioni veicolo. Consigliata per tutti i tipi di ricambio.",
+              "Numeri intercambiabili — include i codici ricambio di riferimento incrociato. Aiuta gli acquirenti che cercano tramite riferimenti alternativi.",
+              "Codici motore — include i codici motore del produttore accanto alla tabella di compatibilità. Consigliato per ricambi specifici del motore."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Questi interruttori vengono salvati tra una sessione e l'altra, quindi devi impostarli una sola volta per account."
+          }
+        ]
+      },
+      {
+        "heading": "Modelli salvati",
+        "content": [
+          {
+            "type": "p",
+            "text": "Se hai personalizzato un modello e vuoi riutilizzarlo, puoi salvarlo con un nome personalizzato nella sezione Modelli salvati del pannello sinistro. I modelli salvati compaiono accanto alle opzioni integrate e possono essere applicati con un clic."
+          },
+          {
+            "type": "tip",
+            "text": "Se vendi ricambi in più categorie (ad es. componenti interni del motore e pannelli della carrozzeria), considera di salvare un modello separato per ciascuna: acquirenti diversi rispondono a layout diversi."
+          }
+        ]
+      }
+    ]
+  },
+  "understanding-part-references": {
+    "title": "Comprendere i riferimenti alle parti",
+    "category": "Per iniziare",
+    "time": "3 min di lettura",
+    "intro": "PartLister accetta diversi tipi di numeri di riferimento delle parti. Comprendere la differenza ti aiuta a ottenere i migliori risultati durante la generazione di inserzioni.",
+    "sections": [
+      {
+        "heading": "Le tre tipologie di riferimento",
+        "content": [
+          {
+            "type": "visual",
+            "id": "referenceTypes",
+            "refs": [
+              {
+                "label": "Numero OE",
+                "sub": "Equipaggiamento originale",
+                "example": "11247807345",
+                "color": "#135DFF",
+                "bg": "#EEF5FF",
+                "desc": "Il numero di ricambio del produttore — ad esempio un numero OE BMW. Identifica direttamente il pezzo nel catalogo del produttore."
+              },
+              {
+                "label": "Numero OEM",
+                "sub": "Produttore di equipaggiamento originale",
+                "example": "LR002465",
+                "color": "#16a34a",
+                "bg": "#f0fdf4",
+                "desc": "Il numero assegnato dal fornitore aftermarket o OEM. Spesso coincide con il numero OE o è un riferimento incrociato diretto."
+              },
+              {
+                "label": "Numero articolo",
+                "sub": "Riferimento catalogo TecDoc",
+                "example": "PU0127 · AOP858",
+                "color": "#7c3aed",
+                "bg": "#faf5ff",
+                "desc": "Il riferimento univoco assegnato da TecDoc a un pezzo specifico nel catalogo. Usato da fornitori e provider di dati."
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Quale utilizzare in PartLister",
+        "content": [
+          {
+            "type": "p",
+            "text": "PartLister accetta tutti e tre i tipi. Nella maggior parte dei casi, ciascuno restituirà il ricambio corretto: PartLister cerca contemporaneamente in tutti i tipi di riferimento."
+          },
+          {
+            "type": "list",
+            "items": [
+              "Se hai il numero OE dal catalogo del produttore, usa quello: fornisce la corrispondenza più precisa",
+              "Se hai un riferimento del fornitore (numero OEM), incollalo direttamente",
+              "Se lavori da un'esportazione del catalogo TecDoc, usa il numero articolo"
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Se PartLister trova più articoli corrispondenti al tuo riferimento (ad es. lo stesso numero usato da marche diverse), ti mostrerà un elenco di selezione per scegliere quello corretto."
+          }
+        ]
+      },
+      {
+        "heading": "Suggerimenti per ottenere i migliori risultati",
+        "content": [
+          {
+            "type": "list",
+            "items": [
+              "Copia e incolla il riferimento anziché digitarlo: gli errori di trascrizione sono la causa più comune di risultati mancanti",
+              "Rimuovi spazi o trattini se la prima ricerca non restituisce risultati (ad es. prova LR002465 invece di LR 002-465)",
+              "Se un tipo di riferimento non restituisce risultati, provane un altro: lo stesso ricambio è spesso catalogato con più riferimenti",
+              "Per ricambi molto nuovi o molto vecchi, la copertura TecDoc potrebbe essere incompleta: prova direttamente il numero OE del produttore"
+            ]
+          },
+          {
+            "type": "tip",
+            "text": "PartLister mostra anche i riferimenti OE e i numeri intercambiabili nell'inserzione generata: possono essere usati per generare ulteriori inserzioni dello stesso ricambio con numeri di riferimento diversi."
+          }
+        ]
+      }
+    ]
+  },
+  "using-the-price-calculator": {
+    "title": "Utilizzando il calcolatore dei prezzi",
+    "category": "Strumenti di prezzo",
+    "time": "4 min di lettura",
+    "intro": "Il calcolatore dei prezzi ti mostra esattamente ciò che tieni da ogni vendita, al netto delle commissioni eBay, dell'IVA e dei costi. Questa guida spiega ogni campo e come trovare il prezzo di vendita ideale.",
+    "sections": [
+      {
+        "heading": "Cosa ti mostra la calcolatrice",
+        "content": [
+          {
+            "type": "p",
+            "text": "Inserisci il prezzo di vendita e i costi e il calcolatore mostra esattamente dove va ogni sterlina:"
+          },
+          {
+            "type": "visual",
+            "id": "calcBreakdown"
+          }
+        ]
+      },
+      {
+        "heading": "Cosa inserire",
+        "content": [
+          {
+            "type": "list",
+            "items": [
+              "Prezzo di vendita — Il prezzo a cui prevedi di pubblicare l'inserzione",
+              "Costo del prodotto — Quanto ti costa il ricambio (prezzo di acquisto o all'ingrosso)",
+              "Spedizione e imballaggio — Il costo totale di evasione per vendita, inclusi i materiali d'imballaggio",
+              "Tariffa pubblicitaria — La percentuale eBay Promoted Listings. Lascia 0 se non usi Promoted Listings"
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Capire le detrazioni",
+        "content": [
+          {
+            "type": "list",
+            "items": [
+              "Commissioni eBay — Commissione sul valore finale (attualmente 12.8% + £0.30 per ordine) più l'eventuale commissione pubblicitaria Promoted Listings",
+              "IVA riscossa → HMRC — La quota IVA del prezzo di vendita. Va a HMRC indipendentemente dal fatto che tu sia registrato IVA: non è mai tua da trattenere"
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Queste due detrazioni sorprendono la maggior parte dei venditori. Commissioni eBay e IVA insieme rappresentano in genere il 25–30% del prezzo di vendita prima ancora di considerare il costo del prodotto."
+          }
+        ]
+      },
+      {
+        "heading": "Prezzo di pareggio",
+        "content": [
+          {
+            "type": "p",
+            "text": "Il prezzo di pareggio è il prezzo di vendita minimo con cui ottieni un profitto zero, coprendo esattamente costo del prodotto, spedizione, commissioni eBay e IVA."
+          },
+          {
+            "type": "p",
+            "text": "Se fissi un prezzo inferiore al pareggio, vendi in perdita anche se il ricavo lordo sembra ragionevole. Il valore di pareggio è il limite minimo assoluto per qualsiasi inserzione."
+          }
+        ]
+      },
+      {
+        "heading": "Trovare il giusto prezzo di vendita",
+        "content": [
+          {
+            "type": "list",
+            "items": [
+              "Usa Smart Pricing per trovare la fascia competitiva per il tuo ricambio",
+              "Inserisci il tuo prezzo obiettivo nel Calcolatore dei prezzi",
+              "Verifica che il tuo margine sia accettabile",
+              "Se il margine è troppo basso, aumenta il prezzo o riduci i costi",
+              "Se il margine è elevato, valuta se un prezzo inferiore potrebbe portare più volume"
+            ]
+          },
+          {
+            "type": "tip",
+            "text": "Un margine del 20% (utile netto ÷ prezzo di vendita) è un obiettivo comune nei ricambi auto, ma varia in base alla categoria e alla marca. I ricambi comuni ad alto volume operano spesso con margini più ridotti rispetto ai componenti specialistici o di marca."
+          }
+        ]
+      }
+    ]
+  }
+}

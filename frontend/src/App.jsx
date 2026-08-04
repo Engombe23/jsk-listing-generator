@@ -36,15 +36,83 @@ import { trackEvent } from "./lib/analytics";
 import { UpgradeBanner } from "./components/UpgradePrompt.jsx";
 import { useTheme } from "./context/ThemeContext";
 
-// ─── Description themes (mirrors backend) ────────────────────────────────────
+// ─── Description themes (mirrors backend / GeneratedListings) ─────────────────
 
-const THEMES = [
-  { id: "clean-default",     name: "Clean Default" },
-  { id: "dark-header",       name: "Dark Header" },
-  { id: "table-focused",     name: "Table Focused" },
-  { id: "minimal",           name: "Minimal" },
-  { id: "professional-blue", name: "Professional Blue" }
-];
+const THEME_IDS = ["clean-default", "table-focused", "minimal", "professional-blue"];
+
+// ─── Template dropdown ────────────────────────────────────────────────────────
+
+function TemplateDropdown({ themeIds, themeId, customTemplates, customTemplateHtml, onSelect, label }) {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  const activeCustom = customTemplateHtml ? customTemplates.find(ct => ct.html === customTemplateHtml) : null;
+  const ids = themeIds || THEME_IDS;
+  const displayName = activeCustom
+    ? (activeCustom.name || t("templates.untitled"))
+    : (themeId ? t(`saved.themes.${themeId}`) : t("generator.selectTemplate"));
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  const pick = (val) => { setOpen(false); onSelect(val); };
+
+  const itemStyle = (active) => ({
+    padding: "8px 12px", fontSize: 13, cursor: "pointer", borderRadius: 6,
+    background: active ? "var(--blue-bg)" : "transparent",
+    color: active ? "var(--blue)" : "var(--text)",
+    fontWeight: active ? 700 : 400,
+    display: "block", width: "100%", border: "none", textAlign: "left",
+  });
+
+  return (
+    <div ref={ref} style={{ position: "relative", marginTop: 4 }}>
+      {label && <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-muted)", marginBottom: 6 }}>{label}</div>}
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{
+          width: "100%", padding: "8px 12px", borderRadius: 10, fontSize: 13,
+          border: "1px solid var(--border)", background: "var(--bg-surface)",
+          color: "var(--text)", cursor: "pointer", outline: "none",
+          display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8,
+        }}
+      >
+        <span>{displayName}</span>
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{ flexShrink: 0, opacity: 0.5, transform: open ? "rotate(180deg)" : "none", transition: "transform 0.15s" }}>
+          <path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      </button>
+      {open && (
+        <div style={{
+          position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, zIndex: 50,
+          background: "var(--bg-surface)", border: "1px solid var(--border)",
+          borderRadius: 10, padding: "6px", boxShadow: "var(--shadow)",
+        }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", padding: "4px 8px 6px", letterSpacing: 0.5 }}>{t("generator.templatesLabel")}</div>
+          {ids.map((id) => (
+            <button key={id} style={itemStyle(!activeCustom && themeId === id)} onClick={() => pick(id)}>{t(`saved.themes.${id}`)}</button>
+          ))}
+          {customTemplates.length > 0 && (
+            <>
+              <div style={{ borderTop: "1px solid var(--border)", margin: "6px 0" }} />
+              <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", padding: "4px 8px 6px", letterSpacing: 0.5 }}>{t("generator.savedTemplates")}</div>
+              {customTemplates.map(ct => (
+                <button key={ct.id} style={itemStyle(activeCustom?.id === ct.id)} onClick={() => pick(ct.id)}>{ct.name || t("templates.untitled")}</button>
+              ))}
+            </>
+          )}
+          <div style={{ borderTop: "1px solid var(--border)", margin: "6px 0" }} />
+          <button style={{ ...itemStyle(false), color: "var(--blue)", fontWeight: 600 }} onClick={() => pick("__create__")}>{t("generator.createTemplate")}</button>
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ─── LocalStorage helpers ─────────────────────────────────────────────────────
 
@@ -80,7 +148,7 @@ function loadCustomTemplates() {
   // Normalise account templates to the { id, name, html } shape the editor expects
   const accountNorm = account
     .filter(t => t.rawHtml?.trim())
-    .map(t => ({ id: t.id, name: t.name || "Untitled", html: t.rawHtml }));
+    .map(t => ({ id: t.id, name: t.name || "", html: t.rawHtml }));
   // Merge, deduplicating by id
   const seen = new Set(editor.map(t => t.id));
   return [...editor, ...accountNorm.filter(t => !seen.has(t.id))];
@@ -349,9 +417,10 @@ export default function App() {
     setAccountSubPage(subPage);
     navigateTo("account");
   };
-  const { products, save, remove } = useSavedProducts();
+  const { products, save, remove, isLoading: productsLoading } = useSavedProducts();
   const {
     listings: generatedListings,
+    isLoading: listingsLoading,
     autoSave,
     updateStatus,
     updateStatusBatch,
@@ -464,7 +533,7 @@ export default function App() {
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
               </svg>
-              Log out
+              {t("nav.logout")}
             </button>
           </div>
         </div>
@@ -479,11 +548,17 @@ export default function App() {
             onPrefilledConsumed={() => setPrefilledArticle("")}
             onAutoSave={autoSave}
             listings={generatedListings}
+            listingsLoading={listingsLoading}
             onUpdateStatus={updateStatus}
             onUpdateStatusBatch={updateStatusBatch}
             onUpdateListing={updateGeneratedListing}
             onRemove={removeGenerated}
             onRemoveBatch={removeBatchGenerated}
+            onCreateTemplate={() => {
+              sessionStorage.setItem("jsk_templates_open_builder", "1");
+              setAccountSubPage("templates");
+              navigateTo("account");
+            }}
           />
         )}
         {page === "calculator" && (
@@ -491,6 +566,7 @@ export default function App() {
             onSave={save}
             onLoadHandled={(fn) => { loadProductRef.current = fn; }}
             products={products}
+            productsLoading={productsLoading}
             onDeleteProduct={remove}
             onLoadProduct={handleLoadProduct}
             hasSmartPricing={canUseSmartPricing}
@@ -533,13 +609,16 @@ export default function App() {
 
 function ListingGenerator({
   prefilledArticle, onPrefilledConsumed, onAutoSave,
-  listings, onUpdateStatus, onUpdateStatusBatch, onUpdateListing, onRemove, onRemoveBatch,
+  listings, listingsLoading = false,
+  onUpdateStatus, onUpdateStatusBatch, onUpdateListing, onRemove, onRemoveBatch,
+  onCreateTemplate,
 }) {
   const { t } = useTranslation();
   const { session, hasFeature, listingLimit, listingsUsed, refreshPlan } = useSession();
   const canBulkGenerate = hasFeature("bulkListingGeneration");
   const canBulkCsvExport = hasFeature("bulkCsvExport");
-  const targetMarketplace = useMemo(() => loadPreferences().targetMarketplace || "ebay-uk", []);
+  // Read at call-time so Account → Target Marketplace changes apply without remount.
+  const getTargetMarketplace = () => loadPreferences().targetMarketplace || "ebay-uk";
   const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
 
   // ── Inner page ────────────────────────────────────────────────────────────
@@ -581,7 +660,7 @@ function ListingGenerator({
     if (phase !== "done" || !result) return;
     const oemNums   = result.oem_numbers || [];
     const articleNo = result.article_number;
-    const marketplace = result.target_marketplace || targetMarketplace;
+    const marketplace = result.target_marketplace || getTargetMarketplace();
     let cancelled = false;
 
     setMarketPrice({ status: "loading" });
@@ -699,9 +778,9 @@ function ListingGenerator({
   // after a blocked attempt — so the user understands why the button is disabled.
   useEffect(() => {
     if (listingLimit != null && listingsUsed >= listingLimit) {
-      setLimitMessage("You have reached your listing limit. Upgrade your plan to continue generating listings.");
+      setLimitMessage(t("generator.limitReached"));
     }
-  }, [listingLimit, listingsUsed]);
+  }, [listingLimit, listingsUsed, t]);
 
   // ── Search (OEM or article number → candidates) ──────────────────────────
   const handleSearch = async () => {
@@ -718,7 +797,10 @@ function ListingGenerator({
           "Content-Type": "application/json",
           ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
         },
-        body: JSON.stringify({ query: query.trim() })
+        body: JSON.stringify({
+          query: query.trim(),
+          targetMarketplace: getTargetMarketplace(),
+        })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Search failed");
@@ -750,12 +832,17 @@ function ListingGenerator({
           "Content-Type": "application/json",
           ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
         },
-        body: JSON.stringify({ articleNumber: String(articleNo), themeId, listingOptions, targetMarketplace })
+        body: JSON.stringify({
+          articleNumber: String(articleNo),
+          themeId,
+          listingOptions,
+          targetMarketplace: getTargetMarketplace(),
+        })
       });
       const data = await res.json();
       if (!res.ok) {
         if (res.status === 403 && data.error === "limit_reached") {
-          setLimitMessage(data.message);
+          setLimitMessage(t("generator.limitReached"));
           setPhase(searchResults.length > 0 ? "selecting" : "idle");
           return;
         }
@@ -768,6 +855,7 @@ function ListingGenerator({
       trackEvent("listing_generated", {
         part_number: articleNo,
         generation_time_ms: Date.now() - startedAt,
+        tecdoc_api_calls: data._debug_api_calls ?? null,
         source: "listing_generator",
       });
     } catch (err) {
@@ -811,7 +899,12 @@ function ListingGenerator({
           "Content-Type": "application/json",
           ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
         },
-        body: JSON.stringify({ articleNumber: result.article_number, themeId: newId, listingOptions, targetMarketplace })
+        body: JSON.stringify({
+          articleNumber: result.article_number,
+          themeId: newId,
+          listingOptions,
+          targetMarketplace: getTargetMarketplace(),
+        })
       })
         .then((r) => r.json())
         .then((data) => {
@@ -850,11 +943,16 @@ function ListingGenerator({
           "Content-Type": "application/json",
           ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
         },
-        body: JSON.stringify({ rows, themeId })
+        body: JSON.stringify({
+          rows,
+          themeId,
+          listingOptions,
+          targetMarketplace: getTargetMarketplace(),
+        })
       });
       if (!res.ok) {
         const d = await res.json();
-        if (res.status === 403 && d.error === "limit_reached") { setLimitMessage(d.message); return; }
+        if (res.status === 403 && d.error === "limit_reached") { setLimitMessage(t("generator.limitReached")); return; }
         throw new Error(d.message || d.error || "Batch export failed");
       }
       const blob = await res.blob();
@@ -886,8 +984,8 @@ function ListingGenerator({
 
   const atLimit = listingLimit != null && listingsUsed >= listingLimit;
   const remainingLabel = listingLimit == null
-    ? "Unlimited Listings"
-    : `${Math.max(0, listingLimit - listingsUsed)} Listings Remaining`;
+    ? t("generator.listingsUnlimited")
+    : t("generator.listingsRemaining", { count: Math.max(0, listingLimit - listingsUsed) });
 
   const btnLabel =
     phase === "searching"  ? t("generator.searching")  :
@@ -943,7 +1041,7 @@ function ListingGenerator({
           }}>
             <div style={{ width: 20, height: 20, borderRadius: "50%", background: "var(--red)", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: "var(--text-on-dark)", fontWeight: 800, marginTop: 1 }}>!</div>
             <div style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.55 }}>
-              <strong style={{ color: "var(--red)" }}>Error:</strong> {error}
+              <strong style={{ color: "var(--red)" }}>{t("generator.errorLabel")}:</strong> {error}
             </div>
           </div>
         )}
@@ -993,73 +1091,20 @@ function ListingGenerator({
                 </div>
 
                 {/* Description Theme / Preset selector */}
-                <div>
-                  <FieldLabel>{t("generator.templatesLabel")}</FieldLabel>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 4 }}>
-                    {THEMES.map((t) => {
-                      const active = themeId === t.id && !customTemplateHtml;
-                      return (
-                        <button
-                          key={t.id}
-                          onClick={() => handleThemeChange(t.id)}
-                          style={{
-                            padding: "6px 12px", borderRadius: 10, fontSize: 12, cursor: "pointer",
-                            border:     active ? "1px solid var(--blue)" : "1px solid var(--border)",
-                            background: active ? "var(--blue-bg)"     : "var(--bg-surface2)",
-                            color:      active ? "var(--blue)"        : "var(--text-muted)",
-                            fontWeight: active ? 700 : 400,
-                            transition: "all 0.15s ease"
-                          }}
-                        >
-                          {t.name}
-                        </button>
-                      );
-                    })}
-                  </div>
+                <TemplateDropdown
+                  themeIds={THEME_IDS}
+                  themeId={themeId}
+                  customTemplates={customTemplates}
+                  customTemplateHtml={customTemplateHtml}
+                  onSelect={(val) => {
+                    if (val === "__create__") { onCreateTemplate?.(); return; }
+                    const custom = customTemplates.find(ct => ct.id === val);
+                    if (custom) setCustomTemplateHtml(custom.html);
+                    else handleThemeChange(val);
+                  }}
+                  label={t("generator.templatesLabel")}
+                />
 
-                  {/* Custom (saved) templates */}
-                  {customTemplates.length > 0 && (
-                    <div style={{ marginTop: 10 }}>
-                      <div style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 700, marginBottom: 6, letterSpacing: 0.4 }}>
-                        SAVED TEMPLATES
-                      </div>
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                        {customTemplates.map((t) => {
-                          const active = customTemplateHtml === t.html;
-                          return (
-                            <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 0 }}>
-                              <button
-                                onClick={() => setCustomTemplateHtml(t.html)}
-                                style={{
-                                  padding: "6px 12px", borderRadius: "10px 0 0 10px", fontSize: 12, cursor: "pointer",
-                                  border:     active ? "1px solid #f59e0b"        : "1px solid rgba(255,255,255,0.14)",
-                                  borderRight: "none",
-                                  background: active ? "rgba(245,158,11,0.18)"    : "var(--border-light)",
-                                  color:      active ? "var(--yellow)"                  : "var(--text-muted)",
-                                  fontWeight: active ? 700 : 400,
-                                  transition: "all 0.15s ease"
-                                }}
-                              >
-                                {t.name}
-                              </button>
-                              <button
-                                onClick={() => handleDeleteTemplate(t.id)}
-                                title="Delete template"
-                                style={{
-                                  padding: "6px 7px", borderRadius: "0 10px 10px 0", fontSize: 11, cursor: "pointer",
-                                  border:     "1px solid rgba(255,255,255,0.14)",
-                                  background: "rgba(220,38,38,0.07)",
-                                  color:      "var(--red)",
-                                  transition: "all 0.15s ease"
-                                }}
-                              >×</button>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-                </div>
 
                 {/* Listing Content Toggles */}
                 <div>
@@ -1135,13 +1180,13 @@ function ListingGenerator({
           {/* ── Middle column: listing output ── */}
           <div style={phase === "done" && result ? {} : { gridColumn: "2 / 4" }}>
             {(phase === "idle" || phase === "searching" || phase === "generating") && (
-              <Card title="Output" subtitle="Generated listing content and live preview." centeredTitle>
+              <Card title={t("generator.output")} subtitle={t("generator.outputSubtitle")} centeredTitle>
                 <EmptyOutputPanel
                   loading={phase === "searching" || phase === "generating"}
                   message={
-                    phase === "searching"  ? "Searching for matching articles…" :
-                    phase === "generating" ? "Generating listing…" :
-                    "Enter an article or OEM number and press Search & Generate."
+                    phase === "searching"  ? t("generator.searchingState") :
+                    phase === "generating" ? t("generator.generatingState") :
+                    t("generator.emptyState")
                   }
                 />
               </Card>
@@ -1149,8 +1194,8 @@ function ListingGenerator({
 
             {phase === "selecting" && (
               <Card
-                title="Select Article"
-                subtitle={`Found ${searchResults.length} matches for "${query}" — click one to generate`}
+                title={t("generator.selectArticle")}
+                subtitle={t("generator.foundMatches", { count: searchResults.length, query })}
                 centeredTitle
               >
                 <ArticleSelector
@@ -1171,6 +1216,7 @@ function ListingGenerator({
                       result={result}
                       copyText={copyText}
                       onRowsChange={(rows) => { liveRowsRef.current = rows; }}
+                      savedListings={listings}
                     />
                   )}
                 />
@@ -1183,6 +1229,7 @@ function ListingGenerator({
                   noRightPanel
                   onHtmlChange={(html) => { liveHtmlRef.current = html; }}
                   onRowsChange={(rows) => { liveRowsRef.current = rows; }}
+                  savedListings={listings}
                 />
               )
             )}
@@ -1218,7 +1265,7 @@ function ListingGenerator({
                     height: 110, background: "var(--bg-surface2)",
                   }}
                 >
-                  <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase", color: "var(--text-dim)" }}>No Image</span>
+                  <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase", color: "var(--text-dim)" }}>{t("generator.noImage")}</span>
                 </div>
               </div>
 
@@ -1252,7 +1299,7 @@ function ListingGenerator({
                 background: "var(--bg-surface)", border: "1px solid var(--border)",
                 borderRadius: 12, padding: "14px 16px", boxShadow: "var(--shadow)",
               }}>
-                <div style={{ fontSize: 10, color: "var(--text-dim)", fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", marginBottom: 10 }}>Market Price</div>
+                <div style={{ fontSize: 10, color: "var(--text-dim)", fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", marginBottom: 10 }}>{t("generator.marketPrice")}</div>
 
                 <button
                   onClick={() => {
@@ -1260,7 +1307,7 @@ function ListingGenerator({
                     try {
                       localStorage.setItem("jsk_pc_autorun", JSON.stringify({
                         query: oem,
-                        marketplace: result.target_marketplace || targetMarketplace,
+                        marketplace: result.target_marketplace || getTargetMarketplace(),
                         timestamp: Date.now(),
                       }));
                     } catch {}
@@ -1278,7 +1325,7 @@ function ListingGenerator({
                   onMouseEnter={(e) => e.currentTarget.style.opacity = "0.85"}
                   onMouseLeave={(e) => e.currentTarget.style.opacity = "1"}
                 >
-                  Check Market Prices
+                  {t("generator.checkMarketPrices")}
                   <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
                 </button>
               </div>
@@ -1307,13 +1354,13 @@ function ListingGenerator({
                 style={{ width: "100%", textAlign: "center", fontSize: 13, padding: "10px 16px", borderRadius: 10 }}
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline", verticalAlign: "middle", marginRight: 6 }}><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-                Copy HTML
+                {t("generator.copyHtml")}
               </CopyButton>
 
               {/* Title */}
               <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 12, padding: "14px 16px", boxShadow: "var(--shadow)" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                  <div style={{ fontSize: 10, color: "var(--text-dim)", fontWeight: 700, letterSpacing: 1, textTransform: "uppercase" }}>Title</div>
+                  <div style={{ fontSize: 10, color: "var(--text-dim)", fontWeight: 700, letterSpacing: 1, textTransform: "uppercase" }}>{t("generator.titleLabel")}</div>
                   <div style={{
                     fontSize: 11, fontWeight: 600,
                     color: (result.generated_title || "").length > 80 ? "var(--red)" :
@@ -1330,12 +1377,12 @@ function ListingGenerator({
               {/* K Numbers */}
               {(result.k_number_list || []).length > 0 && (
                 <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 12, padding: "14px 16px", boxShadow: "var(--shadow)" }}>
-                  <div style={{ fontSize: 10, color: "var(--text-dim)", fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>K Numbers</div>
+                  <div style={{ fontSize: 10, color: "var(--text-dim)", fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>{t("generator.kNumbers")}</div>
                   <div style={{ fontSize: 12, color: "var(--text-muted)", lineHeight: 1.7, wordBreak: "break-word", marginBottom: 10 }}>
                     {(result.k_number_list || []).join(", ")}
                   </div>
                   <CopyButton value={(result.k_number_list || []).join(", ")} style={{ fontSize: 11, padding: "5px 12px", borderRadius: 7 }}>
-                    Copy K Numbers
+                    {t("generator.copyKNumbers")}
                   </CopyButton>
                 </div>
               )}
@@ -1343,10 +1390,10 @@ function ListingGenerator({
               {/* OEM Numbers */}
               {(result.oem_numbers || []).length > 0 && (
                 <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 12, padding: "14px 16px", boxShadow: "var(--shadow)" }}>
-                  <div style={{ fontSize: 10, color: "var(--text-dim)", fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>OEM Numbers</div>
+                  <div style={{ fontSize: 10, color: "var(--text-dim)", fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", marginBottom: 8 }}>{t("generator.oemNumbers")}</div>
                   <div style={{ fontSize: 12, color: "var(--text-muted)", lineHeight: 1.7, wordBreak: "break-word" }}>
                     {(result.oem_numbers || []).slice(0, 8).join(", ")}
-                    {(result.oem_numbers || []).length > 8 ? ` +${(result.oem_numbers || []).length - 8} more` : ""}
+                    {(result.oem_numbers || []).length > 8 ? ` +${t("generator.moreCount", { count: (result.oem_numbers || []).length - 8 })}` : ""}
                   </div>
                 </div>
               )}
@@ -1363,6 +1410,7 @@ function ListingGenerator({
       {innerPage === "generated" && (
         <GeneratedListings
           listings={listings}
+          isLoading={listingsLoading}
           onUpdateStatus={onUpdateStatus}
           onUpdateStatusBatch={onUpdateStatusBatch}
           onUpdateListing={onUpdateListing}
@@ -1572,6 +1620,7 @@ const BLOCK_TEMPLATES = [
 ];
 
 function InsertZone({ onInsert }) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
 
   return (
@@ -1583,7 +1632,7 @@ function InsertZone({ onInsert }) {
           padding: "8px 10px", margin: "4px 0",
           background: "var(--bg-surface2)", border: "1px dashed #93c5fd", borderRadius: 10
         }}>
-          <span style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 700, marginRight: 2 }}>INSERT:</span>
+          <span style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 700, marginRight: 2 }}>{t("generator.insert")}:</span>
           {BLOCK_TEMPLATES.map((t) => (
             <button
               key={t.label}
@@ -1627,7 +1676,7 @@ function InsertZone({ onInsert }) {
             background: "var(--blue)", color: "var(--text-on-dark)", margin: "0 6px",
             userSelect: "none", whiteSpace: "nowrap"
           }}>
-            + Insert
+            + {t("generator.insert")}
           </span>
           <div style={{ flex: 1, height: 1, background: "var(--blue)", opacity: 0.5 }} />
         </div>
@@ -1640,6 +1689,7 @@ function InsertZone({ onInsert }) {
 // Small collapsible HTML viewer that reads from a ref (updated live by ListingOutput)
 
 function RightPanelHtmlToggle({ htmlRef }) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [html, setHtml] = useState("");
 
@@ -1658,7 +1708,7 @@ function RightPanelHtmlToggle({ htmlRef }) {
           color: "var(--text-muted)", border: "1px solid var(--border-strong)"
         }}
       >
-        {open ? "▲ Hide HTML" : "▼ Show Description HTML"}
+        {open ? `▲ ${t("generator.hideHtml")}` : `▼ ${t("generator.showDescriptionHtml")}`}
       </button>
       {open && (
         <div style={{ marginTop: 8 }}>
@@ -1671,14 +1721,15 @@ function RightPanelHtmlToggle({ htmlRef }) {
 
 // ─── AI Title Suggestions ────────────────────────────────────────────────────
 
-const STYLE_LABELS = {
-  engine_code_model_hybrid: "Engine Code + Model",
-  vehicle_model_focused:    "Model + OEM",
-  oem_focused:              "Engine Code + Model + OEM"
+const STYLE_LABEL_KEYS = {
+  engine_code_model_hybrid: "generator.aiTitles.styles.engineCodeModel",
+  vehicle_model_focused:    "generator.aiTitles.styles.modelOem",
+  oem_focused:              "generator.aiTitles.styles.engineCodeModelOem"
 };
 
 function AiTitleSuggestions({ result, apiUrl, onUseTitle }) {
   const { session } = useSession();
+  const { t } = useTranslation();
   const [titles,   setTitles]   = useState(null);
   const [loading,  setLoading]  = useState(false);
   const [error,    setError]    = useState("");
@@ -1712,16 +1763,16 @@ function AiTitleSuggestions({ result, apiUrl, onUseTitle }) {
       });
       const contentType = res.headers.get("content-type") || "";
       if (!contentType.includes("application/json")) {
-        throw new Error(`AI title generation failed (HTTP ${res.status}). Please try again.`);
+        throw new Error(t("generator.aiTitles.errors.requestFailed", { status: res.status }));
       }
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || data.error || "AI title generation failed.");
+      if (!res.ok) throw new Error(data.message || data.error || t("generator.aiTitles.errors.generationFailed"));
       if (!Array.isArray(data.titles) || data.titles.length === 0) {
-        throw new Error("No titles returned.");
+        throw new Error(t("generator.aiTitles.errors.noTitles"));
       }
       setTitles(data.titles);
     } catch (err) {
-      setError(String(err.message || "AI title generation failed. Please try again."));
+      setError(String(err.message || t("generator.aiTitles.errors.generationFailed")));
     } finally {
       setLoading(false);
     }
@@ -1763,10 +1814,10 @@ function AiTitleSuggestions({ result, apiUrl, onUseTitle }) {
               WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
               textTransform: "uppercase"
             }}>✦ AI</span>
-            <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)" }}>Title Suggestions</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)" }}>{t("generator.aiTitles.title")}</div>
           </div>
           <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
-            Generate 3 optimised eBay title styles from the listing data.
+            {t("generator.aiTitles.subtitle")}
           </div>
         </div>
         <button
@@ -1782,7 +1833,7 @@ function AiTitleSuggestions({ result, apiUrl, onUseTitle }) {
             whiteSpace: "nowrap", flexShrink: 0
           }}
         >
-          {loading ? "Generating…" : titles ? "Regenerate" : "Generate AI Titles"}
+          {loading ? t("generator.generating") : titles ? t("generator.aiTitles.regenerate") : t("generator.aiTitles.generate")}
         </button>
       </div>
 
@@ -1800,8 +1851,8 @@ function AiTitleSuggestions({ result, apiUrl, onUseTitle }) {
       {/* Title cards */}
       {titles && (
         <div style={{ display: "grid", gap: 12 }}>
-          {titles.map((t) => (
-            <div key={t.style} style={{
+          {titles.map((titleSuggestion) => (
+            <div key={titleSuggestion.style} style={{
               background: "var(--bg-surface3)",
               border: "1px solid var(--border)",
               borderRadius: 14, padding: 16
@@ -1812,10 +1863,10 @@ function AiTitleSuggestions({ result, apiUrl, onUseTitle }) {
                   fontSize: 11, fontWeight: 700, color: "var(--text-muted)",
                   textTransform: "uppercase", letterSpacing: 0.6
                 }}>
-                  {STYLE_LABELS[t.style] || t.style}
+                  {t(STYLE_LABEL_KEYS[titleSuggestion.style] || titleSuggestion.style)}
                 </span>
-                <span style={{ fontSize: 12, fontWeight: 700, color: charColor(t.characterCount) }}>
-                  {t.characterCount} / 80
+                <span style={{ fontSize: 12, fontWeight: 700, color: charColor(titleSuggestion.characterCount) }}>
+                  {titleSuggestion.characterCount} / 80
                 </span>
               </div>
 
@@ -1825,39 +1876,39 @@ function AiTitleSuggestions({ result, apiUrl, onUseTitle }) {
                 lineHeight: 1.4, marginBottom: 8,
                 wordBreak: "break-word"
               }}>
-                {t.title}
+                {titleSuggestion.title}
               </div>
 
               {/* Actions */}
               <div style={{ display: "flex", gap: 8 }}>
                 <button
-                  onClick={() => handleCopy(t.title, t.style)}
+                  onClick={() => handleCopy(titleSuggestion.title, titleSuggestion.style)}
                   style={{
                     padding: "7px 14px", borderRadius: 9, fontSize: 12, fontWeight: 600,
                     cursor: "pointer", border: "1px solid var(--border-strong)",
-                    background: copied === t.style ? "rgba(74,222,128,0.15)" : "var(--border-light)",
-                    color: copied === t.style ? "var(--green)" : "var(--text-muted)",
+                    background: copied === titleSuggestion.style ? "rgba(74,222,128,0.15)" : "var(--border-light)",
+                    color: copied === titleSuggestion.style ? "var(--green)" : "var(--text-muted)",
                     transition: "all 0.15s ease"
                   }}
                 >
-                  {copied === t.style ? "Copied ✓" : "Copy"}
+                  {copied === titleSuggestion.style ? t("generator.aiTitles.copied") : t("common.copy")}
                 </button>
                 <button
                   onClick={() => {
-                    onUseTitle(t.title);
-                    setApplied(t.style);
+                    onUseTitle(titleSuggestion.title);
+                    setApplied(titleSuggestion.style);
                     setTimeout(() => setApplied(null), 2000);
                   }}
                   style={{
                     padding: "7px 14px", borderRadius: 9, fontSize: 12, fontWeight: 700,
                     cursor: "pointer",
-                    border: applied === t.style ? "1px solid rgba(74,222,128,0.4)" : "1px solid rgba(19,93,255,0.4)",
-                    background: applied === t.style ? "rgba(74,222,128,0.15)" : "rgba(19,93,255,0.15)",
-                    color: applied === t.style ? "var(--green)" : "var(--text-accent)",
+                    border: applied === titleSuggestion.style ? "1px solid rgba(74,222,128,0.4)" : "1px solid rgba(19,93,255,0.4)",
+                    background: applied === titleSuggestion.style ? "rgba(74,222,128,0.15)" : "rgba(19,93,255,0.15)",
+                    color: applied === titleSuggestion.style ? "var(--green)" : "var(--text-accent)",
                     transition: "all 0.15s ease"
                   }}
                 >
-                  {applied === t.style ? "✓ Applied!" : "Use this title"}
+                  {applied === titleSuggestion.style ? t("generator.aiTitles.applied") : t("generator.aiTitles.useTitle")}
                 </button>
               </div>
             </div>
@@ -1879,7 +1930,8 @@ function resolveHtml(customTemplateHtml, generatedHtml, result) {
     : mergeTemplateWithContent(customTemplateHtml, generatedHtml ?? "");
 }
 
-function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate, noRightPanel = false, onHtmlChange, onRowsChange }) {
+function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate, noRightPanel = false, onHtmlChange, onRowsChange, savedListings = [] }) {
+  const { t } = useTranslation();
   const [innerTab,     setInnerTab]     = useState("overview"); // "overview" | "specifics"
   const [editMode,     setEditMode]     = useState(false);
   const [editedHtml,   setEditedHtml]   = useState(
@@ -2138,8 +2190,8 @@ function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate, n
         {/* Tab bar */}
         <div style={{ display: "flex", borderBottom: "1px solid var(--border)", padding: "0 4px" }}>
           {[
-            { key: "overview",  label: "Preview"        },
-            { key: "specifics", label: "Item Specifics" }
+            { key: "overview",  label: t("generator.preview")        },
+            { key: "specifics", label: t("generator.itemSpecifics.title") }
           ].map(({ key, label }) => {
             const active = innerTab === key;
             return (
@@ -2166,7 +2218,7 @@ function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate, n
                 onClick={enterEdit}
                 style={{ ...SMALL_BUTTON_STYLE, fontSize: 13 }}
               >
-                ✎ Edit Description
+                ✎ {t("generator.editDescription")}
               </button>
             ) : (
               <>
@@ -2174,7 +2226,7 @@ function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate, n
                   onClick={exitEdit}
                   style={{ ...SMALL_BUTTON_STYLE, fontSize: 13, background: "#16a34a", boxShadow: "0 0 16px rgba(22,163,74,0.3)" }}
                 >
-                  ✓ Done Editing
+                  ✓ {t("generator.doneEditing")}
                 </button>
                 {saveMode ? (
                   <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
@@ -2182,7 +2234,7 @@ function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate, n
                       value={saveName}
                       onChange={(e) => setSaveName(e.target.value)}
                       onKeyDown={(e) => e.key === "Enter" && doSaveTemplate()}
-                      placeholder="Template name…"
+                      placeholder={t("templates.templateNamePlaceholder")}
                       autoFocus
                       style={{
                         padding: "6px 10px", borderRadius: 10, fontSize: 12,
@@ -2192,11 +2244,11 @@ function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate, n
                     />
                     <button onClick={doSaveTemplate}
                       style={{ ...SMALL_BUTTON_STYLE, fontSize: 12, background: "#b45309", boxShadow: "0 0 12px rgba(180,83,9,0.3)" }}>
-                      💾 Save
+                      💾 {t("common.save")}
                     </button>
                     <button onClick={() => { setSaveMode(false); setSaveName(""); }}
                       style={{ ...SMALL_BUTTON_STYLE, fontSize: 12, background: "var(--text-dim)", boxShadow: "none" }}>
-                      Cancel
+                      {t("common.cancel")}
                     </button>
                   </div>
                 ) : (
@@ -2204,7 +2256,7 @@ function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate, n
                     onClick={() => setSaveMode(true)}
                     style={{ ...SMALL_BUTTON_STYLE, fontSize: 12, background: "#92400e", boxShadow: "0 0 12px rgba(146,64,14,0.3)" }}
                   >
-                    📐 Save as Template
+                    📐 {t("generator.saveAsTemplate")}
                   </button>
                 )}
               </>
@@ -2263,7 +2315,7 @@ function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate, n
                         <button
                           onMouseDown={(e) => e.preventDefault()}
                           onClick={() => deleteSection(idx)}
-                          title={`Delete section ${idx + 1}`}
+                          title={t("generator.deleteSection", { count: idx + 1 })}
                           style={{
                             width: 22, height: 22, borderRadius: 6,
                             background: "#fee2e2", color: "#ef4444",
@@ -2295,7 +2347,7 @@ function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate, n
 
         {/* Item Specifics tab */}
         {innerTab === "specifics" && (
-          <ItemSpecificsTab result={result} copyText={copyText} onRowsChange={onRowsChange} />
+          <ItemSpecificsTab result={result} copyText={copyText} onRowsChange={onRowsChange} savedListings={savedListings} />
         )}
 
         </div>{/* end padding wrapper */}
@@ -2311,14 +2363,14 @@ function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate, n
             borderRadius: 14, padding: "12px 16px",
             display: "flex", flexDirection: "column", gap: 4
           }}>
-            <div style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase" }}>Article</div>
+            <div style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase" }}>{t("generator.article")}</div>
             <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text)" }}>{result.article_number || "—"}</div>
             {result.product_type && (
               <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{result.product_type}</div>
             )}
             {result.compatibility_count > 0 && (
               <div style={{ fontSize: 11, color: "var(--green)", marginTop: 2 }}>
-                ✓ {result.compatibility_count} compatible vehicles
+                ✓ {t("generator.compatibleVehicles", { count: result.compatibility_count })}
               </div>
             )}
           </div>
@@ -2329,20 +2381,20 @@ function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate, n
               value={result.generated_title}
               style={{ width: "100%", textAlign: "center", fontSize: 13 }}
             >
-              Copy Title
+              {t("generator.copyTitle")}
             </CopyButton>
             <CopyButton
               value={editedHtml}
               style={{ width: "100%", textAlign: "center", fontSize: 13 }}
             >
-              Copy HTML
+              {t("generator.copyHtml")}
             </CopyButton>
             {!editMode ? (
               <button
                 onClick={enterEdit}
                 style={{ ...SMALL_BUTTON_STYLE, width: "100%", textAlign: "center", fontSize: 13 }}
               >
-                ✎ Edit Description
+                ✎ {t("generator.editDescription")}
               </button>
             ) : (
               <>
@@ -2350,7 +2402,7 @@ function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate, n
                   onClick={exitEdit}
                   style={{ ...SMALL_BUTTON_STYLE, width: "100%", textAlign: "center", fontSize: 13, background: "#16a34a", boxShadow: "0 0 16px rgba(22,163,74,0.3)" }}
                 >
-                  ✓ Done Editing
+                  ✓ {t("generator.doneEditing")}
                 </button>
                 {saveMode ? (
                   <div style={{ display: "grid", gap: 6 }}>
@@ -2358,7 +2410,7 @@ function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate, n
                       value={saveName}
                       onChange={(e) => setSaveName(e.target.value)}
                       onKeyDown={(e) => e.key === "Enter" && doSaveTemplate()}
-                      placeholder="Template name…"
+                      placeholder={t("templates.templateNamePlaceholder")}
                       autoFocus
                       style={{
                         padding: "6px 10px", borderRadius: 10, fontSize: 12,
@@ -2369,11 +2421,11 @@ function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate, n
                     <div style={{ display: "flex", gap: 6 }}>
                       <button onClick={doSaveTemplate}
                         style={{ ...SMALL_BUTTON_STYLE, flex: 1, textAlign: "center", fontSize: 12, background: "#b45309", boxShadow: "0 0 12px rgba(180,83,9,0.3)" }}>
-                        💾 Save
+                        💾 {t("common.save")}
                       </button>
                       <button onClick={() => { setSaveMode(false); setSaveName(""); }}
                         style={{ ...SMALL_BUTTON_STYLE, flex: 1, textAlign: "center", fontSize: 12, background: "var(--text-dim)", boxShadow: "none" }}>
-                        Cancel
+                        {t("common.cancel")}
                       </button>
                     </div>
                   </div>
@@ -2382,7 +2434,7 @@ function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate, n
                     onClick={() => setSaveMode(true)}
                     style={{ ...SMALL_BUTTON_STYLE, width: "100%", textAlign: "center", fontSize: 12, background: "#92400e", boxShadow: "0 0 12px rgba(146,64,14,0.3)" }}
                   >
-                    📐 Save as Template
+                    📐 {t("generator.saveAsTemplate")}
                   </button>
                 )}
               </>
@@ -2395,7 +2447,7 @@ function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate, n
               background: "var(--bg-nav)", border: "1px solid var(--border)",
               borderRadius: 14, padding: "12px 16px"
             }}>
-              <div style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 6 }}>K Numbers</div>
+              <div style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 6 }}>{t("generator.kNumbers")}</div>
               <div style={{ fontSize: 12, color: "var(--text)", lineHeight: 1.6, wordBreak: "break-word" }}>
                 {(result.k_number_list || []).join(", ")}
               </div>
@@ -2403,7 +2455,7 @@ function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate, n
                 value={(result.k_number_list || []).join(", ")}
                 style={{ marginTop: 8, fontSize: 11, padding: "5px 10px" }}
               >
-                Copy K Numbers
+                {t("generator.copyKNumbers")}
               </CopyButton>
             </div>
           )}
@@ -2414,10 +2466,10 @@ function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate, n
               background: "var(--bg-nav)", border: "1px solid var(--border)",
               borderRadius: 14, padding: "12px 16px"
             }}>
-              <div style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 6 }}>OEM Numbers</div>
+              <div style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 6 }}>{t("generator.oemNumbers")}</div>
               <div style={{ fontSize: 12, color: "var(--text)", lineHeight: 1.6, wordBreak: "break-word" }}>
                 {(result.oem_numbers || []).slice(0, 8).join(", ")}
-                {(result.oem_numbers || []).length > 8 ? ` +${(result.oem_numbers || []).length - 8} more` : ""}
+                {(result.oem_numbers || []).length > 8 ? ` +${t("generator.moreCount", { count: (result.oem_numbers || []).length - 8 })}` : ""}
               </div>
             </div>
           )}
@@ -2444,7 +2496,7 @@ function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate, n
                 color: "var(--text-muted)", border: "1px solid var(--border-strong)"
               }}
             >
-              {showDescHtml ? "▲ Hide HTML" : "▼ Show Description HTML"}
+              {showDescHtml ? `▲ ${t("generator.hideHtml")}` : `▼ ${t("generator.showDescriptionHtml")}`}
             </button>
             {showDescHtml && (
               <div style={{ marginTop: 8 }}>
@@ -2469,6 +2521,7 @@ function EditorToolbar({
   tableBorderColor, tableBorderWidth,
   applyTableCellBorder, applyTableBorderWidth
 }) {
+  const { t } = useTranslation();
   const colorInputRef      = useRef(null);
   const boxBgInputRef      = useRef(null);
   const borderClrInputRef  = useRef(null);
@@ -2539,17 +2592,17 @@ function EditorToolbar({
     }}>
 
       {/* Text style */}
-      {btn("B", "bold",          { fontWeight: 900 })}
-      {btn("I", "italic",        { fontStyle: "italic" })}
-      {btn("U", "underline",     { textDecoration: "underline" })}
-      {btn("S̶", "strikeThrough", { textDecoration: "line-through" })}
+      {btn("B", "bold",          { fontWeight: 900, title: t("generator.toolbar.bold") })}
+      {btn("I", "italic",        { fontStyle: "italic", title: t("generator.toolbar.italic") })}
+      {btn("U", "underline",     { textDecoration: "underline", title: t("generator.toolbar.underline") })}
+      {btn("S̶", "strikeThrough", { textDecoration: "line-through", title: t("generator.toolbar.strikethrough") })}
 
       {sep}
 
       {/* Alignment */}
-      {btn("≡ L", "justifyLeft")}
-      {btn("≡ C", "justifyCenter")}
-      {btn("≡ R", "justifyRight")}
+      {btn("≡ L", "justifyLeft", { title: t("generator.toolbar.alignLeft") })}
+      {btn("≡ C", "justifyCenter", { title: t("generator.toolbar.alignCenter") })}
+      {btn("≡ R", "justifyRight", { title: t("generator.toolbar.alignRight") })}
 
       {sep}
 
@@ -2569,7 +2622,7 @@ function EditorToolbar({
           maxWidth: 150
         }}
       >
-        <option value="" disabled>Font</option>
+        <option value="" disabled>{t("generator.toolbar.font")}</option>
         {FONT_FAMILIES.map(([label, val]) => (
           <option key={val} value={val} style={{ fontFamily: val }}>{label}</option>
         ))}
@@ -2590,7 +2643,7 @@ function EditorToolbar({
           border: "1px solid rgba(255,255,255,0.15)", cursor: "pointer"
         }}
       >
-        <option value="" disabled>Size</option>
+        <option value="" disabled>{t("generator.toolbar.size")}</option>
         {FONT_SIZES.map(([label, val]) => (
           <option key={val} value={`${val}px`}>{label}</option>
         ))}
@@ -2601,7 +2654,7 @@ function EditorToolbar({
       {/* Text colour */}
       <button
         onMouseDown={(e) => { e.preventDefault(); colorInputRef.current?.click(); }}
-        title="Text colour"
+        title={t("generator.toolbar.textColor")}
         style={{
           padding: "5px 10px", borderRadius: 8, cursor: "pointer",
           border: "1px solid rgba(255,255,255,0.15)",
@@ -2609,7 +2662,7 @@ function EditorToolbar({
           display: "flex", flexDirection: "column", alignItems: "center", gap: 2
         }}
       >
-        <span style={{ fontSize: 11, color: "var(--text-muted)", lineHeight: 1 }}>Text</span>
+        <span style={{ fontSize: 11, color: "var(--text-muted)", lineHeight: 1 }}>{t("generator.toolbar.text")}</span>
         <span style={{ fontSize: 13, color: "var(--text)", lineHeight: 1, fontWeight: 700 }}>A</span>
         <span style={{ width: 16, height: 3, borderRadius: 2, background: textColor, display: "block" }} />
       </button>
@@ -2626,7 +2679,7 @@ function EditorToolbar({
       {/* Box / container background fill — works on divs and table cells */}
       <button
         onMouseDown={(e) => { e.preventDefault(); boxBgInputRef.current?.click(); }}
-        title="Fill — sets background of the container or cell the cursor is in"
+        title={t("generator.toolbar.fillTooltip")}
         style={{
           padding: "5px 10px", borderRadius: 8, cursor: "pointer",
           border: "1px solid rgba(255,255,255,0.15)",
@@ -2634,7 +2687,7 @@ function EditorToolbar({
           display: "flex", flexDirection: "column", alignItems: "center", gap: 2
         }}
       >
-        <span style={{ fontSize: 11, color: "var(--text-muted)", lineHeight: 1 }}>Fill</span>
+        <span style={{ fontSize: 11, color: "var(--text-muted)", lineHeight: 1 }}>{t("generator.toolbar.fill")}</span>
         <span style={{ width: 16, height: 10, borderRadius: 3, background: boxBgColor, display: "block", border: "1px solid rgba(255,255,255,0.2)" }} />
       </button>
       <input
@@ -2648,7 +2701,7 @@ function EditorToolbar({
       {/* Container border colour */}
       <button
         onMouseDown={(e) => { e.preventDefault(); borderClrInputRef.current?.click(); }}
-        title="Border colour — sets border of the container or cell"
+        title={t("generator.toolbar.borderColorTooltip")}
         style={{
           padding: "5px 10px", borderRadius: 8, cursor: "pointer",
           border: "1px solid rgba(255,255,255,0.15)",
@@ -2656,7 +2709,7 @@ function EditorToolbar({
           display: "flex", flexDirection: "column", alignItems: "center", gap: 2
         }}
       >
-        <span style={{ fontSize: 11, color: "var(--text-muted)", lineHeight: 1 }}>Border</span>
+        <span style={{ fontSize: 11, color: "var(--text-muted)", lineHeight: 1 }}>{t("generator.toolbar.border")}</span>
         <span style={{ width: 16, height: 10, borderRadius: 3, background: "transparent", display: "block", border: `2px solid ${borderColor}` }} />
       </button>
       <input
@@ -2672,14 +2725,14 @@ function EditorToolbar({
         onMouseDown={(e) => e.stopPropagation()}
         value={borderWidth}
         onChange={(e) => applyBorderWidth(e.target.value)}
-        title="Border thickness"
+        title={t("generator.toolbar.borderThickness")}
         style={{
           padding: "5px 8px", borderRadius: 8, fontSize: 12,
           background: "var(--bg-surface2)", color: "var(--text)",
           border: "1px solid rgba(255,255,255,0.15)", cursor: "pointer"
         }}
       >
-        <option value="0px">None</option>
+        <option value="0px">{t("generator.toolbar.none")}</option>
         <option value="1px">1px</option>
         <option value="2px">2px</option>
         <option value="3px">3px</option>
@@ -2690,12 +2743,12 @@ function EditorToolbar({
       {sep}
 
       {/* ── TABLE section ───────────────────────────────────────────────── */}
-      <span style={{ fontSize: 10, fontWeight: 700, color: "var(--text-muted)", userSelect: "none", letterSpacing: 0.5 }}>TABLE</span>
+      <span style={{ fontSize: 10, fontWeight: 700, color: "var(--text-muted)", userSelect: "none", letterSpacing: 0.5 }}>{t("generator.toolbar.table")}</span>
 
       {/* Table cell border colour */}
       <button
         onMouseDown={(e) => { e.preventDefault(); tblBorderClrRef.current?.click(); }}
-        title="Table — set border colour on all cells"
+        title={t("generator.toolbar.tableBorderColorTooltip")}
         style={{
           padding: "5px 10px", borderRadius: 8, cursor: "pointer",
           border: "1px solid rgba(255,255,255,0.15)",
@@ -2703,7 +2756,7 @@ function EditorToolbar({
           display: "flex", flexDirection: "column", alignItems: "center", gap: 2
         }}
       >
-        <span style={{ fontSize: 11, color: "var(--text-muted)", lineHeight: 1 }}>Lines</span>
+        <span style={{ fontSize: 11, color: "var(--text-muted)", lineHeight: 1 }}>{t("generator.toolbar.lines")}</span>
         {/* mini table icon */}
         <svg width="16" height="10" viewBox="0 0 16 10" fill="none" style={{ display: "block" }}>
           <rect x="0.5" y="0.5" width="15" height="9" stroke={tableBorderColor} strokeWidth="1.2" fill="none" rx="1"/>
@@ -2724,14 +2777,14 @@ function EditorToolbar({
         onMouseDown={(e) => e.stopPropagation()}
         value={tableBorderWidth}
         onChange={(e) => applyTableBorderWidth(e.target.value)}
-        title="Table line weight"
+        title={t("generator.toolbar.tableLineWeight")}
         style={{
           padding: "5px 8px", borderRadius: 8, fontSize: 12,
           background: "var(--bg-surface2)", color: "var(--text)",
           border: "1px solid rgba(255,255,255,0.15)", cursor: "pointer"
         }}
       >
-        <option value="0px">No lines</option>
+        <option value="0px">{t("generator.toolbar.noLines")}</option>
         <option value="1px">1px</option>
         <option value="2px">2px</option>
         <option value="3px">3px</option>
@@ -2743,7 +2796,7 @@ function EditorToolbar({
       {/* Clear formatting */}
       <button
         onMouseDown={(e) => { e.preventDefault(); exec("removeFormat"); }}
-        title="Clear text formatting"
+        title={t("generator.toolbar.clearFormatting")}
         style={{
           padding: "5px 10px", borderRadius: 8, cursor: "pointer",
           border: "1px solid rgba(255,255,255,0.15)",
@@ -2751,7 +2804,7 @@ function EditorToolbar({
           fontSize: 12, userSelect: "none"
         }}
       >
-        Clear
+        {t("generator.toolbar.clear")}
       </button>
     </div>
   );
@@ -2759,17 +2812,19 @@ function EditorToolbar({
 
 // ─── Item Specifics Tab ───────────────────────────────────────────────────────
 
-const LS_SAVED_KEY = "jsk_saved_products";
-
-function loadSavedFromStorage() {
-  try { return JSON.parse(localStorage.getItem(LS_SAVED_KEY) || "[]"); }
-  catch { return []; }
-}
-
 // SPEC_SCHEMA, SECTION_TITLES, and mapApiSpecsToSchema are imported from ./itemSpecificsSchema.js
 
-function ItemSpecificsTab({ result, copyText, onRowsChange }) {
+/** Normalize a saved listing row into the shape mapApiSpecsToSchema expects. */
+function listingAsSpecSource(listing) {
+  return {
+    ...listing,
+    generated_title: listing.generated_title || listing.title || "",
+  };
+}
+
+function ItemSpecificsTab({ result, copyText, onRowsChange, savedListings = [] }) {
   const { hasFeature } = useSession();
+  const { t } = useTranslation();
   const canBulkCsvExport = hasFeature("bulkCsvExport");
   const buildInitialRows = (res) => mapApiSpecsToSchema(res, { brand: loadPreferences().brand });
 
@@ -2778,7 +2833,7 @@ function ItemSpecificsTab({ result, copyText, onRowsChange }) {
   const [showAddRow,  setShowAddRow]  = useState(false);
   const [newLabel,    setNewLabel]    = useState("");
   const [newValue,    setNewValue]    = useState("");
-  const [savedProds]                  = useState(loadSavedFromStorage);
+  const savedProds = savedListings;
   const [batchOpen,   setBatchOpen]   = useState(false);
   const [selectedIds, setSelectedIds] = useState([]);
   const [dateFilter,  setDateFilter]  = useState("today");
@@ -2842,7 +2897,7 @@ function ItemSpecificsTab({ result, copyText, onRowsChange }) {
     const predefinedLabels = SPEC_SCHEMA.map((f) => f.label);
     const extraLabels = new Set();
     prods.forEach((p) => {
-      mapApiSpecsToSchema(p)
+      mapApiSpecsToSchema(listingAsSpecSource(p))
         .filter((r) => r.section === "Additional" && r.label)
         .forEach((r) => extraLabels.add(r.label));
     });
@@ -2851,10 +2906,11 @@ function ItemSpecificsTab({ result, copyText, onRowsChange }) {
     const csvRows = [
       cols.map(escCsv).join(","),
       ...prods.map((p) => {
-        const mapped = mapApiSpecsToSchema(p);
+        const src = listingAsSpecSource(p);
+        const mapped = mapApiSpecsToSchema(src);
         const valueMap = {};
         mapped.forEach((r) => { valueMap[r.label] = r.value; });
-        return cols.map((c) => escCsv(c === "Product Name" ? (p.generated_title || "") : (valueMap[c] || ""))).join(",");
+        return cols.map((c) => escCsv(c === "Product Name" ? (src.generated_title || "") : (valueMap[c] || ""))).join(",");
       })
     ];
     downloadCsv(csvRows.join("\n"), "batch-item-specifics.csv");
@@ -2876,13 +2932,13 @@ function ItemSpecificsTab({ result, copyText, onRowsChange }) {
           onCopy={() => copyText(rows.map((r) => `${r.label}: ${r.value}`).join("\n"))}
           style={{ fontSize: 12 }}
         >
-          Copy All
+          {t("generator.itemSpecifics.copyAll")}
         </CopyButton>
         <button
           onClick={exportCurrent}
           style={{ ...SMALL_BUTTON_STYLE, fontSize: 12, background: "#16a34a", boxShadow: "0 0 14px rgba(22,163,74,0.25)" }}
         >
-          ↓ CSV (This Listing)
+          ↓ {t("generator.itemSpecifics.csvThisListing")}
         </button>
         {canBulkCsvExport && (
           <button
@@ -2893,7 +2949,7 @@ function ItemSpecificsTab({ result, copyText, onRowsChange }) {
               boxShadow: "0 0 14px rgba(14,116,144,0.25)"
             }}
           >
-            ↓ CSV (Batch){batchOpen ? " ▲" : " ▼"}
+            ↓ {t("generator.itemSpecifics.csvBatch")}{batchOpen ? " ▲" : " ▼"}
           </button>
         )}
         <div style={{ flex: 1 }} />
@@ -2905,13 +2961,13 @@ function ItemSpecificsTab({ result, copyText, onRowsChange }) {
             boxShadow: "none", color: showAddRow ? "var(--text)" : "var(--text-muted)"
           }}
         >
-          + Add Field
+          + {t("generator.itemSpecifics.addField")}
         </button>
         <button
           onClick={() => setShowReset(true)}
           style={{ ...SMALL_BUTTON_STYLE, fontSize: 12, background: "rgba(220,38,38,0.12)", color: "var(--red)", boxShadow: "none" }}
         >
-          ↺ Reset
+          ↺ {t("generator.itemSpecifics.reset")}
         </button>
       </div>
 
@@ -2923,15 +2979,15 @@ function ItemSpecificsTab({ result, copyText, onRowsChange }) {
           display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap"
         }}>
           <span style={{ fontSize: 13, color: "var(--red)", flex: 1 }}>
-            Reset all fields to the originally generated values?
+            {t("generator.itemSpecifics.resetConfirm")}
           </span>
           <button onClick={doReset}
             style={{ ...SMALL_BUTTON_STYLE, background: "#dc2626", fontSize: 12, padding: "6px 14px" }}>
-            Reset
+            {t("generator.itemSpecifics.reset")}
           </button>
           <button onClick={() => setShowReset(false)}
             style={{ ...SMALL_BUTTON_STYLE, background: "var(--text-dim)", boxShadow: "none", fontSize: 12, padding: "6px 12px" }}>
-            Cancel
+            {t("common.cancel")}
           </button>
         </div>
       )}
@@ -2943,18 +2999,18 @@ function ItemSpecificsTab({ result, copyText, onRowsChange }) {
           borderRadius: 16, padding: 16
         }}>
           <div style={{ fontSize: 13, fontWeight: 700, color: "#67e8f9", marginBottom: 12 }}>
-            Batch CSV Export — Item Specifics
+            {t("generator.itemSpecifics.batchCsvExport")}
           </div>
           {savedProds.length === 0 ? (
             <div style={{ fontSize: 13, color: "var(--text-muted)" }}>
-              No saved listings found. Save a listing from the Price Calculator first.
+              {t("generator.itemSpecifics.noSavedListings")}
             </div>
           ) : (<>
             {/* Date filter */}
             <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
               {[
-                { key: "today", label: `Today  (${todayLabel})` },
-                { key: "all",   label: `All Listings (${savedProds.length})` }
+                { key: "today", label: t("generator.itemSpecifics.today", { date: todayLabel }) },
+                { key: "all",   label: t("generator.itemSpecifics.allListings", { count: savedProds.length }) }
               ].map(({ key, label }) => {
                 const active = dateFilter === key && selectedIds.length === 0;
                 return (
@@ -2990,7 +3046,7 @@ function ItemSpecificsTab({ result, copyText, onRowsChange }) {
                       onChange={() => toggleSelected(p.id)}
                       style={{ cursor: "pointer", accentColor: "var(--blue)" }} />
                     <span style={{ fontSize: 12, color: "var(--text)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {p.generated_title || p.title || "Untitled"}
+                      {p.generated_title || p.title || t("templates.untitled")}
                     </span>
                     <span style={{ fontSize: 11, color: "var(--text-muted)", flexShrink: 0 }}>
                       {p.savedAt ? new Date(p.savedAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short" }) : ""}
@@ -3005,14 +3061,14 @@ function ItemSpecificsTab({ result, copyText, onRowsChange }) {
                 ...SMALL_BUTTON_STYLE, fontSize: 12,
                 background: "var(--blue)", boxShadow: "0 0 14px rgba(14,116,144,0.28)"
               }}>
-                ↓ Download CSV ({selectedIds.length > 0 ? `${selectedIds.length} selected` : `${batchCount} listings`})
+                ↓ {t("batch.downloadCsv")} ({selectedIds.length > 0 ? t("batch.selected", { count: selectedIds.length }) : t("batch.listings", { count: batchCount })})
               </button>
               {selectedIds.length > 0 && (
                 <button onClick={() => setSelectedIds([])} style={{
                   ...SMALL_BUTTON_STYLE, fontSize: 12, background: "transparent",
                   boxShadow: "none", color: "var(--text-muted)"
                 }}>
-                  Clear Selection
+                  {t("generator.itemSpecifics.clearSelection")}
                 </button>
               )}
             </div>
@@ -3027,31 +3083,31 @@ function ItemSpecificsTab({ result, copyText, onRowsChange }) {
           borderRadius: 12, padding: 14
         }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", letterSpacing: "0.05em", marginBottom: 10 }}>
-            ADD CUSTOM FIELD
+            {t("generator.itemSpecifics.addCustomField")}
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: 8, alignItems: "end" }}>
             <div>
-              <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 4 }}>Field Name</div>
+              <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 4 }}>{t("generator.itemSpecifics.fieldName")}</div>
               <input value={newLabel} onChange={(e) => setNewLabel(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && addRow()}
-                placeholder="e.g. Material"
+                placeholder={t("generator.itemSpecifics.fieldNamePlaceholder")}
                 style={{ ...INPUT_STYLE, padding: "8px 10px", fontSize: 13 }} />
             </div>
             <div>
-              <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 4 }}>Value</div>
+              <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 4 }}>{t("generator.itemSpecifics.value")}</div>
               <input value={newValue} onChange={(e) => setNewValue(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && addRow()}
-                placeholder="e.g. Steel"
+                placeholder={t("generator.itemSpecifics.valuePlaceholder")}
                 style={{ ...INPUT_STYLE, padding: "8px 10px", fontSize: 13 }} />
             </div>
             <div style={{ display: "flex", gap: 6 }}>
               <button onClick={addRow} disabled={!newLabel.trim()}
                 style={{ ...SMALL_BUTTON_STYLE, fontSize: 12, opacity: newLabel.trim() ? 1 : 0.4 }}>
-                Add
+                {t("generator.itemSpecifics.add")}
               </button>
               <button onClick={() => { setShowAddRow(false); setNewLabel(""); setNewValue(""); }}
                 style={{ ...SMALL_BUTTON_STYLE, background: "var(--text-dim)", boxShadow: "none", fontSize: 12 }}>
-                Cancel
+                {t("common.cancel")}
               </button>
             </div>
           </div>
@@ -3069,14 +3125,14 @@ function ItemSpecificsTab({ result, copyText, onRowsChange }) {
           padding: "8px 14px",
           background: "var(--bg-nav)", borderBottom: "1px solid var(--border)"
         }}>
-          {["Field Name", "Value", "", ""].map((h, i) => (
+          {[t("generator.itemSpecifics.fieldName"), t("generator.itemSpecifics.value"), "", ""].map((h, i) => (
             <div key={i} style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>{h}</div>
           ))}
         </div>
 
         {rows.length === 0 ? (
           <div style={{ padding: "28px 16px", textAlign: "center", color: "var(--text-muted)", fontSize: 14 }}>
-            No item specifics available for this listing.
+            {t("generator.itemSpecifics.noneAvailable")}
           </div>
         ) : (() => {
           // Render rows with section dividers
@@ -3100,10 +3156,10 @@ function ItemSpecificsTab({ result, copyText, onRowsChange }) {
                   borderBottom: "1px solid var(--border-light)"
                 }}>
                   <div style={{ fontSize: 10, fontWeight: 800, color: "#4b6fa8", letterSpacing: "0.08em", gridColumn: "1 / 3" }}>
-                    {SECTION_TITLES[sec] || sec.toUpperCase()}
+                    {t(`generator.itemSpecifics.sections.${sec}`, { defaultValue: SECTION_TITLES[sec] || sec.toUpperCase() })}
                   </div>
                   <div style={{ fontSize: 10, color: "#4b6fa8", textAlign: "right", gridColumn: "3 / 5" }}>
-                    {filled}/{sectionRows.length} filled
+                    {t("generator.itemSpecifics.filled", { filled, total: sectionRows.length })}
                   </div>
                 </div>
               );
@@ -3160,7 +3216,7 @@ function ItemSpecificsTab({ result, copyText, onRowsChange }) {
                     boxShadow: "none",
                   }}
                 >
-                  Copy
+                  {t("common.copy")}
                 </CopyButton>
                 {/* Delete */}
                 <button
@@ -3190,6 +3246,7 @@ function ItemSpecificsTab({ result, copyText, onRowsChange }) {
 // ─── Item Specifics panel (legacy inline view) ────────────────────────────────
 
 function ItemSpecificsPanel({ itemSpecifics, specifications, onCopyAll }) {
+  const { t } = useTranslation();
   const copyText = async (value) => { await navigator.clipboard.writeText(value || ""); };
 
   const rows = itemSpecifics.length > 0
@@ -3204,10 +3261,10 @@ function ItemSpecificsPanel({ itemSpecifics, specifications, onCopyAll }) {
   const allText = rows.map((r) => r.value ? `${r.label}: ${r.value}` : r.label).join("\n");
 
   return (
-    <InfoBox title="Item Specifics">
+    <InfoBox title={t("generator.itemSpecifics.title")}>
       <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 10 }}>
         <CopyButton onCopy={() => onCopyAll(allText)}>
-          Copy All Item Specifics
+          {t("generator.itemSpecifics.copyAll")}
         </CopyButton>
       </div>
       <div style={{ display: "grid", gap: 6 }}>
@@ -3233,7 +3290,7 @@ function ItemSpecificsPanel({ itemSpecifics, specifications, onCopyAll }) {
               copiedLabel="✓"
               style={{ padding: "4px 10px", fontSize: 11, flexShrink: 0 }}
             >
-              Copy
+              {t("common.copy")}
             </CopyButton>
           </div>
         ))}
