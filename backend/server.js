@@ -1000,7 +1000,10 @@ app.get("/api/image-proxy", async (req, res) => {
     console.log(`[image-proxy] Response: ${upstream.status} ${upstream.headers.get("content-type")}`);
     if (!upstream.ok) return res.status(upstream.status).end();
 
-    const ct = upstream.headers.get("content-type") || "image/jpeg";
+    const upstreamCt = upstream.headers.get("content-type") || "";
+    const extMap = { ".webp": "image/webp", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".gif": "image/gif" };
+    const ext = Object.keys(extMap).find(e => parsed.pathname.toLowerCase().endsWith(e));
+    const ct = (upstreamCt.startsWith("image/") ? upstreamCt : null) ?? extMap[ext] ?? "image/jpeg";
     res.setHeader("Content-Type", ct);
     res.setHeader("Cache-Control", "public, max-age=86400");
     const buf = await upstream.arrayBuffer();
