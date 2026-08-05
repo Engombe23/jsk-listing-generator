@@ -146,41 +146,57 @@ function splitEngineCodes(value) {
   return String(value).split(/[,\n;/|]+/).map((s) => s.replace(/\s+/g, "")).filter(Boolean);
 }
 
-// TecDoc returns BMW engine codes as sequential tokens ("N47","D20","C") instead of
-// the composite form ("N47D20C"). Detect the pattern and reassemble them.
-// Family: letter + 2 digits (N47, M47, B47). Disp: letter + 2 digits (D20, D30).
-// Variant: 1-2 trailing chars (A, B, C, O1). Parenthesized aliases (204D4) are dropped.
+// TecDoc stores engine codes as space- or comma-separated tokens rather than composite
+// codes (e.g. "N47 D20 A" or "D,4204,T" instead of "N47D20A" / "D4204T").
+// Reassemble using two heuristics:
+//   1. BMW-style: FAMILY(letter+2digits) + FAMILY(displacement) + VARIANT(s) → N47D20A
+//   2. Fragment run: consecutive single-letters and pure-digit strings → D4204T
+// Parenthesized aliases like (204D4) are dropped throughout.
 function reassembleEngineCodes(codes) {
   if (!codes || codes.length === 0) return codes;
-  const FAMILY  = /^[A-Z][0-9]{2}$/;
-  const ALIAS   = /^\([^)]+\)$/;
-  const VARIANT = /^[A-Z0-9]{1,2}$/;
+  const FAMILY  = /^[A-Z][0-9]{2}$/;        // N47, M47, D20
+  const ALIAS   = /^\([^)]+\)$/;             // (204D4), (GTDI)
+  const VARIANT = /^[A-Z0-9]{1,2}$/;        // A, B, C, O1
+  const isFrag  = (t) => /^[A-Z]$/.test(t) || /^[0-9]{2,}$/.test(t); // D, T, 4204
   const result = [];
   let i = 0;
   while (i < codes.length) {
     const tok = codes[i];
     if (ALIAS.test(tok)) { i++; continue; }
-    if (!FAMILY.test(tok)) { result.push(tok); i++; continue; }
-    const family = tok;
-    if (i + 1 < codes.length && FAMILY.test(codes[i + 1])) {
-      // Displacement token follows (same pattern as family)
-      const disp = codes[i + 1];
+
+    // BMW-style: two consecutive FAMILY tokens → family + displacement + optional variants
+    if (FAMILY.test(tok) && i + 1 < codes.length && FAMILY.test(codes[i + 1])) {
+      const family = tok, disp = codes[i + 1];
       i += 2;
       const variants = [];
       while (i < codes.length && VARIANT.test(codes[i]) && !FAMILY.test(codes[i]) && !ALIAS.test(codes[i])) {
         variants.push(codes[i++]);
       }
-      if (i < codes.length && ALIAS.test(codes[i])) i++; // skip trailing alias
+      if (i < codes.length && ALIAS.test(codes[i])) i++;
       if (variants.length > 0) {
         for (const v of variants) result.push(family + disp + v);
       } else {
         result.push(family + disp);
       }
-    } else {
-      result.push(family);
-      i++;
-      if (i < codes.length && ALIAS.test(codes[i])) i++; // skip alias after bare family
+      continue;
     }
+
+    // Fragment run: single letter or pure-digit token — concatenate until the run ends
+    if (isFrag(tok)) {
+      let combined = tok;
+      i++;
+      while (i < codes.length && (isFrag(codes[i]) || ALIAS.test(codes[i]))) {
+        if (!ALIAS.test(codes[i])) combined += codes[i];
+        i++;
+      }
+      result.push(combined);
+      continue;
+    }
+
+    // Complete code — emit as-is, skip any immediately following alias
+    result.push(tok);
+    i++;
+    if (i < codes.length && ALIAS.test(codes[i])) i++;
   }
   return [...new Set(result)];
 }
