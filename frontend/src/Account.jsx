@@ -227,7 +227,14 @@ function AccountPage({ onOpenBilling }) {
   const [portalLoading, setPortalLoading] = useState(false);
   const [portalError, setPortalError] = useState("");
 
-  const timeSavedMinutes = listingsUsed * TIME_SAVED_PER_LISTING;
+  // Use local listing count for the stats panel (cumulative, works for whitelisted accounts too)
+  const localListingsCount = useMemo(() => {
+    try { return JSON.parse(localStorage.getItem("jsk_generated_listings_v1") || "[]").length; }
+    catch { return 0; }
+  }, []);
+  const statsListings = Math.max(listingsUsed, localListingsCount);
+
+  const timeSavedMinutes = statsListings * TIME_SAVED_PER_LISTING;
   const [animMinutes, setAnimMinutes] = useState(0);
   useEffect(() => {
     if (timeSavedMinutes === 0) { setAnimMinutes(0); return; }
@@ -241,7 +248,11 @@ function AccountPage({ onOpenBilling }) {
   }, [timeSavedMinutes]);
 
   const savedTemplates = useMemo(() => {
-    try { return JSON.parse(localStorage.getItem("jsk_listing_templates_v1") || "[]").length; }
+    try {
+      const account = JSON.parse(localStorage.getItem("jsk_listing_templates_v1") || "[]").length;
+      const editor  = JSON.parse(localStorage.getItem("jsk_custom_templates_v1")  || "[]").length;
+      return account + editor;
+    }
     catch { return 0; }
   }, []);
 
@@ -359,7 +370,7 @@ function AccountPage({ onOpenBilling }) {
           </div>
           <Divider />
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, paddingTop: 6 }}>
-            <StatBox value={listingsUsed.toLocaleString()} label={t("account.statListings")} />
+            <StatBox value={statsListings.toLocaleString()} label={t("account.statListings")} />
             <StatBox value={compatChecks.toLocaleString()} label={t("account.statChecks")} />
             <StatBox value={savedTemplates.toLocaleString()} label={t("account.statTemplates")} />
           </div>

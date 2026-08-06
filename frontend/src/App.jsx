@@ -742,6 +742,8 @@ function ListingGenerator({
   const liveHtmlRef  = useRef("");
   // ── Live rows ref (lifted from ItemSpecificsTab so Save captures edits) ──
   const liveRowsRef  = useRef(null);
+  // ── Save flash timer — cleared on each manual save to avoid stale callbacks ──
+  const saveTimerRef = useRef(null);
 
   // ── Resolved HTML for TabbedListingPreview (no editing, so computed here) ──
   // New-style templates (from Listing Templates builder) use {{TOKEN}} placeholders —
@@ -851,6 +853,10 @@ function ListingGenerator({
       setResult(data);
       setPhase("done");
       setIsSaved(false);
+      // Auto-save immediately on generation. custom_specifics is intentionally
+      // omitted (undefined in data) so listingToRow skips the column and any
+      // existing user edits in the DB are preserved on regeneration.
+      onAutoSave?.({ ...data, sku: inputSku.trim() });
       refreshPlan();
       trackEvent("listing_generated", {
         part_number: articleNo,
@@ -911,6 +917,7 @@ function ListingGenerator({
           if (data.error) throw new Error(data.error);
           setResult(data);
           setIsSaved(false);
+          onAutoSave?.({ ...data, sku: inputSku.trim() });
         })
         .catch((err) => setError(String(err.message || err)))
         .finally(() => setPhase("done"));
@@ -978,7 +985,10 @@ function ListingGenerator({
       generated_html:   liveHtmlRef.current  || result.generated_html,
       custom_specifics: liveRowsRef.current  ?? null,
     });
+    // Brief "Saved" flash — always reverts to "Save" so users know they can re-save
+    clearTimeout(saveTimerRef.current);
     setIsSaved(true);
+    saveTimerRef.current = setTimeout(() => setIsSaved(false), 1500);
     trackEvent("listing_saved", { part_number: result.article_number, source: "listing_generator" });
   };
 
@@ -1049,13 +1059,12 @@ function ListingGenerator({
         <div style={{ display: "grid", gridTemplateColumns: "340px 1fr 280px", gap: 20, alignItems: "stretch" }}>
 
           {/* ── Left column: form + AI titles ── */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 16, alignSelf: "flex-start" }}>
 
             {/* Single Listing */}
             <Card
               title={t("generator.title")}
               subtitle={t("generator.subtitle")}
-              style={{ flex: 1 }}
               icon={
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
@@ -1215,6 +1224,7 @@ function ListingGenerator({
                   renderSpecifics={() => (
                     <ItemSpecificsTab
                       result={result}
+                      sku={inputSku}
                       copyText={copyText}
                       onRowsChange={(rows) => { liveRowsRef.current = rows; }}
                       savedListings={listings}
@@ -1224,6 +1234,7 @@ function ListingGenerator({
               ) : (
                 <ListingOutput
                   result={result}
+                  sku={inputSku}
                   copyText={copyText}
                   customTemplateHtml={customTemplateHtml}
                   onSaveTemplate={handleSaveTemplate}
@@ -1249,16 +1260,21 @@ function ListingGenerator({
                   display: "flex", alignItems: "center", justifyContent: "center",
                 }}>
                   <img
-                    src={`${API_URL}/api/image-proxy?url=${encodeURIComponent(result.article_image)}`}
+                    src={result.article_image}
                     alt={result.product_type || result.generated_title || "Product image"}
                     style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain", padding: 12, boxSizing: "border-box" }}
                     onError={(e) => {
+                      // Direct load failed — retry via proxy (handles hotlink-protected CDNs)
+                      if (!e.currentTarget.src.includes("/api/image-proxy")) {
+                        e.currentTarget.src = `${API_URL}/api/image-proxy?url=${encodeURIComponent(result.article_image)}`;
+                        return;
+                      }
                       e.currentTarget.style.display = "none";
-                      const ph = e.currentTarget.parentElement.querySelector("[data-img-ph]");
+                      const ph = e.currentTarget.parentElement?.querySelector("[data-img-ph]");
                       if (ph) ph.style.display = "flex";
                     }}
                   />
-                  {/* Shown only when the proxied image fails to load */}
+                  {/* Shown only when both direct load and proxy fail */}
                   <div
                     data-img-ph="1"
                     style={{
@@ -1933,7 +1949,7 @@ function resolveHtml(customTemplateHtml, generatedHtml, result) {
     : mergeTemplateWithContent(customTemplateHtml, generatedHtml ?? "");
 }
 
-function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate, noRightPanel = false, onHtmlChange, onRowsChange, savedListings = [] }) {
+function ListingOutput({ result, sku, copyText, customTemplateHtml, onSaveTemplate, noRightPanel = false, onHtmlChange, onRowsChange, savedListings = [] }) {
   const { t } = useTranslation();
   const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
   const [innerTab,     setInnerTab]     = useState("overview"); // "overview" | "specifics"
@@ -1958,6 +1974,7 @@ function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate, n
   // the color picker / select steals focus and kills the selection).
   const activeTargetRef = useRef(null);
   const activeTableRef  = useRef(null);
+  const activeRowRef    = useRef(null);
 
   // Sync whenever the generated HTML or selected template changes
   useEffect(() => {
@@ -2067,7 +2084,7 @@ function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate, n
     while (ceDiv && ceDiv.contentEditable !== "true") ceDiv = ceDiv.parentElement;
     if (!ceDiv) return; // click was outside any editor (gutter, InsertZone, etc.)
 
-    // ① td / th → use that cell + its parent table
+    // ① td / th → use that cell + its parent table + its parent row
     let node = startEl;
     while (node && node !== ceDiv) {
       if (node.nodeName === "TD" || node.nodeName === "TH") {
@@ -2075,10 +2092,14 @@ function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate, n
         let tbl = node.parentElement;
         while (tbl && tbl.nodeName !== "TABLE") tbl = tbl.parentElement;
         activeTableRef.current = tbl?.nodeName === "TABLE" ? tbl : null;
+        let tr = node.parentElement;
+        while (tr && tr.nodeName !== "TR") tr = tr.parentElement;
+        activeRowRef.current = tr?.nodeName === "TR" ? tr : null;
         return;
       }
       node = node.parentElement;
     }
+    activeRowRef.current = null;
 
     // ② Find the nearest block-level ancestor below ceDiv.
     //    This targets the specific div/header the user actually clicked
@@ -2136,6 +2157,64 @@ function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate, n
       el.style.borderColor = borderColor;
       el.style.borderWidth = width;
     }
+  };
+
+  // ── Table row helpers ──────────────────────────────────────────────────
+  const syncSectionFromRow = () => {
+    const row = activeRowRef.current;
+    if (!row) return;
+    let el = row.parentElement;
+    while (el) {
+      if (el.hasAttribute && el.hasAttribute("data-sec")) break;
+      el = el.parentElement;
+    }
+    if (!el) return;
+    const idx = parseInt(el.getAttribute("data-sec"), 10);
+    const ce = el.querySelector("[contenteditable]");
+    if (ce && !isNaN(idx)) updateSection(idx, ce.innerHTML);
+  };
+
+  const insertTableRowBelow = () => {
+    const row = activeRowRef.current;
+    if (!row) return;
+    const cells = row.querySelectorAll("td, th");
+
+    // The new row sits at the position currently occupied by nextRow — copy that
+    // style so it fits the alternating pattern. If inserting after the last row,
+    // infer the correct pattern from the first two rows (even/odd index).
+    const nextRow = row.nextElementSibling;
+    let styleSourceRow = nextRow;
+    if (!styleSourceRow) {
+      const allRows = Array.from(row.parentNode.querySelectorAll("tr"));
+      if (allRows.length >= 2) {
+        styleSourceRow = allRows[allRows.length % 2]; // 0 = even, 1 = odd
+      }
+    }
+
+    const newRow = document.createElement("tr");
+    if (styleSourceRow) newRow.style.cssText = styleSourceRow.style.cssText;
+
+    cells.forEach((cell, i) => {
+      const newCell = document.createElement(cell.nodeName.toLowerCase());
+      const sourceCell = styleSourceRow?.querySelectorAll("td, th")[i];
+      newCell.style.cssText = sourceCell ? sourceCell.style.cssText : cell.style.cssText;
+      newCell.innerHTML = "&nbsp;";
+      newRow.appendChild(newCell);
+    });
+
+    row.parentNode.insertBefore(newRow, row.nextSibling);
+    activeRowRef.current = newRow;
+    syncSectionFromRow();
+  };
+
+  const deleteTableRow = () => {
+    const row = activeRowRef.current;
+    if (!row) return;
+    if (row.parentNode.querySelectorAll("tr").length <= 1) return;
+    const next = row.nextElementSibling || row.previousElementSibling;
+    activeRowRef.current = next || null;
+    row.remove();
+    syncSectionFromRow();
   };
 
   // ── Table-specific helpers ─────────────────────────────────────────────
@@ -2285,6 +2364,8 @@ function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate, n
             tableBorderWidth={tableBorderWidth}
             applyTableCellBorder={applyTableCellBorder}
             applyTableBorderWidth={applyTableBorderWidth}
+            insertTableRow={insertTableRowBelow}
+            deleteTableRow={deleteTableRow}
           />
         )}
 
@@ -2349,10 +2430,18 @@ function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate, n
           </div>
         )}
 
-        {/* Item Specifics tab */}
-        {innerTab === "specifics" && (
-          <ItemSpecificsTab result={result} copyText={copyText} onRowsChange={onRowsChange} savedListings={savedListings} />
-        )}
+        {/* Item Specifics tab — always mounted so edits survive tab-switches;
+            key resets state when the article changes. */}
+        <div style={{ display: innerTab === "specifics" ? "block" : "none" }}>
+          <ItemSpecificsTab
+            key={result.article_number}
+            result={result}
+            sku={sku}
+            copyText={copyText}
+            onRowsChange={onRowsChange}
+            savedListings={savedListings}
+          />
+        </div>
 
         </div>{/* end padding wrapper */}
       </div>{/* end card */}
@@ -2485,8 +2574,18 @@ function ListingOutput({ result, copyText, customTemplateHtml, onSaveTemplate, n
               borderRadius: 14, padding: 12,
               display: "flex", justifyContent: "center", alignItems: "center"
             }}>
-              <img src={`${API_URL}/api/image-proxy?url=${encodeURIComponent(result.article_image)}`} alt={result.generated_title || "Product"}
-                style={{ maxWidth: "100%", maxHeight: 160, objectFit: "contain", borderRadius: 8 }} />
+              <img
+                src={result.article_image}
+                alt={result.generated_title || "Product"}
+                style={{ maxWidth: "100%", maxHeight: 160, objectFit: "contain", borderRadius: 8 }}
+                onError={(e) => {
+                  if (!e.currentTarget.src.includes("/api/image-proxy")) {
+                    e.currentTarget.src = `${API_URL}/api/image-proxy?url=${encodeURIComponent(result.article_image)}`;
+                  } else {
+                    e.currentTarget.style.display = "none";
+                  }
+                }}
+              />
             </div>
           )}
 
@@ -2523,7 +2622,8 @@ function EditorToolbar({
   boxBgColor, borderColor, borderWidth,
   applyBoxBackground, applyBoxBorder, applyBorderWidth,
   tableBorderColor, tableBorderWidth,
-  applyTableCellBorder, applyTableBorderWidth
+  applyTableCellBorder, applyTableBorderWidth,
+  insertTableRow, deleteTableRow
 }) {
   const { t } = useTranslation();
   const colorInputRef      = useRef(null);
@@ -2795,6 +2895,32 @@ function EditorToolbar({
         <option value="4px">4px</option>
       </select>
 
+      {/* Row add / delete — click a table cell first, then use these */}
+      <button
+        onMouseDown={(e) => { e.preventDefault(); insertTableRow?.(); }}
+        title="Insert row below selected cell"
+        style={{
+          padding: "5px 10px", borderRadius: 8, cursor: "pointer",
+          border: "1px solid rgba(255,255,255,0.15)",
+          background: "var(--border)", color: "var(--text)",
+          fontSize: 12, userSelect: "none", lineHeight: 1.3
+        }}
+      >
+        + Row
+      </button>
+      <button
+        onMouseDown={(e) => { e.preventDefault(); deleteTableRow?.(); }}
+        title="Delete selected row"
+        style={{
+          padding: "5px 10px", borderRadius: 8, cursor: "pointer",
+          border: "1px solid rgba(255,255,255,0.15)",
+          background: "var(--border)", color: "#ef4444",
+          fontSize: 12, userSelect: "none", lineHeight: 1.3
+        }}
+      >
+        × Row
+      </button>
+
       {sep}
 
       {/* Clear formatting */}
@@ -2826,11 +2952,19 @@ function listingAsSpecSource(listing) {
   };
 }
 
-function ItemSpecificsTab({ result, copyText, onRowsChange, savedListings = [] }) {
+function ItemSpecificsTab({ result, sku, copyText, onRowsChange, savedListings = [] }) {
   const { hasFeature } = useSession();
   const { t } = useTranslation();
   const canBulkCsvExport = hasFeature("bulkCsvExport");
-  const buildInitialRows = (res) => mapApiSpecsToSchema(res, { brand: loadPreferences().brand });
+  const buildInitialRows = (res) => {
+    const prefs = loadPreferences();
+    return mapApiSpecsToSchema(res, {
+      brand:        prefs.brand,
+      warranty:     prefs.warranty,
+      countryOfMfr: prefs.countryOfMfr,
+      sku:          sku || res.sku,
+    });
+  };
 
   const [rows,        setRows]        = useState(() => buildInitialRows(result));
   const [showReset,   setShowReset]   = useState(false);
@@ -2901,7 +3035,7 @@ function ItemSpecificsTab({ result, copyText, onRowsChange, savedListings = [] }
     const predefinedLabels = SPEC_SCHEMA.map((f) => f.label);
     const extraLabels = new Set();
     prods.forEach((p) => {
-      mapApiSpecsToSchema(listingAsSpecSource(p), { brand: loadPreferences().brand })
+      mapApiSpecsToSchema(listingAsSpecSource(p), { brand: loadPreferences().brand, warranty: loadPreferences().warranty, countryOfMfr: loadPreferences().countryOfMfr })
         .filter((r) => r.section === "Additional" && r.label)
         .forEach((r) => extraLabels.add(r.label));
     });

@@ -141,64 +141,13 @@ function cleanNumber(value) {
   return String(value).replace(/\.0+$/, "");
 }
 
+// Split a raw TecDoc engine-code string into individual codes.
+// Splits only on hard separators (comma, semicolon, pipe, slash, newline).
+// Spaces within a code token are preserved — they are part of the code as
+// TecDoc stores it (e.g. "Z16 XER" is a single code, not two fragments).
 function splitEngineCodes(value) {
   if (!value) return [];
-  return String(value).split(/[,\n;/|]+/).map((s) => s.replace(/\s+/g, "")).filter(Boolean);
-}
-
-// TecDoc stores engine codes as space- or comma-separated tokens rather than composite
-// codes (e.g. "N47 D20 A" or "D,4204,T" instead of "N47D20A" / "D4204T").
-// Reassemble using two heuristics:
-//   1. BMW-style: FAMILY(letter+2digits) + FAMILY(displacement) + VARIANT(s) → N47D20A
-//   2. Fragment run: consecutive single-letters and pure-digit strings → D4204T
-// Parenthesized aliases like (204D4) are dropped throughout.
-function reassembleEngineCodes(codes) {
-  if (!codes || codes.length === 0) return codes;
-  const FAMILY  = /^[A-Z][0-9]{2}$/;        // N47, M47, D20
-  const ALIAS   = /^\([^)]+\)$/;             // (204D4), (GTDI)
-  const VARIANT = /^[A-Z0-9]{1,2}$/;        // A, B, C, O1
-  const isFrag  = (t) => /^[A-Z]$/.test(t) || /^[0-9]{2,}$/.test(t); // D, T, 4204
-  const result = [];
-  let i = 0;
-  while (i < codes.length) {
-    const tok = codes[i];
-    if (ALIAS.test(tok)) { i++; continue; }
-
-    // BMW-style: two consecutive FAMILY tokens → family + displacement + optional variants
-    if (FAMILY.test(tok) && i + 1 < codes.length && FAMILY.test(codes[i + 1])) {
-      const family = tok, disp = codes[i + 1];
-      i += 2;
-      const variants = [];
-      while (i < codes.length && VARIANT.test(codes[i]) && !FAMILY.test(codes[i]) && !ALIAS.test(codes[i])) {
-        variants.push(codes[i++]);
-      }
-      if (i < codes.length && ALIAS.test(codes[i])) i++;
-      if (variants.length > 0) {
-        for (const v of variants) result.push(family + disp + v);
-      } else {
-        result.push(family + disp);
-      }
-      continue;
-    }
-
-    // Fragment run: single letter or pure-digit token — concatenate until the run ends
-    if (isFrag(tok)) {
-      let combined = tok;
-      i++;
-      while (i < codes.length && (isFrag(codes[i]) || ALIAS.test(codes[i]))) {
-        if (!ALIAS.test(codes[i])) combined += codes[i];
-        i++;
-      }
-      result.push(combined);
-      continue;
-    }
-
-    // Complete code — emit as-is, skip any immediately following alias
-    result.push(tok);
-    i++;
-    if (i < codes.length && ALIAS.test(codes[i])) i++;
-  }
-  return [...new Set(result)];
+  return String(value).split(/[,\n;|/]+/).map((s) => s.trim()).filter(Boolean);
 }
 
 function extractSpecLabel(spec) {
@@ -558,12 +507,14 @@ async function fetchEngineDataByModelIds(cars, langId = LANG_ID) {
 // file extension — the image-proxy endpoint handles format detection.
 function extractFirstImageUrl(mediaResponse) {
   if (!mediaResponse) return "";
-  const imgArr = mediaResponse.articleImages ?? mediaResponse.data?.articleImages ?? null;
-  if (Array.isArray(imgArr) && imgArr.length > 0) {
-    for (const img of imgArr) {
-      const url = img.imageURL4 || img.imageURL3 || img.imageURL2 || img.imageURL1 || "";
-      if (url && url.startsWith("http")) return url;
-    }
+  // API now returns an array directly; old format wrapped it under articleImages.
+  const arr = Array.isArray(mediaResponse)
+    ? mediaResponse
+    : (mediaResponse.articleImages ?? mediaResponse.data?.articleImages ?? null);
+  if (!Array.isArray(arr)) return "";
+  for (const img of arr) {
+    const url = img.s3image || img.imageURL4 || img.imageURL3 || img.imageURL2 || img.imageURL1 || "";
+    if (url && url.startsWith("http")) return url;
   }
   return "";
 }
@@ -625,7 +576,7 @@ function normalizeTecdoc(articleResponse, engineDataByModelId, vehicleCache = nu
       kw:           cleanNumber(kw),
       hp:           cleanNumber(hp),
       cc:           cleanNumber(cc),
-      engine_codes: reassembleEngineCodes(uniq(Array.isArray(engine_codes) ? engine_codes : splitEngineCodes(engine_codes))),
+      engine_codes: uniq(Array.isArray(engine_codes) ? engine_codes : splitEngineCodes(engine_codes)),
       k_number:     vidStr
     };
   }).filter(Boolean).sort((a, b) => {
@@ -664,7 +615,7 @@ function normalizeTecdoc(articleResponse, engineDataByModelId, vehicleCache = nu
     specifications,
     item_specifics:     itemSpecifics,
     compatibility_rows: rows,
-    engine_codes:       reassembleEngineCodes(uniq(rows.flatMap(r => r.engine_codes || []))),
+    engine_codes:       uniq(rows.flatMap(r => r.engine_codes || [])),
     data_supplier_id:   article.dataSupplierId || null
   };
 }

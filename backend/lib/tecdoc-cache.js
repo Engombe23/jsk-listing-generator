@@ -101,12 +101,12 @@ export function normalizeVehicleRecord(apiRow, { manufacturerName = "", modelNam
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-// Split, deduplicate, and uppercase engine codes from any raw format.
+// Split engine codes on hard separators only; preserve exact spacing and case.
 export function normalizeEngCodes(raw) {
   if (!raw) return [];
   const str = Array.isArray(raw) ? raw.join(",") : String(raw);
   return [...new Set(
-    str.split(/[,;\|\/]+/).map(c => c.replace(/\s+/g, "").toUpperCase()).filter(Boolean)
+    str.split(/[,;\|\/\n]+/).map(c => c.trim()).filter(Boolean)
   )];
 }
 

@@ -13,7 +13,7 @@ function buildEntry(result) {
     article_number:      result.article_number      || "",
     description_html:    result.generated_html      || "",
     item_specifics:      result.item_specifics      || [],
-    custom_specifics:    result.custom_specifics    ?? null,
+    custom_specifics:    result.custom_specifics,
     specifications:      result.specifications      || [],
     oem_numbers:         result.oem_numbers         || [],
     k_number_list:       result.k_number_list       || [],

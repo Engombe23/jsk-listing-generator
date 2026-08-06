@@ -193,7 +193,9 @@ export function mapApiSpecsToSchema(res, opts = {}) {
   // ── Static fills ───────────────────────────────────────────────────────────
   const find = (lbl) => fields.find((f) => f.label === lbl);
   find("Brand").value                       = opts.brand || "Aftermarket";
-  find("Manufacturer Part Number").value    = res.article_number || "";
+  if (opts.warranty)     find("Manufacturer Warranty").value         = opts.warranty;
+  if (opts.countryOfMfr) find("Country/Region of Manufacture").value = opts.countryOfMfr;
+  find("Manufacturer Part Number").value    = opts.sku || res.sku || res.article_number || "";
   find("Reference OE/OEM Number").value     = (res.oem_numbers  || []).join(", ");
   find("Engine Codes").value                = (res.engine_codes || []).join(", ");
   find("Type").value                        = res.product_type  || res.generated_title || "";

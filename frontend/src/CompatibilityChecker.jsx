@@ -906,6 +906,8 @@ export default function CompatibilityChecker({ onSendToListing }) {
       }
 
       setResult(data);
+      const prevChecks = parseInt(localStorage.getItem("jsk_compat_checks") || "0", 10);
+      localStorage.setItem("jsk_compat_checks", String(prevChecks + 1));
       trackEvent("compat_check_performed", { oem_number: oemNumber.trim(), status: data.status, source: "compatibility_checker" });
       if (data.status === "compatible") {
         trackEvent("compat_result_compatible", { oem_number: oemNumber.trim(), source: "compatibility_checker" });

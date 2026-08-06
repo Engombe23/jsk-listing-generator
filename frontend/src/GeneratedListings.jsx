@@ -134,7 +134,13 @@ function sanitizeHtmlForExport(html) {
 // otherwise falls back to the auto-mapped schema from API data.
 function getSpecs(listing) {
   if (listing.custom_specifics?.length > 0) return listing.custom_specifics;
-  return mapApiSpecsToSchema(listing);
+  const prefs = loadPreferences();
+  return mapApiSpecsToSchema(listing, {
+    brand:        prefs.brand,
+    warranty:     prefs.warranty,
+    countryOfMfr: prefs.countryOfMfr,
+    sku:          listing.sku,
+  });
 }
 
 function getSavedTheme() {
