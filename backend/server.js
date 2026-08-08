@@ -1436,9 +1436,10 @@ async function processBulkItem(item, userId, userEmail, options) {
     await incrementListingUsage(userId, userEmail);
 
     await patch({
-      status:       "completed",
-      listing_id:   listingId,
-      product_name: result.generated_title || resolvedProductName,
+      status:            "completed",
+      listing_id:        listingId,
+      product_name:      result.generated_title || resolvedProductName,
+      description_html:  result.generated_html  || "",
     });
     return "completed";
 
@@ -1697,34 +1698,26 @@ app.get("/api/bulk/jobs/:id/export", requireAuth, async (req, res) => {
 
     if (!items?.length) return res.status(200).send("No completed items to export");
 
-    // Step 2: fetch each saved_listing individually.
-    // A batch .in() query is still subject to Supabase's per-response byte limit —
-    // when several listings carry large HTML (Oil Filter ~240 KB, Water Pump ~70 KB)
-    // the combined payload silently drops records from the tail of the response.
-    // One request per record guarantees the full description_html is returned.
+    // Step 2: fetch only small metadata (no description_html) from saved_listings.
+    // description_html is now stored directly on bulk_listing_items to avoid
+    // Supabase's per-response byte ceiling silently dropping large HTML fields.
     const listingIds = items.map(it => it.listing_id).filter(Boolean);
     const listingMap = new Map();
     if (listingIds.length) {
-      const fetchOne = pLimit(5); // max 5 concurrent Supabase reads
-      await Promise.all(
-        listingIds.map(lid => fetchOne(async () => {
-          const { data: l } = await supabaseAdmin
-            .from("saved_listings")
-            .select("id, title, description_html, oem_numbers, engine_codes, k_number_list, product_type")
-            .eq("id", lid)
-            .maybeSingle();
-          if (l) listingMap.set(lid, l);
-        }))
-      );
+      const { data: listings } = await supabaseAdmin
+        .from("saved_listings")
+        .select("id, title, oem_numbers, engine_codes, k_number_list, product_type")
+        .in("id", listingIds);
+      for (const l of listings || []) listingMap.set(l.id, l);
     }
 
     const exportRows = items.map(item => {
       const sl = listingMap.get(item.listing_id) || {};
       return {
-        "Title":                       sl.title                                     || "",
-        "SKU":                         item.sku                                     || "",
-        "BIN Price":                   item.bin_price                               || "",
-        "Description":                 sl.description_html                          || "",
+        "Title":                       sl.title || item.product_name              || "",
+        "SKU":                         item.sku                                   || "",
+        "BIN Price":                   item.bin_price                             || "",
+        "Description":                 item.description_html                      || "",
         "Custom Specifics 1 Name":     "Brand",
         "Custom Specifics 1 Value":    "JSK",
         "Custom Specifics 2 Name":     "Reference OE/OEM Number",
