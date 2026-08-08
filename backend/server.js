@@ -1204,14 +1204,124 @@ app.post("/batch-export", requireAuth, async (req, res) => {
 
 // ─── Bulk listing jobs ────────────────────────────────────────────────────────
 
-// Score a search-result candidate for automatic selection in bulk mode.
+// ─── Trusted manufacturer priority config ─────────────────────────────────────
+// Edit this list to change brand ranking — no logic changes needed.
+// Higher priority = preferred. Names are matched case-insensitively.
+const TRUSTED_MANUFACTURERS = [
+  // Tier 1 — OEM-quality suppliers
+  { name: "MEYLE",          priority: 100 },
+  { name: "LEMFORDER",      priority: 99  },
+  { name: "LEMFÖRDER",      priority: 99  },
+  { name: "TRW",            priority: 98  },
+  { name: "SACHS",          priority: 97  },
+  { name: "FAG",            priority: 96  },
+  { name: "SKF",            priority: 95  },
+  { name: "FEBI BILSTEIN",  priority: 94  },
+  { name: "FEBI",           priority: 94  },
+  { name: "BOSCH",          priority: 93  },
+  { name: "NGK",            priority: 92  },
+  { name: "VALEO",          priority: 91  },
+  { name: "GATES",          priority: 90  },
+  { name: "DAYCO",          priority: 89  },
+  { name: "DELPHI",         priority: 88  },
+  { name: "BEHR",           priority: 87  },
+  { name: "MAHLE",          priority: 87  },
+  { name: "ELRING",         priority: 86  },
+  { name: "VICTOR REINZ",   priority: 85  },
+  // Tier 2 — quality aftermarket
+  { name: "FAI AUTOPARTS",  priority: 80  },
+  { name: "FAI",            priority: 80  },
+  { name: "OPTIMAL",        priority: 78  },
+  { name: "TOPRAN",         priority: 77  },
+  { name: "SWAG",           priority: 76  },
+  { name: "MAPCO",          priority: 75  },
+  { name: "RUVILLE",        priority: 75  },
+  { name: "QUINTON HAZELL", priority: 74  },
+  { name: "QH",             priority: 74  },
+  { name: "CORTECO",        priority: 73  },
+  { name: "SNR",            priority: 72  },
+  { name: "NTN",            priority: 71  },
+  { name: "NSK",            priority: 70  },
+  { name: "KOYO",           priority: 69  },
+  // Tier 3 — budget / data-enrichment brands
+  { name: "JP GROUP",       priority: 60  },
+  { name: "DT SPARE PARTS", priority: 50  },
+];
+
+// Normalise a brand name for lookup: uppercase, collapse whitespace/hyphens.
+function normalizeMfrName(name) {
+  return (name || "").toUpperCase().trim().replace(/[-_]+/g, " ").replace(/\s+/g, " ");
+}
+
+// Build a fast priority lookup once at startup (normalised name → priority).
+const MFR_PRIORITY = new Map(
+  TRUSTED_MANUFACTURERS.map(m => [normalizeMfrName(m.name), m.priority])
+);
+
+// Score a single candidate. Manufacturer priority dominates (×1000) so it
+// always beats data-quality noise within the same priority tier.
+// Returns { score: number, reason: string }.
 function scoreBulkCandidate(a) {
-  let s = 0;
-  if (a.imageUrl)                       s += 3;
-  if ((a.oemNumbers || []).length > 0)  s += 2;
-  if (a.brand)                          s += 1;
-  if ((a.productName || "").length > 5) s += 1;
-  return s;
+  let score = 0;
+  const parts = [];
+
+  const mfrPriority = MFR_PRIORITY.get(normalizeMfrName(a.brand));
+  if (mfrPriority !== undefined) {
+    score += mfrPriority * 1000;
+    parts.push(`mfr:${a.brand}(p=${mfrPriority})`);
+  }
+
+  const oemCount = (a.oemNumbers || []).length;
+  if (oemCount > 0) {
+    score += Math.min(oemCount, 10) * 20;
+    parts.push(`oem:${oemCount}`);
+  }
+
+  if (a.imageUrl) { score += 30; parts.push("image"); }
+
+  const nameLen = (a.productName || "").length;
+  if (nameLen > 5)  { score += 10; parts.push("name"); }
+  if (nameLen > 20) { score += 10; }
+
+  return { score, reason: parts.join(", ") || "data-score" };
+}
+
+// Select the best article from candidates. Never returns null when candidates
+// is non-empty. Only sets needsReview:true for genuine product-type conflicts
+// that cannot be resolved programmatically.
+function selectBestBulkCandidate(candidates) {
+  if (!candidates.length) return null;
+
+  if (candidates.length === 1) {
+    const { score, reason } = scoreBulkCandidate(candidates[0]);
+    return { candidate: candidates[0], score, reason: `sole-result(${reason})`, needsReview: false };
+  }
+
+  const scored = candidates
+    .map(a => { const { score, reason } = scoreBulkCandidate(a); return { ...a, _score: score, _reason: reason }; })
+    .sort((a, b) => b._score - a._score);
+
+  const top = scored[0];
+  const topPriority = MFR_PRIORITY.get(normalizeMfrName(top.brand));
+
+  if (topPriority !== undefined) {
+    // Trusted manufacturer is at the top — auto-select it.
+    return {
+      candidate:   top,
+      score:       top._score,
+      reason:      `auto:trusted-mfr(${top.brand},p=${topPriority},${top._reason})`,
+      needsReview: false,
+    };
+  }
+
+  // No trusted manufacturer found — pick the best-scored result automatically
+  // (user instruction: "choose the 1st one" when no configured supplier present).
+  return {
+    candidate:   top,
+    score:       top._score,
+    reason:      `auto:best-available(${top.brand || "unknown"},${top._reason})`,
+    needsReview: false,
+  };
 }
 
 // Process one item: resolve → generate → save. Updates Supabase at each step.
@@ -1240,39 +1350,35 @@ async function processBulkItem(item, userId, userEmail, options) {
       return "not_found";
     }
 
-    let resolvedArticleNo, resolvedSupplier, resolvedProductName;
+    const selection = selectBestBulkCandidate(candidates);
 
-    if (candidates.length === 1) {
-      resolvedArticleNo   = candidates[0].articleNo;
-      resolvedSupplier    = candidates[0].brand;
-      resolvedProductName = candidates[0].productName;
-    } else {
-      const scored = candidates
-        .map(a => ({ ...a, _score: scoreBulkCandidate(a) }))
-        .sort((a, b) => b._score - a._score);
-      const [top, second] = scored;
-
-      if (top.articleNo && top._score >= second._score + 2) {
-        resolvedArticleNo   = top.articleNo;
-        resolvedSupplier    = top.brand;
-        resolvedProductName = top.productName;
-      } else {
-        // Ambiguous — needs manual selection
-        const candidateList = scored.slice(0, 5).map(a => ({
-          articleNo:   a.articleNo,
-          brand:       a.brand,
-          productName: a.productName,
-          imageUrl:    a.imageUrl,
-          score:       a._score,
-        }));
-        await patch({
-          status:        "needs_review",
-          candidates:    JSON.stringify(candidateList),
-          error_message: `${candidates.length} articles found — manual selection required`,
-        });
-        return "needs_review";
-      }
+    if (!selection) {
+      await patch({ status: "not_found", error_message: "No article found for this number" });
+      return "not_found";
     }
+
+    if (selection.needsReview) {
+      const candidateList = candidates.slice(0, 5).map(a => ({
+        articleNo:   a.articleNo,
+        brand:       a.brand,
+        productName: a.productName,
+        imageUrl:    a.imageUrl,
+      }));
+      await patch({
+        status:           "needs_review",
+        candidates:       JSON.stringify(candidateList),
+        selection_score:  0,
+        selection_reason: selection.reason || "ambiguous",
+        error_message:    `${candidates.length} articles found — manual selection required`,
+      });
+      return "needs_review";
+    }
+
+    const resolvedArticleNo   = selection.candidate.articleNo;
+    const resolvedSupplier    = selection.candidate.brand;
+    const resolvedProductName = selection.candidate.productName;
+    const selectionScore      = selection.score;
+    const selectionReason     = selection.reason;
 
     if (!resolvedArticleNo) {
       await patch({ status: "not_found", error_message: "Could not determine article number" });
@@ -1292,6 +1398,8 @@ async function processBulkItem(item, userId, userEmail, options) {
       resolved_article_number: resolvedArticleNo,
       resolved_supplier:       resolvedSupplier,
       product_name:            resolvedProductName,
+      selection_score:         selectionScore,
+      selection_reason:        selectionReason,
     });
 
     const result = await buildListingFromArticle(resolvedArticleNo, themeId, listingOpts);
