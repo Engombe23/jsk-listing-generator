@@ -34,6 +34,9 @@ create index if not exists idx_saved_listings_user_saved_at
 create index if not exists idx_saved_listings_user_article
   on public.saved_listings (user_id, article_number);
 
+-- If the table was created before custom_specifics was added, run this once:
+alter table public.saved_listings add column if not exists custom_specifics jsonb;
+
 alter table public.saved_listings enable row level security;
 
 drop policy if exists "Users can select own saved listings" on public.saved_listings;

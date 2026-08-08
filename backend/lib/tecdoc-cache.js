@@ -101,13 +101,14 @@ export function normalizeVehicleRecord(apiRow, { manufacturerName = "", modelNam
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-// Split engine codes on hard separators only; preserve exact spacing and case.
+// Return the raw engine code value as-is — no splitting, deduplication, or case changes.
+// Each TecDoc engine-code string is stored as a single element so it is displayed exactly
+// as the API returns it (e.g. "N47 D20 A" remains one code, not three fragments).
 export function normalizeEngCodes(raw) {
   if (!raw) return [];
-  const str = Array.isArray(raw) ? raw.join(",") : String(raw);
-  return [...new Set(
-    str.split(/[,;\|\/\n]+/).map(c => c.trim()).filter(Boolean)
-  )];
+  const str = Array.isArray(raw) ? raw.join(" ") : String(raw);
+  const trimmed = str.trim();
+  return trimmed ? [trimmed] : [];
 }
 
 // Parse construction-interval strings into ISO date strings (YYYY-MM-DD).

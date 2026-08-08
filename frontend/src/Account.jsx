@@ -6,7 +6,7 @@ import { loadPreferences, savePreferences, getDefaultPreferencesAsync } from "./
 import { useSession } from "./context/SessionContext";
 import { useTheme } from "./context/ThemeContext";
 import { supabase } from "./lib/supabaseClient";
-import { formatPlanLabel, openBillingPortal } from "./lib/billing";
+import { formatPlanLabel, openBillingPortal, syncCheckoutSession } from "./lib/billing";
 import { getDisplayPrice, getNextPlan, getPlan } from "./lib/plans";
 import i18n from "./i18n/index.js";
 import { MARKETPLACES, SITE_LANGUAGES, getMarketplaceById } from "./i18n/marketplaces.js";
@@ -466,10 +466,10 @@ function BillingPage() {
   const nextPlan = getNextPlan(plan);
 
   useEffect(() => {
-    // If a checkout sync is still pending in sessionStorage, show a syncing indicator
+    // If a checkout sync is still pending in localStorage, show a syncing indicator
     // while App.jsx Effect B runs. Once refreshPlan() resolves, the plan state updates
     // and this component re-renders with the real plan.
-    const hasPending = !!sessionStorage.getItem("jsk_pending_checkout_id");
+    const hasPending = !!localStorage.getItem("jsk_pending_checkout_id");
     if (hasPending) {
       setSyncing(true);
     }
@@ -478,8 +478,6 @@ function BillingPage() {
     refreshPlan().then(() => {
       if (!cancelled) {
         setSyncing(false);
-        // If the plan is now paid after the refresh, show a brief success banner.
-        setJustActivated((prev) => !prev && plan !== "free" ? false : false);
       }
     });
     return () => { cancelled = true; };
@@ -509,6 +507,23 @@ function BillingPage() {
       setError(err instanceof Error ? err.message : t("account.portalError"));
     } finally {
       setPortalLoading(false);
+    }
+  };
+
+  const handleRestorePurchase = async () => {
+    setSyncing(true);
+    setError("");
+    try {
+      const pendingId = localStorage.getItem("jsk_pending_checkout_id");
+      if (pendingId) {
+        await syncCheckoutSession({ sessionId: pendingId });
+        localStorage.removeItem("jsk_pending_checkout_id");
+      }
+      await refreshPlan();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not restore purchase. Please contact support.");
+    } finally {
+      setSyncing(false);
     }
   };
 
@@ -592,6 +607,11 @@ function BillingPage() {
             </>
           ) : (
             <Btn variant="primary" onClick={() => navigate("/pricing")}>{t("account.choosePlan")}</Btn>
+          )}
+          {plan === "free" && (
+            <Btn onClick={handleRestorePurchase} disabled={syncing}>
+              {syncing ? t("account.confirmingSubscription") : "Restore purchase"}
+            </Btn>
           )}
         </div>
       </Card>

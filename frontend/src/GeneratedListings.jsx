@@ -683,10 +683,11 @@ function ListingDetail({ listing, onClose, onSave }) {
 
   const handleSave = () => {
     onSave({
-      title:           editedTitle,
-      sku:             editedSku,
-      bin_price:       editedBinPrice,
+      title:            editedTitle,
+      sku:              editedSku,
+      bin_price:        editedBinPrice,
       custom_specifics: editedSpecs,
+      description_html: previewHtml,
     });
   };
 

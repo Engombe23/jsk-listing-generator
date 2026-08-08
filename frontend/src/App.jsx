@@ -321,7 +321,7 @@ export default function App() {
   const canBulkCsvExport = hasFeature("bulkCsvExport");
 
   // Effect A: detect return from Stripe, clean URL immediately, stash pending sync
-  // in sessionStorage so it survives the race between URL params and session load.
+  // in localStorage (not sessionStorage) so it survives tab closes / refreshes.
   useEffect(() => {
     const checkout  = searchParams.get("checkout");
     const billing   = searchParams.get("billing");
@@ -333,7 +333,7 @@ export default function App() {
     setPage("account");
 
     if (checkout === "success" && sessionId) {
-      sessionStorage.setItem("jsk_pending_checkout_id", sessionId);
+      localStorage.setItem("jsk_pending_checkout_id", sessionId);
     }
 
     const next = new URLSearchParams(searchParams);
@@ -345,13 +345,12 @@ export default function App() {
 
   // Effect B: runs whenever the session becomes available.
   // Picks up any pending checkout session ID left by Effect A and syncs it.
+  // The ID is removed from localStorage ONLY after a successful sync so that
+  // a failed sync (timeout, network error) can be retried via the billing page.
   useEffect(() => {
     const userId    = session?.user?.id;
-    const pendingId = sessionStorage.getItem("jsk_pending_checkout_id");
+    const pendingId = localStorage.getItem("jsk_pending_checkout_id");
     if (!userId || !pendingId) return;
-
-    // Claim the ID immediately so a second effect fire can't double-sync.
-    sessionStorage.removeItem("jsk_pending_checkout_id");
 
     let cancelled = false;
     (async () => {
@@ -360,8 +359,11 @@ export default function App() {
           syncCheckoutSession({ sessionId: pendingId }),
           new Promise((_, rej) => setTimeout(() => rej(new Error("timeout")), 10_000)),
         ]);
+        // Only remove the pending ID once the sync succeeds so a failed attempt
+        // can be retried from the billing page's "Restore purchase" button.
+        localStorage.removeItem("jsk_pending_checkout_id");
       } catch (err) {
-        console.warn("[checkout] sync failed, falling back to profile refresh:", err.message);
+        console.warn("[checkout] sync failed — ID kept for retry:", err.message);
       }
       if (!cancelled) await refreshPlan();
     })();
@@ -742,6 +744,10 @@ function ListingGenerator({
   const liveHtmlRef  = useRef("");
   // ── Live rows ref (lifted from ItemSpecificsTab so Save captures edits) ──
   const liveRowsRef  = useRef(null);
+  // ── Tracks whether the ItemSpecificsTab has fired its initial auto-compute
+  //    onRowsChange (mount) vs a genuine user edit (subsequent calls). ──
+  const specsInitializedRef  = useRef(false);
+  const userEditedSpecsRef   = useRef(false);
   // ── Save flash timer — cleared on each manual save to avoid stale callbacks ──
   const saveTimerRef = useRef(null);
 
@@ -763,6 +769,12 @@ function ListingGenerator({
       liveHtmlRef.current = displayHtml;
     }
   }, [displayHtml, result]);
+
+  // Reset spec-edit tracking whenever the result changes (new part generated).
+  useEffect(() => {
+    specsInitializedRef.current = false;
+    userEditedSpecsRef.current  = false;
+  }, [result?.article_number]);
 
   const isLoading  = phase === "searching" || phase === "generating";
   const canSearch  = query.trim().length > 0;
@@ -981,9 +993,12 @@ function ListingGenerator({
     if (!result) return;
     onAutoSave?.({
       ...result,
-      sku:              inputSku.trim(),
-      generated_html:   liveHtmlRef.current  || result.generated_html,
-      custom_specifics: liveRowsRef.current  ?? null,
+      sku:            inputSku.trim(),
+      generated_html: liveHtmlRef.current || result.generated_html,
+      // Only include custom_specifics when the user has explicitly changed them
+      // in this session. Omitting it (undefined) tells autoSave to preserve any
+      // custom_specifics already saved (e.g. from editing via ListingDetail).
+      ...(userEditedSpecsRef.current && { custom_specifics: liveRowsRef.current }),
     });
     // Brief "Saved" flash — always reverts to "Save" so users know they can re-save
     clearTimeout(saveTimerRef.current);
@@ -1226,7 +1241,11 @@ function ListingGenerator({
                       result={result}
                       sku={inputSku}
                       copyText={copyText}
-                      onRowsChange={(rows) => { liveRowsRef.current = rows; }}
+                      onRowsChange={(rows) => {
+                        liveRowsRef.current = rows;
+                        if (specsInitializedRef.current) userEditedSpecsRef.current = true;
+                        specsInitializedRef.current = true;
+                      }}
                       savedListings={listings}
                     />
                   )}
@@ -1240,7 +1259,11 @@ function ListingGenerator({
                   onSaveTemplate={handleSaveTemplate}
                   noRightPanel
                   onHtmlChange={(html) => { liveHtmlRef.current = html; }}
-                  onRowsChange={(rows) => { liveRowsRef.current = rows; }}
+                  onRowsChange={(rows) => {
+                    liveRowsRef.current = rows;
+                    if (specsInitializedRef.current) userEditedSpecsRef.current = true;
+                    specsInitializedRef.current = true;
+                  }}
                   savedListings={listings}
                 />
               )

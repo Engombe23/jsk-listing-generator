@@ -141,13 +141,12 @@ function cleanNumber(value) {
   return String(value).replace(/\.0+$/, "");
 }
 
-// Split a raw TecDoc engine-code string into individual codes.
-// Splits only on hard separators (comma, semicolon, pipe, slash, newline).
-// Spaces within a code token are preserved — they are part of the code as
-// TecDoc stores it (e.g. "Z16 XER" is a single code, not two fragments).
+// Return the raw TecDoc engine-code value as a single element, unchanged.
+// No splitting or normalisation — the caller sees exactly what TecDoc returned.
 function splitEngineCodes(value) {
   if (!value) return [];
-  return String(value).split(/[,\n;|/]+/).map((s) => s.trim()).filter(Boolean);
+  const str = String(value).trim();
+  return str ? [str] : [];
 }
 
 function extractSpecLabel(spec) {
