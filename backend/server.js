@@ -1403,6 +1403,7 @@ async function processBulkItem(item, userId, userEmail, options) {
     });
 
     const result = await buildListingFromArticle(resolvedArticleNo, themeId, listingOpts);
+    console.log(`[BulkItem ${item.id}] article=${resolvedArticleNo} html_len=${(result.generated_html || "").length} title="${result.generated_title}"`);
 
     // 4. Save to saved_listings
     let listingId = null;
