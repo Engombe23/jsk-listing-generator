@@ -1394,239 +1394,273 @@ async function processBulkJob(jobId, userId, userEmail, options) {
 
 // POST /api/bulk/jobs — create a new bulk job and start processing
 app.post("/api/bulk/jobs", requireAuth, async (req, res) => {
-  if (!supabaseAdmin) return res.status(503).json({ error: "Database not configured" });
+  try {
+    if (!supabaseAdmin) return res.status(503).json({ error: "Database not configured" });
 
-  const { items, themeId, listingOptions } = req.body;
-  if (!Array.isArray(items) || !items.length)
-    return res.status(400).json({ error: "items must be a non-empty array" });
-  if (items.length > 500)
-    return res.status(400).json({ error: "Maximum 500 items per bulk job" });
+    const { items, themeId, listingOptions } = req.body;
+    if (!Array.isArray(items) || !items.length)
+      return res.status(400).json({ error: "items must be a non-empty array" });
+    if (items.length > 500)
+      return res.status(400).json({ error: "Maximum 500 items per bulk job" });
 
-  const cleaned = items
-    .map((it, i) => ({
-      inputNumber: String(it.inputNumber || it.oem || "").trim().replace(/\s+/g, ""),
-      sku:         String(it.sku       || "").trim(),
-      binPrice:    String(it.binPrice  || "").trim(),
-      rowIndex:    i,
-    }))
-    .filter(it => it.inputNumber);
+    const cleaned = items
+      .map((it, i) => ({
+        inputNumber: String(it.inputNumber || it.oem || "").trim().replace(/\s+/g, ""),
+        sku:         String(it.sku       || "").trim(),
+        binPrice:    String(it.binPrice  || "").trim(),
+        rowIndex:    i,
+      }))
+      .filter(it => it.inputNumber);
 
-  if (!cleaned.length) return res.status(400).json({ error: "No valid items" });
+    if (!cleaned.length) return res.status(400).json({ error: "No valid items" });
 
-  const access = await canGenerateListing(req.user.id, req.user.email);
-  if (!access.allowed)
-    return res.status(403).json({ error: "limit_reached", message: "Listing limit reached. Upgrade to continue." });
+    const access = await canGenerateListing(req.user.id, req.user.email);
+    if (!access.allowed)
+      return res.status(403).json({ error: "limit_reached", message: "Listing limit reached. Upgrade to continue." });
 
-  const options = {
-    themeId:        themeId        || "clean-default",
-    listingOptions: listingOptions || {},
-  };
+    const options = {
+      themeId:        themeId        || "clean-default",
+      listingOptions: listingOptions || {},
+    };
 
-  const { data: job, error: je } = await supabaseAdmin
-    .from("bulk_listing_jobs")
-    .insert({ user_id: req.user.id, total_items: cleaned.length, options })
-    .select("id")
-    .maybeSingle();
+    const { data: job, error: je } = await supabaseAdmin
+      .from("bulk_listing_jobs")
+      .insert({ user_id: req.user.id, total_items: cleaned.length, options })
+      .select("id")
+      .maybeSingle();
 
-  if (je || !job) return res.status(500).json({ error: je?.message || "Failed to create job" });
+    if (je || !job) return res.status(500).json({ error: je?.message || "Failed to create job" });
 
-  await supabaseAdmin.from("bulk_listing_items").insert(
-    cleaned.map(it => ({
-      job_id:       job.id,
-      user_id:      req.user.id,
-      row_index:    it.rowIndex,
-      input_number: it.inputNumber,
-      sku:          it.sku,
-      bin_price:    it.binPrice,
-      status:       "queued",
-    }))
-  );
+    await supabaseAdmin.from("bulk_listing_items").insert(
+      cleaned.map(it => ({
+        job_id:       job.id,
+        user_id:      req.user.id,
+        row_index:    it.rowIndex,
+        input_number: it.inputNumber,
+        sku:          it.sku,
+        bin_price:    it.binPrice,
+        status:       "queued",
+      }))
+    );
 
-  setImmediate(() =>
-    processBulkJob(job.id, req.user.id, req.user.email, options).catch(console.error)
-  );
+    setImmediate(() =>
+      processBulkJob(job.id, req.user.id, req.user.email, options).catch(console.error)
+    );
 
-  res.json({ jobId: job.id, totalItems: cleaned.length });
+    res.json({ jobId: job.id, totalItems: cleaned.length });
+  } catch (err) {
+    console.error("[POST /api/bulk/jobs]", err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // GET /api/bulk/jobs — list the user's recent jobs
 app.get("/api/bulk/jobs", requireAuth, async (req, res) => {
-  if (!supabaseAdmin) return res.status(503).json({ error: "Database not configured" });
-  const { data, error } = await supabaseAdmin
-    .from("bulk_listing_jobs")
-    .select("*")
-    .eq("user_id", req.user.id)
-    .order("created_at", { ascending: false })
-    .limit(20);
-  if (error) return res.status(500).json({ error: error.message });
-  res.json({ jobs: data || [] });
+  try {
+    if (!supabaseAdmin) return res.status(503).json({ error: "Database not configured" });
+    const { data, error } = await supabaseAdmin
+      .from("bulk_listing_jobs")
+      .select("*")
+      .eq("user_id", req.user.id)
+      .order("created_at", { ascending: false })
+      .limit(20);
+    if (error) return res.status(500).json({ error: error.message });
+    res.json({ jobs: data || [] });
+  } catch (err) {
+    console.error("[GET /api/bulk/jobs]", err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // GET /api/bulk/jobs/:id — job header + all items
 app.get("/api/bulk/jobs/:id", requireAuth, async (req, res) => {
-  if (!supabaseAdmin) return res.status(503).json({ error: "Database not configured" });
-  const { id } = req.params;
-  const [{ data: job, error: je }, { data: items, error: ie }] = await Promise.all([
-    supabaseAdmin.from("bulk_listing_jobs").select("*").eq("id", id).eq("user_id", req.user.id).maybeSingle(),
-    supabaseAdmin.from("bulk_listing_items").select("*").eq("job_id", id).order("row_index", { ascending: true }),
-  ]);
-  if (je || !job) return res.status(404).json({ error: "Job not found" });
-  if (ie) return res.status(500).json({ error: ie.message });
-  res.json({ job, items: items || [] });
+  try {
+    if (!supabaseAdmin) return res.status(503).json({ error: "Database not configured" });
+    const { id } = req.params;
+    const [{ data: job, error: je }, { data: items, error: ie }] = await Promise.all([
+      supabaseAdmin.from("bulk_listing_jobs").select("*").eq("id", id).eq("user_id", req.user.id).maybeSingle(),
+      supabaseAdmin.from("bulk_listing_items").select("*").eq("job_id", id).order("row_index", { ascending: true }),
+    ]);
+    if (je || !job) return res.status(404).json({ error: "Job not found" });
+    if (ie) return res.status(500).json({ error: ie.message });
+    res.json({ job, items: items || [] });
+  } catch (err) {
+    console.error("[GET /api/bulk/jobs/:id]", err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // POST /api/bulk/jobs/:id/retry — reset failed/not_found items and reprocess
 app.post("/api/bulk/jobs/:id/retry", requireAuth, async (req, res) => {
-  if (!supabaseAdmin) return res.status(503).json({ error: "Database not configured" });
-  const { id } = req.params;
-  const { data: job } = await supabaseAdmin
-    .from("bulk_listing_jobs")
-    .select("id, options, status")
-    .eq("id", id).eq("user_id", req.user.id).maybeSingle();
-  if (!job) return res.status(404).json({ error: "Job not found" });
-  if (job.status === "processing") return res.status(409).json({ error: "Job is already processing" });
+  try {
+    if (!supabaseAdmin) return res.status(503).json({ error: "Database not configured" });
+    const { id } = req.params;
+    const { data: job } = await supabaseAdmin
+      .from("bulk_listing_jobs")
+      .select("id, options, status")
+      .eq("id", id).eq("user_id", req.user.id).maybeSingle();
+    if (!job) return res.status(404).json({ error: "Job not found" });
+    if (job.status === "processing") return res.status(409).json({ error: "Job is already processing" });
 
-  await supabaseAdmin
-    .from("bulk_listing_items")
-    .update({ status: "queued", error_message: null, updated_at: new Date().toISOString() })
-    .eq("job_id", id)
-    .in("status", ["failed", "not_found"]);
+    await supabaseAdmin
+      .from("bulk_listing_items")
+      .update({ status: "queued", error_message: null, updated_at: new Date().toISOString() })
+      .eq("job_id", id)
+      .in("status", ["failed", "not_found"]);
 
-  await supabaseAdmin
-    .from("bulk_listing_jobs")
-    .update({ status: "pending", completed_at: null })
-    .eq("id", id);
+    await supabaseAdmin
+      .from("bulk_listing_jobs")
+      .update({ status: "pending", completed_at: null })
+      .eq("id", id);
 
-  setImmediate(() =>
-    processBulkJob(id, req.user.id, req.user.email, job.options || {}).catch(console.error)
-  );
-  res.json({ ok: true });
+    setImmediate(() =>
+      processBulkJob(id, req.user.id, req.user.email, job.options || {}).catch(console.error)
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("[POST /api/bulk/jobs/:id/retry]", err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // POST /api/bulk/jobs/:id/pick — select a specific article for a needs_review item
 app.post("/api/bulk/jobs/:id/pick", requireAuth, async (req, res) => {
-  if (!supabaseAdmin) return res.status(503).json({ error: "Database not configured" });
-  const { id } = req.params;
-  const { itemId, articleNo } = req.body;
-  if (!itemId || !articleNo) return res.status(400).json({ error: "itemId and articleNo required" });
+  try {
+    if (!supabaseAdmin) return res.status(503).json({ error: "Database not configured" });
+    const { id } = req.params;
+    const { itemId, articleNo } = req.body;
+    if (!itemId || !articleNo) return res.status(400).json({ error: "itemId and articleNo required" });
 
-  const { data: item } = await supabaseAdmin
-    .from("bulk_listing_items")
-    .select("*")
-    .eq("id", itemId).eq("job_id", id).eq("user_id", req.user.id).maybeSingle();
-  if (!item) return res.status(404).json({ error: "Item not found" });
+    const { data: item } = await supabaseAdmin
+      .from("bulk_listing_items")
+      .select("*")
+      .eq("id", itemId).eq("job_id", id).eq("user_id", req.user.id).maybeSingle();
+    if (!item) return res.status(404).json({ error: "Item not found" });
 
-  const { data: job } = await supabaseAdmin
-    .from("bulk_listing_jobs").select("options").eq("id", id).maybeSingle();
+    const { data: job } = await supabaseAdmin
+      .from("bulk_listing_jobs").select("options").eq("id", id).maybeSingle();
 
-  await supabaseAdmin
-    .from("bulk_listing_items")
-    .update({
-      status:                  "queued",
-      input_number:            articleNo,
-      resolved_article_number: null,
-      candidates:              null,
-      error_message:           null,
-      updated_at:              new Date().toISOString(),
-    })
-    .eq("id", itemId);
+    await supabaseAdmin
+      .from("bulk_listing_items")
+      .update({
+        status:                  "queued",
+        input_number:            articleNo,
+        resolved_article_number: null,
+        candidates:              null,
+        error_message:           null,
+        updated_at:              new Date().toISOString(),
+      })
+      .eq("id", itemId);
 
-  const updatedItem = { ...item, input_number: articleNo };
-  setImmediate(() =>
-    processBulkItem(updatedItem, req.user.id, req.user.email, job?.options || {})
-      .then(() => finaliseBulkJob(id))
-      .catch(console.error)
-  );
-  res.json({ ok: true });
+    const updatedItem = { ...item, input_number: articleNo };
+    setImmediate(() =>
+      processBulkItem(updatedItem, req.user.id, req.user.email, job?.options || {})
+        .then(() => finaliseBulkJob(id))
+        .catch(console.error)
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("[POST /api/bulk/jobs/:id/pick]", err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // GET /api/bulk/jobs/:id/export — download completed items as Ad-Lister CSV
 app.get("/api/bulk/jobs/:id/export", requireAuth, async (req, res) => {
-  if (!supabaseAdmin) return res.status(503).json({ error: "Database not configured" });
-  const { id } = req.params;
-  const format = req.query.format || "adlister";
+  try {
+    if (!supabaseAdmin) return res.status(503).json({ error: "Database not configured" });
+    const { id } = req.params;
 
-  const { data: job } = await supabaseAdmin
-    .from("bulk_listing_jobs").select("id").eq("id", id).eq("user_id", req.user.id).maybeSingle();
-  if (!job) return res.status(404).json({ error: "Job not found" });
+    const { data: job } = await supabaseAdmin
+      .from("bulk_listing_jobs").select("id").eq("id", id).eq("user_id", req.user.id).maybeSingle();
+    if (!job) return res.status(404).json({ error: "Job not found" });
 
-  const { data: items } = await supabaseAdmin
-    .from("bulk_listing_items")
-    .select("*, saved_listings(title, description_html, oem_numbers, engine_codes, k_number_list, product_type)")
-    .eq("job_id", id)
-    .eq("status", "completed")
-    .order("row_index", { ascending: true });
+    const { data: items } = await supabaseAdmin
+      .from("bulk_listing_items")
+      .select("*, saved_listings(title, description_html, oem_numbers, engine_codes, k_number_list, product_type)")
+      .eq("job_id", id)
+      .eq("status", "completed")
+      .order("row_index", { ascending: true });
 
-  if (!items?.length) return res.status(200).send("No completed items to export");
+    if (!items?.length) return res.status(200).send("No completed items to export");
 
-  const exportRows = items.map(item => {
-    const sl = item.saved_listings || {};
-    return {
-      "Title":                       sl.title                                     || "",
-      "SKU":                         item.sku                                     || "",
-      "BIN Price":                   item.bin_price                               || "",
-      "Description":                 sl.description_html                          || "",
-      "Custom Specifics 1 Name":     "Brand",
-      "Custom Specifics 1 Value":    "JSK",
-      "Custom Specifics 2 Name":     "Reference OE/OEM Number",
-      "Custom Specifics 2 Value":    uniq(sl.oem_numbers  || []).join(", "),
-      "Custom Specifics 3 Name":     "Manufacturer Part Number",
-      "Custom Specifics 3 Value":    item.sku                                     || "",
-      "Custom Specifics 4 Name":     "Product Type",
-      "Custom Specifics 4 Value":    sl.product_type                              || "",
-      "Custom Specifics 5 Name":     "Country of Manufacture",
-      "Custom Specifics 5 Value":    "United Kingdom",
-      "Custom Specifics 6 Name":     "Compatible Engine Codes",
-      "Custom Specifics 6 Value":    uniq(sl.engine_codes || []).join(", "),
-      "Custom Specifics 7 Name":     "K Numbers",
-      "Custom Specifics 7 Value":    uniq(sl.k_number_list || []).join(", "),
-      "Article Number":              item.resolved_article_number                 || item.input_number,
-      "Template":                    "",
-      "Error":                       "",
-    };
-  });
+    const exportRows = items.map(item => {
+      const sl = item.saved_listings || {};
+      return {
+        "Title":                       sl.title                                     || "",
+        "SKU":                         item.sku                                     || "",
+        "BIN Price":                   item.bin_price                               || "",
+        "Description":                 sl.description_html                          || "",
+        "Custom Specifics 1 Name":     "Brand",
+        "Custom Specifics 1 Value":    "JSK",
+        "Custom Specifics 2 Name":     "Reference OE/OEM Number",
+        "Custom Specifics 2 Value":    uniq(sl.oem_numbers  || []).join(", "),
+        "Custom Specifics 3 Name":     "Manufacturer Part Number",
+        "Custom Specifics 3 Value":    item.sku                                     || "",
+        "Custom Specifics 4 Name":     "Product Type",
+        "Custom Specifics 4 Value":    sl.product_type                              || "",
+        "Custom Specifics 5 Name":     "Country of Manufacture",
+        "Custom Specifics 5 Value":    "United Kingdom",
+        "Custom Specifics 6 Name":     "Compatible Engine Codes",
+        "Custom Specifics 6 Value":    uniq(sl.engine_codes || []).join(", "),
+        "Custom Specifics 7 Name":     "K Numbers",
+        "Custom Specifics 7 Value":    uniq(sl.k_number_list || []).join(", "),
+        "Article Number":              item.resolved_article_number                 || item.input_number,
+        "Template":                    "",
+        "Error":                       "",
+      };
+    });
 
-  const parser = new Parser({
-    fields: [
-      "Title", "SKU", "BIN Price", "Description",
-      "Custom Specifics 1 Name", "Custom Specifics 1 Value",
-      "Custom Specifics 2 Name", "Custom Specifics 2 Value",
-      "Custom Specifics 3 Name", "Custom Specifics 3 Value",
-      "Custom Specifics 4 Name", "Custom Specifics 4 Value",
-      "Custom Specifics 5 Name", "Custom Specifics 5 Value",
-      "Custom Specifics 6 Name", "Custom Specifics 6 Value",
-      "Custom Specifics 7 Name", "Custom Specifics 7 Value",
-      "Article Number", "Template", "Error",
-    ],
-  });
+    const parser = new Parser({
+      fields: [
+        "Title", "SKU", "BIN Price", "Description",
+        "Custom Specifics 1 Name", "Custom Specifics 1 Value",
+        "Custom Specifics 2 Name", "Custom Specifics 2 Value",
+        "Custom Specifics 3 Name", "Custom Specifics 3 Value",
+        "Custom Specifics 4 Name", "Custom Specifics 4 Value",
+        "Custom Specifics 5 Name", "Custom Specifics 5 Value",
+        "Custom Specifics 6 Name", "Custom Specifics 6 Value",
+        "Custom Specifics 7 Name", "Custom Specifics 7 Value",
+        "Article Number", "Template", "Error",
+      ],
+    });
 
-  res.setHeader("Content-Type", "text/csv");
-  res.setHeader("Content-Disposition", `attachment; filename="bulk-export-${id.slice(0, 8)}.csv"`);
-  res.send(parser.parse(exportRows));
+    res.setHeader("Content-Type", "text/csv");
+    res.setHeader("Content-Disposition", `attachment; filename="bulk-export-${id.slice(0, 8)}.csv"`);
+    res.send(parser.parse(exportRows));
+  } catch (err) {
+    console.error("[GET /api/bulk/jobs/:id/export]", err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // GET /api/bulk/jobs/:id/report — full job report (all items, all statuses)
 app.get("/api/bulk/jobs/:id/report", requireAuth, async (req, res) => {
-  if (!supabaseAdmin) return res.status(503).json({ error: "Database not configured" });
-  const { id } = req.params;
+  try {
+    if (!supabaseAdmin) return res.status(503).json({ error: "Database not configured" });
+    const { id } = req.params;
 
-  const { data: job } = await supabaseAdmin
-    .from("bulk_listing_jobs").select("id").eq("id", id).eq("user_id", req.user.id).maybeSingle();
-  if (!job) return res.status(404).json({ error: "Job not found" });
+    const { data: job } = await supabaseAdmin
+      .from("bulk_listing_jobs").select("id").eq("id", id).eq("user_id", req.user.id).maybeSingle();
+    if (!job) return res.status(404).json({ error: "Job not found" });
 
-  const { data: items } = await supabaseAdmin
-    .from("bulk_listing_items")
-    .select("row_index, input_number, sku, status, resolved_article_number, resolved_supplier, product_name, error_message")
-    .eq("job_id", id)
-    .order("row_index", { ascending: true });
+    const { data: items } = await supabaseAdmin
+      .from("bulk_listing_items")
+      .select("row_index, input_number, sku, status, resolved_article_number, resolved_supplier, product_name, error_message")
+      .eq("job_id", id)
+      .order("row_index", { ascending: true });
 
-  const parser = new Parser({
-    fields: ["row_index", "input_number", "sku", "status", "resolved_article_number", "resolved_supplier", "product_name", "error_message"],
-  });
+    const parser = new Parser({
+      fields: ["row_index", "input_number", "sku", "status", "resolved_article_number", "resolved_supplier", "product_name", "error_message"],
+    });
 
-  res.setHeader("Content-Type", "text/csv");
-  res.setHeader("Content-Disposition", `attachment; filename="bulk-report-${id.slice(0, 8)}.csv"`);
-  res.send(parser.parse(items || []));
+    res.setHeader("Content-Type", "text/csv");
+    res.setHeader("Content-Disposition", `attachment; filename="bulk-report-${id.slice(0, 8)}.csv"`);
+    res.send(parser.parse(items || []));
+  } catch (err) {
+    console.error("[GET /api/bulk/jobs/:id/report]", err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 app.post("/compatibility/check", requireAuth, async (req, res) => {
