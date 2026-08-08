@@ -27,6 +27,7 @@ import SavedProducts from "./SavedProducts.jsx";
 import CompatibilityChecker from "./CompatibilityChecker.jsx";
 import Account, { ProfileDropdown } from "./Account.jsx";
 import PartIdentifier from "./PartIdentifier.jsx";
+import BulkListingGenerator from "./BulkListingGenerator.jsx";
 import { useSavedProducts } from "./useSavedProducts.js";
 import { useGeneratedListings } from "./useGeneratedListings.js";
 import { useSessionState } from "./useSessionState.js";
@@ -392,6 +393,7 @@ export default function App() {
   // Session-state key prefixes per page — used to wipe state on navigation away
   const PAGE_SS_PREFIXES = {
     listing:       "jsk_gen_",
+    bulk:          "jsk_bulk_",
     calculator:    "jsk_calc_",
     compatibility: "jsk_compat_",
   };
@@ -457,6 +459,12 @@ export default function App() {
         <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
       </svg>
     ),
+    bulk: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+        <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
+      </svg>
+    ),
     account: (
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
@@ -491,6 +499,7 @@ export default function App() {
           <div style={{ display: "flex", flex: 1, alignItems: "stretch" }}>
             {[
               { key: "listing",       label: t("nav.listingGenerator") },
+              { key: "bulk",          label: "Bulk Generator" },
               { key: "calculator",    label: t("nav.priceCalculator") },
               ...(canUseCompatibility ? [{ key: "compatibility", label: t("nav.compatibility") }] : []),
               // { key: "partidentifier", label: "Part Identifier", badge: "BETA" }, // hidden — feature paused
@@ -562,6 +571,9 @@ export default function App() {
               navigateTo("account");
             }}
           />
+        )}
+        {page === "bulk" && (
+          <BulkListingGenerator session={session} />
         )}
         {page === "calculator" && (
           <PriceCalculator
