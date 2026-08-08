@@ -30,7 +30,7 @@ const posthog = new PostHog(
 import analyticsRouter from "./routes/analytics.js";
 import stripeRouter, { registerStripeWebhook } from "./routes/stripe.js";
 import { stripeReady, CLIENT_URL } from "./lib/stripeConfig.js";
-import { supabaseAdminReady } from "./lib/supabaseAdmin.js";
+import { supabaseAdmin, supabaseAdminReady } from "./lib/supabaseAdmin.js";
 import { requireAuth } from "./middleware/requireAuth.js";
 import { canGenerateListing, incrementListingUsage, checkFeatureAccess } from "./lib/profiles.js";
 import authRouter from "./routes/auth.js";
