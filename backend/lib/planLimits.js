@@ -33,7 +33,13 @@ export function isWhitelisted(email) {
 }
 
 export function listingLimitForPlan(plan) {
-  return PLAN_LISTING_LIMITS[(plan || "free").toLowerCase()] ?? 0;
+  // Use hasOwn — not ?? — so Scale's `null` (unlimited) is preserved.
+  // `null ?? 0` would incorrectly turn unlimited into a 0-listing hard block.
+  const key = (plan || "").toLowerCase();
+  if (Object.prototype.hasOwnProperty.call(PLAN_LISTING_LIMITS, key)) {
+    return PLAN_LISTING_LIMITS[key];
+  }
+  return 0;
 }
 
 export function isUnlimited(listingLimit) {
