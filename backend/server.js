@@ -1407,7 +1407,7 @@ async function processBulkItem(item, userId, userEmail, options) {
     // 4. Save to saved_listings
     let listingId = null;
     if (supabaseAdmin) {
-      const { data: saved } = await supabaseAdmin
+      const { data: saved, error: saveErr } = await supabaseAdmin
         .from("saved_listings")
         .insert({
           user_id:             userId,
@@ -1428,6 +1428,7 @@ async function processBulkItem(item, userId, userEmail, options) {
         })
         .select("id")
         .maybeSingle();
+      if (saveErr) console.error(`[BulkItem ${item.id}] saved_listings insert error:`, saveErr);
       listingId = saved?.id || null;
     }
 
@@ -1683,17 +1684,31 @@ app.get("/api/bulk/jobs/:id/export", requireAuth, async (req, res) => {
       .from("bulk_listing_jobs").select("id").eq("id", id).eq("user_id", req.user.id).maybeSingle();
     if (!job) return res.status(404).json({ error: "Job not found" });
 
+    // Step 1: fetch completed items (no join — large description_html causes nested
+    // join responses to exceed Supabase's response size threshold for common parts
+    // with 500+ compatible vehicles, silently dropping the field for affected rows).
     const { data: items } = await supabaseAdmin
       .from("bulk_listing_items")
-      .select("*, saved_listings(title, description_html, oem_numbers, engine_codes, k_number_list, product_type)")
+      .select("*")
       .eq("job_id", id)
       .eq("status", "completed")
       .order("row_index", { ascending: true });
 
     if (!items?.length) return res.status(200).send("No completed items to export");
 
+    // Step 2: fetch the saved_listings records separately by id.
+    const listingIds = items.map(it => it.listing_id).filter(Boolean);
+    const listingMap = new Map();
+    if (listingIds.length) {
+      const { data: listings } = await supabaseAdmin
+        .from("saved_listings")
+        .select("id, title, description_html, oem_numbers, engine_codes, k_number_list, product_type")
+        .in("id", listingIds);
+      for (const l of listings || []) listingMap.set(l.id, l);
+    }
+
     const exportRows = items.map(item => {
-      const sl = item.saved_listings || {};
+      const sl = listingMap.get(item.listing_id) || {};
       return {
         "Title":                       sl.title                                     || "",
         "SKU":                         item.sku                                     || "",
