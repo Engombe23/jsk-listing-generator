@@ -466,20 +466,30 @@ function BillingPage() {
   const nextPlan = getNextPlan(plan);
 
   useEffect(() => {
-    // If a checkout sync is still pending in localStorage, show a syncing indicator
-    // while App.jsx Effect B runs. Once refreshPlan() resolves, the plan state updates
-    // and this component re-renders with the real plan.
-    const hasPending = !!localStorage.getItem("jsk_pending_checkout_id");
-    if (hasPending) {
-      setSyncing(true);
-    }
-
+    // On mount, attempt to sync any pending checkout session automatically.
+    // This catches the common case where App.jsx Effect B timed out or failed —
+    // the billing page is the natural place the user lands after checkout, so
+    // retrying here means the plan activates without any manual step.
     let cancelled = false;
-    refreshPlan().then(() => {
-      if (!cancelled) {
-        setSyncing(false);
+    const run = async () => {
+      setSyncing(true);
+      try {
+        const pendingId = localStorage.getItem("jsk_pending_checkout_id");
+        if (pendingId) {
+          try {
+            await syncCheckoutSession({ sessionId: pendingId });
+            localStorage.removeItem("jsk_pending_checkout_id");
+          } catch {
+            // Sync failed again — still fall through to refreshPlan so the UI
+            // shows the latest state from Supabase (webhook may have fired).
+          }
+        }
+        await refreshPlan();
+      } finally {
+        if (!cancelled) setSyncing(false);
       }
-    });
+    };
+    run();
     return () => { cancelled = true; };
   }, [refreshPlan]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -507,23 +517,6 @@ function BillingPage() {
       setError(err instanceof Error ? err.message : t("account.portalError"));
     } finally {
       setPortalLoading(false);
-    }
-  };
-
-  const handleRestorePurchase = async () => {
-    setSyncing(true);
-    setError("");
-    try {
-      const pendingId = localStorage.getItem("jsk_pending_checkout_id");
-      if (pendingId) {
-        await syncCheckoutSession({ sessionId: pendingId });
-        localStorage.removeItem("jsk_pending_checkout_id");
-      }
-      await refreshPlan();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not restore purchase. Please contact support.");
-    } finally {
-      setSyncing(false);
     }
   };
 
@@ -607,11 +600,6 @@ function BillingPage() {
             </>
           ) : (
             <Btn variant="primary" onClick={() => navigate("/pricing")}>{t("account.choosePlan")}</Btn>
-          )}
-          {plan === "free" && (
-            <Btn onClick={handleRestorePurchase} disabled={syncing}>
-              {syncing ? t("account.confirmingSubscription") : "Restore purchase"}
-            </Btn>
           )}
         </div>
       </Card>
